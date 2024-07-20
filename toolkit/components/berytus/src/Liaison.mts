@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { PublicRequestHandler, ValidatedRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
-import { IUnderlyingRequestHandler } from "./types";
+import { IPublicRequestHandler, IUnderlyingRequestHandler } from "./types";
 
 interface Manager {
     metadata: SecretManagerInfo,
@@ -71,7 +71,7 @@ class Liaison {
         return id in this.#managers;
     }
 
-    getRequestHandler(id: string) {
+    getRequestHandler(id: string): IPublicRequestHandler {
         const manager = this.#managers[id];
         if (! manager) {
             throw new Error(
