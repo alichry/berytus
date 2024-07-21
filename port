@@ -1,0 +1,275 @@
+#!/bin/sh
+
+set -e
+
+PROJ="$(dirname "$(realpath "$0")")"
+SUBDIRS="toolkit/components/berytus
+dom/berytus"
+#FILES="dom/webidl/Berytus*"r
+MOZILLA_FILES="toolkit/components/moz.build"
+
+usage="Berytus source code (ex|im)port usage:
+
+    port ACTION  MOZ_DIRECTORY
+
+Where:
+    ACTION          The action to undertake. Specify
+                    \`export\` to copy the Berytus
+                    files found in this directory
+                    to MOZ_DIRECTORY, or \`import\`
+                    to copy the Berytus files found in
+                    MOZ_DIRECTORY to this directory.
+
+    MOZ_DIRECTORY   Path to the mozilla-unified directory
+                    on your system that you'd like to
+                    export/import Berytus to/from."
+
+printUsage() {
+    echo "$usage" >&2
+}
+
+syncMozDir() {
+    local subdir
+    local mozsrc
+    local mozdest
+    subdir="$1"
+    mozsrc="$2"
+    mozdest="$3"
+    if [ ! -d "$mozsrc" ]; then
+        echo "Path $mozsrc does not exists" >&2
+        return 1
+    fi
+    if [ ! -d "$mozdest" ]; then
+        echo "Path $mozdest does not exists" >&2
+        return 1
+    fi
+    case "$subdir" in
+        */)
+            echo "Subdir $subdir ends with a '/';" \
+                "That is foribdden" >&2
+            return 1
+            ;;
+    esac
+    mkdir -p "$mozdest/$subdir"
+    rsync -rtpoglv "$mozsrc/$subdir/" "$mozdest/$subdir"
+}
+
+syncAllMozDirs() {
+    local mozsrc
+    local mozdest
+    mozsrc="$1"
+    mozdest="$2"
+
+    for subdir in $SUBDIRS
+    do
+        syncMozDir "$subdir" "$mozsrc" "$mozdest"
+    done
+}
+
+importMozillaFile() {
+    local mozfile
+    local mozsrc
+    local mozdest
+    local orig
+    local patch
+    local tmpfile
+    mozfile="$1"
+    mozsrc="$2"
+    mozdest="$3"
+    orig="$mozfile.orig"
+    patch="$mozfile.patch"
+    if [ -z "$mozfile" ]; then
+        echo "Missing mozfile path argument" >&2
+        return 1
+    fi
+    if [ ! -d "$mozsrc" ]; then
+        echo "Path $mozsrc does not exists" >&2
+        return 1
+    fi
+    if [ ! -d "$mozdest" ]; then
+        echo "Path $mozdest does not exists" >&2
+        return 1
+    fi
+
+    # original file must be present in mozsrc
+    if [ ! -f "$mozsrc/$orig" ]; then
+        echo "Missing original file (\1.orig) for " \
+            "Mozilla File $mozfile." >&2
+        return 1
+    fi
+    # similarly, the .patch file must not be present in mozdest
+    if [ -f "$mozdest/$patch" ]; then
+        echo "Trouble when processing Mozilla File $mozfile." \
+            "Patch file $patch already exists, and it might not" \
+            "reflect the changes we are about to apply, it could be" \
+            "that you are exporting the changes to a directory that is" \
+            "supposed to be a mozilla unified berytus source, e.g., the" \
+            "mozilla-unified sibling directory of the port program." \
+            "And as such, since this is an alarming case, I will quit and" \
+            "leave you hanging." >&2
+        return 2
+    fi
+
+    mkdir -p "$mozdest/$(dirname "$mozfile")"
+
+    tmpfile="$(mktemp)"
+    (
+        cd "$mozsrc"
+        diff -u "$orig" "$mozfile" \
+            > "$tmpfile" || true
+    )
+    mv "$tmpfile" "$mozdest/$patch"
+
+    cp "$mozsrc/$orig" "$mozdest/$orig"
+    cp "$mozsrc/$mozfile" "$mozdest/$mozfile"
+
+    echo "Successfully saved patch for Mozilla File '$mozfile'" >&2
+}
+
+exportMozillaFile() {
+    local mozfile
+    local mozsrc
+    local mozdest
+    local orig
+    local patch
+    mozfile="$1"
+    mozsrc="$2"
+    mozdest="$3"
+    orig="$mozfile.orig"
+    patch="$mozfile.patch"
+    if [ -z "$mozfile" ]; then
+        echo "Missing mozfile path argument" >&2
+        return 1
+    fi
+    if [ ! -d "$mozsrc" ]; then
+        echo "Path $mozsrc does not exists" >&2
+        return 1
+    fi
+    if [ ! -d "$mozdest" ]; then
+        echo "Path $mozdest does not exists" >&2
+        return 1
+    fi
+    if [ ! -f "$mozsrc/$mozfile" ]; then
+        echo "Mozilla file '$mozfile' does not exists" \
+            "in the source directory!" >&2
+        return 1
+    fi
+    if [ ! -f "$mozsrc/$orig" ]; then
+        echo "Mozilla file origin (\1.orig) does not exist" \
+            "in the source directory for '$mozfile'." \
+            "Hence, I am unable to export the file." >&2
+        return 1
+    fi
+    if [ ! -f "$mozsrc/$patch" ]; then
+        echo "Mozilla file patch (\1.patch) does not exist" \
+            "in the source directory for '$mozfile'." \
+            "Hence, I am unable to export the file." >&2
+        return 1
+    fi
+    if [ ! -f "$mozdest/$mozfile" ]; then
+        echo "Mozilla file '$mozfile' does not exists" \
+            "in the destination mozilla unified (MOZ_DIRECTORY)" \
+            "This might mean that (1) you are on a (very) old mozilla-unified," \
+            "or (2) there has been some (recent) upstream changes to mozilla-unified," \
+            "or (3) you are on a diverged mozilla-unified project that no longer has such Mozilla file." \
+            "Since we cannot distinguish between the three cases, we are gonna leave you hanging for" \
+            "you to solve it yourself." >&2
+        return 1
+    fi
+    if ! diff "$mozsrc/$orig" "$mozdest/$mozfile" > /dev/null 2>&1; then
+        echo "WARNING: Original Mozilla File differs! This might
+be a false alarm; note the below details if
+you wish to investigate that the patch is applied correctly.
+Mozilla File: $mozfile
+Original File: $mozsrc/$orig
+Expected Original File Equivalent: $mozdest/$mozfile
+Run the following to inspect the diff:
+diff -u \"$mozsrc/$orig\" \"$mozdest/$mozfile\"
+" >&2
+    fi
+
+    # make a backup before patching.
+    cp "$mozdest/$mozfile" "$mozdest/$orig"
+    if ! patch "$mozdest/$mozfile" "$mozsrc/$patch"; then
+        echo "Failed to patch Mozilla File '$mozdest/$mozfile'" \
+            "using the patch file '$mozsrc/$patch'" >&2
+        return 1
+    fi
+    echo "Successfully patched Mozilla File '$mozdest/$mozfile'" >&2
+}
+
+importAllMozillaFiles() {
+    local mozsrc
+    local mozdest
+    mozsrc="$1"
+    mozdest="$2"
+    for file in $MOZILLA_FILES
+    do
+        importMozillaFile "$file" "$mozsrc" "$mozdest"
+    done
+}
+
+exportAllMozillaFiles() {
+    local mozsrc
+    local mozdest
+    mozsrc="$1"
+    mozdest="$2"
+    for file in $MOZILLA_FILES
+    do
+        exportMozillaFile "$file" "$mozsrc" "$mozdest"
+    done
+}
+
+importBerytus() {
+    local mozsrc
+    local mozdest
+    mozsrc="$1"
+    mozdest="$PROJ/mozilla-unified"
+    rm -rf "$mozdest"
+    mkdir "$mozdest"
+    syncAllMozDirs "$mozsrc" "$mozdest"
+    importAllMozillaFiles "$mozsrc" "$mozdest"
+}
+
+exportBerytus() {
+    local mozsrc
+    local mozdest
+    mozsrc="$PROJ/mozilla-unified"
+    mozdest="$1"
+    syncAllMozDirs "$mozsrc" "$mozdest"
+    exportAllMozillaFiles "$mozsrc" "$mozdest"
+}
+
+run() {
+    local action
+    local mozdir
+    action="$1"
+    mozdir="$2"
+    if [ -z "$action" ]; then
+        printUsage
+        return 1
+    fi
+    if [ "$action" = "--help" -o "$action" = "-h" ]; then
+        printUsage
+        return 0
+    fi
+    if [ -z "$mozdir" ]; then
+        echo "MOZ_DIRECTORY argument missing" >&2
+        printUsage
+        return 1
+    fi
+    case "$action" in
+        export)
+            exportBerytus "$mozdir"
+            ;;
+        import)
+            importBerytus "$mozdir"
+            ;;
+        *)
+            echo "Invalid action $action" >&2
+            printUsage
+            return 1
+    esac
+}
+
+run "$@"
