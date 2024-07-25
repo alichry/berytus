@@ -161,3 +161,33 @@ add_task(async function test_register_manager_validates_input() {
         liaison.registerManager("alichry@sample-manager", "A Label", Symbol.for("V"), handlerProxy);
     }, new RegExp(`Type \\(Symbol\\(V\\)\\) is invalid`));
 });
+
+add_task(async function test_isolation() {
+    const handlerProxy = createRequestHandlerProxy(
+        (group, method, cx, args) => {
+            do_timeout(0, () => {
+                cx.response.resolve(7);
+            });
+        }
+    );
+    liaison.registerManager(
+        "alichry@sample-manager",
+        "SampleManager",
+        1,
+        handlerProxy
+    );
+    const h1 = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    const h2 = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    Assert.notStrictEqual(h1, h2);
+
+    h1.manager.getCredentialsMetadata = () => {};
+
+    Assert.notStrictEqual(
+        h1.manager.getCredentialsMetadata,
+        h2.manager.getCredentialsMetadata,
+    );
+});

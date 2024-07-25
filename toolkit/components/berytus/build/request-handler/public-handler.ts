@@ -32,12 +32,12 @@ export class PublicRequestHandler implements IPublicRequestHandler {
     }
 
     code += `
-    constructor(impl: ValidatedRequestHandler) {
-        if (!(impl instanceof ValidatedRequestHandler)) {
+    constructor(impl: SequentialRequestHandler) {
+        if (!(impl instanceof SequentialRequestHandler)) {
             throw new Error(
                 'Cannot construct PublicRequestHandler '
                 + 'Expecting request handler to be an '
-                + 'instance of ValidatedRequestHandler; '
+                + 'instance of SequentialRequestHandler; '
                 + 'got otherwise.'
             );
         }

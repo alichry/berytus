@@ -2,8 +2,8 @@
 {
     "compilerOptions": {
         "paths": {
-            "resource://gre/modules/BerytusLiaison.sys.mjs": ["src/Liaison.mts"],
-			"resource://gre/modules/BerytusRequestHandler.sys.mjs": ["src/RequestHandler.mts"]
+            "resource://gre/modules/BerytusLiaison.sys.mjs": ["src/Liaison.sys.mts"],
+			"resource://gre/modules/BerytusRequestHandler.sys.mjs": ["src/RequestHandler.sys.mts"]
         }
     }
 }

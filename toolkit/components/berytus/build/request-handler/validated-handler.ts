@@ -8,13 +8,13 @@ export const generateValidatedHandler = () => {
         // TODO(berytus): ensure impl is conformant
         super(impl);
     }
-    preCall(group: string, method: string, args: unknown) {
+    protected preCall(group: string, method: string, args: unknown) {
         // TODO(berytus): validate input
     }
-    preResolve(group: string, method: string, value: unknown) {
+    protected preResolve(group: string, method: string, value: unknown) {
         // TODO(berytus): validate output
     }
-    preReject(group: string, method: string, value: unknown) {
+    protected preReject(group: string, method: string, value: unknown) {
         // TODO(berytus): validate error value
     }
 }`;

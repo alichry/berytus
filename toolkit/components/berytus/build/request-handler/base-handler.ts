@@ -39,7 +39,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
             const hookArgs = `"${group}", "${name}", { ${parameters.map(p => `${p.name}`).join(', ')} }`;
 
             code += `
-            ${name}(`;
+            async ${name}(`;
             code += parameters.map((p, i) => {
                 if (!("alias" in p.type) || p.type.alias === undefined) {
                     throw new Error(
@@ -51,34 +51,55 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                 return `${p.name}: ${p.type.alias}`
                     + (i === 0 ? ` & ${responseCtxType}` : '')
             }).join(', ');
-            code += `): void {`;
+            code += `): Promise<void> {`;
 
             code += `
-                self.preCall(${hookArgs});\n`
+                try {
+                    self.preCall(${hookArgs});
+                } catch (e) {
+                    ${ctxVar}.response.reject(e);
+                    return;
+                }`
 
             code += `
                 const wrappedResponseCtx: ${responseCtxType} = {
                     response: {
                         resolve(val: Parameters<${responseCtxType}["response"]["resolve"]>[0]) {
-                            self.preResolve(${hookArgs})
+                            try {
+                                self.preResolve(${hookArgs})
+                            } catch (e) {
+                                ${ctxVar}.response.reject(e);
+                                throw e;
+                            }
                             ${ctxVar}.response.resolve(val);
                         },
                         reject(val: unknown) {
-                            self.preReject(${hookArgs})
+                            try {
+                                self.preReject(${hookArgs});
+                            } catch (e) {
+                                ${ctxVar}.response.reject(e);
+                                throw e;
+                            }
                             ${ctxVar}.response.reject(val);
                         }
                     }
                 };`;
 
             code += `
-                self.#impl.${group}.${name}(`;
-            code += `{
-                    ...${ctxVar},
-                    ...wrappedResponseCtx
-                }, `;
-            code += parameters.slice(1).map(p => p.name).join(', ');
-            code += `);`;
-
+                try {
+                    await self.#impl.${group}.${name}({
+                        ...${ctxVar},
+                        ...wrappedResponseCtx
+                    }, ${parameters.slice(1).map(p => p.name).join(', ')});
+                } catch (e) {
+                    self.handleUnexpectedException(
+                        "${group}",
+                        "${name}",
+                        ${ctxVar}.response,
+                        e
+                    );
+                    return;
+                }`;
             code += `
             },`;
         }
@@ -89,12 +110,22 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
     }`;
 
     code += `
-    preCall(group: string, method: string, args: unknown) {}`;
+    protected preCall(group: string, method: string, args: unknown) {}`;
     code += `
-    preResolve(group: string, method: string, value: unknown) {}`;
+    protected preResolve(group: string, method: string, value: unknown) {}`;
     code += `
-    preReject(group: string, method: string, value: unknown) {}`;
-
+    protected preReject(group: string, method: string, value: unknown) {}`;
+    code += `
+    protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
+        // TODO(berytus): Define what would be the
+        // accepted values to reject a request with.
+        response.reject(new Components.Exception(
+            "Error sending request to secret manager. "
+            + "The secret manager unexpectedly threw an exception "
+            + "instead of using the reject callback.",
+            Cr.NS_ERROR_FAILURE
+        ));
+    }`;
     code += `
 }`;
     return {

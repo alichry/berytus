@@ -2,12 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { PublicRequestHandler, ValidatedRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
+import { PublicRequestHandler, SequentialRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 import { IPublicRequestHandler, IUnderlyingRequestHandler } from "./types";
 
 interface Manager {
     metadata: SecretManagerInfo,
-    handler: ValidatedRequestHandler;
+    handler: SequentialRequestHandler;
 }
 
 class Liaison {
@@ -63,7 +63,7 @@ class Liaison {
         }
         this.#managers[id] = {
             metadata: new SecretManagerInfo(id, label, type),
-            handler: new ValidatedRequestHandler(handler)
+            handler: new SequentialRequestHandler(handler)
         };
     }
 

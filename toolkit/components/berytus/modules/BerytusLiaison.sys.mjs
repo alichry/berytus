@@ -1,7 +1,7 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-import { PublicRequestHandler, ValidatedRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
+import { PublicRequestHandler, SequentialRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 class Liaison {
     #managers = {};
     get managers() {
@@ -37,7 +37,7 @@ class Liaison {
         }
         this.#managers[id] = {
             metadata: new SecretManagerInfo(id, label, type),
-            handler: new ValidatedRequestHandler(handler)
+            handler: new SequentialRequestHandler(handler)
         };
     }
     isManagerRegistered(id) {

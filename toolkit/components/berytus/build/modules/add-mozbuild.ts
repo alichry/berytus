@@ -5,13 +5,14 @@
 import { readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-export const getModulePaths = async () => {
+export const getModulePaths = async (
+    dir: string = resolve("./modules"),
+    ext: string = ".sys.mjs"
+) => {
     const modulePaths: Array<string> = [];
-    const files = await readdir(
-        resolve("./modules")
-    );
+    const files = await readdir(dir);
     for (const file of files) {
-        if (file.endsWith(".sys.mjs")) {
+        if (file.endsWith(ext)) {
             modulePaths.push(file);
         }
     }

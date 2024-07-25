@@ -12,342 +12,757 @@ export class IsolatedRequestHandler {
         this.#impl = impl;
         const self = this;
         this.manager = {
-            getSigningKey(context, args) {
-                self.preCall("manager", "getSigningKey", { context, args });
+            async getSigningKey(context, args) {
+                try {
+                    self.preCall("manager", "getSigningKey", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("manager", "getSigningKey", { context, args });
+                            try {
+                                self.preResolve("manager", "getSigningKey", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("manager", "getSigningKey", { context, args });
+                            try {
+                                self.preReject("manager", "getSigningKey", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.manager.getSigningKey({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.manager.getSigningKey({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("manager", "getSigningKey", context.response, e);
+                    return;
+                }
             },
-            getCredentialsMetadata(context, args) {
-                self.preCall("manager", "getCredentialsMetadata", { context, args });
+            async getCredentialsMetadata(context, args) {
+                try {
+                    self.preCall("manager", "getCredentialsMetadata", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("manager", "getCredentialsMetadata", { context, args });
+                            try {
+                                self.preResolve("manager", "getCredentialsMetadata", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("manager", "getCredentialsMetadata", { context, args });
+                            try {
+                                self.preReject("manager", "getCredentialsMetadata", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.manager.getCredentialsMetadata({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.manager.getCredentialsMetadata({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("manager", "getCredentialsMetadata", context.response, e);
+                    return;
+                }
             },
         };
         this.channel = {
-            generateKeyExchangeParameters(context, args) {
-                self.preCall("channel", "generateKeyExchangeParameters", { context, args });
+            async generateKeyExchangeParameters(context, args) {
+                try {
+                    self.preCall("channel", "generateKeyExchangeParameters", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("channel", "generateKeyExchangeParameters", { context, args });
+                            try {
+                                self.preResolve("channel", "generateKeyExchangeParameters", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("channel", "generateKeyExchangeParameters", { context, args });
+                            try {
+                                self.preReject("channel", "generateKeyExchangeParameters", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.channel.generateKeyExchangeParameters({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.channel.generateKeyExchangeParameters({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("channel", "generateKeyExchangeParameters", context.response, e);
+                    return;
+                }
             },
-            enableEndToEndEncryption(context, args) {
-                self.preCall("channel", "enableEndToEndEncryption", { context, args });
+            async enableEndToEndEncryption(context, args) {
+                try {
+                    self.preCall("channel", "enableEndToEndEncryption", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("channel", "enableEndToEndEncryption", { context, args });
+                            try {
+                                self.preResolve("channel", "enableEndToEndEncryption", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("channel", "enableEndToEndEncryption", { context, args });
+                            try {
+                                self.preReject("channel", "enableEndToEndEncryption", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.channel.enableEndToEndEncryption({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.channel.enableEndToEndEncryption({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("channel", "enableEndToEndEncryption", context.response, e);
+                    return;
+                }
             },
-            closeChannel(context) {
-                self.preCall("channel", "closeChannel", { context });
+            async closeChannel(context) {
+                try {
+                    self.preCall("channel", "closeChannel", { context });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("channel", "closeChannel", { context });
+                            try {
+                                self.preResolve("channel", "closeChannel", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("channel", "closeChannel", { context });
+                            try {
+                                self.preReject("channel", "closeChannel", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.channel.closeChannel({
-                    ...context,
-                    ...wrappedResponseCtx
-                });
+                try {
+                    await self.#impl.channel.closeChannel({
+                        ...context,
+                        ...wrappedResponseCtx
+                    });
+                }
+                catch (e) {
+                    self.handleUnexpectedException("channel", "closeChannel", context.response, e);
+                    return;
+                }
             },
         };
         this.login = {
-            approveOperation(context, args) {
-                self.preCall("login", "approveOperation", { context, args });
+            async approveOperation(context, args) {
+                try {
+                    self.preCall("login", "approveOperation", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("login", "approveOperation", { context, args });
+                            try {
+                                self.preResolve("login", "approveOperation", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("login", "approveOperation", { context, args });
+                            try {
+                                self.preReject("login", "approveOperation", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.login.approveOperation({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.login.approveOperation({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("login", "approveOperation", context.response, e);
+                    return;
+                }
             },
-            closeOpeation(context) {
-                self.preCall("login", "closeOpeation", { context });
+            async closeOpeation(context) {
+                try {
+                    self.preCall("login", "closeOpeation", { context });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("login", "closeOpeation", { context });
+                            try {
+                                self.preResolve("login", "closeOpeation", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("login", "closeOpeation", { context });
+                            try {
+                                self.preReject("login", "closeOpeation", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.login.closeOpeation({
-                    ...context,
-                    ...wrappedResponseCtx
-                });
+                try {
+                    await self.#impl.login.closeOpeation({
+                        ...context,
+                        ...wrappedResponseCtx
+                    });
+                }
+                catch (e) {
+                    self.handleUnexpectedException("login", "closeOpeation", context.response, e);
+                    return;
+                }
             },
-            getRecordMetadata(context) {
-                self.preCall("login", "getRecordMetadata", { context });
+            async getRecordMetadata(context) {
+                try {
+                    self.preCall("login", "getRecordMetadata", { context });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("login", "getRecordMetadata", { context });
+                            try {
+                                self.preResolve("login", "getRecordMetadata", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("login", "getRecordMetadata", { context });
+                            try {
+                                self.preReject("login", "getRecordMetadata", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.login.getRecordMetadata({
-                    ...context,
-                    ...wrappedResponseCtx
-                });
+                try {
+                    await self.#impl.login.getRecordMetadata({
+                        ...context,
+                        ...wrappedResponseCtx
+                    });
+                }
+                catch (e) {
+                    self.handleUnexpectedException("login", "getRecordMetadata", context.response, e);
+                    return;
+                }
             },
-            updateMetadata(context, args) {
-                self.preCall("login", "updateMetadata", { context, args });
+            async updateMetadata(context, args) {
+                try {
+                    self.preCall("login", "updateMetadata", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("login", "updateMetadata", { context, args });
+                            try {
+                                self.preResolve("login", "updateMetadata", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("login", "updateMetadata", { context, args });
+                            try {
+                                self.preReject("login", "updateMetadata", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.login.updateMetadata({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.login.updateMetadata({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("login", "updateMetadata", context.response, e);
+                    return;
+                }
             },
         };
         this.accountCreation = {
-            approveTransitionToAuthOp(context, args) {
-                self.preCall("accountCreation", "approveTransitionToAuthOp", { context, args });
+            async approveTransitionToAuthOp(context, args) {
+                try {
+                    self.preCall("accountCreation", "approveTransitionToAuthOp", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args });
+                            try {
+                                self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args });
+                            try {
+                                self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountCreation.approveTransitionToAuthOp({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountCreation.approveTransitionToAuthOp({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountCreation", "approveTransitionToAuthOp", context.response, e);
+                    return;
+                }
             },
-            getUserAttributes(context) {
-                self.preCall("accountCreation", "getUserAttributes", { context });
+            async getUserAttributes(context) {
+                try {
+                    self.preCall("accountCreation", "getUserAttributes", { context });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountCreation", "getUserAttributes", { context });
+                            try {
+                                self.preResolve("accountCreation", "getUserAttributes", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountCreation", "getUserAttributes", { context });
+                            try {
+                                self.preReject("accountCreation", "getUserAttributes", { context });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountCreation.getUserAttributes({
-                    ...context,
-                    ...wrappedResponseCtx
-                });
+                try {
+                    await self.#impl.accountCreation.getUserAttributes({
+                        ...context,
+                        ...wrappedResponseCtx
+                    });
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountCreation", "getUserAttributes", context.response, e);
+                    return;
+                }
             },
-            addField(context, args) {
-                self.preCall("accountCreation", "addField", { context, args });
+            async addField(context, args) {
+                try {
+                    self.preCall("accountCreation", "addField", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountCreation", "addField", { context, args });
+                            try {
+                                self.preResolve("accountCreation", "addField", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountCreation", "addField", { context, args });
+                            try {
+                                self.preReject("accountCreation", "addField", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountCreation.addField({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountCreation.addField({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountCreation", "addField", context.response, e);
+                    return;
+                }
             },
-            rejectFieldValue(context, args) {
-                self.preCall("accountCreation", "rejectFieldValue", { context, args });
+            async rejectFieldValue(context, args) {
+                try {
+                    self.preCall("accountCreation", "rejectFieldValue", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountCreation", "rejectFieldValue", { context, args });
+                            try {
+                                self.preResolve("accountCreation", "rejectFieldValue", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountCreation", "rejectFieldValue", { context, args });
+                            try {
+                                self.preReject("accountCreation", "rejectFieldValue", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountCreation.rejectFieldValue({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountCreation.rejectFieldValue({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountCreation", "rejectFieldValue", context.response, e);
+                    return;
+                }
             },
         };
         this.accountAuthentication = {
-            approveChallengeRequest(context, args) {
-                self.preCall("accountAuthentication", "approveChallengeRequest", { context, args });
+            async approveChallengeRequest(context, args) {
+                try {
+                    self.preCall("accountAuthentication", "approveChallengeRequest", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args });
+                            try {
+                                self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountAuthentication", "approveChallengeRequest", { context, args });
+                            try {
+                                self.preReject("accountAuthentication", "approveChallengeRequest", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountAuthentication.approveChallengeRequest({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountAuthentication.approveChallengeRequest({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountAuthentication", "approveChallengeRequest", context.response, e);
+                    return;
+                }
             },
-            abortChallenge(context, args) {
-                self.preCall("accountAuthentication", "abortChallenge", { context, args });
+            async abortChallenge(context, args) {
+                try {
+                    self.preCall("accountAuthentication", "abortChallenge", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountAuthentication", "abortChallenge", { context, args });
+                            try {
+                                self.preResolve("accountAuthentication", "abortChallenge", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountAuthentication", "abortChallenge", { context, args });
+                            try {
+                                self.preReject("accountAuthentication", "abortChallenge", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountAuthentication.abortChallenge({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountAuthentication.abortChallenge({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountAuthentication", "abortChallenge", context.response, e);
+                    return;
+                }
             },
-            closeChallenge(context, args) {
-                self.preCall("accountAuthentication", "closeChallenge", { context, args });
+            async closeChallenge(context, args) {
+                try {
+                    self.preCall("accountAuthentication", "closeChallenge", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountAuthentication", "closeChallenge", { context, args });
+                            try {
+                                self.preResolve("accountAuthentication", "closeChallenge", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountAuthentication", "closeChallenge", { context, args });
+                            try {
+                                self.preReject("accountAuthentication", "closeChallenge", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountAuthentication.closeChallenge({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountAuthentication.closeChallenge({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountAuthentication", "closeChallenge", context.response, e);
+                    return;
+                }
             },
-            respondToChallengeMessage(context, args) {
-                self.preCall("accountAuthentication", "respondToChallengeMessage", { context, args });
+            async respondToChallengeMessage(context, args) {
+                try {
+                    self.preCall("accountAuthentication", "respondToChallengeMessage", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
                 const wrappedResponseCtx = {
                     response: {
                         resolve(val) {
-                            self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args });
+                            try {
+                                self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.resolve(val);
                         },
                         reject(val) {
-                            self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args });
+                            try {
+                                self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args });
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
                             context.response.reject(val);
                         }
                     }
                 };
-                self.#impl.accountAuthentication.respondToChallengeMessage({
-                    ...context,
-                    ...wrappedResponseCtx
-                }, args);
+                try {
+                    await self.#impl.accountAuthentication.respondToChallengeMessage({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountAuthentication", "respondToChallengeMessage", context.response, e);
+                    return;
+                }
             },
         };
     }
     preCall(group, method, args) { }
     preResolve(group, method, value) { }
     preReject(group, method, value) { }
+    handleUnexpectedException(group, method, response, excp) {
+        // TODO(berytus): Define what would be the
+        // accepted values to reject a request with.
+        response.reject(new Components.Exception("Error sending request to secret manager. "
+            + "The secret manager unexpectedly threw an exception "
+            + "instead of using the reject callback.", Cr.NS_ERROR_FAILURE));
+    }
 }
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     constructor(impl) {
@@ -364,6 +779,31 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         // TODO(berytus): validate error value
     }
 }
+export class SequentialRequestHandler extends ValidatedRequestHandler {
+    busy = false;
+    preCall(group, method, args) {
+        if (this.busy) {
+            throw new Components.Exception('Refusing to send request to secret manager, '
+                + 'an existing request is still pending. '
+                + 'make sure to send one request at a time '
+                + 'to the secret manager.', Cr.NS_ERROR_FAILURE);
+        }
+        super.preCall(group, method, args);
+        this.busy = true;
+    }
+    preResolve(group, method, value) {
+        this.busy = false;
+        super.preResolve(group, method, value);
+    }
+    preReject(group, method, value) {
+        this.busy = false;
+        super.preReject(group, method, value);
+    }
+    handleUnexpectedException(group, method, response, excp) {
+        this.busy = false;
+        super.handleUnexpectedException(group, method, response, excp);
+    }
+}
 function uuid() {
     // @ts-ignore: TODO(berytus): add to index.d.ts
     return Services.uuid
@@ -378,10 +818,10 @@ export class PublicRequestHandler {
     accountCreation;
     accountAuthentication;
     constructor(impl) {
-        if (!(impl instanceof ValidatedRequestHandler)) {
+        if (!(impl instanceof SequentialRequestHandler)) {
             throw new Error('Cannot construct PublicRequestHandler '
                 + 'Expecting request handler to be an '
-                + 'instance of ValidatedRequestHandler; '
+                + 'instance of SequentialRequestHandler; '
                 + 'got otherwise.');
         }
         this.#impl = impl;

@@ -7,6 +7,7 @@ import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { generateValidatedHandler } from './validated-handler.js';
 import { generatePublicHandler } from './public-handler.js';
+import { generateSequentialdHandler } from './sequential-handler.js';
 
 const run = async () => {
     const {
@@ -15,6 +16,7 @@ const run = async () => {
     } = generateIsolatedRequestHandler();
 
     const validatedRequestHandlerCode = generateValidatedHandler();
+    const sequentialRequestHandlerCode = generateSequentialdHandler();
 
     const {
         classCode: publicRequestHandlerCode,
@@ -31,10 +33,12 @@ import type { ${Object.keys({ ...typesToImport, ...typesToImport2 }).join(', ')}
         + "\n"
         + validatedRequestHandlerCode
         + "\n"
+        + sequentialRequestHandlerCode
+        + "\n"
         + publicRequestHandlerCode;
 
     await writeFile(
-        resolve("./src/RequestHandler.mts"),
+        resolve("./src/RequestHandler.sys.mts"),
         file,
         { encoding: 'utf8' }
     );

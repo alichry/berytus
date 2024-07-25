@@ -7,7 +7,7 @@
 const lazy = {};
 
 /**
- * @type {import('../../src/Liaison.mjs')}
+ * @type {import('../../src/Liaison.sys.mjs')}
  */
 const { liaison } = ChromeUtils.importESModule(
     "resource://gre/modules/BerytusLiaison.sys.mjs"
@@ -16,7 +16,6 @@ const { liaison } = ChromeUtils.importESModule(
 ChromeUtils.defineESModuleGetters(lazy, {
   setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
-
 
 registerCleanupFunction(() => {
     for (let i = 0; i < liaison.managers.length; i++) {
@@ -69,6 +68,35 @@ class PromiseReference {
             this.timeoutInteveral = lazy.setTimeout(() => {
                 this.reject(new Error('Promise killed, timeout exceeded ' + timeout + ' seconds.'));
             }, 1000 * timeout);
+        }
+    }
+}
+
+const sampleRequests = {
+    getCredentialsMetadata() {
+        return {
+            context: {
+                document: { id: 4 }
+            },
+            args: {
+                webAppActor: {
+                    originalUri: {
+                        hostname: "example.tld",
+                        path: "/",
+                        port: 443,
+                        scheme: 'https:',
+                        uri: 'https://example.tld/'
+                    },
+                    currentUri: {
+                        hostname: "example.tld",
+                        path: "/login",
+                        port: 443,
+                        scheme: 'https:',
+                        uri: 'https://example.tld/login'
+                    },
+                },
+                accountConstraints: {}
+            }
         }
     }
 }
