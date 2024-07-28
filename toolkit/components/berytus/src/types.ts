@@ -51,7 +51,7 @@ export interface Request {
 }
 
 export interface DocumentMetadata {
-    id: string; /* e.g. tabId if sent to extensions */
+    id: number; /* e.g. tabId if sent to extensions */
 }
 
 enum EOperationStatus {
@@ -98,6 +98,8 @@ export interface RequestContext extends PreliminaryRequestContext {
 export interface RequestContextWithOperation extends RequestContext {
     operation: OperationMetadata;
 }
+
+export type CredentialsMetadata = number;
 
 enum ELoginUserIntent {
     PendingDeclaration = 0,
@@ -296,7 +298,7 @@ export interface RequestHandler {
         getCredentialsMetadata(
             context: PreliminaryRequestContext,
             args: GetCredentialsMetadataArgs
-        ): number;
+        ): CredentialsMetadata;
     };
     channel: {
         generateKeyExchangeParameters(

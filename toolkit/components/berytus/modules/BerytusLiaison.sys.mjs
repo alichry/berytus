@@ -54,20 +54,29 @@ class Liaison {
 }
 // @ts-ignore
 Liaison.prototype.QueryInterface = ChromeUtils.generateQI(["mozIBerytusLiaison"]);
-var ESecretManagerType;
+export var ESecretManagerType;
 (function (ESecretManagerType) {
     ESecretManagerType[ESecretManagerType["Native"] = 0] = "Native";
     ESecretManagerType[ESecretManagerType["Extension"] = 1] = "Extension";
 })(ESecretManagerType || (ESecretManagerType = {}));
 ;
 class SecretManagerInfo {
-    id;
-    label;
-    type;
+    #id;
+    #label;
+    #type;
     constructor(id, label, type) {
-        this.id = id;
-        this.label = label;
-        this.type = type;
+        this.#id = id;
+        this.#label = label;
+        this.#type = type;
+    }
+    get id() {
+        return this.#id;
+    }
+    get label() {
+        return this.#label;
+    }
+    get type() {
+        return this.#type;
     }
 }
 export const liaison = new Liaison();

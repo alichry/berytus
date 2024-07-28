@@ -9,7 +9,7 @@ import { produceBerytusPaths } from './produce-berytus-paths.js';
 
 export interface PathEntry {
     path: string;
-    target: Array<string>;
+    target: ReadonlyArray<string>;
 }
 
 const run = async () => {

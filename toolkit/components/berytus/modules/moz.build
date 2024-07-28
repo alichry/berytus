@@ -4,6 +4,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 EXTRA_JS_MODULES += [
+	"BerytusChildProxyUtils.sys.mjs",
 	"BerytusLiaison.sys.mjs",
+	"BerytusParentUtils.sys.mjs",
+	"BerytusPromptService.sys.mjs",
+	"BerytusPromptServiceChildProxy.sys.mjs",
 	"BerytusRequestHandler.sys.mjs"
+]
+FINAL_TARGET_FILES.actors += [
+    "actors/BerytusPromptServiceParent.sys.mjs"
 ]

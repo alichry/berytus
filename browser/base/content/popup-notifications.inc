@@ -178,6 +178,42 @@
       </popupnotificationfooter>
     </popupnotification>
 
+  <popupnotification id="berytus-notification" hidden="true">
+    <popupnotificationheader id="berytus-header" orient="horizontal"  hidden="true">
+      <html:div class="berytus-header-container">
+        <html:div class="berytus-header-row">
+          <html:img class="berytus-header-icon" src="chrome://global/skin/icons/info.svg"></html:img>
+          <html:p class="berytus-header-title">Berytus Secret Manager selection</html:p>
+        </html:div>
+        <span id="berytus-header-text"></span>
+      </html:div>
+
+  </popupnotificationheader>
+    <popupnotificationcontent id="berytus-secret-manager" orient="vertical">
+      <html:div id="berytus-secret-manager-selector-container">
+      </html:div>
+      <html:template id="template-berytus-secret-manager-list-item">
+        <html:label class="berytus-secret-manager-list-item" align="center">
+          <html:input type="radio" name="berytus-secret-manager" class="berytus-secret-manager-list-item-radio"></html:input>
+          <html:img class="berytus-secret-manager-list-item-icon" src="chrome://mozapps/skin/extensions/extension.svg"></html:img>
+          <div class="berytus-secret-manager-list-item-info">
+            <span class="berytus-secret-manager-list-item-label-primary"></span>
+            <span class="berytus-secret-manager-list-item-label-secondary"></span> <!-- hidden="true" / this is the version-->
+          </div>
+          <div class="berytus-secret-manager-list-item-stretch-till-end" />
+          <div class="berytus-secret-manager-list-item-metadata">
+            <html:img class="berytus-secret-manager-list-item-metadata-spinner-icon" src="chrome://global/content/icons/authRealmSpinner.gif" />
+            <html:img class="berytus-secret-manager-list-item-metadata-error-icon" src="chrome://global/skin/icons/warning.svg" hidden="true" />
+            <div class="berytus-secret-manager-list-item-metadata-nb-accounts-container" hidden="true">
+              <html:img class="berytus-secret-manager-list-item-metadata-nb-accounts-icon" src="chrome://browser/skin/fxa/avatar-empty.svg" /> <!-- or chrome://browser/skin/fxa/avatar-empty.svg -->
+              <span class="berytus-secret-manager-list-item-metadata-nb-accounts"></span>
+            </div>
+          </div>
+        </html:label>
+      </html:template>
+    </popupnotificationcontent>
+  </popupnotification>
+
     <popupnotification id="identity-credential-notification" hidden="true">
       <popupnotificationheader id="identity-credential-header" orient="horizontal" hidden="true">
         <html:div class="identity-credential-header-container">

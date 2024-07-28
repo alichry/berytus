@@ -20,4 +20,5 @@ XPIDL_MODULE = "berytus"
 
 XPIDL_SOURCES += [
 	"idl/mozIBerytusLiaison.idl",
+    "idl/mozIBerytusPromptService.idl"
 ]

@@ -3,11 +3,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { addMozBuild } from "./add-mozbuild.js";
-import { renameModules } from "./rename-modules.js";
+import { prefixModules } from "./prefix-modules.js";
 
-const run = async () => {
-    await renameModules();
+const tailor = async () => {
+    await prefixModules();
     await addMozBuild();
 }
 
-run();
+tailor();

@@ -2,28 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { readdir, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-
-export const getModulePaths = async (
-    dir: string = resolve("./modules"),
-    ext: string = ".sys.mjs"
-) => {
-    const modulePaths: Array<string> = [];
-    const files = await readdir(dir);
-    for (const file of files) {
-        if (file.endsWith(ext)) {
-            modulePaths.push(file);
-        }
-    }
-    modulePaths.sort((a, b) => {
-        return a.localeCompare(b);
-    });
-    return modulePaths;
-}
+import { getModules } from './utils.js';
 
 export const addMozBuild = async () => {
-    const modulePaths: Array<string> = await getModulePaths();
+    const modules: Array<string> = await getModules(
+        resolve("./modules")
+    );
+    const actorModules: Array<string> = await getModules(
+        resolve("./modules/actors")
+    );
 
     const mozFile = `# -*- Mode: python; indent-tabs-mode: nil; tab-width: 40 -*-
 # vim: set filetype=python:
@@ -31,10 +20,14 @@ export const addMozBuild = async () => {
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.\n`
         + "EXTRA_JS_MODULES += [\n"
-        + modulePaths.map(mn => {
+        + modules.map(mn => {
                 return `\t"${mn}"`
             }).join(",\n")
-        + "\n]";
+        + "\n]"
+        + `
+FINAL_TARGET_FILES.actors += [
+    ${actorModules.map(p => `"actors/${p}"`).join("\t,\n")}
+]`;
 
     await writeFile(
         resolve('./modules/moz.build'),

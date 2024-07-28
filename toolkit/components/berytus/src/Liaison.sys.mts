@@ -88,24 +88,36 @@ Liaison.prototype.QueryInterface = ChromeUtils.generateQI(
     ["mozIBerytusLiaison"]
 );
 
-enum ESecretManagerType {
+export enum ESecretManagerType {
     Native = 0,
     Extension = 1
 };
 
 class SecretManagerInfo {
-    readonly id: string;
-    readonly label: string;
-    readonly type: ESecretManagerType;
+    #id: string;
+    #label: string;
+    #type: ESecretManagerType;
 
     constructor(
         id: string,
         label: string,
         type: ESecretManagerType
     ) {
-        this.id = id;
-        this.label = label;
-        this.type = type;
+        this.#id = id;
+        this.#label = label;
+        this.#type = type;
+    }
+
+    get id() {
+        return this.#id;
+    }
+
+    get label() {
+        return this.#label;
+    }
+
+    get type() {
+        return this.#type;
     }
 }
 
