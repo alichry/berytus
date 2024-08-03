@@ -4,8 +4,8 @@
 
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { produceAnyPaths } from './produce-any-paths.js';
-import { produceBerytusPaths } from './produce-berytus-paths.js';
+import { constructAnyPathEntries } from './construct-any-paths.js';
+import { constructBerytusPathEntries } from './construct-berytus-paths.js';
 
 export interface PathEntry {
     path: string;
@@ -13,8 +13,8 @@ export interface PathEntry {
 }
 
 const run = async () => {
-    const anyPaths = await produceAnyPaths();
-    const berytusPaths = await produceBerytusPaths();
+    const anyPaths = await constructAnyPathEntries();
+    const berytusPaths = await constructBerytusPathEntries();
 
     const paths = [...berytusPaths, ...anyPaths].map(({ path, target}) => {
         return `"${path}": ${JSON.stringify(target)}`;

@@ -4,22 +4,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-DIRS += [
-    "dom",
-	"modules",
+EXPORTS.mozilla.berytus += [
+    "AgentProxy.h",
 ]
 
-TEST_DIRS += [
-    "test",
+UNIFIED_SOURCES += [
+    "AgentProxy.cpp",
 ]
 
-XPCOM_MANIFESTS += [
-    "components.conf",
-]
+include("/ipc/chromium/chromium-config.mozbuild")
 
-XPIDL_MODULE = "berytus"
-
-XPIDL_SOURCES += [
-	"idl/mozIBerytusLiaison.idl",
-    "idl/mozIBerytusPromptService.idl"
-]
+FINAL_LIBRARY = "xul"

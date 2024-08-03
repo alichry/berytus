@@ -4,7 +4,7 @@
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
-    enableEndToEndEncryption?: boolean;
+    enableEndToEndEncryption: boolean;
     account?: AccountConstraints;
 }
 
@@ -24,7 +24,7 @@ export interface AccountConstraints {
 export interface ChannelMetadata {
     id: string;
     constraints: ChannelConstraints;
-    webAppActor: CryptoActor | OriginActor;
+    webAppActor: WebAppActor;
     scmActor: CryptoActor; /* retrieved from getSigningKey */
 }
 
@@ -47,7 +47,7 @@ export interface CryptoActor {
 
 export interface Request {
     id: string;
-    type: RequestType;
+    type: string;
 }
 
 export interface DocumentMetadata {
@@ -67,6 +67,8 @@ enum EOpeationType {
     Authentication = 2
 }
 
+export interface OperationState {}
+
 export interface OperationMetadata {
     id: string;
     type: EOpeationType;
@@ -75,7 +77,7 @@ export interface OperationMetadata {
      * State about the operation, e.g.:
      * { fields:  [BerytusIdentityField, ...], ... }
      */
-    state: unknown;
+    state: OperationState;
 }
 
 export interface LoginOperationMetadata extends OperationMetadata {
@@ -151,24 +153,27 @@ enum EChallengeStatus {
     Sealed
 }
 
+export interface ChallengeParameters {}
+
 export interface ChallengeMetadata {
     readonly id: string;
     readonly type: EChallengeType;
-    readonly parameters: object;
+    readonly parameters: ChallengeParameters;
     readonly status: EChallengeStatus;
 }
 
+export interface ChallengePayload {}
 
 export interface ChallengeMessage {
     /**
      * Unique message name across the challenge.
      */
     name: string; // one of EMT{x}
-    payload: any;
+    payload: ChallengePayload;
 };
 
 export interface ChallengeMessageResponse {
-    payload: unknown;
+    payload: ChallengePayload;
 };
 
 export interface ChallengeAbortionReason {
@@ -213,10 +218,10 @@ enum EFieldType {
 export interface BaseFieldMetadata {
     fieldType: EFieldType;
     fieldId: string;
-    description: string | undefined;
+    description?: string;
 }
 
-export type FieldValue = string | Uint8Array | ArrayBuffer;
+export type FieldValue = string | ArrayBuffer;
 
 export interface FieldValueRejectionReason {
     code: string;
@@ -236,10 +241,10 @@ enum EMetadataStatus {
 };
 
 export interface RecordMetadata {
-    [EMetadataProperty.Version]: number;
-    [EMetadataProperty.Status]: EMetadataStatus;
-    [EMetadataProperty.Category]: string;
-    [EMetadataProperty.ChangePassUrl]: string;
+    version: number;
+    status: EMetadataStatus;
+    category: string;
+    changePassUrl: string;
 }
 
 /* Request Arguments */
@@ -266,12 +271,12 @@ export type ApproveTransitionToAuthOpArgs = {
 }
 export type AddFieldArgs = {
     field: BaseFieldMetadata,
-    value: FieldValue | null
+    value?: FieldValue
 }
 export type RejectFieldValueArgs = {
     field: BaseFieldMetadata,
     reason: FieldValueRejectionReason,
-    optionalNewValue: FieldValue | null
+    optionalNewValue?: FieldValue
 }
 export type ApproveChallengeRequestArgs = {
     challenge: ChallengeMetadata,
@@ -347,7 +352,7 @@ export interface RequestHandler {
         rejectFieldValue(
             context: RequestContextWithOperation,
             args: RejectFieldValueArgs
-        ): FieldValue | undefined;
+        ): FieldValue;
     };
     accountAuthentication: {
         approveChallengeRequest(

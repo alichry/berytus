@@ -4,9 +4,9 @@
 
 import { basename, join, resolve } from 'node:path';
 import { getFilesByExtension } from '../modules/utils.js';
-import type { PathEntry } from './produce-ts-paths.js';
+import type { PathEntry } from './produce-ts-compiler-paths.js';
 
-export const produceBerytusPaths = async (): Promise<Array<PathEntry>> => {
+export const constructBerytusPathEntries = async (): Promise<Array<PathEntry>> => {
     const modules = await getFilesByExtension(
         resolve("./src"),
         ".sys.mts"

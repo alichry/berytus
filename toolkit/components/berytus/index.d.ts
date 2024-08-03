@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { ModuleMap } from './esm-import-map.index';
+
 export { };
 
 
@@ -65,6 +67,10 @@ declare global {
 
     interface IChromeUtils {
         generateQI(list: Array<string>): IQueryInterface;
+        defineESModuleGetters<O, M extends Record<string, keyof ModuleMap>>(
+            output: O,
+            imports: M
+        ): asserts output is O & { [k in keyof M]: ModuleMap[M[k]] extends Record<k, infer P> ? P : never }
     }
     interface IXPCOMUtils {
         defineLazyGetter<O, K extends string, F extends () => any>(

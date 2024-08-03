@@ -85,4 +85,27 @@ export class RequestHandlerParser {
             }
         }
     }
+    *typeIterator() {
+        const methodIterator = this.iterator();
+        let item = methodIterator.next();
+        while (! item.done) {
+            const params = item.value.method.parameters;
+            for (let i = 0; i < params.length; i++) {
+                yield {
+                    source: "parameter" as const,
+                    group: item.value.group,
+                    method: item.value.method,
+                    paramName: params[i].name,
+                    parsedType: params[i].type,
+                };
+            }
+            yield {
+                source: "returnType" as const,
+                group: item.value.group,
+                method: item.value.method,
+                parsedType: item.value.method.returnType
+            };
+            item = methodIterator.next();
+        }
+    }
 }

@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { generateValidatedHandler } from './validated-handler.js';
 import { generatePublicHandler } from './public-handler.js';
 import { generateSequentialdHandler } from './sequential-handler.js';
+import { generateDomProxy } from './dom-proxy.js';
 
 const run = async () => {
     const {
@@ -40,6 +41,18 @@ import type { ${Object.keys({ ...typesToImport, ...typesToImport2 }).join(', ')}
     await writeFile(
         resolve("./src/RequestHandler.sys.mts"),
         file,
+        { encoding: 'utf8' }
+    );
+
+    const { header, impl } = await generateDomProxy();
+    await writeFile(
+        resolve("./dom/AgentProxy.h"),
+        header,
+        { encoding: 'utf8' }
+    );
+    await writeFile(
+        resolve("./dom/AgentProxy.cpp"),
+        impl,
         { encoding: 'utf8' }
     );
 }

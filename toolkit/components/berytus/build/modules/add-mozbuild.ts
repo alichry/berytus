@@ -26,7 +26,7 @@ export const addMozBuild = async () => {
         + "\n]"
         + `
 FINAL_TARGET_FILES.actors += [
-    ${actorModules.map(p => `"actors/${p}"`).join("\t,\n")}
+    ${actorModules.map(p => `"actors/${p}"`).join(",\n\t")}
 ]`;
 
     await writeFile(

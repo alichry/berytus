@@ -185,6 +185,14 @@ let JSWINDOWACTORS = {
     messageManagerGroups: ["thumbnails"],
   },
 
+  BerytusAgentTarget: {
+    parent: {
+      esModuleURI: "resource://gre/actors/BerytusAgentTargetParent.sys.mjs",
+    },
+    includeChrome: false,
+    allFrames: false,
+  },
+
   BerytusPromptService: {
     parent: {
       esModuleURI: "resource://gre/actors/BerytusPromptServiceParent.sys.mjs",

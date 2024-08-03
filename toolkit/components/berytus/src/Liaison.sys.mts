@@ -122,6 +122,7 @@ class SecretManagerInfo {
 }
 
 export const liaison = new Liaison();
+export type { Liaison };
 
 // @ts-ignore
 SecretManagerInfo.prototype.QueryInterface = ChromeUtils.generateQI(

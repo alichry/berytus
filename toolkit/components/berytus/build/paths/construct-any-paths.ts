@@ -4,9 +4,9 @@
 
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import type { PathEntry } from './produce-ts-paths';
+import type { PathEntry } from './produce-ts-compiler-paths';
 
-export const produceAnyPaths = async (): Promise<Array<PathEntry>> => {
+export const constructAnyPathEntries = async (): Promise<Array<PathEntry>> => {
     const content = await readFile(
         resolve("./build/paths/any-modules.txt"), { encoding: 'utf8' }
     );

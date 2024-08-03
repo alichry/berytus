@@ -3,10 +3,12 @@
   "name": "berytus",
   "type": "module",
   "scripts": {
+    "prebuild:rm": "test -d ./modules && rm -r ./modules/* || true",
     "prebuild:generate-requesthandler": "node --loader ts-node/esm ./build/request-handler/generate.ts",
-    "prebuild:produce-ts-paths": "node --loader ts-node/esm ./build/paths/produce-ts-paths.ts",
-    "prebuild": "npm run prebuild:produce-ts-paths && npm run prebuild:generate-requesthandler",
-    "build": "rm -r ./modules/* && tsc",
+    "prebuild:produce-ts-compiler-paths": "node --loader ts-node/esm ./build/paths/produce-ts-compiler-paths.ts",
+    "prebuild:produce-ts-import-map": "node --loader ts-node/esm ./build/paths/produce-ts-import-map.ts",
+    "prebuild": "npm run prebuild:rm && npm run prebuild:produce-ts-compiler-paths && npm run prebuild:produce-ts-import-map && npm run prebuild:generate-requesthandler",
+    "build": "tsc",
     "postbuild": "npm run postbuild:tailor-build",
     "postbuild:tailor-build": "node --loader ts-node/esm ./build/modules/tailor-build.ts"
   },
