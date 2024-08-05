@@ -4,6 +4,7 @@
 
 import { PublicRequestHandler, SequentialRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 import { IPublicRequestHandler, IUnderlyingRequestHandler } from "./types";
+import { NativeManager } from "resource://gre/modules/BerytusNativeManager.sys.mjs";
 
 interface Manager {
     metadata: SecretManagerInfo,
@@ -121,7 +122,15 @@ class SecretManagerInfo {
     }
 }
 
-export const liaison = new Liaison();
+const liaison = new Liaison();
+liaison.registerManager(
+    'built-in',
+    'Built-in Manager',
+    ESecretManagerType.Native,
+    new NativeManager()
+);
+
+export { liaison };
 export type { Liaison };
 
 // @ts-ignore

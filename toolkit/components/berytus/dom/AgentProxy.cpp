@@ -12,6 +12,7 @@
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/JSWindowActorChild.h"
 #include "mozilla/dom/Promise.h"
+#include "mozilla/dom/Promise-inl.h"
 
 namespace mozilla::berytus {
 
@@ -43,7 +44,7 @@ bool Int32ToJSVal(JSContext* aCx, const int32_t& aValue, JS::MutableHandle<JS::V
   aRv.setInt32(aValue);
   return true;
 }
-bool JSValIsDocumentMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool DocumentMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -66,7 +67,7 @@ bool JSValIsDocumentMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue,
   aRv = true;
   return true;
 }
-bool DocumentMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv) {
+bool DocumentMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -83,7 +84,7 @@ bool DocumentMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Doc
   return true;
 }
             
-bool DocumentMetadataToJSVal(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool DocumentMetadata::ToJSVal(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -100,7 +101,7 @@ bool DocumentMetadataToJSVal(JSContext* aCx, const DocumentMetadata& aValue, JS:
   return true;
 }
 
-bool JSValIsPreliminaryRequestContext(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool PreliminaryRequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -112,7 +113,7 @@ bool JSValIsPreliminaryRequestContext(JSContext *aCx, const JS::Handle<JS::Value
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsDocumentMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!DocumentMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -123,7 +124,7 @@ bool JSValIsPreliminaryRequestContext(JSContext *aCx, const JS::Handle<JS::Value
   aRv = true;
   return true;
 }
-bool PreliminaryRequestContextFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv) {
+bool PreliminaryRequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -133,20 +134,20 @@ bool PreliminaryRequestContextFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aV
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!DocumentMetadataFromJSVal(aCx, propVal, aRv.mDocument))) {
+  if (NS_WARN_IF(!DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument))) {
     return false;
   }
   
   return true;
 }
             
-bool PreliminaryRequestContextToJSVal(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool PreliminaryRequestContext::ToJSVal(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!DocumentMetadataToJSVal(aCx, aValue.mDocument, &memberVal0))) {
+  if (NS_WARN_IF(!DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal0))) {
@@ -178,7 +179,7 @@ bool StringToJSVal(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS:
   aRv.setString(rStr);
   return true;
 }
-bool JSValIsCryptoActor(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool CryptoActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -201,7 +202,7 @@ bool JSValIsCryptoActor(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool
   aRv = true;
   return true;
 }
-bool CryptoActorFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv) {
+bool CryptoActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -218,7 +219,7 @@ bool CryptoActorFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoAc
   return true;
 }
             
-bool CryptoActorToJSVal(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool CryptoActor::ToJSVal(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -235,7 +236,7 @@ bool CryptoActorToJSVal(JSContext* aCx, const CryptoActor& aValue, JS::MutableHa
   return true;
 }
 
-bool JSValIsUriParams(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -306,7 +307,7 @@ bool JSValIsUriParams(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& 
   aRv = true;
   return true;
 }
-bool UriParamsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv) {
+bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -355,7 +356,7 @@ bool UriParamsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams&
   return true;
 }
             
-bool UriParamsToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -412,7 +413,7 @@ bool UriParamsToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHandle
   return true;
 }
 
-bool JSValIsOriginActor(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool OriginActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -424,7 +425,7 @@ bool JSValIsOriginActor(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "originalUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsUriParams(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!UriParams::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -436,7 +437,7 @@ bool JSValIsOriginActor(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "currentUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsUriParams(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!UriParams::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -447,7 +448,7 @@ bool JSValIsOriginActor(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool
   aRv = true;
   return true;
 }
-bool OriginActorFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OriginActor& aRv) {
+bool OriginActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OriginActor& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -457,7 +458,7 @@ bool OriginActorFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OriginAc
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "originalUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!UriParamsFromJSVal(aCx, propVal, aRv.mOriginalUri))) {
+  if (NS_WARN_IF(!UriParams::FromJSVal(aCx, propVal, aRv.mOriginalUri))) {
     return false;
   }
   
@@ -465,20 +466,20 @@ bool OriginActorFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OriginAc
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "currentUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!UriParamsFromJSVal(aCx, propVal, aRv.mCurrentUri))) {
+  if (NS_WARN_IF(!UriParams::FromJSVal(aCx, propVal, aRv.mCurrentUri))) {
     return false;
   }
   
   return true;
 }
             
-bool OriginActorToJSVal(JSContext* aCx, const OriginActor& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool OriginActor::ToJSVal(JSContext* aCx, const OriginActor& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!UriParamsToJSVal(aCx, aValue.mOriginalUri, &memberVal0))) {
+  if (NS_WARN_IF(!UriParams::ToJSVal(aCx, aValue.mOriginalUri, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "originalUri", memberVal0))) {
@@ -488,7 +489,7 @@ bool OriginActorToJSVal(JSContext* aCx, const OriginActor& aValue, JS::MutableHa
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!UriParamsToJSVal(aCx, aValue.mCurrentUri, &memberVal1))) {
+  if (NS_WARN_IF(!UriParams::ToJSVal(aCx, aValue.mCurrentUri, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "currentUri", memberVal1))) {
@@ -502,7 +503,7 @@ bool OriginActorToJSVal(JSContext* aCx, const OriginActor& aValue, JS::MutableHa
 bool JSValIsVariant_CryptoActor__OriginActor_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv) {
   bool isValid = false;
   
-  if (NS_WARN_IF(!JSValIsCryptoActor(aCx, aValue, isValid))) {
+  if (NS_WARN_IF(!CryptoActor::IsJSValueValid(aCx, aValue, isValid))) {
     return false;
   }
   if (isValid) {
@@ -511,7 +512,7 @@ bool JSValIsVariant_CryptoActor__OriginActor_(JSContext* aCx, JS::Handle<JS::Val
   }
 
 
-  if (NS_WARN_IF(!JSValIsOriginActor(aCx, aValue, isValid))) {
+  if (NS_WARN_IF(!OriginActor::IsJSValueValid(aCx, aValue, isValid))) {
     return false;
   }
   if (isValid) {
@@ -524,23 +525,23 @@ bool JSValIsVariant_CryptoActor__OriginActor_(JSContext* aCx, JS::Handle<JS::Val
 }
 bool Variant_CryptoActor__OriginActor_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<CryptoActor, OriginActor>** aRv) {
   bool isValid = false;
-  if (NS_WARN_IF(!JSValIsCryptoActor(aCx, aValue, isValid))) {
+  if (NS_WARN_IF(!CryptoActor::IsJSValueValid(aCx, aValue, isValid))) {
     return false;
   }
   if (isValid) {
     CryptoActor nv;
-    if (NS_WARN_IF(!CryptoActorFromJSVal(aCx, aValue, nv))) {
+    if (NS_WARN_IF(!CryptoActor::FromJSVal(aCx, aValue, nv))) {
       return false;
     }
     *aRv = new Variant<CryptoActor, OriginActor>(nv);
     return true;
   }
-if (NS_WARN_IF(!JSValIsOriginActor(aCx, aValue, isValid))) {
+if (NS_WARN_IF(!OriginActor::IsJSValueValid(aCx, aValue, isValid))) {
     return false;
   }
   if (isValid) {
     OriginActor nv;
-    if (NS_WARN_IF(!OriginActorFromJSVal(aCx, aValue, nv))) {
+    if (NS_WARN_IF(!OriginActor::FromJSVal(aCx, aValue, nv))) {
       return false;
     }
     *aRv = new Variant<CryptoActor, OriginActor>(nv);
@@ -556,17 +557,17 @@ struct Variant_CryptoActor__OriginActor_ToJSValMatcher {
   Variant_CryptoActor__OriginActor_ToJSValMatcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
 
   bool operator()(const CryptoActor& aVal) {
-    return CryptoActorToJSVal(mCx, aVal, mRv);
+    return CryptoActor::ToJSVal(mCx, aVal, mRv);
   }
 
   bool operator()(const OriginActor& aVal) {
-    return OriginActorToJSVal(mCx, aVal, mRv);
+    return OriginActor::ToJSVal(mCx, aVal, mRv);
   }
 };
 bool Variant_CryptoActor__OriginActor_ToJSVal(JSContext* aCx, const Variant<CryptoActor, OriginActor>& aValue, JS::MutableHandle<JS::Value> aRv) {
   return aValue.match(Variant_CryptoActor__OriginActor_ToJSValMatcher(aCx, aRv));
 }
-bool JSValIsGetSigningKeyArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool GetSigningKeyArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -589,7 +590,7 @@ bool JSValIsGetSigningKeyArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue
   aRv = true;
   return true;
 }
-bool GetSigningKeyArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetSigningKeyArgs& aRv) {
+bool GetSigningKeyArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetSigningKeyArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -606,7 +607,7 @@ bool GetSigningKeyArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ge
   return true;
 }
             
-bool GetSigningKeyArgsToJSVal(JSContext* aCx, const GetSigningKeyArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool GetSigningKeyArgs::ToJSVal(JSContext* aCx, const GetSigningKeyArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -680,7 +681,7 @@ bool Maybe_int32_t_ToJSVal(JSContext* aCx, const Maybe<int32_t>& aValue, JS::Mut
 
   return Int32ToJSVal(aCx, aValue.ref(), aRv);
 }
-bool JSValIsPartialAccountIdentity(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool PartialAccountIdentity::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -715,7 +716,7 @@ bool JSValIsPartialAccountIdentity(JSContext *aCx, const JS::Handle<JS::Value> a
   aRv = true;
   return true;
 }
-bool PartialAccountIdentityFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialAccountIdentity& aRv) {
+bool PartialAccountIdentity::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialAccountIdentity& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -740,7 +741,7 @@ bool PartialAccountIdentityFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   return true;
 }
             
-bool PartialAccountIdentityToJSVal(JSContext* aCx, const PartialAccountIdentity& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool PartialAccountIdentity::ToJSVal(JSContext* aCx, const PartialAccountIdentity& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -800,7 +801,7 @@ bool nsTArray_PartialAccountIdentity_FromJSVal(JSContext* aCx, const JS::Handle<
     }
 
     PartialAccountIdentity item;
-    if (NS_WARN_IF(!PartialAccountIdentityFromJSVal(aCx, value, item))) {
+    if (NS_WARN_IF(!PartialAccountIdentity::FromJSVal(aCx, value, item))) {
       return false;
     }
     aRv.AppendElement(item);
@@ -814,7 +815,7 @@ bool nsTArray_PartialAccountIdentity_ToJSVal(JSContext* aCx, const nsTArray<Part
     const PartialAccountIdentity& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!PartialAccountIdentityToJSVal(aCx, item, &value))) {
+    if (NS_WARN_IF(!PartialAccountIdentity::ToJSVal(aCx, item, &value))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -851,7 +852,7 @@ bool Maybe_nsTArray_PartialAccountIdentity__ToJSVal(JSContext* aCx, const Maybe<
 
   return nsTArray_PartialAccountIdentity_ToJSVal(aCx, aValue.ref(), aRv);
 }
-bool JSValIsAccountConstraints(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -898,7 +899,7 @@ bool JSValIsAccountConstraints(JSContext *aCx, const JS::Handle<JS::Value> aValu
   aRv = true;
   return true;
 }
-bool AccountConstraintsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AccountConstraints& aRv) {
+bool AccountConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AccountConstraints& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -931,7 +932,7 @@ bool AccountConstraintsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, A
   return true;
 }
             
-bool AccountConstraintsToJSVal(JSContext* aCx, const AccountConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool AccountConstraints::ToJSVal(JSContext* aCx, const AccountConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -968,7 +969,7 @@ bool AccountConstraintsToJSVal(JSContext* aCx, const AccountConstraints& aValue,
   return true;
 }
 
-bool JSValIsGetCredentialsMetadataArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool GetCredentialsMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -992,7 +993,7 @@ bool JSValIsGetCredentialsMetadataArgs(JSContext *aCx, const JS::Handle<JS::Valu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "accountConstraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsAccountConstraints(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!AccountConstraints::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1003,7 +1004,7 @@ bool JSValIsGetCredentialsMetadataArgs(JSContext *aCx, const JS::Handle<JS::Valu
   aRv = true;
   return true;
 }
-bool GetCredentialsMetadataArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetCredentialsMetadataArgs& aRv) {
+bool GetCredentialsMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetCredentialsMetadataArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1021,14 +1022,14 @@ bool GetCredentialsMetadataArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> a
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "accountConstraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!AccountConstraintsFromJSVal(aCx, propVal, aRv.mAccountConstraints))) {
+  if (NS_WARN_IF(!AccountConstraints::FromJSVal(aCx, propVal, aRv.mAccountConstraints))) {
     return false;
   }
   
   return true;
 }
             
-bool GetCredentialsMetadataArgsToJSVal(JSContext* aCx, const GetCredentialsMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool GetCredentialsMetadataArgs::ToJSVal(JSContext* aCx, const GetCredentialsMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -1046,7 +1047,7 @@ bool GetCredentialsMetadataArgsToJSVal(JSContext* aCx, const GetCredentialsMetad
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!AccountConstraintsToJSVal(aCx, aValue.mAccountConstraints, &memberVal1))) {
+  if (NS_WARN_IF(!AccountConstraints::ToJSVal(aCx, aValue.mAccountConstraints, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "accountConstraints", memberVal1))) {
@@ -1162,7 +1163,7 @@ bool JSValIsMaybe_AccountConstraints_(JSContext *aCx, const JS::Handle<JS::Value
     aRv = true;
     return true;
   }
-  return JSValIsAccountConstraints(aCx, aValue, aRv);
+  return AccountConstraints::IsJSValueValid(aCx, aValue, aRv);
 }
 bool Maybe_AccountConstraints_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<AccountConstraints>& aRv) {
   if (aValue.isUndefined()) {
@@ -1171,7 +1172,7 @@ bool Maybe_AccountConstraints_FromJSVal(JSContext* aCx, const JS::Handle<JS::Val
   }
   
   aRv.emplace();
-  if (NS_WARN_IF(!AccountConstraintsFromJSVal(aCx, aValue, *aRv))) {
+  if (NS_WARN_IF(!AccountConstraints::FromJSVal(aCx, aValue, *aRv))) {
     return false;
   }
   return true;
@@ -1182,9 +1183,9 @@ bool Maybe_AccountConstraints_ToJSVal(JSContext* aCx, const Maybe<AccountConstra
     return true;
   }
 
-  return AccountConstraintsToJSVal(aCx, aValue.ref(), aRv);
+  return AccountConstraints::ToJSVal(aCx, aValue.ref(), aRv);
 }
-bool JSValIsChannelConstraints(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ChannelConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1231,7 +1232,7 @@ bool JSValIsChannelConstraints(JSContext *aCx, const JS::Handle<JS::Value> aValu
   aRv = true;
   return true;
 }
-bool ChannelConstraintsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelConstraints& aRv) {
+bool ChannelConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelConstraints& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1264,7 +1265,7 @@ bool ChannelConstraintsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, C
   return true;
 }
             
-bool ChannelConstraintsToJSVal(JSContext* aCx, const ChannelConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChannelConstraints::ToJSVal(JSContext* aCx, const ChannelConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -1301,7 +1302,7 @@ bool ChannelConstraintsToJSVal(JSContext* aCx, const ChannelConstraints& aValue,
   return true;
 }
 
-bool JSValIsChannelMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1325,7 +1326,7 @@ bool JSValIsChannelMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "constraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChannelConstraints(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChannelConstraints::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1349,7 +1350,7 @@ bool JSValIsChannelMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsCryptoActor(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!CryptoActor::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1360,7 +1361,7 @@ bool JSValIsChannelMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, 
   aRv = true;
   return true;
 }
-bool ChannelMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelMetadata& aRv) {
+bool ChannelMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1378,7 +1379,7 @@ bool ChannelMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Chan
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "constraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChannelConstraintsFromJSVal(aCx, propVal, aRv.mConstraints))) {
+  if (NS_WARN_IF(!ChannelConstraints::FromJSVal(aCx, propVal, aRv.mConstraints))) {
     return false;
   }
   
@@ -1394,14 +1395,14 @@ bool ChannelMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Chan
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!CryptoActorFromJSVal(aCx, propVal, aRv.mScmActor))) {
+  if (NS_WARN_IF(!CryptoActor::FromJSVal(aCx, propVal, aRv.mScmActor))) {
     return false;
   }
   
   return true;
 }
             
-bool ChannelMetadataToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChannelMetadata::ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -1417,7 +1418,7 @@ bool ChannelMetadataToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!ChannelConstraintsToJSVal(aCx, aValue.mConstraints, &memberVal1))) {
+  if (NS_WARN_IF(!ChannelConstraints::ToJSVal(aCx, aValue.mConstraints, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "constraints", memberVal1))) {
@@ -1439,7 +1440,7 @@ bool ChannelMetadataToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!CryptoActorToJSVal(aCx, aValue.mScmActor, &memberVal3))) {
+  if (NS_WARN_IF(!CryptoActor::ToJSVal(aCx, aValue.mScmActor, &memberVal3))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmActor", memberVal3))) {
@@ -1450,7 +1451,7 @@ bool ChannelMetadataToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::M
   return true;
 }
 
-bool JSValIsRequestContext(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool RequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1462,7 +1463,7 @@ bool JSValIsRequestContext(JSContext *aCx, const JS::Handle<JS::Value> aValue, b
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChannelMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChannelMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1474,7 +1475,7 @@ bool JSValIsRequestContext(JSContext *aCx, const JS::Handle<JS::Value> aValue, b
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsDocumentMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!DocumentMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1485,7 +1486,7 @@ bool JSValIsRequestContext(JSContext *aCx, const JS::Handle<JS::Value> aValue, b
   aRv = true;
   return true;
 }
-bool RequestContextFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContext& aRv) {
+bool RequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContext& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1495,7 +1496,7 @@ bool RequestContextFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Reque
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChannelMetadataFromJSVal(aCx, propVal, aRv.mChannel))) {
+  if (NS_WARN_IF(!ChannelMetadata::FromJSVal(aCx, propVal, aRv.mChannel))) {
     return false;
   }
   
@@ -1503,20 +1504,20 @@ bool RequestContextFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Reque
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!DocumentMetadataFromJSVal(aCx, propVal, aRv.mDocument))) {
+  if (NS_WARN_IF(!DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument))) {
     return false;
   }
   
   return true;
 }
             
-bool RequestContextToJSVal(JSContext* aCx, const RequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool RequestContext::ToJSVal(JSContext* aCx, const RequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ChannelMetadataToJSVal(aCx, aValue.mChannel, &memberVal0))) {
+  if (NS_WARN_IF(!ChannelMetadata::ToJSVal(aCx, aValue.mChannel, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal0))) {
@@ -1526,7 +1527,7 @@ bool RequestContextToJSVal(JSContext* aCx, const RequestContext& aValue, JS::Mut
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!DocumentMetadataToJSVal(aCx, aValue.mDocument, &memberVal1))) {
+  if (NS_WARN_IF(!DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal1))) {
@@ -1537,7 +1538,7 @@ bool RequestContextToJSVal(JSContext* aCx, const RequestContext& aValue, JS::Mut
   return true;
 }
 
-bool JSValIsInitialKeyExchangeParametersDraft(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool InitialKeyExchangeParametersDraft::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1572,7 +1573,7 @@ bool JSValIsInitialKeyExchangeParametersDraft(JSContext *aCx, const JS::Handle<J
   aRv = true;
   return true;
 }
-bool InitialKeyExchangeParametersDraftFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv) {
+bool InitialKeyExchangeParametersDraft::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1597,7 +1598,7 @@ bool InitialKeyExchangeParametersDraftFromJSVal(JSContext* aCx, JS::Handle<JS::V
   return true;
 }
             
-bool InitialKeyExchangeParametersDraftToJSVal(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool InitialKeyExchangeParametersDraft::ToJSVal(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -1624,7 +1625,7 @@ bool InitialKeyExchangeParametersDraftToJSVal(JSContext* aCx, const InitialKeyEx
   return true;
 }
 
-bool JSValIsGenerateKeyExchangeParametersArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool GenerateKeyExchangeParametersArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1636,7 +1637,7 @@ bool JSValIsGenerateKeyExchangeParametersArgs(JSContext *aCx, const JS::Handle<J
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "paramsDraft", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsInitialKeyExchangeParametersDraft(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!InitialKeyExchangeParametersDraft::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1647,7 +1648,7 @@ bool JSValIsGenerateKeyExchangeParametersArgs(JSContext *aCx, const JS::Handle<J
   aRv = true;
   return true;
 }
-bool GenerateKeyExchangeParametersArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateKeyExchangeParametersArgs& aRv) {
+bool GenerateKeyExchangeParametersArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateKeyExchangeParametersArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1657,20 +1658,20 @@ bool GenerateKeyExchangeParametersArgsFromJSVal(JSContext* aCx, JS::Handle<JS::V
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "paramsDraft", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!InitialKeyExchangeParametersDraftFromJSVal(aCx, propVal, aRv.mParamsDraft))) {
+  if (NS_WARN_IF(!InitialKeyExchangeParametersDraft::FromJSVal(aCx, propVal, aRv.mParamsDraft))) {
     return false;
   }
   
   return true;
 }
             
-bool GenerateKeyExchangeParametersArgsToJSVal(JSContext* aCx, const GenerateKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool GenerateKeyExchangeParametersArgs::ToJSVal(JSContext* aCx, const GenerateKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!InitialKeyExchangeParametersDraftToJSVal(aCx, aValue.mParamsDraft, &memberVal0))) {
+  if (NS_WARN_IF(!InitialKeyExchangeParametersDraft::ToJSVal(aCx, aValue.mParamsDraft, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "paramsDraft", memberVal0))) {
@@ -1714,7 +1715,7 @@ bool ArrayBufferToJSVal(JSContext* aCx, const ArrayBuffer& aValue, JS::MutableHa
   aRv.setObject(*aValue.Obj());
   return true;
 }
-bool JSValIsPartialKeyExchangeParametersFromScm(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1785,7 +1786,7 @@ bool JSValIsPartialKeyExchangeParametersFromScm(JSContext *aCx, const JS::Handle
   aRv = true;
   return true;
 }
-bool PartialKeyExchangeParametersFromScmFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv) {
+bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1834,7 +1835,7 @@ bool PartialKeyExchangeParametersFromScmFromJSVal(JSContext* aCx, JS::Handle<JS:
   return true;
 }
             
-bool PartialKeyExchangeParametersFromScmToJSVal(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -1892,7 +1893,7 @@ bool PartialKeyExchangeParametersFromScmToJSVal(JSContext* aCx, const PartialKey
 }
 
 
-bool JSValIsKeyExchangeParameters(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1999,7 +2000,7 @@ bool JSValIsKeyExchangeParameters(JSContext *aCx, const JS::Handle<JS::Value> aV
   aRv = true;
   return true;
 }
-bool KeyExchangeParametersFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv) {
+bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2072,7 +2073,7 @@ bool KeyExchangeParametersFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue
   return true;
 }
             
-bool KeyExchangeParametersToJSVal(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -2159,7 +2160,7 @@ bool KeyExchangeParametersToJSVal(JSContext* aCx, const KeyExchangeParameters& a
   return true;
 }
 
-bool JSValIsEnableEndToEndEncryptionArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool EnableEndToEndEncryptionArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2171,7 +2172,7 @@ bool JSValIsEnableEndToEndEncryptionArgs(JSContext *aCx, const JS::Handle<JS::Va
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "params", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsKeyExchangeParameters(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!KeyExchangeParameters::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2194,7 +2195,7 @@ bool JSValIsEnableEndToEndEncryptionArgs(JSContext *aCx, const JS::Handle<JS::Va
   aRv = true;
   return true;
 }
-bool EnableEndToEndEncryptionArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv) {
+bool EnableEndToEndEncryptionArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2204,7 +2205,7 @@ bool EnableEndToEndEncryptionArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "params", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!KeyExchangeParametersFromJSVal(aCx, propVal, aRv.mParams))) {
+  if (NS_WARN_IF(!KeyExchangeParameters::FromJSVal(aCx, propVal, aRv.mParams))) {
     return false;
   }
   
@@ -2219,13 +2220,13 @@ bool EnableEndToEndEncryptionArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   return true;
 }
             
-bool EnableEndToEndEncryptionArgsToJSVal(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool EnableEndToEndEncryptionArgs::ToJSVal(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!KeyExchangeParametersToJSVal(aCx, aValue.mParams, &memberVal0))) {
+  if (NS_WARN_IF(!KeyExchangeParameters::ToJSVal(aCx, aValue.mParams, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "params", memberVal0))) {
@@ -2314,7 +2315,7 @@ struct Variant_nsString_ToJSValMatcher {
 bool Variant_nsString_ToJSVal(JSContext* aCx, const Variant<nsString>& aValue, JS::MutableHandle<JS::Value> aRv) {
   return aValue.match(Variant_nsString_ToJSValMatcher(aCx, aRv));
 }
-bool JSValIsRequestedUserAttribute(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool RequestedUserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2349,7 +2350,7 @@ bool JSValIsRequestedUserAttribute(JSContext *aCx, const JS::Handle<JS::Value> a
   aRv = true;
   return true;
 }
-bool RequestedUserAttributeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestedUserAttribute& aRv) {
+bool RequestedUserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestedUserAttribute& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2374,7 +2375,7 @@ bool RequestedUserAttributeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   return true;
 }
             
-bool RequestedUserAttributeToJSVal(JSContext* aCx, const RequestedUserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool RequestedUserAttribute::ToJSVal(JSContext* aCx, const RequestedUserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -2436,7 +2437,7 @@ bool nsTArray_RequestedUserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<
     }
 
     RequestedUserAttribute item;
-    if (NS_WARN_IF(!RequestedUserAttributeFromJSVal(aCx, value, item))) {
+    if (NS_WARN_IF(!RequestedUserAttribute::FromJSVal(aCx, value, item))) {
       return false;
     }
     aRv.AppendElement(item);
@@ -2450,7 +2451,7 @@ bool nsTArray_RequestedUserAttribute_ToJSVal(JSContext* aCx, const nsTArray<Requ
     const RequestedUserAttribute& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!RequestedUserAttributeToJSVal(aCx, item, &value))) {
+    if (NS_WARN_IF(!RequestedUserAttribute::ToJSVal(aCx, item, &value))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -2506,7 +2507,7 @@ bool EOperationStatusToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS:
   aRv.setInt32(aValue);
   return true;
 }
-bool JSValIsOperationState(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool OperationState::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2518,7 +2519,7 @@ bool JSValIsOperationState(JSContext *aCx, const JS::Handle<JS::Value> aValue, b
   aRv = true;
   return true;
 }
-bool OperationStateFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationState& aRv) {
+bool OperationState::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationState& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2528,7 +2529,7 @@ bool OperationStateFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Opera
   return true;
 }
             
-bool OperationStateToJSVal(JSContext* aCx, const OperationState& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool OperationState::ToJSVal(JSContext* aCx, const OperationState& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -2536,7 +2537,7 @@ bool OperationStateToJSVal(JSContext* aCx, const OperationState& aValue, JS::Mut
   return true;
 }
 
-bool JSValIsLoginOperationMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2608,7 +2609,7 @@ bool JSValIsLoginOperationMetadata(JSContext *aCx, const JS::Handle<JS::Value> a
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsOperationState(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!OperationState::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2619,7 +2620,7 @@ bool JSValIsLoginOperationMetadata(JSContext *aCx, const JS::Handle<JS::Value> a
   aRv = true;
   return true;
 }
-bool LoginOperationMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, LoginOperationMetadata& aRv) {
+bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, LoginOperationMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2669,14 +2670,14 @@ bool LoginOperationMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!OperationStateFromJSVal(aCx, propVal, aRv.mState))) {
+  if (NS_WARN_IF(!OperationState::FromJSVal(aCx, propVal, aRv.mState))) {
     return false;
   }
   
   return true;
 }
             
-bool LoginOperationMetadataToJSVal(JSContext* aCx, const LoginOperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -2732,7 +2733,7 @@ bool LoginOperationMetadataToJSVal(JSContext* aCx, const LoginOperationMetadata&
 
   JS::Rooted<JS::Value> memberVal5(aCx);
   
-  if (NS_WARN_IF(!OperationStateToJSVal(aCx, aValue.mState, &memberVal5))) {
+  if (NS_WARN_IF(!OperationState::ToJSVal(aCx, aValue.mState, &memberVal5))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "state", memberVal5))) {
@@ -2743,7 +2744,7 @@ bool LoginOperationMetadataToJSVal(JSContext* aCx, const LoginOperationMetadata&
   return true;
 }
 
-bool JSValIsApproveOperationArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ApproveOperationArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2755,7 +2756,7 @@ bool JSValIsApproveOperationArgs(JSContext *aCx, const JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsLoginOperationMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!LoginOperationMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2766,7 +2767,7 @@ bool JSValIsApproveOperationArgs(JSContext *aCx, const JS::Handle<JS::Value> aVa
   aRv = true;
   return true;
 }
-bool ApproveOperationArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveOperationArgs& aRv) {
+bool ApproveOperationArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveOperationArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2776,20 +2777,20 @@ bool ApproveOperationArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!LoginOperationMetadataFromJSVal(aCx, propVal, aRv.mOperation))) {
+  if (NS_WARN_IF(!LoginOperationMetadata::FromJSVal(aCx, propVal, aRv.mOperation))) {
     return false;
   }
   
   return true;
 }
             
-bool ApproveOperationArgsToJSVal(JSContext* aCx, const ApproveOperationArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ApproveOperationArgs::ToJSVal(JSContext* aCx, const ApproveOperationArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!LoginOperationMetadataToJSVal(aCx, aValue.mOperation, &memberVal0))) {
+  if (NS_WARN_IF(!LoginOperationMetadata::ToJSVal(aCx, aValue.mOperation, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
@@ -2801,7 +2802,7 @@ bool ApproveOperationArgsToJSVal(JSContext* aCx, const ApproveOperationArgs& aVa
 }
 
 
-bool JSValIsOperationMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2849,7 +2850,7 @@ bool JSValIsOperationMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsOperationState(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!OperationState::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2860,7 +2861,7 @@ bool JSValIsOperationMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue
   aRv = true;
   return true;
 }
-bool OperationMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationMetadata& aRv) {
+bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2894,14 +2895,14 @@ bool OperationMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Op
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!OperationStateFromJSVal(aCx, propVal, aRv.mState))) {
+  if (NS_WARN_IF(!OperationState::FromJSVal(aCx, propVal, aRv.mState))) {
     return false;
   }
   
   return true;
 }
             
-bool OperationMetadataToJSVal(JSContext* aCx, const OperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -2937,7 +2938,7 @@ bool OperationMetadataToJSVal(JSContext* aCx, const OperationMetadata& aValue, J
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!OperationStateToJSVal(aCx, aValue.mState, &memberVal3))) {
+  if (NS_WARN_IF(!OperationState::ToJSVal(aCx, aValue.mState, &memberVal3))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "state", memberVal3))) {
@@ -2948,7 +2949,7 @@ bool OperationMetadataToJSVal(JSContext* aCx, const OperationMetadata& aValue, J
   return true;
 }
 
-bool JSValIsRequestContextWithOperation(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool RequestContextWithOperation::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2960,7 +2961,7 @@ bool JSValIsRequestContextWithOperation(JSContext *aCx, const JS::Handle<JS::Val
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsOperationMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!OperationMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2972,7 +2973,7 @@ bool JSValIsRequestContextWithOperation(JSContext *aCx, const JS::Handle<JS::Val
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChannelMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChannelMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2984,7 +2985,7 @@ bool JSValIsRequestContextWithOperation(JSContext *aCx, const JS::Handle<JS::Val
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsDocumentMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!DocumentMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2995,7 +2996,7 @@ bool JSValIsRequestContextWithOperation(JSContext *aCx, const JS::Handle<JS::Val
   aRv = true;
   return true;
 }
-bool RequestContextWithOperationFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithOperation& aRv) {
+bool RequestContextWithOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithOperation& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3005,7 +3006,7 @@ bool RequestContextWithOperationFromJSVal(JSContext* aCx, JS::Handle<JS::Value> 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!OperationMetadataFromJSVal(aCx, propVal, aRv.mOperation))) {
+  if (NS_WARN_IF(!OperationMetadata::FromJSVal(aCx, propVal, aRv.mOperation))) {
     return false;
   }
   
@@ -3013,7 +3014,7 @@ bool RequestContextWithOperationFromJSVal(JSContext* aCx, JS::Handle<JS::Value> 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChannelMetadataFromJSVal(aCx, propVal, aRv.mChannel))) {
+  if (NS_WARN_IF(!ChannelMetadata::FromJSVal(aCx, propVal, aRv.mChannel))) {
     return false;
   }
   
@@ -3021,20 +3022,20 @@ bool RequestContextWithOperationFromJSVal(JSContext* aCx, JS::Handle<JS::Value> 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!DocumentMetadataFromJSVal(aCx, propVal, aRv.mDocument))) {
+  if (NS_WARN_IF(!DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument))) {
     return false;
   }
   
   return true;
 }
             
-bool RequestContextWithOperationToJSVal(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool RequestContextWithOperation::ToJSVal(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!OperationMetadataToJSVal(aCx, aValue.mOperation, &memberVal0))) {
+  if (NS_WARN_IF(!OperationMetadata::ToJSVal(aCx, aValue.mOperation, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
@@ -3044,7 +3045,7 @@ bool RequestContextWithOperationToJSVal(JSContext* aCx, const RequestContextWith
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!ChannelMetadataToJSVal(aCx, aValue.mChannel, &memberVal1))) {
+  if (NS_WARN_IF(!ChannelMetadata::ToJSVal(aCx, aValue.mChannel, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal1))) {
@@ -3054,7 +3055,7 @@ bool RequestContextWithOperationToJSVal(JSContext* aCx, const RequestContextWith
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!DocumentMetadataToJSVal(aCx, aValue.mDocument, &memberVal2))) {
+  if (NS_WARN_IF(!DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal2))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal2))) {
@@ -3064,6 +3065,7 @@ bool RequestContextWithOperationToJSVal(JSContext* aCx, const RequestContextWith
   aRv.setObject(*obj);
   return true;
 }
+
 
 bool JSValIsEMetadataStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isInt32())) {
@@ -3088,7 +3090,7 @@ bool EMetadataStatusToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::M
   aRv.setInt32(aValue);
   return true;
 }
-bool JSValIsRecordMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3147,7 +3149,7 @@ bool JSValIsRecordMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, b
   aRv = true;
   return true;
 }
-bool RecordMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RecordMetadata& aRv) {
+bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RecordMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3188,7 +3190,7 @@ bool RecordMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Recor
   return true;
 }
             
-bool RecordMetadataToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -3236,7 +3238,7 @@ bool RecordMetadataToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::Mut
 }
 
 
-bool JSValIsUpdateMetadataArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool UpdateMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3248,7 +3250,7 @@ bool JSValIsUpdateMetadataArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "metadata", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsRecordMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!RecordMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3259,7 +3261,7 @@ bool JSValIsUpdateMetadataArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   aRv = true;
   return true;
 }
-bool UpdateMetadataArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateMetadataArgs& aRv) {
+bool UpdateMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateMetadataArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3269,20 +3271,20 @@ bool UpdateMetadataArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, U
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "metadata", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!RecordMetadataFromJSVal(aCx, propVal, aRv.mMetadata))) {
+  if (NS_WARN_IF(!RecordMetadata::FromJSVal(aCx, propVal, aRv.mMetadata))) {
     return false;
   }
   
   return true;
 }
             
-bool UpdateMetadataArgsToJSVal(JSContext* aCx, const UpdateMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool UpdateMetadataArgs::ToJSVal(JSContext* aCx, const UpdateMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!RecordMetadataToJSVal(aCx, aValue.mMetadata, &memberVal0))) {
+  if (NS_WARN_IF(!RecordMetadata::ToJSVal(aCx, aValue.mMetadata, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "metadata", memberVal0))) {
@@ -3293,7 +3295,8 @@ bool UpdateMetadataArgsToJSVal(JSContext* aCx, const UpdateMetadataArgs& aValue,
   return true;
 }
 
-bool JSValIsApproveTransitionToAuthOpArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+
+bool ApproveTransitionToAuthOpArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3305,7 +3308,7 @@ bool JSValIsApproveTransitionToAuthOpArgs(JSContext *aCx, const JS::Handle<JS::V
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "newAuthOp", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsLoginOperationMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!LoginOperationMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3316,7 +3319,7 @@ bool JSValIsApproveTransitionToAuthOpArgs(JSContext *aCx, const JS::Handle<JS::V
   aRv = true;
   return true;
 }
-bool ApproveTransitionToAuthOpArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveTransitionToAuthOpArgs& aRv) {
+bool ApproveTransitionToAuthOpArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveTransitionToAuthOpArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3326,20 +3329,20 @@ bool ApproveTransitionToAuthOpArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "newAuthOp", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!LoginOperationMetadataFromJSVal(aCx, propVal, aRv.mNewAuthOp))) {
+  if (NS_WARN_IF(!LoginOperationMetadata::FromJSVal(aCx, propVal, aRv.mNewAuthOp))) {
     return false;
   }
   
   return true;
 }
             
-bool ApproveTransitionToAuthOpArgsToJSVal(JSContext* aCx, const ApproveTransitionToAuthOpArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ApproveTransitionToAuthOpArgs::ToJSVal(JSContext* aCx, const ApproveTransitionToAuthOpArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!LoginOperationMetadataToJSVal(aCx, aValue.mNewAuthOp, &memberVal0))) {
+  if (NS_WARN_IF(!LoginOperationMetadata::ToJSVal(aCx, aValue.mNewAuthOp, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "newAuthOp", memberVal0))) {
@@ -3350,7 +3353,8 @@ bool ApproveTransitionToAuthOpArgsToJSVal(JSContext* aCx, const ApproveTransitio
   return true;
 }
 
-bool JSValIsUserAttribute(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+
+bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3397,7 +3401,7 @@ bool JSValIsUserAttribute(JSContext *aCx, const JS::Handle<JS::Value> aValue, bo
   aRv = true;
   return true;
 }
-bool UserAttributeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UserAttribute& aRv) {
+bool UserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UserAttribute& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3430,7 +3434,7 @@ bool UserAttributeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UserAt
   return true;
 }
             
-bool UserAttributeToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool UserAttribute::ToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -3502,7 +3506,7 @@ bool nsTArray_UserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value
     }
 
     UserAttribute item;
-    if (NS_WARN_IF(!UserAttributeFromJSVal(aCx, value, item))) {
+    if (NS_WARN_IF(!UserAttribute::FromJSVal(aCx, value, item))) {
       return false;
     }
     aRv.AppendElement(item);
@@ -3516,7 +3520,7 @@ bool nsTArray_UserAttribute_ToJSVal(JSContext* aCx, const nsTArray<UserAttribute
     const UserAttribute& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!UserAttributeToJSVal(aCx, item, &value))) {
+    if (NS_WARN_IF(!UserAttribute::ToJSVal(aCx, item, &value))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -3550,7 +3554,7 @@ bool EFieldTypeToJSVal(JSContext* aCx, const EFieldType& aValue, JS::MutableHand
   aRv.setInt32(aValue);
   return true;
 }
-bool JSValIsBaseFieldMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool BaseFieldMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3597,7 +3601,7 @@ bool JSValIsBaseFieldMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue
   aRv = true;
   return true;
 }
-bool BaseFieldMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BaseFieldMetadata& aRv) {
+bool BaseFieldMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BaseFieldMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3630,7 +3634,7 @@ bool BaseFieldMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ba
   return true;
 }
             
-bool BaseFieldMetadataToJSVal(JSContext* aCx, const BaseFieldMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool BaseFieldMetadata::ToJSVal(JSContext* aCx, const BaseFieldMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -3773,7 +3777,7 @@ struct Variant_nsString__ArrayBuffer__Nothing_ToJSValMatcher {
 bool Variant_nsString__ArrayBuffer__Nothing_ToJSVal(JSContext* aCx, const Variant<nsString, ArrayBuffer, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv) {
   return aValue.match(Variant_nsString__ArrayBuffer__Nothing_ToJSValMatcher(aCx, aRv));
 }
-bool JSValIsAddFieldArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool AddFieldArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3785,7 +3789,7 @@ bool JSValIsAddFieldArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, boo
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "field", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsBaseFieldMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!BaseFieldMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3808,7 +3812,7 @@ bool JSValIsAddFieldArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, boo
   aRv = true;
   return true;
 }
-bool AddFieldArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFieldArgs& aRv) {
+bool AddFieldArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFieldArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3818,7 +3822,7 @@ bool AddFieldArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFiel
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "field", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!BaseFieldMetadataFromJSVal(aCx, propVal, aRv.mField))) {
+  if (NS_WARN_IF(!BaseFieldMetadata::FromJSVal(aCx, propVal, aRv.mField))) {
     return false;
   }
   
@@ -3833,13 +3837,13 @@ bool AddFieldArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFiel
   return true;
 }
             
-bool AddFieldArgsToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool AddFieldArgs::ToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!BaseFieldMetadataToJSVal(aCx, aValue.mField, &memberVal0))) {
+  if (NS_WARN_IF(!BaseFieldMetadata::ToJSVal(aCx, aValue.mField, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "field", memberVal0))) {
@@ -3862,7 +3866,8 @@ bool AddFieldArgsToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::Mutable
   return true;
 }
 
-bool JSValIsFieldValueRejectionReason(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+
+bool FieldValueRejectionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3885,7 +3890,7 @@ bool JSValIsFieldValueRejectionReason(JSContext *aCx, const JS::Handle<JS::Value
   aRv = true;
   return true;
 }
-bool FieldValueRejectionReasonFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldValueRejectionReason& aRv) {
+bool FieldValueRejectionReason::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldValueRejectionReason& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3902,7 +3907,7 @@ bool FieldValueRejectionReasonFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aV
   return true;
 }
             
-bool FieldValueRejectionReasonToJSVal(JSContext* aCx, const FieldValueRejectionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool FieldValueRejectionReason::ToJSVal(JSContext* aCx, const FieldValueRejectionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -3919,7 +3924,7 @@ bool FieldValueRejectionReasonToJSVal(JSContext* aCx, const FieldValueRejectionR
   return true;
 }
 
-bool JSValIsRejectFieldValueArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool RejectFieldValueArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3931,7 +3936,7 @@ bool JSValIsRejectFieldValueArgs(JSContext *aCx, const JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "field", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsBaseFieldMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!BaseFieldMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3943,7 +3948,7 @@ bool JSValIsRejectFieldValueArgs(JSContext *aCx, const JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsFieldValueRejectionReason(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!FieldValueRejectionReason::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3966,7 +3971,7 @@ bool JSValIsRejectFieldValueArgs(JSContext *aCx, const JS::Handle<JS::Value> aVa
   aRv = true;
   return true;
 }
-bool RejectFieldValueArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RejectFieldValueArgs& aRv) {
+bool RejectFieldValueArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RejectFieldValueArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3976,7 +3981,7 @@ bool RejectFieldValueArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "field", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!BaseFieldMetadataFromJSVal(aCx, propVal, aRv.mField))) {
+  if (NS_WARN_IF(!BaseFieldMetadata::FromJSVal(aCx, propVal, aRv.mField))) {
     return false;
   }
   
@@ -3984,7 +3989,7 @@ bool RejectFieldValueArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!FieldValueRejectionReasonFromJSVal(aCx, propVal, aRv.mReason))) {
+  if (NS_WARN_IF(!FieldValueRejectionReason::FromJSVal(aCx, propVal, aRv.mReason))) {
     return false;
   }
   
@@ -3999,13 +4004,13 @@ bool RejectFieldValueArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   return true;
 }
             
-bool RejectFieldValueArgsToJSVal(JSContext* aCx, const RejectFieldValueArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool RejectFieldValueArgs::ToJSVal(JSContext* aCx, const RejectFieldValueArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!BaseFieldMetadataToJSVal(aCx, aValue.mField, &memberVal0))) {
+  if (NS_WARN_IF(!BaseFieldMetadata::ToJSVal(aCx, aValue.mField, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "field", memberVal0))) {
@@ -4015,7 +4020,7 @@ bool RejectFieldValueArgsToJSVal(JSContext* aCx, const RejectFieldValueArgs& aVa
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!FieldValueRejectionReasonToJSVal(aCx, aValue.mReason, &memberVal1))) {
+  if (NS_WARN_IF(!FieldValueRejectionReason::ToJSVal(aCx, aValue.mReason, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "reason", memberVal1))) {
@@ -4129,7 +4134,7 @@ bool EChallengeTypeToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::Mut
   aRv.setInt32(aValue);
   return true;
 }
-bool JSValIsChallengeParameters(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ChallengeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4141,7 +4146,7 @@ bool JSValIsChallengeParameters(JSContext *aCx, const JS::Handle<JS::Value> aVal
   aRv = true;
   return true;
 }
-bool ChallengeParametersFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeParameters& aRv) {
+bool ChallengeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeParameters& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4151,7 +4156,7 @@ bool ChallengeParametersFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   return true;
 }
             
-bool ChallengeParametersToJSVal(JSContext* aCx, const ChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChallengeParameters::ToJSVal(JSContext* aCx, const ChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -4182,7 +4187,7 @@ bool EChallengeStatusToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS:
   aRv.setInt32(aValue);
   return true;
 }
-bool JSValIsChallengeMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4218,7 +4223,7 @@ bool JSValIsChallengeMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeParameters(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeParameters::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4241,7 +4246,7 @@ bool JSValIsChallengeMetadata(JSContext *aCx, const JS::Handle<JS::Value> aValue
   aRv = true;
   return true;
 }
-bool ChallengeMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMetadata& aRv) {
+bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4267,7 +4272,7 @@ bool ChallengeMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeParametersFromJSVal(aCx, propVal, aRv.mParameters))) {
+  if (NS_WARN_IF(!ChallengeParameters::FromJSVal(aCx, propVal, aRv.mParameters))) {
     return false;
   }
   
@@ -4282,7 +4287,7 @@ bool ChallengeMetadataFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
   return true;
 }
             
-bool ChallengeMetadataToJSVal(JSContext* aCx, const ChallengeMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -4308,7 +4313,7 @@ bool ChallengeMetadataToJSVal(JSContext* aCx, const ChallengeMetadata& aValue, J
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!ChallengeParametersToJSVal(aCx, aValue.mParameters, &memberVal2))) {
+  if (NS_WARN_IF(!ChallengeParameters::ToJSVal(aCx, aValue.mParameters, &memberVal2))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal2))) {
@@ -4329,7 +4334,7 @@ bool ChallengeMetadataToJSVal(JSContext* aCx, const ChallengeMetadata& aValue, J
   return true;
 }
 
-bool JSValIsApproveChallengeRequestArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ApproveChallengeRequestArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4341,7 +4346,7 @@ bool JSValIsApproveChallengeRequestArgs(JSContext *aCx, const JS::Handle<JS::Val
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4352,7 +4357,7 @@ bool JSValIsApproveChallengeRequestArgs(JSContext *aCx, const JS::Handle<JS::Val
   aRv = true;
   return true;
 }
-bool ApproveChallengeRequestArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveChallengeRequestArgs& aRv) {
+bool ApproveChallengeRequestArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveChallengeRequestArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4362,20 +4367,20 @@ bool ApproveChallengeRequestArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeMetadataFromJSVal(aCx, propVal, aRv.mChallenge))) {
+  if (NS_WARN_IF(!ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge))) {
     return false;
   }
   
   return true;
 }
             
-bool ApproveChallengeRequestArgsToJSVal(JSContext* aCx, const ApproveChallengeRequestArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ApproveChallengeRequestArgs::ToJSVal(JSContext* aCx, const ApproveChallengeRequestArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ChallengeMetadataToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
+  if (NS_WARN_IF(!ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -4386,7 +4391,8 @@ bool ApproveChallengeRequestArgsToJSVal(JSContext* aCx, const ApproveChallengeRe
   return true;
 }
 
-bool JSValIsChallengeAbortionReason(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+
+bool ChallengeAbortionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4409,7 +4415,7 @@ bool JSValIsChallengeAbortionReason(JSContext *aCx, const JS::Handle<JS::Value> 
   aRv = true;
   return true;
 }
-bool ChallengeAbortionReasonFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeAbortionReason& aRv) {
+bool ChallengeAbortionReason::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeAbortionReason& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4426,7 +4432,7 @@ bool ChallengeAbortionReasonFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   return true;
 }
             
-bool ChallengeAbortionReasonToJSVal(JSContext* aCx, const ChallengeAbortionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChallengeAbortionReason::ToJSVal(JSContext* aCx, const ChallengeAbortionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -4443,7 +4449,7 @@ bool ChallengeAbortionReasonToJSVal(JSContext* aCx, const ChallengeAbortionReaso
   return true;
 }
 
-bool JSValIsAbortChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool AbortChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4455,7 +4461,7 @@ bool JSValIsAbortChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4467,7 +4473,7 @@ bool JSValIsAbortChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeAbortionReason(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeAbortionReason::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4478,7 +4484,7 @@ bool JSValIsAbortChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   aRv = true;
   return true;
 }
-bool AbortChallengeArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AbortChallengeArgs& aRv) {
+bool AbortChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AbortChallengeArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4488,7 +4494,7 @@ bool AbortChallengeArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, A
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeMetadataFromJSVal(aCx, propVal, aRv.mChallenge))) {
+  if (NS_WARN_IF(!ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge))) {
     return false;
   }
   
@@ -4496,20 +4502,20 @@ bool AbortChallengeArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, A
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeAbortionReasonFromJSVal(aCx, propVal, aRv.mReason))) {
+  if (NS_WARN_IF(!ChallengeAbortionReason::FromJSVal(aCx, propVal, aRv.mReason))) {
     return false;
   }
   
   return true;
 }
             
-bool AbortChallengeArgsToJSVal(JSContext* aCx, const AbortChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool AbortChallengeArgs::ToJSVal(JSContext* aCx, const AbortChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ChallengeMetadataToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
+  if (NS_WARN_IF(!ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -4519,7 +4525,7 @@ bool AbortChallengeArgsToJSVal(JSContext* aCx, const AbortChallengeArgs& aValue,
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!ChallengeAbortionReasonToJSVal(aCx, aValue.mReason, &memberVal1))) {
+  if (NS_WARN_IF(!ChallengeAbortionReason::ToJSVal(aCx, aValue.mReason, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "reason", memberVal1))) {
@@ -4530,7 +4536,8 @@ bool AbortChallengeArgsToJSVal(JSContext* aCx, const AbortChallengeArgs& aValue,
   return true;
 }
 
-bool JSValIsCloseChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+
+bool CloseChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4542,7 +4549,7 @@ bool JSValIsCloseChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4553,7 +4560,7 @@ bool JSValIsCloseChallengeArgs(JSContext *aCx, const JS::Handle<JS::Value> aValu
   aRv = true;
   return true;
 }
-bool CloseChallengeArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CloseChallengeArgs& aRv) {
+bool CloseChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CloseChallengeArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4563,20 +4570,20 @@ bool CloseChallengeArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, C
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeMetadataFromJSVal(aCx, propVal, aRv.mChallenge))) {
+  if (NS_WARN_IF(!ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge))) {
     return false;
   }
   
   return true;
 }
             
-bool CloseChallengeArgsToJSVal(JSContext* aCx, const CloseChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool CloseChallengeArgs::ToJSVal(JSContext* aCx, const CloseChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ChallengeMetadataToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
+  if (NS_WARN_IF(!ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -4587,7 +4594,8 @@ bool CloseChallengeArgsToJSVal(JSContext* aCx, const CloseChallengeArgs& aValue,
   return true;
 }
 
-bool JSValIsChallengePayload(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+
+bool ChallengePayload::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4599,7 +4607,7 @@ bool JSValIsChallengePayload(JSContext *aCx, const JS::Handle<JS::Value> aValue,
   aRv = true;
   return true;
 }
-bool ChallengePayloadFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengePayload& aRv) {
+bool ChallengePayload::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengePayload& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4609,7 +4617,7 @@ bool ChallengePayloadFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Cha
   return true;
 }
             
-bool ChallengePayloadToJSVal(JSContext* aCx, const ChallengePayload& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChallengePayload::ToJSVal(JSContext* aCx, const ChallengePayload& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -4617,7 +4625,7 @@ bool ChallengePayloadToJSVal(JSContext* aCx, const ChallengePayload& aValue, JS:
   return true;
 }
 
-bool JSValIsChallengeMessage(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ChallengeMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4641,7 +4649,7 @@ bool JSValIsChallengeMessage(JSContext *aCx, const JS::Handle<JS::Value> aValue,
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengePayload(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengePayload::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4652,7 +4660,7 @@ bool JSValIsChallengeMessage(JSContext *aCx, const JS::Handle<JS::Value> aValue,
   aRv = true;
   return true;
 }
-bool ChallengeMessageFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMessage& aRv) {
+bool ChallengeMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4670,14 +4678,14 @@ bool ChallengeMessageFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Cha
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengePayloadFromJSVal(aCx, propVal, aRv.mPayload))) {
+  if (NS_WARN_IF(!ChallengePayload::FromJSVal(aCx, propVal, aRv.mPayload))) {
     return false;
   }
   
   return true;
 }
             
-bool ChallengeMessageToJSVal(JSContext* aCx, const ChallengeMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChallengeMessage::ToJSVal(JSContext* aCx, const ChallengeMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -4693,7 +4701,7 @@ bool ChallengeMessageToJSVal(JSContext* aCx, const ChallengeMessage& aValue, JS:
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!ChallengePayloadToJSVal(aCx, aValue.mPayload, &memberVal1))) {
+  if (NS_WARN_IF(!ChallengePayload::ToJSVal(aCx, aValue.mPayload, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal1))) {
@@ -4704,7 +4712,7 @@ bool ChallengeMessageToJSVal(JSContext* aCx, const ChallengeMessage& aValue, JS:
   return true;
 }
 
-bool JSValIsRespondToChallengeMessageArgs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool RespondToChallengeMessageArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4716,7 +4724,7 @@ bool JSValIsRespondToChallengeMessageArgs(JSContext *aCx, const JS::Handle<JS::V
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeMetadata(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4728,7 +4736,7 @@ bool JSValIsRespondToChallengeMessageArgs(JSContext *aCx, const JS::Handle<JS::V
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challengeMessage", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengeMessage(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengeMessage::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4739,7 +4747,7 @@ bool JSValIsRespondToChallengeMessageArgs(JSContext *aCx, const JS::Handle<JS::V
   aRv = true;
   return true;
 }
-bool RespondToChallengeMessageArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RespondToChallengeMessageArgs& aRv) {
+bool RespondToChallengeMessageArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RespondToChallengeMessageArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4749,7 +4757,7 @@ bool RespondToChallengeMessageArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeMetadataFromJSVal(aCx, propVal, aRv.mChallenge))) {
+  if (NS_WARN_IF(!ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge))) {
     return false;
   }
   
@@ -4757,20 +4765,20 @@ bool RespondToChallengeMessageArgsFromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "challengeMessage", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengeMessageFromJSVal(aCx, propVal, aRv.mChallengeMessage))) {
+  if (NS_WARN_IF(!ChallengeMessage::FromJSVal(aCx, propVal, aRv.mChallengeMessage))) {
     return false;
   }
   
   return true;
 }
             
-bool RespondToChallengeMessageArgsToJSVal(JSContext* aCx, const RespondToChallengeMessageArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool RespondToChallengeMessageArgs::ToJSVal(JSContext* aCx, const RespondToChallengeMessageArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ChallengeMetadataToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
+  if (NS_WARN_IF(!ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -4780,7 +4788,7 @@ bool RespondToChallengeMessageArgsToJSVal(JSContext* aCx, const RespondToChallen
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!ChallengeMessageToJSVal(aCx, aValue.mChallengeMessage, &memberVal1))) {
+  if (NS_WARN_IF(!ChallengeMessage::ToJSVal(aCx, aValue.mChallengeMessage, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challengeMessage", memberVal1))) {
@@ -4791,7 +4799,7 @@ bool RespondToChallengeMessageArgsToJSVal(JSContext* aCx, const RespondToChallen
   return true;
 }
 
-bool JSValIsChallengeMessageResponse(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool ChallengeMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4803,7 +4811,7 @@ bool JSValIsChallengeMessageResponse(JSContext *aCx, const JS::Handle<JS::Value>
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsChallengePayload(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ChallengePayload::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4814,7 +4822,7 @@ bool JSValIsChallengeMessageResponse(JSContext *aCx, const JS::Handle<JS::Value>
   aRv = true;
   return true;
 }
-bool ChallengeMessageResponseFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMessageResponse& aRv) {
+bool ChallengeMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMessageResponse& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4824,20 +4832,20 @@ bool ChallengeMessageResponseFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ChallengePayloadFromJSVal(aCx, propVal, aRv.mPayload))) {
+  if (NS_WARN_IF(!ChallengePayload::FromJSVal(aCx, propVal, aRv.mPayload))) {
     return false;
   }
   
   return true;
 }
             
-bool ChallengeMessageResponseToJSVal(JSContext* aCx, const ChallengeMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ChallengeMessageResponse::ToJSVal(JSContext* aCx, const ChallengeMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ChallengePayloadToJSVal(aCx, aValue.mPayload, &memberVal0))) {
+  if (NS_WARN_IF(!ChallengePayload::ToJSVal(aCx, aValue.mPayload, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal0))) {
@@ -4850,382 +4858,509 @@ bool ChallengeMessageResponseToJSVal(JSContext* aCx, const ChallengeMessageRespo
 
 
 
-void AgentProxy::Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs, std::function<void(nsString&)>&& aResolvedCb) {
+RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs) {
+  RefPtr<ManagerGetSigningKeyResult::Private> outPromise = new ManagerGetSigningKeyResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"manager"_ns;
   nsString method = u"getSigningKey"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!PreliminaryRequestContextToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!PreliminaryRequestContext::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!GetSigningKeyArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!GetSigningKeyArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    nsString out;
+    if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs, std::function<void(int32_t&)>&& aResolvedCb) {
+RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs) {
+  RefPtr<ManagerGetCredentialsMetadataResult::Private> outPromise = new ManagerGetCredentialsMetadataResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"manager"_ns;
   nsString method = u"getCredentialsMetadata"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!PreliminaryRequestContextToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!PreliminaryRequestContext::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!GetCredentialsMetadataArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!GetCredentialsMetadataArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    int32_t out;
+    if (NS_WARN_IF(!Int32FromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs, std::function<void(PartialKeyExchangeParametersFromScm&)>&& aResolvedCb) {
+RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs) {
+  RefPtr<ChannelGenerateKeyExchangeParametersResult::Private> outPromise = new ChannelGenerateKeyExchangeParametersResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"channel"_ns;
   nsString method = u"generateKeyExchangeParameters"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!GenerateKeyExchangeParametersArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!GenerateKeyExchangeParametersArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    PartialKeyExchangeParametersFromScm out;
+    if (NS_WARN_IF(!PartialKeyExchangeParametersFromScm::FromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs, std::function<void(ArrayBuffer&)>&& aResolvedCb) {
+RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs) {
+  RefPtr<ChannelEnableEndToEndEncryptionResult::Private> outPromise = new ChannelEnableEndToEndEncryptionResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"channel"_ns;
   nsString method = u"enableEndToEndEncryption"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!EnableEndToEndEncryptionArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!EnableEndToEndEncryptionArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    ArrayBuffer out;
+    if (NS_WARN_IF(!ArrayBufferFromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Channel_CloseChannel(RequestContext& aContext, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContext& aContext) {
+  RefPtr<ChannelCloseChannelResult::Private> outPromise = new ChannelCloseChannelResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"channel"_ns;
   nsString method = u"closeChannel"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   
 
@@ -5233,149 +5368,202 @@ void AgentProxy::Channel_CloseChannel(RequestContext& aContext, std::function<vo
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs, std::function<void(ELoginUserIntent&)>&& aResolvedCb) {
+RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs) {
+  RefPtr<LoginApproveOperationResult::Private> outPromise = new LoginApproveOperationResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"login"_ns;
   nsString method = u"approveOperation"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!ApproveOperationArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!ApproveOperationArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    ELoginUserIntent out;
+    if (NS_WARN_IF(!ELoginUserIntentFromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Login_CloseOpeation(RequestContextWithOperation& aContext, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<LoginCloseOpeationResult> AgentProxy::Login_CloseOpeation(RequestContextWithOperation& aContext) {
+  RefPtr<LoginCloseOpeationResult::Private> outPromise = new LoginCloseOpeationResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"login"_ns;
   nsString method = u"closeOpeation"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   
 
@@ -5383,70 +5571,94 @@ void AgentProxy::Login_CloseOpeation(RequestContextWithOperation& aContext, std:
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext, std::function<void(RecordMetadata&)>&& aResolvedCb) {
+RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext) {
+  RefPtr<LoginGetRecordMetadataResult::Private> outPromise = new LoginGetRecordMetadataResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"login"_ns;
   nsString method = u"getRecordMetadata"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   
 
@@ -5454,228 +5666,305 @@ void AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext, 
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    RecordMetadata out;
+    if (NS_WARN_IF(!RecordMetadata::FromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs) {
+  RefPtr<LoginUpdateMetadataResult::Private> outPromise = new LoginUpdateMetadataResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"login"_ns;
   nsString method = u"updateMetadata"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!UpdateMetadataArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!UpdateMetadataArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs) {
+  RefPtr<AccountCreationApproveTransitionToAuthOpResult::Private> outPromise = new AccountCreationApproveTransitionToAuthOpResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountCreation"_ns;
   nsString method = u"approveTransitionToAuthOp"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!ApproveTransitionToAuthOpArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!ApproveTransitionToAuthOpArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithOperation& aContext, std::function<void(nsTArray<UserAttribute>)>&& aResolvedCb) {
+RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithOperation& aContext) {
+  RefPtr<AccountCreationGetUserAttributesResult::Private> outPromise = new AccountCreationGetUserAttributesResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountCreation"_ns;
   nsString method = u"getUserAttributes"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   
 
@@ -5683,483 +5972,655 @@ void AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithOperation& 
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    nsTArray<UserAttribute> out;
+    if (NS_WARN_IF(!nsTArray_UserAttribute_FromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountCreation_AddField(RequestContextWithOperation& aContext, AddFieldArgs& aArgs, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(RequestContextWithOperation& aContext, AddFieldArgs& aArgs) {
+  RefPtr<AccountCreationAddFieldResult::Private> outPromise = new AccountCreationAddFieldResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountCreation"_ns;
   nsString method = u"addField"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!AddFieldArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!AddFieldArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountCreation_RejectFieldValue(RequestContextWithOperation& aContext, RejectFieldValueArgs& aArgs, std::function<void(Variant<nsString, ArrayBuffer>&)>&& aResolvedCb) {
+RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_RejectFieldValue(RequestContextWithOperation& aContext, RejectFieldValueArgs& aArgs) {
+  RefPtr<AccountCreationRejectFieldValueResult::Private> outPromise = new AccountCreationRejectFieldValueResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountCreation"_ns;
   nsString method = u"rejectFieldValue"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!RejectFieldValueArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!RejectFieldValueArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    Variant<nsString, ArrayBuffer> *out;
+    if (NS_WARN_IF(!Variant_nsString__ArrayBuffer_FromJSVal(aCx, aValue, &out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs) {
+  RefPtr<AccountAuthenticationApproveChallengeRequestResult::Private> outPromise = new AccountAuthenticationApproveChallengeRequestResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountAuthentication"_ns;
   nsString method = u"approveChallengeRequest"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!ApproveChallengeRequestArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!ApproveChallengeRequestArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs) {
+  RefPtr<AccountAuthenticationAbortChallengeResult::Private> outPromise = new AccountAuthenticationAbortChallengeResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountAuthentication"_ns;
   nsString method = u"abortChallenge"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!AbortChallengeArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!AbortChallengeArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs, std::function<void(void*)>&& aResolvedCb) {
+RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs) {
+  RefPtr<AccountAuthenticationCloseChallengeResult::Private> outPromise = new AccountAuthenticationCloseChallengeResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountAuthentication"_ns;
   nsString method = u"closeChallenge"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!CloseChallengeArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!CloseChallengeArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    void* out = nullptr;
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
-void AgentProxy::AccountAuthentication_RespondToChallengeMessage(RequestContextWithOperation& aContext, RespondToChallengeMessageArgs& aArgs, std::function<void(ChallengeMessageResponse&)>&& aResolvedCb) {
+RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::AccountAuthentication_RespondToChallengeMessage(RequestContextWithOperation& aContext, RespondToChallengeMessageArgs& aArgs) {
+  RefPtr<AccountAuthenticationRespondToChallengeMessageResult::Private> outPromise = new AccountAuthenticationRespondToChallengeMessageResult::Private(__func__);
   ErrorResult rv;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   mozilla::dom::AutoJSAPI jsapi;
   if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JSContext* cx = jsapi.cx();
 
   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
   if (NS_WARN_IF(rv.Failed())) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
   if (NS_WARN_IF(!rMsgData)) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
   JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   nsString group = u"accountAuthentication"_ns;
   nsString method = u"respondToChallengeMessage"_ns;
 
   JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
   JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
   JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
 
   JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperationToJSVal(cx, aContext, &vReqCx))) {
-    return;
+  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
   JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!RespondToChallengeMessageArgsToJSVal(cx, aArgs, &vReqArgs))) {
-    return;
+  if (NS_WARN_IF(!RespondToChallengeMessageArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
   if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  
 
   JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
 
   RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
   if (rv.Failed()) {
-    return;
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
   }
-  return;
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    ChallengeMessageResponse out;
+    if (NS_WARN_IF(!ChallengeMessageResponse::FromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
 }
 
 }  // namespace mozilla::berytus

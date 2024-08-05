@@ -15,7 +15,7 @@ var EOpeationType;
     EOpeationType[EOpeationType["Registration"] = 1] = "Registration";
     EOpeationType[EOpeationType["Authentication"] = 2] = "Authentication";
 })(EOpeationType || (EOpeationType = {}));
-var ELoginUserIntent;
+export var ELoginUserIntent;
 (function (ELoginUserIntent) {
     ELoginUserIntent[ELoginUserIntent["PendingDeclaration"] = 0] = "PendingDeclaration";
     ELoginUserIntent[ELoginUserIntent["Authenticate"] = 1] = "Authenticate";
@@ -63,4 +63,3 @@ var EMetadataStatus;
     EMetadataStatus[EMetadataStatus["Retired"] = 2] = "Retired";
 })(EMetadataStatus || (EMetadataStatus = {}));
 ;
-export {};

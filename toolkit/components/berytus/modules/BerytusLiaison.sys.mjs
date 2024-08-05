@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 import { PublicRequestHandler, SequentialRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
+import { NativeManager } from "resource://gre/modules/BerytusNativeManager.sys.mjs";
 class Liaison {
     #managers = {};
     get managers() {
@@ -79,6 +80,8 @@ class SecretManagerInfo {
         return this.#type;
     }
 }
-export const liaison = new Liaison();
+const liaison = new Liaison();
+liaison.registerManager('built-in', 'Built-in Manager', ESecretManagerType.Native, new NativeManager());
+export { liaison };
 // @ts-ignore
 SecretManagerInfo.prototype.QueryInterface = ChromeUtils.generateQI(["mozIBerytusSecretManagerInfo"]);

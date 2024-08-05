@@ -29,6 +29,7 @@ export class BerytusAgentTargetParent extends JSWindowActorParent {
             throw new Error("Received malformed message data; " +
                 `method is not valid (${method}).`);
         }
-        return fn.apply(target, [requestContext, requestArgs]);
+        const result = await fn.apply(target, [requestContext, requestArgs]);
+        return result;
     }
 }

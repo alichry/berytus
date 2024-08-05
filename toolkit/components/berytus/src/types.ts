@@ -103,7 +103,7 @@ export interface RequestContextWithOperation extends RequestContext {
 
 export type CredentialsMetadata = number;
 
-enum ELoginUserIntent {
+export enum ELoginUserIntent {
     PendingDeclaration = 0,
     Authenticate = 1,
     Register = 2

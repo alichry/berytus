@@ -677,7 +677,7 @@ ${this.exportToJsValFunction().functionImpl}`;
         return `${this.symbol}`;
     }
     atDefinition(): string {
-        return `${this.symbol}`;
+        return `${this.symbol}*`;
     }
     atStruct(): string {
         return `${this.symbol}*`;
@@ -1022,15 +1022,15 @@ class StructType extends TypeSymbol implements IType {
         const otherMembers = this.members.filter(({ type }) => !(type instanceof VariantType));
         return `struct ${this.symbol} {
   ${otherMembers.map(m => m.toString() + ';').join("\n  ")}
-  ${variantMembers.map(m => m.toString() + ' = nullptr').join(";\n  ")};
+  ${variantMembers.map(m => m.toString() + ' = nullptr;').join("\n  ")}
   ${variantMembers.length > 0 ? `
   ~${this.symbol}() {
     ${variantMembers.map(({ member }) => `delete ${member.atStruct()};`).join("\n")}
   }` : ''}
-};
-${this.isJsValValidFunction().functionDef}
-${this.importFromJsValFunction().functionDef}
-${this.exportToJsValFunction().functionDef}`;
+  ${this.isJsValValidFunction().functionDef}
+  ${this.importFromJsValFunction().functionDef}
+  ${this.exportToJsValFunction().functionDef}
+};`;
     }
 
     get implementation() {
@@ -1053,12 +1053,12 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIs' + this.symbol;
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = 'IsJSValueValid';
+        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
         return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1085,12 +1085,12 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol + 'FromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        const functionName = 'FromJSVal';
+        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv`;
         return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1111,12 +1111,12 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol + 'ToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = 'ToJSVal';
+        const params = `JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv`;
         return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   ${this.members.map(({ type, member }, i) => `
@@ -1139,17 +1139,13 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 }
 
-class MethodDef implements IDef {
+abstract class MethodDef implements IDef {
     name: string;
-    group: string;
-    method: string;
     parameters: Array<ArgumentMember>;
     returnType: IType;
 
-    constructor(group: string, method: string, parameters: Array<ArgumentMember>, returnType: IType) {
-        this.group = group;
-        this.method = method;
-        this.name = capitalise(this.group) + "_" + capitalise(this.method);
+    constructor(name: string, parameters: Array<ArgumentMember>, returnType: IType) {
+        this.name = name;
         this.parameters = parameters;
         this.returnType = returnType;
     }
@@ -1162,8 +1158,220 @@ class MethodDef implements IDef {
         return `${this.returnType.atReturn()} ${this.name}(${this.parameters.map(p => p.toString()).join(', ')});`
     }
 
+    abstract get implementation(): string;
+}
+
+class MozPromiseType extends TypeSymbol implements IType {
+    resolveType: IType;
+    rejectType: IType;
+    isExclusive: boolean;
+
+    constructor(alias: string, resolveType: IType, rejectType: IType, isExclusive = true) {
+        super(alias);
+        this.resolveType = resolveType;
+        this.rejectType = rejectType;
+        this.isExclusive = isExclusive;
+    }
+
+    get id() {
+        return this.symbol;
+    }
+
+    get definition() {
+        return `using ${this.symbol} = MozPromise<${this.resolveType.atDefinition()}, ${this.rejectType.atDefinition()}, ${this.isExclusive ? 'true' : 'false'}>;`;
+    }
+
     get implementation() {
         return undefined;
+    }
+
+    atArgument(): string {
+        return `RefPtr<${this.symbol}>`;
+    }
+    atReturn(): string {
+        return `RefPtr<${this.symbol}>`;
+    }
+    atStruct(): string {
+        return `RefPtr<${this.symbol}>`;
+    }
+    atDefinition(): string {
+        return `RefPtr<${this.symbol}>`;
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        throw new Error("MozPromise should not be wrapped by a JS Value.");
+    }
+    importFromJsValFunction(): GeneratedFunction {
+        throw new Error("MozPromise should not be wrapped by a JS Value.");
+    }
+    exportToJsValFunction(): GeneratedFunction {
+        throw new Error("MozPromise should not be wrapped by a JS Value.");
+    }
+}
+
+class NsresultType extends BasicType implements IType {
+
+    constructor() {
+        super('nsresult');
+    }
+
+    get id() {
+        return this.symbol;
+    }
+
+    get definition(): string {
+        return '';
+    }
+
+    get implementation() {
+        return undefined;
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        throw new Error("TODO(berytus): Consider a pathway for error handling.");
+    }
+    importFromJsValFunction(): GeneratedFunction {
+        throw new Error("TODO(berytus): Consider a pathway for error handling.");
+    }
+    exportToJsValFunction(): GeneratedFunction {
+        throw new Error("TODO(berytus): Consider a pathway for error handling.");
+    }
+}
+
+class RequestHandlerMethod extends MethodDef implements IDef {
+    className: string;
+    group: string;
+    method: string;
+    declare returnType: MozPromiseType;
+
+    constructor(className: string, group: string, method: string, parameters: Array<ArgumentMember>, outType: IType) {
+        super(
+            capitalise(group) + "_" + capitalise(method),
+            parameters,
+            new MozPromiseType(`${capitalise(group)}${capitalise(method)}Result`, outType, new NsresultType(), true)
+        );
+        this.className = className;
+        this.group = group;
+        this.method = method;
+
+    }
+
+    get implementation() {
+        const { group, method, parameters, returnType, name, className } = this;
+        if (! parameters || parameters.length === 0 ) {
+            return ``;
+        }
+        return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) {
+  RefPtr<${this.returnType.symbol}::Private> outPromise = new ${this.returnType.symbol}::Private(__func__);
+  ErrorResult rv;
+  nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
+  if (NS_WARN_IF(!inner)) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
+  if (NS_WARN_IF(!wgc)) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  mozilla::dom::AutoJSAPI jsapi;
+  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  JSContext* cx = jsapi.cx();
+
+  RefPtr<mozilla::dom::JSWindowActorChild> actor =
+    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
+  if (NS_WARN_IF(rv.Failed())) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
+  if (NS_WARN_IF(!rMsgData)) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  JS::Rooted<JSString*> rManagerId(
+    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
+  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
+  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  nsString group = u"${group}"_ns;
+  nsString method = u"${method}"_ns;
+
+  JS::Rooted<JSString*> rGroup(
+    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
+  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
+  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  JS::Rooted<JSString*> jMethod(
+    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
+  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
+  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+
+  JS::Rooted<JS::Value> vReqCx(cx);
+  if (NS_WARN_IF(!${parameters[0].type.exportToJsValFunction().functionName}(cx, aContext, &vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+  ${ parameters[1] ? `\
+JS::Rooted<JS::Value> vReqArgs(cx);
+  if (NS_WARN_IF(!${parameters[1].type.exportToJsValFunction().functionName}(cx, aArgs, &vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }` : ``}
+
+  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
+
+  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
+  if (rv.Failed()) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    return outPromise;
+  }
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    ${this.returnType.resolveType instanceof VoidType ? `\
+void* out = nullptr;` : `\
+${this.returnType.resolveType.symbol} ${this.returnType.resolveType instanceof VariantType ? '*' : ''}out;
+    if (NS_WARN_IF(!${this.returnType.resolveType.importFromJsValFunction().functionName}(aCx, aValue, ${this.returnType.resolveType instanceof VariantType ? '&' : ''}out))) {
+      outPromise->Reject(NS_ERROR_FAILURE, __func__);
+      return;
+    }
+    `}
+    outPromise->Resolve(std::move(out), __func__);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  };
+  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  return outPromise;
+}`;
     }
 }
 
@@ -1191,20 +1399,20 @@ class AgentProxyGenerator {
         group: string,
         method: string,
         parameters: Array<ArgumentMember>,
-        returnType: IType
+        outType: IType
     ) {
-        const cb =  new CallbackType([returnType]);
-        const cbName = `ResolvedCallbackType${capitalise(group)}${capitalise(method)}`;
-        this.defs.push(
-            cb
+        const methodType = new RequestHandlerMethod(
+            AgentProxyGenerator.className,
+            group,
+            method,
+            [...parameters],
+            outType
         );
         this.defs.push(
-            new MethodDef(
-                group,
-                method,
-                [...parameters, new ArgumentMember(cb, new MemberSymbol( 'resolvedCb'))],
-                new VoidType()
-            )
+            methodType.returnType
+        );
+        this.defs.push(
+            methodType
         );
     }
 
@@ -1455,6 +1663,7 @@ class AgentProxyGenerator {
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/JSWindowActorChild.h"
 #include "mozilla/dom/Promise.h"
+#include "mozilla/dom/Promise-inl.h"
 
 namespace mozilla::berytus {
 
@@ -1473,86 +1682,7 @@ ${AgentProxyGenerator.className}::~${AgentProxyGenerator.className}() {}
 
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(d => d.implementation).join("\n")}
 
-${this.defs.filter(d => d instanceof MethodDef).map(({ group, method, parameters, returnType, name, definition }) =>
-`${returnType.atReturn()} ${AgentProxyGenerator.className}::${name}(${parameters.map(p => p.toString()).join(', ')}) {
-  ErrorResult rv;
-  nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
-  if (NS_WARN_IF(!inner)) {
-    return;
-  }
-
-  mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
-  if (NS_WARN_IF(!wgc)) {
-    return;
-  }
-
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    return;
-  }
-
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-      wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    return;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    return;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-      cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    return;
-  }
-
-  nsString group = u"${group}"_ns;
-  nsString method = u"${method}"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-      cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    return;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-      cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    return;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!${parameters[0].type.exportToJsValFunction().functionName}(cx, aContext, &vReqCx))) {
-    return;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    return;
-  }
-  ${! (parameters[1].type instanceof CallbackType) ? `
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!${parameters[1].type.exportToJsValFunction().functionName}(cx, aArgs, &vReqArgs))) {
-    return;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    return;
-  }
-  ` : ``}
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    return;
-  }
-  return;
-}`).join("\n")}
+${this.defs.filter(d => d instanceof MethodDef).map((m) => `${m.implementation}`).join("\n")}
 
 }  // namespace mozilla::berytus`;
     }
@@ -1620,9 +1750,6 @@ export const generateDomProxy = async () => {
             parameters.push(typedMember);
         }
         if (source === "returnType") {
-            // last item in the method, add the
-            // callback and method defs
-
             generator.addMethod(
                 group,
                 method.name,

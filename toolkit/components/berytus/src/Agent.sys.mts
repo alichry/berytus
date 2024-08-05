@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { CredentialsMetadata, GetCredentialsMetadataArgs, IUnderlyingRequestHandler } from "./types";
+import type { CredentialsMetadata, GetCredentialsMetadataArgs, IPublicRequestHandler } from "./types";
 import type { Liaison } from './Liaison.sys.mjs';
-import { IsolatedRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 
 let lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
@@ -42,15 +41,33 @@ Agent.collectCredentialsMetadata = async function (
     return entries;
 }
 
-class AgentTarget extends IsolatedRequestHandler
-    implements IUnderlyingRequestHandler {
+class AgentTarget implements IPublicRequestHandler {
     #liaison: Liaison;
     #managerId: string;
 
     constructor(liaison: Liaison, managerId: string) {
-        super(liaison.getRequestHandler(managerId));
         this.#liaison = liaison;
         this.#managerId = managerId;
+    }
+
+    get #requestHandler() {
+        return this.#liaison.getRequestHandler(this.#managerId);
+    }
+
+    get manager()  {
+        return this.#requestHandler.manager;
+    }
+    get channel() {
+        return this.#requestHandler.channel;
+    }
+    get login() {
+        return this.#requestHandler.login;
+    }
+    get accountCreation() {
+        return this.#requestHandler.accountCreation;
+    }
+    get accountAuthentication() {
+        return this.#requestHandler.accountAuthentication;
     }
 }
 

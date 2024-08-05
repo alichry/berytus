@@ -50,9 +50,10 @@ export class BerytusAgentTargetParent extends JSWindowActorParent {
                 `method is not valid (${method}).`
             );
         }
-        return fn.apply(
+        const result = await fn.apply(
             target,
             [requestContext, requestArgs]
         );
+        return result;
     }
 }

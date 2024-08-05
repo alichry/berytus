@@ -1,7 +1,6 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-import { IsolatedRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 let lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
     liaison: "resource://gre/modules/BerytusLiaison.sys.mjs"
@@ -24,12 +23,29 @@ Agent.collectCredentialsMetadata = async function (innerWindowId, args) {
     }
     return entries;
 };
-class AgentTarget extends IsolatedRequestHandler {
+class AgentTarget {
     #liaison;
     #managerId;
     constructor(liaison, managerId) {
-        super(liaison.getRequestHandler(managerId));
         this.#liaison = liaison;
         this.#managerId = managerId;
+    }
+    get #requestHandler() {
+        return this.#liaison.getRequestHandler(this.#managerId);
+    }
+    get manager() {
+        return this.#requestHandler.manager;
+    }
+    get channel() {
+        return this.#requestHandler.channel;
+    }
+    get login() {
+        return this.#requestHandler.login;
+    }
+    get accountCreation() {
+        return this.#requestHandler.accountCreation;
+    }
+    get accountAuthentication() {
+        return this.#requestHandler.accountAuthentication;
     }
 }
