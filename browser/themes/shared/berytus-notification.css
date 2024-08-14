@@ -8,6 +8,23 @@
     --list-item-checked-bgcolor: color-mix(in srgb, var(--button-primary-bgcolor) 6%, transparent);
     --list-item-checked-border: color-mix(in srgb, var(--button-primary-bgcolor) 20%, transparent);
 
+    /**
+     * Ported and adapted from Mozilla v117.01a;
+     * --checkbox-unchecked-bgcolor and others
+     * seems to have been removed. We bring
+     * them back here, in adapted form, for now.
+     */
+    --checkbox-unchecked-bgcolor: var(--panel-background);
+    --checkbox-border-color: ButtonFace;
+    --checkbox-checked-bgcolor: SelectedItem;
+    --checkbox-checked-hover-bgcolor: SelectedItem;
+    --checkbox-unchecked-hover-bgcolor: var(--checkbox-checked-hover-bgcolor);
+    --checkbox-checked-color: var(--primary-button-text-color);
+    --checkbox-checked-border-color: var(--checkbox-border-color);
+    --checkbox-unchecked-active-bgcolor: var(--checkbox-checked-bgcolor);
+    --checkbox-checked-active-bgcolor: var(--checkbox-checked-bgcolor);
+    /* $ */
+
     /* --list-item-checked-bgcolor: #4a044a;
     --list-item-checked-border: #9d0c80; */
 }
@@ -79,11 +96,13 @@
     background-color: var(--checkbox-unchecked-bgcolor);
     background-image: url("chrome://global/skin/icons/radio.svg");
     border: 1px solid var(--checkbox-border-color);
-    border-radius: 100%;
+    border-radius: 20%;
     align-self: center;
     outline: none;
     -moz-context-properties: fill;
     fill: transparent;
+    width: 18px;
+    height: 18px;
 }
 
 .berytus-secret-manager-list-item-radio:focus-visible {
@@ -116,7 +135,7 @@
     -moz-context-properties: fill, fill-opacity;
     fill: currentColor;
     fill-opacity: 0.6;
-    clip-path: circle(50%);
+    /* clip-path: circle(50%); */
     width: 32px;
     height: 32px;
 }

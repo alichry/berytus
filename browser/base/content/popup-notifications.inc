@@ -202,7 +202,7 @@
           </div>
           <div class="berytus-secret-manager-list-item-stretch-till-end" />
           <div class="berytus-secret-manager-list-item-metadata">
-            <html:img class="berytus-secret-manager-list-item-metadata-spinner-icon" src="chrome://global/content/icons/authRealmSpinner.gif" />
+            <html:img class="berytus-secret-manager-list-item-metadata-spinner-icon" src="chrome://content/global/icons/berytusSpinner.gif" />
             <html:img class="berytus-secret-manager-list-item-metadata-error-icon" src="chrome://global/skin/icons/warning.svg" hidden="true" />
             <div class="berytus-secret-manager-list-item-metadata-nb-accounts-container" hidden="true">
               <html:img class="berytus-secret-manager-list-item-metadata-nb-accounts-icon" src="chrome://browser/skin/fxa/avatar-empty.svg" /> <!-- or chrome://browser/skin/fxa/avatar-empty.svg -->

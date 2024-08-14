@@ -23,3 +23,5 @@ XPIDL_SOURCES += [
 	"idl/mozIBerytusLiaison.idl",
     "idl/mozIBerytusPromptService.idl"
 ]
+
+JAR_MANIFESTS += ["jar.mn"]
