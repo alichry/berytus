@@ -9,7 +9,8 @@
 			"resource://gre/modules/BerytusParentUtils.sys.mjs": ["src/ParentUtils.sys.mts"],
 			"resource://gre/modules/BerytusPromptService.sys.mjs": ["src/PromptService.sys.mts"],
 			"resource://gre/modules/BerytusPromptServiceChildProxy.sys.mjs": ["src/PromptServiceChildProxy.sys.mts"],
-			"resource://gre/modules/BerytusRequestHandler.sys.mjs": ["src/RequestHandler.sys.mts"]
+			"resource://gre/modules/BerytusRequestHandler.sys.mjs": ["src/RequestHandler.sys.mts"],
+			"resource://gre/modules/XPCOMUtils.sys.mjs": ["build/paths/types/gre/modules/XPCOMUtils.d.ts"]
         }
     }
 }

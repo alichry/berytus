@@ -49,10 +49,11 @@ export const renameModules = async (
 
 export const getFilesByExtension = async (
     dir: string,
-    ext: string
+    ext: string,
+    recursive = false
 ): Promise<Array<string>> => {
     const res: Array<string> = [];
-    const files = await readdir(dir);
+    const files = await readdir(dir, { recursive });
     for (const file of files) {
         if (file.endsWith(ext)) {
             res.push(file);

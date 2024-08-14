@@ -6,6 +6,7 @@ import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { constructAnyPathEntries } from './construct-any-paths.js';
 import { constructBerytusPathEntries } from './construct-berytus-paths.js';
+import { constructMozPathEntries } from './construct-moz-paths.js';
 
 export interface PathEntry {
     path: string;
@@ -15,8 +16,9 @@ export interface PathEntry {
 const run = async () => {
     const anyPaths = await constructAnyPathEntries();
     const berytusPaths = await constructBerytusPathEntries();
+    const mozPaths = await constructMozPathEntries();
 
-    const paths = [...berytusPaths, ...anyPaths].map(({ path, target}) => {
+    const paths = [...berytusPaths, ...anyPaths, ...mozPaths].map(({ path, target}) => {
         return `"${path}": ${JSON.stringify(target)}`;
     });
 

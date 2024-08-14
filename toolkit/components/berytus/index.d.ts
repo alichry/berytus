@@ -72,13 +72,6 @@ declare global {
             imports: M
         ): asserts output is O & { [k in keyof M]: ModuleMap[M[k]] extends Record<k, infer P> ? P : never }
     }
-    interface IXPCOMUtils {
-        defineLazyGetter<O, K extends string, F extends () => any>(
-            output: O,
-            outputKey: K,
-            Fn: F
-        ): asserts output is O & { [_ in K]: ReturnType<F> }
-    }
     interface IComponentsUtils {
         cloneInto(obj: object, cloneScope: object, options?: unknown): object;
     }
