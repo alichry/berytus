@@ -189,6 +189,9 @@ let JSWINDOWACTORS = {
     parent: {
       esModuleURI: "resource://gre/actors/BerytusAgentTargetParent.sys.mjs",
     },
+    child: {
+      esModuleURI: "resource://gre/actors/BerytusAgentTargetChild.sys.mjs",
+    },
     includeChrome: false,
     allFrames: false,
   },

@@ -6,10 +6,12 @@
 
 EXPORTS.mozilla.berytus += [
     "AgentProxy.h",
+    "AgentProxyUtils.h",
 ]
 
 UNIFIED_SOURCES += [
     "AgentProxy.cpp",
+    "AgentProxyUtils.cpp",
 ]
 
 include("/ipc/chromium/chromium-config.mozbuild")

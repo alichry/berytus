@@ -167,6 +167,71 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 }
 
+class NumberType extends BasicType implements IType {
+
+    constructor() {
+        super('double');
+    }
+
+    get definition(): string {
+        return `${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`
+    }
+
+    get implementation() {
+        return `${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = 'JSValIsNumber';
+        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  aRv = aValue.isNumber() || aValue.isNumber();
+  return true;
+}`
+        }
+    }
+
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = 'NumberFromJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  if (aValue.isInt32()) {
+    aRv = static_cast<double>(aValue.toInt32());
+    return true;
+  }
+  if (NS_WARN_IF(!aValue.isNumber())) {
+    return false;
+  }
+  aRv = aValue.toNumber();
+  return true;
+}`
+        }
+    }
+
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = 'NumberToJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  aRv.setNumber(aValue);
+  return true;
+}`
+        }
+    }
+}
+
 class VoidType extends TypeSymbol implements IType {
     constructor() {
         super('void');
@@ -369,12 +434,20 @@ ${this.exportToJsValFunction().functionImpl}`;
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  JSString* str = aValue.toString();
   JS::AutoCheckCannotGC nogc;
+  JSString* str = aValue.toString();
   size_t len;
-  const char16_t* buf =
-    JS_GetTwoByteStringCharsAndLength(aCx, nogc, str, &len);
-  aRv = nsString(buf, len);
+  if (!JS::StringHasLatin1Chars(str)) {
+    const char16_t* buf =
+      JS_GetTwoByteStringCharsAndLength(aCx, nogc, str, &len);
+    len = JS::GetStringLength(str);
+    aRv.Assign(buf, len);
+    return true;
+  }
+  // Latin1/OneByte JSString.
+  const JS::Latin1Char* buf =
+    JS_GetLatin1StringCharsAndLength(aCx, nogc, str, &len);
+  CopyASCIItoUTF16(Span(reinterpret_cast<const char*>(buf), len), aRv);
   return true;
 }`
         }
@@ -1020,7 +1093,7 @@ class StructType extends TypeSymbol implements IType {
     get definition() {
         const variantMembers = this.members.filter(({ type }) => type instanceof VariantType);
         const otherMembers = this.members.filter(({ type }) => !(type instanceof VariantType));
-        return `struct ${this.symbol} {
+        return `struct ${this.symbol} : IJSWord<${this.symbol}> {
   ${otherMembers.map(m => m.toString() + ';').join("\n  ")}
   ${variantMembers.map(m => m.toString() + ' = nullptr;').join("\n  ")}
   ${variantMembers.length > 0 ? `
@@ -1238,6 +1311,116 @@ class NsresultType extends BasicType implements IType {
     }
 }
 
+class FailureType extends BasicType implements IType {
+    constructor() {
+        super('Failure');
+    }
+    get definition(): string {
+        return `\
+#define BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE nsCString("An error has occurred"_ns)
+#define BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME nsCString("An error has occurred"_ns)
+struct ${this.symbol} {
+  RefPtr<mozilla::dom::Exception> mException;
+
+  ${this.symbol}() : ${this.symbol}(NS_ERROR_FAILURE) {}
+  ${this.symbol}(nsresult res) : mException(new mozilla::dom::Exception(BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE, NS_ERROR_FAILURE, BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME)) {}
+
+  ${this.toErrorResultFunction().functionDef}
+  ${this.importFromJsValFunction().functionDef}
+};`
+    }
+
+    get implementation() {
+        return `${this.toErrorResultFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}`;
+    }
+
+    toErrorResultFunction(): GeneratedFunction {
+        const functionName = 'ToErrorResult';
+        return {
+            get functionName(): string {
+                throw new Error(
+                    'functionName of Failure.ErrorResult should not be accessed'
+                );
+            },
+            functionDef: `ErrorResult ${functionName}() const;`,
+            functionImpl: `ErrorResult ${this.symbol}::${functionName}() const {
+  ErrorResult rv;
+  nsresult result = mException->GetResult();
+    const nsCString& msg = mException->GetMessageMoz();
+
+  if (result == NS_ERROR_ABORT) {
+    rv.ThrowAbortError(
+      msg.Length() == 0
+        ? "Request aborted"_ns
+        : msg
+    );
+  } else {
+    rv.ThrowInvalidStateError(
+      msg.Length() == 0
+        ? "Request failed"_ns
+        : msg
+    );
+  }
+  return rv;
+}`
+        }
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        throw new Error("FailureType should not provide a IsJSValValid fnc");
+    }
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = 'FromJSVal';
+        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  nsresult result = NS_ERROR_FAILURE;
+  nsIStackFrame* stackFrame = nullptr;
+  nsISupports* data = nullptr;
+  nsCString msg = BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE;
+  nsCString excpName = BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME;
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  if (NS_WARN_IF(js::IsCrossCompartmentWrapper(&aValue.toObject()))) {
+    return false;
+  }
+  JS::RootedObject errorObj(aCx, &aValue.toObject());
+  JS::RootedValue messageVal(aCx);
+  JS::RootedValue resultVal(aCx);
+  if (JS_GetProperty(aCx, errorObj, "result", &resultVal)) {
+    if (resultVal.isInt32()) {
+      result = nsresult(resultVal.toInt32());
+    } else if (resultVal.isDouble()) {
+      result = nsresult(resultVal.toDouble());
+    }
+  }
+  if (JS_GetProperty(aCx, errorObj, "message", &messageVal)) {
+    nsString twoByteMsg;
+    if (NS_WARN_IF(!StringFromJSVal(aCx, messageVal, twoByteMsg))) {
+      return false;
+    }
+    // additional copy... TODO(berytus): possibly optimise this.
+    msg = NS_ConvertUTF16toUTF8(twoByteMsg);
+  }
+  aRv.mException =
+      new mozilla::dom::Exception(msg,
+                                  result,
+                                  excpName,
+                                  stackFrame,
+                                  data);
+  return true;
+}`
+        }
+    }
+    exportToJsValFunction(): GeneratedFunction {
+        throw new Error("FailureType should not be exportable to JS");
+    }
+}
+
 class RequestHandlerMethod extends MethodDef implements IDef {
     className: string;
     group: string;
@@ -1248,7 +1431,7 @@ class RequestHandlerMethod extends MethodDef implements IDef {
         super(
             capitalise(group) + "_" + capitalise(method),
             parameters,
-            new MozPromiseType(`${capitalise(group)}${capitalise(method)}Result`, outType, new NsresultType(), true)
+            new MozPromiseType(`${capitalise(group)}${capitalise(method)}Result`, outType, new FailureType(), true)
         );
         this.className = className;
         this.group = group;
@@ -1263,113 +1446,61 @@ class RequestHandlerMethod extends MethodDef implements IDef {
         }
         return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) {
   RefPtr<${this.returnType.symbol}::Private> outPromise = new ${this.returnType.symbol}::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"${group}"_ns;
-  nsString method = u"${method}"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!${parameters[0].type.exportToJsValFunction().functionName}(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  ${ parameters[1] ? `\
-JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!${parameters[1].type.exportToJsValFunction().functionName}(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }` : ``}
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"${group}"_ns,
+                                            u"${method}"_ns,
+                                            aContext,
+                                            ${parameters[1] ? '&aArgs' : 'static_cast<PreliminaryRequestContext*>(nullptr)'},
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ${this.returnType.resolveType instanceof VoidType ? `\
-void* out = nullptr;` : `\
+void* out = nullptr;
+    outPromise->Resolve(out, __func__);` : `\
 ${this.returnType.resolveType.symbol} ${this.returnType.resolveType instanceof VariantType ? '*' : ''}out;
     if (NS_WARN_IF(!${this.returnType.resolveType.importFromJsValFunction().functionName}(aCx, aValue, ${this.returnType.resolveType instanceof VariantType ? '&' : ''}out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     `}
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }`;
     }
@@ -1408,6 +1539,13 @@ class AgentProxyGenerator {
             [...parameters],
             outType
         );
+        // add MozPromise's reject type type definition (FailureType)
+        this.defs.push(
+            methodType.returnType.rejectType
+        );
+        // -- MozPromise's resolve type is `outType` and the caller
+        // of `addMethod` has already added its definition.
+        // add MozPromise alias:
         this.defs.push(
             methodType.returnType
         );
@@ -1534,7 +1672,7 @@ class AgentProxyGenerator {
                 "Wrong type passed to defineNumber"
             );
         }
-        const numType = new Int32Type();
+        const numType = new NumberType();
         this.defs.push(numType);
         if (parsedType.optional) {
             const maybeType = new MaybeType(numType);
@@ -1680,6 +1818,126 @@ ${AgentProxyGenerator.className}::${AgentProxyGenerator.className}(
 
 ${AgentProxyGenerator.className}::~${AgentProxyGenerator.className}() {}
 
+template <typename W1, typename W2, typename, typename>
+already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
+                                                         const nsAString & aGroup,
+                                                         const nsAString &aMethod,
+                                                         const W1& aReqCx,
+                                                         const W2* aReqArgs,
+                                                         ErrorResult& aErr) {
+  MOZ_ASSERT(!aErr.Failed());
+  nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
+  if (NS_WARN_IF(!inner)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
+  if (NS_WARN_IF(!wgc)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  RefPtr<mozilla::dom::JSWindowActorChild> actor =
+    wgc->GetActor(aCx, "BerytusAgentTarget"_ns, aErr);
+  if (NS_WARN_IF(aErr.Failed())) {
+    return nullptr;
+  }
+
+  // MOZ_ASSERT(actor->GetWrapper());
+  JS::Rooted<JSObject*> actorJsImpl(aCx, actor->GetWrapper());
+  JSAutoRealm ar(aCx, actorJsImpl);
+
+  JS::Rooted<JS::Value> sendQuery(aCx);
+  if (NS_WARN_IF(!JS_GetProperty(aCx, actorJsImpl, "sendQuery", &sendQuery))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!sendQuery.isObject())) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!JS::IsCallable(&sendQuery.toObject()))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  JS::Rooted<JS::Value> msgName(aCx, JS::StringValue(JS_NewUCStringCopyZ(aCx, u"BerytusAgentTarget:invokeRequestHandler")));
+  JS::Rooted<JS::Value> promiseVal(aCx);
+  JS::RootedVector<JS::Value> args(aCx);
+  if (NS_WARN_IF(!args.append(msgName))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  JS::Rooted<JSObject*> msgData(aCx, JS_NewPlainObject(aCx));
+  if (NS_WARN_IF(!msgData)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  JS::Rooted<JS::Value> managerId(aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, mManagerId.get(), mManagerId.Length())));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "managerId", managerId))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  const char16_t* groupBuf;
+  aGroup.GetData(&groupBuf);
+  JS::Rooted<JS::Value> group(
+    aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, groupBuf, aGroup.Length())));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "group", group))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  const char16_t* methodBuf;
+  aMethod.GetData(&methodBuf);
+  JS::Rooted<JS::Value> method(
+    aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, methodBuf, aMethod.Length())));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "method", method))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  JS::Rooted<JS::Value> reqCxJS(aCx);
+  if (NS_WARN_IF(!aReqCx.ToJSVal(aCx, aReqCx, &reqCxJS))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestContext", reqCxJS))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (aReqArgs) {
+    JS::Rooted<JS::Value> reqArgsJS(aCx);
+    if (NS_WARN_IF(!aReqArgs->ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+      aErr.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+    if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", reqArgsJS))) {
+      aErr.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  }
+  if (NS_WARN_IF(!args.append(JS::ObjectValue(*msgData)))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (!JS_CallFunctionValue(aCx, actorJsImpl, sendQuery, JS::HandleValueArray(args), //JS::HandleValueArray::empty(), //JS::HandleValueArray(aData),
+                &promiseVal)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!promiseVal.isObject())) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  RefPtr<dom::Promise> promise = dom::Promise::Create(mGlobal, aErr);
+  if (NS_WARN_IF(aErr.Failed())) {
+    return nullptr;
+  }
+  promise->MaybeResolve(promiseVal);
+  return promise.forget();
+}
+
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(d => d.implementation).join("\n")}
 
 ${this.defs.filter(d => d instanceof MethodDef).map((m) => `${m.implementation}`).join("\n")}
@@ -1697,8 +1955,20 @@ ${this.defs.filter(d => d instanceof MethodDef).map((m) => `${m.implementation}`
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/TypedArray.h" // ArrayBuffer
 #include "mozilla/Variant.h"
+#include "mozilla/dom/DOMException.h" // for Failure's Exception
 
 namespace mozilla::berytus {
+
+template <typename RV>
+class IJSWord {
+public:
+  static bool ToJSVal(JSContext* aCx,
+                      const RV& aValue,
+                      JS::MutableHandle<JS::Value> aRv);
+  static bool FromJSVal(JSContext* aCx,
+                        JS::Handle<JS::Value> aValue,
+                        RV& aRv);
+};
 
 using ArrayBuffer = mozilla::dom::ArrayBuffer;
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(def => def.definition).join("\n")}
@@ -1715,6 +1985,15 @@ protected:
   nsCOMPtr<nsIGlobalObject> mGlobal;
   nsString mManagerId;
 
+  template <typename W1, typename W2,
+            typename = std::enable_if_t<std::is_base_of<IJSWord<W1>, W1>::value>,
+            typename = std::enable_if_t<std::is_base_of<IJSWord<W2>, W2>::value>>
+  already_AddRefed<dom::Promise> CallSendQuery(JSContext *aCx,
+                                                         const nsAString & aGroup,
+                                                         const nsAString &aMethod,
+                                                         const W1& aReqCx,
+                                                         const W2* aReqArgs,
+                                                         ErrorResult& aRv);
 public:
 ${this.defs.filter(d => d instanceof MethodDef).map(def => def.definition).join("\n").replace(/^(.*)$/gm, "  $1")}
 

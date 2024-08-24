@@ -759,9 +759,12 @@ export class IsolatedRequestHandler {
     handleUnexpectedException(group, method, response, excp) {
         // TODO(berytus): Define what would be the
         // accepted values to reject a request with.
-        response.reject(new Components.Exception("Error sending request to secret manager. "
+        console.error("Unexpected exception from secret manager:", excp);
+        const err = new Components.Exception("Error sending request to secret manager. "
             + "The secret manager unexpectedly threw an exception "
-            + "instead of using the reject callback.", Cr.NS_ERROR_FAILURE));
+            + "instead of using the reject callback (RequestType: "
+            + `${group}:${String(method)}).`, Cr.NS_ERROR_FAILURE);
+        response.reject(err);
     }
 }
 export class ValidatedRequestHandler extends IsolatedRequestHandler {

@@ -10,22 +10,34 @@
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/TypedArray.h" // ArrayBuffer
 #include "mozilla/Variant.h"
+#include "mozilla/dom/DOMException.h" // for Failure's Exception
 
 namespace mozilla::berytus {
 
+template <typename RV>
+class IJSWord {
+public:
+  static bool ToJSVal(JSContext* aCx,
+                      const RV& aValue,
+                      JS::MutableHandle<JS::Value> aRv);
+  static bool FromJSVal(JSContext* aCx,
+                        JS::Handle<JS::Value> aValue,
+                        RV& aRv);
+};
+
 using ArrayBuffer = mozilla::dom::ArrayBuffer;
-bool JSValIsInt32(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool Int32FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, int32_t& aRv);
-bool Int32ToJSVal(JSContext* aCx, const int32_t& aValue, JS::MutableHandle<JS::Value> aRv);
-struct DocumentMetadata {
-  int32_t mId;
+bool JSValIsNumber(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool NumberFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv);
+bool NumberToJSVal(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv);
+struct DocumentMetadata : IJSWord<DocumentMetadata> {
+  double mId;
   
   
   static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv);
   static bool ToJSVal(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct PreliminaryRequestContext {
+struct PreliminaryRequestContext : IJSWord<PreliminaryRequestContext> {
   DocumentMetadata mDocument;
   
   
@@ -36,7 +48,7 @@ struct PreliminaryRequestContext {
 bool JSValIsString(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool StringFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv);
 bool StringToJSVal(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv);
-struct CryptoActor {
+struct CryptoActor : IJSWord<CryptoActor> {
   nsString mEd25519Key;
   
   
@@ -44,11 +56,11 @@ struct CryptoActor {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv);
   static bool ToJSVal(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct UriParams {
+struct UriParams : IJSWord<UriParams> {
   nsString mUri;
   nsString mScheme;
   nsString mHostname;
-  int32_t mPort;
+  double mPort;
   nsString mPath;
   
   
@@ -56,7 +68,7 @@ struct UriParams {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv);
   static bool ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct OriginActor {
+struct OriginActor : IJSWord<OriginActor> {
   UriParams mOriginalUri;
   UriParams mCurrentUri;
   
@@ -68,7 +80,7 @@ struct OriginActor {
 bool JSValIsVariant_CryptoActor__OriginActor_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv);
 bool Variant_CryptoActor__OriginActor_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<CryptoActor, OriginActor>** aRv);
 bool Variant_CryptoActor__OriginActor_ToJSVal(JSContext* aCx, const Variant<CryptoActor, OriginActor>& aValue, JS::MutableHandle<JS::Value> aRv);
-struct GetSigningKeyArgs {
+struct GetSigningKeyArgs : IJSWord<GetSigningKeyArgs> {
   
   Variant<CryptoActor, OriginActor>* mWebAppActor = nullptr;
   
@@ -79,14 +91,25 @@ struct GetSigningKeyArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetSigningKeyArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const GetSigningKeyArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using ManagerGetSigningKeyResult = MozPromise<nsString, nsresult, true>;
+#define BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE nsCString("An error has occurred"_ns)
+#define BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME nsCString("An error has occurred"_ns)
+struct Failure {
+  RefPtr<mozilla::dom::Exception> mException;
+
+  Failure() : Failure(NS_ERROR_FAILURE) {}
+  Failure(nsresult res) : mException(new mozilla::dom::Exception(BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE, NS_ERROR_FAILURE, BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME)) {}
+
+  ErrorResult ToErrorResult() const;
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Failure& aRv);
+};
+using ManagerGetSigningKeyResult = MozPromise<nsString, Failure, true>;
 bool JSValIsMaybe_nsString_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool Maybe_nsString_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsString>& aRv);
 bool Maybe_nsString_ToJSVal(JSContext* aCx, const Maybe<nsString>& aValue, JS::MutableHandle<JS::Value> aRv);
-bool JSValIsMaybe_int32_t_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool Maybe_int32_t_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<int32_t>& aRv);
-bool Maybe_int32_t_ToJSVal(JSContext* aCx, const Maybe<int32_t>& aValue, JS::MutableHandle<JS::Value> aRv);
-struct PartialAccountIdentity {
+bool JSValIsMaybe_double_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool Maybe_double_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<double>& aRv);
+bool Maybe_double_ToJSVal(JSContext* aCx, const Maybe<double>& aValue, JS::MutableHandle<JS::Value> aRv);
+struct PartialAccountIdentity : IJSWord<PartialAccountIdentity> {
   nsString mFieldId;
   nsString mFieldValue;
   
@@ -101,9 +124,9 @@ bool nsTArray_PartialAccountIdentity_ToJSVal(JSContext* aCx, const nsTArray<Part
 bool JSValIsMaybe_nsTArray_PartialAccountIdentity__(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool Maybe_nsTArray_PartialAccountIdentity__FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsTArray<PartialAccountIdentity>>& aRv);
 bool Maybe_nsTArray_PartialAccountIdentity__ToJSVal(JSContext* aCx, const Maybe<nsTArray<PartialAccountIdentity>>& aValue, JS::MutableHandle<JS::Value> aRv);
-struct AccountConstraints {
+struct AccountConstraints : IJSWord<AccountConstraints> {
   Maybe<nsString> mCategory;
-  Maybe<int32_t> mSchemaVersion;
+  Maybe<double> mSchemaVersion;
   Maybe<nsTArray<PartialAccountIdentity>> mIdentity;
   
   
@@ -111,7 +134,7 @@ struct AccountConstraints {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AccountConstraints& aRv);
   static bool ToJSVal(JSContext* aCx, const AccountConstraints& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct GetCredentialsMetadataArgs {
+struct GetCredentialsMetadataArgs : IJSWord<GetCredentialsMetadataArgs> {
   AccountConstraints mAccountConstraints;
   Variant<CryptoActor, OriginActor>* mWebAppActor = nullptr;
   
@@ -122,7 +145,7 @@ struct GetCredentialsMetadataArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetCredentialsMetadataArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const GetCredentialsMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using ManagerGetCredentialsMetadataResult = MozPromise<int32_t, nsresult, true>;
+using ManagerGetCredentialsMetadataResult = MozPromise<double, Failure, true>;
 bool JSValIsnsTArray_nsString_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool nsTArray_nsString_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<nsString>& aRv);
 bool nsTArray_nsString_ToJSVal(JSContext* aCx, const nsTArray<nsString>& aValue, JS::MutableHandle<JS::Value> aRv);
@@ -135,7 +158,7 @@ bool BoolToJSVal(JSContext* aCx, const bool& aValue, JS::MutableHandle<JS::Value
 bool JSValIsMaybe_AccountConstraints_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool Maybe_AccountConstraints_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<AccountConstraints>& aRv);
 bool Maybe_AccountConstraints_ToJSVal(JSContext* aCx, const Maybe<AccountConstraints>& aValue, JS::MutableHandle<JS::Value> aRv);
-struct ChannelConstraints {
+struct ChannelConstraints : IJSWord<ChannelConstraints> {
   Maybe<nsTArray<nsString>> mSecretManagerPublicKey;
   bool mEnableEndToEndEncryption;
   Maybe<AccountConstraints> mAccount;
@@ -145,7 +168,7 @@ struct ChannelConstraints {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelConstraints& aRv);
   static bool ToJSVal(JSContext* aCx, const ChannelConstraints& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct ChannelMetadata {
+struct ChannelMetadata : IJSWord<ChannelMetadata> {
   nsString mId;
   ChannelConstraints mConstraints;
   CryptoActor mScmActor;
@@ -158,7 +181,7 @@ struct ChannelMetadata {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelMetadata& aRv);
   static bool ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct RequestContext {
+struct RequestContext : IJSWord<RequestContext> {
   ChannelMetadata mChannel;
   DocumentMetadata mDocument;
   
@@ -167,7 +190,7 @@ struct RequestContext {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContext& aRv);
   static bool ToJSVal(JSContext* aCx, const RequestContext& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct InitialKeyExchangeParametersDraft {
+struct InitialKeyExchangeParametersDraft : IJSWord<InitialKeyExchangeParametersDraft> {
   nsString mChannelId;
   nsString mWebAppX25519Key;
   
@@ -176,7 +199,7 @@ struct InitialKeyExchangeParametersDraft {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv);
   static bool ToJSVal(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct GenerateKeyExchangeParametersArgs {
+struct GenerateKeyExchangeParametersArgs : IJSWord<GenerateKeyExchangeParametersArgs> {
   InitialKeyExchangeParametersDraft mParamsDraft;
   
   
@@ -187,20 +210,20 @@ struct GenerateKeyExchangeParametersArgs {
 bool JSValIsArrayBuffer(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool ArrayBufferFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBuffer& aRv);
 bool ArrayBufferToJSVal(JSContext* aCx, const ArrayBuffer& aValue, JS::MutableHandle<JS::Value> aRv);
-struct PartialKeyExchangeParametersFromScm {
+struct PartialKeyExchangeParametersFromScm : IJSWord<PartialKeyExchangeParametersFromScm> {
   nsString mScmX25519Key;
   nsString mHkdfHash;
   ArrayBuffer mHkdfSalt;
   ArrayBuffer mHkdfInfo;
-  int32_t mAesKeyLength;
+  double mAesKeyLength;
   
   
   static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv);
   static bool ToJSVal(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using ChannelGenerateKeyExchangeParametersResult = MozPromise<PartialKeyExchangeParametersFromScm, nsresult, true>;
-struct KeyExchangeParameters {
+using ChannelGenerateKeyExchangeParametersResult = MozPromise<PartialKeyExchangeParametersFromScm, Failure, true>;
+struct KeyExchangeParameters : IJSWord<KeyExchangeParameters> {
   nsString mPacket;
   nsString mChannelId;
   nsString mWebAppX25519Key;
@@ -208,14 +231,14 @@ struct KeyExchangeParameters {
   nsString mHkdfHash;
   ArrayBuffer mHkdfSalt;
   ArrayBuffer mHkdfInfo;
-  int32_t mAesKeyLength;
+  double mAesKeyLength;
   
   
   static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv);
   static bool ToJSVal(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct EnableEndToEndEncryptionArgs {
+struct EnableEndToEndEncryptionArgs : IJSWord<EnableEndToEndEncryptionArgs> {
   KeyExchangeParameters mParams;
   ArrayBuffer mWebAppPacketSignature;
   
@@ -224,8 +247,8 @@ struct EnableEndToEndEncryptionArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using ChannelEnableEndToEndEncryptionResult = MozPromise<ArrayBuffer, nsresult, true>;
-using ChannelCloseChannelResult = MozPromise<void*, nsresult, true>;
+using ChannelEnableEndToEndEncryptionResult = MozPromise<ArrayBuffer, Failure, true>;
+using ChannelCloseChannelResult = MozPromise<void*, Failure, true>;
 enum ELoginUserIntent {
   ELoginUserIntent_PendingDeclaration = 0,
     ELoginUserIntent_Authenticate = 1,
@@ -238,7 +261,7 @@ bool ELoginUserIntentToJSVal(JSContext* aCx, const ELoginUserIntent& aValue, JS:
 bool JSValIsVariant_nsString_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv);
 bool Variant_nsString_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<nsString>** aRv);
 bool Variant_nsString_ToJSVal(JSContext* aCx, const Variant<nsString>& aValue, JS::MutableHandle<JS::Value> aRv);
-struct RequestedUserAttribute {
+struct RequestedUserAttribute : IJSWord<RequestedUserAttribute> {
   bool mRequired;
   Variant<nsString>* mId = nullptr;
   
@@ -271,7 +294,7 @@ enum EOperationStatus {
 bool JSValIsEOperationStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool EOperationStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv);
 bool EOperationStatusToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv);
-struct OperationState {
+struct OperationState : IJSWord<OperationState> {
   
   
   
@@ -279,7 +302,7 @@ struct OperationState {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationState& aRv);
   static bool ToJSVal(JSContext* aCx, const OperationState& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct LoginOperationMetadata {
+struct LoginOperationMetadata : IJSWord<LoginOperationMetadata> {
   ELoginUserIntent mIntent;
   nsTArray<RequestedUserAttribute> mRequestedUserAttributes;
   nsString mId;
@@ -292,7 +315,7 @@ struct LoginOperationMetadata {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, LoginOperationMetadata& aRv);
   static bool ToJSVal(JSContext* aCx, const LoginOperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct ApproveOperationArgs {
+struct ApproveOperationArgs : IJSWord<ApproveOperationArgs> {
   LoginOperationMetadata mOperation;
   
   
@@ -300,8 +323,8 @@ struct ApproveOperationArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveOperationArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const ApproveOperationArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using LoginApproveOperationResult = MozPromise<ELoginUserIntent, nsresult, true>;
-struct OperationMetadata {
+using LoginApproveOperationResult = MozPromise<ELoginUserIntent, Failure, true>;
+struct OperationMetadata : IJSWord<OperationMetadata> {
   nsString mId;
   EOpeationType mType;
   EOperationStatus mStatus;
@@ -312,7 +335,7 @@ struct OperationMetadata {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationMetadata& aRv);
   static bool ToJSVal(JSContext* aCx, const OperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct RequestContextWithOperation {
+struct RequestContextWithOperation : IJSWord<RequestContextWithOperation> {
   OperationMetadata mOperation;
   ChannelMetadata mChannel;
   DocumentMetadata mDocument;
@@ -322,7 +345,7 @@ struct RequestContextWithOperation {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithOperation& aRv);
   static bool ToJSVal(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using LoginCloseOpeationResult = MozPromise<void*, nsresult, true>;
+using LoginCloseOpeationResult = MozPromise<void*, Failure, true>;
 enum EMetadataStatus {
   EMetadataStatus_Pending = 0,
     EMetadataStatus_Created = 1,
@@ -332,8 +355,8 @@ enum EMetadataStatus {
 bool JSValIsEMetadataStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool EMetadataStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv);
 bool EMetadataStatusToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv);
-struct RecordMetadata {
-  int32_t mVersion;
+struct RecordMetadata : IJSWord<RecordMetadata> {
+  double mVersion;
   EMetadataStatus mStatus;
   nsString mCategory;
   nsString mChangePassUrl;
@@ -343,8 +366,8 @@ struct RecordMetadata {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RecordMetadata& aRv);
   static bool ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using LoginGetRecordMetadataResult = MozPromise<RecordMetadata, nsresult, true>;
-struct UpdateMetadataArgs {
+using LoginGetRecordMetadataResult = MozPromise<RecordMetadata, Failure, true>;
+struct UpdateMetadataArgs : IJSWord<UpdateMetadataArgs> {
   RecordMetadata mMetadata;
   
   
@@ -352,8 +375,8 @@ struct UpdateMetadataArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateMetadataArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const UpdateMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using LoginUpdateMetadataResult = MozPromise<void*, nsresult, true>;
-struct ApproveTransitionToAuthOpArgs {
+using LoginUpdateMetadataResult = MozPromise<void*, Failure, true>;
+struct ApproveTransitionToAuthOpArgs : IJSWord<ApproveTransitionToAuthOpArgs> {
   LoginOperationMetadata mNewAuthOp;
   
   
@@ -361,8 +384,8 @@ struct ApproveTransitionToAuthOpArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveTransitionToAuthOpArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const ApproveTransitionToAuthOpArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using AccountCreationApproveTransitionToAuthOpResult = MozPromise<void*, nsresult, true>;
-struct UserAttribute {
+using AccountCreationApproveTransitionToAuthOpResult = MozPromise<void*, Failure, true>;
+struct UserAttribute : IJSWord<UserAttribute> {
   nsString mMimeType;
   nsString mValue;
   Variant<nsString>* mId = nullptr;
@@ -377,7 +400,7 @@ struct UserAttribute {
 bool JSValIsnsTArray_UserAttribute_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool nsTArray_UserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<UserAttribute>& aRv);
 bool nsTArray_UserAttribute_ToJSVal(JSContext* aCx, const nsTArray<UserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv);
-using AccountCreationGetUserAttributesResult = MozPromise<nsTArray<UserAttribute>, nsresult, true>;
+using AccountCreationGetUserAttributesResult = MozPromise<nsTArray<UserAttribute>, Failure, true>;
 enum EFieldType {
   EFieldType_Identity = 0,
     EFieldType_ForeignIdentity = 1,
@@ -389,7 +412,7 @@ enum EFieldType {
 bool JSValIsEFieldType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool EFieldTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EFieldType& aRv);
 bool EFieldTypeToJSVal(JSContext* aCx, const EFieldType& aValue, JS::MutableHandle<JS::Value> aRv);
-struct BaseFieldMetadata {
+struct BaseFieldMetadata : IJSWord<BaseFieldMetadata> {
   EFieldType mFieldType;
   nsString mFieldId;
   Maybe<nsString> mDescription;
@@ -405,7 +428,7 @@ bool NothingToJSVal(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS:
 bool JSValIsVariant_nsString__ArrayBuffer__Nothing_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv);
 bool Variant_nsString__ArrayBuffer__Nothing_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<nsString, ArrayBuffer, Nothing>** aRv);
 bool Variant_nsString__ArrayBuffer__Nothing_ToJSVal(JSContext* aCx, const Variant<nsString, ArrayBuffer, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv);
-struct AddFieldArgs {
+struct AddFieldArgs : IJSWord<AddFieldArgs> {
   BaseFieldMetadata mField;
   Variant<nsString, ArrayBuffer, Nothing>* mValue = nullptr;
   
@@ -416,8 +439,8 @@ struct AddFieldArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFieldArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using AccountCreationAddFieldResult = MozPromise<void*, nsresult, true>;
-struct FieldValueRejectionReason {
+using AccountCreationAddFieldResult = MozPromise<void*, Failure, true>;
+struct FieldValueRejectionReason : IJSWord<FieldValueRejectionReason> {
   nsString mCode;
   
   
@@ -425,7 +448,7 @@ struct FieldValueRejectionReason {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldValueRejectionReason& aRv);
   static bool ToJSVal(JSContext* aCx, const FieldValueRejectionReason& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct RejectFieldValueArgs {
+struct RejectFieldValueArgs : IJSWord<RejectFieldValueArgs> {
   BaseFieldMetadata mField;
   FieldValueRejectionReason mReason;
   Variant<nsString, ArrayBuffer, Nothing>* mOptionalNewValue = nullptr;
@@ -440,7 +463,7 @@ struct RejectFieldValueArgs {
 bool JSValIsVariant_nsString__ArrayBuffer_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv);
 bool Variant_nsString__ArrayBuffer_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<nsString, ArrayBuffer>** aRv);
 bool Variant_nsString__ArrayBuffer_ToJSVal(JSContext* aCx, const Variant<nsString, ArrayBuffer>& aValue, JS::MutableHandle<JS::Value> aRv);
-using AccountCreationRejectFieldValueResult = MozPromise<Variant<nsString, ArrayBuffer>*, nsresult, true>;
+using AccountCreationRejectFieldValueResult = MozPromise<Variant<nsString, ArrayBuffer>*, Failure, true>;
 enum EChallengeType {
   EChallengeType_Identification = 0,
     EChallengeType_DigitalSignature = 1,
@@ -452,7 +475,7 @@ enum EChallengeType {
 bool JSValIsEChallengeType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool EChallengeTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv);
 bool EChallengeTypeToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv);
-struct ChallengeParameters {
+struct ChallengeParameters : IJSWord<ChallengeParameters> {
   
   
   
@@ -471,7 +494,7 @@ enum EChallengeStatus {
 bool JSValIsEChallengeStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool EChallengeStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv);
 bool EChallengeStatusToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv);
-struct ChallengeMetadata {
+struct ChallengeMetadata : IJSWord<ChallengeMetadata> {
   nsString mId;
   EChallengeType mType;
   ChallengeParameters mParameters;
@@ -482,7 +505,7 @@ struct ChallengeMetadata {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMetadata& aRv);
   static bool ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct ApproveChallengeRequestArgs {
+struct ApproveChallengeRequestArgs : IJSWord<ApproveChallengeRequestArgs> {
   ChallengeMetadata mChallenge;
   
   
@@ -490,8 +513,8 @@ struct ApproveChallengeRequestArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveChallengeRequestArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const ApproveChallengeRequestArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using AccountAuthenticationApproveChallengeRequestResult = MozPromise<void*, nsresult, true>;
-struct ChallengeAbortionReason {
+using AccountAuthenticationApproveChallengeRequestResult = MozPromise<void*, Failure, true>;
+struct ChallengeAbortionReason : IJSWord<ChallengeAbortionReason> {
   nsString mCode;
   
   
@@ -499,7 +522,7 @@ struct ChallengeAbortionReason {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeAbortionReason& aRv);
   static bool ToJSVal(JSContext* aCx, const ChallengeAbortionReason& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct AbortChallengeArgs {
+struct AbortChallengeArgs : IJSWord<AbortChallengeArgs> {
   ChallengeMetadata mChallenge;
   ChallengeAbortionReason mReason;
   
@@ -508,8 +531,8 @@ struct AbortChallengeArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AbortChallengeArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const AbortChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using AccountAuthenticationAbortChallengeResult = MozPromise<void*, nsresult, true>;
-struct CloseChallengeArgs {
+using AccountAuthenticationAbortChallengeResult = MozPromise<void*, Failure, true>;
+struct CloseChallengeArgs : IJSWord<CloseChallengeArgs> {
   ChallengeMetadata mChallenge;
   
   
@@ -517,8 +540,8 @@ struct CloseChallengeArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CloseChallengeArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const CloseChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using AccountAuthenticationCloseChallengeResult = MozPromise<void*, nsresult, true>;
-struct ChallengePayload {
+using AccountAuthenticationCloseChallengeResult = MozPromise<void*, Failure, true>;
+struct ChallengePayload : IJSWord<ChallengePayload> {
   
   
   
@@ -526,7 +549,7 @@ struct ChallengePayload {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengePayload& aRv);
   static bool ToJSVal(JSContext* aCx, const ChallengePayload& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct ChallengeMessage {
+struct ChallengeMessage : IJSWord<ChallengeMessage> {
   nsString mName;
   ChallengePayload mPayload;
   
@@ -535,7 +558,7 @@ struct ChallengeMessage {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMessage& aRv);
   static bool ToJSVal(JSContext* aCx, const ChallengeMessage& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct RespondToChallengeMessageArgs {
+struct RespondToChallengeMessageArgs : IJSWord<RespondToChallengeMessageArgs> {
   ChallengeMetadata mChallenge;
   ChallengeMessage mChallengeMessage;
   
@@ -544,7 +567,7 @@ struct RespondToChallengeMessageArgs {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RespondToChallengeMessageArgs& aRv);
   static bool ToJSVal(JSContext* aCx, const RespondToChallengeMessageArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-struct ChallengeMessageResponse {
+struct ChallengeMessageResponse : IJSWord<ChallengeMessageResponse> {
   ChallengePayload mPayload;
   
   
@@ -552,7 +575,7 @@ struct ChallengeMessageResponse {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMessageResponse& aRv);
   static bool ToJSVal(JSContext* aCx, const ChallengeMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-using AccountAuthenticationRespondToChallengeMessageResult = MozPromise<ChallengeMessageResponse, nsresult, true>;
+using AccountAuthenticationRespondToChallengeMessageResult = MozPromise<ChallengeMessageResponse, Failure, true>;
 
 class AgentProxy final : public nsISupports {
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
@@ -566,6 +589,15 @@ protected:
   nsCOMPtr<nsIGlobalObject> mGlobal;
   nsString mManagerId;
 
+  template <typename W1, typename W2,
+            typename = std::enable_if_t<std::is_base_of<IJSWord<W1>, W1>::value>,
+            typename = std::enable_if_t<std::is_base_of<IJSWord<W2>, W2>::value>>
+  already_AddRefed<dom::Promise> CallSendQuery(JSContext *aCx,
+                                                         const nsAString & aGroup,
+                                                         const nsAString &aMethod,
+                                                         const W1& aReqCx,
+                                                         const W2* aReqArgs,
+                                                         ErrorResult& aRv);
 public:
   RefPtr<ManagerGetSigningKeyResult> Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs);
   RefPtr<ManagerGetCredentialsMetadataResult> Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs);

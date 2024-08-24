@@ -119,12 +119,15 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
     protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
         // TODO(berytus): Define what would be the
         // accepted values to reject a request with.
-        response.reject(new Components.Exception(
+        console.error("Unexpected exception from secret manager:", excp);
+        const err = new Components.Exception(
             "Error sending request to secret manager. "
             + "The secret manager unexpectedly threw an exception "
-            + "instead of using the reject callback.",
+            + "instead of using the reject callback (RequestType: "
+            + \`\${group}:\${String(method)}).\`,
             Cr.NS_ERROR_FAILURE
-        ));
+        );
+        response.reject(err);
     }`;
     code += `
 }`;

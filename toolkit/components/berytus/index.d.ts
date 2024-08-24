@@ -73,11 +73,17 @@ declare global {
         ): asserts output is O & { [k in keyof M]: ModuleMap[M[k]] extends Record<k, infer P> ? P : never }
     }
     interface IComponentsUtils {
-        cloneInto(obj: object, cloneScope: object, options?: unknown): object;
+        cloneInto<O extends unknown>(obj: O, cloneScope: object, options?: unknown): O;
     }
     interface ActorMessage { name: string; data: any }
     abstract class JSWindowActorParent {
         abstract receiveMessage(msg: ActorMessage): any;
+    }
+    abstract class JSWindowActorChild {
+        contentWindow: object;
+        receiveMessage(msg: ActorMessage): any;
+        sendAsyncMessage(aName: string, aData: unknown, transferables: Array<unknown>): void;
+        sendQuery(msgName: string, data: unknown): Promise<unknown>;
     }
     interface ChildActor {
         sendQuery(

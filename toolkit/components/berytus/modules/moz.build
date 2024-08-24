@@ -14,6 +14,7 @@ EXTRA_JS_MODULES += [
 	"BerytusRequestHandler.sys.mjs"
 ]
 FINAL_TARGET_FILES.actors += [
-    "actors/BerytusAgentTargetParent.sys.mjs",
+    "actors/BerytusAgentTargetChild.sys.mjs",
+	"actors/BerytusAgentTargetParent.sys.mjs",
 	"actors/BerytusPromptServiceParent.sys.mjs"
 ]

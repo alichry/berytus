@@ -29,19 +29,143 @@ AgentProxy::AgentProxy(
 
 AgentProxy::~AgentProxy() {}
 
-bool JSValIsInt32(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  aRv = aValue.isInt32();
+template <typename W1, typename W2, typename, typename>
+already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
+                                                         const nsAString & aGroup,
+                                                         const nsAString &aMethod,
+                                                         const W1& aReqCx,
+                                                         const W2* aReqArgs,
+                                                         ErrorResult& aErr) {
+  MOZ_ASSERT(!aErr.Failed());
+  nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
+  if (NS_WARN_IF(!inner)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
+  if (NS_WARN_IF(!wgc)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  RefPtr<mozilla::dom::JSWindowActorChild> actor =
+    wgc->GetActor(aCx, "BerytusAgentTarget"_ns, aErr);
+  if (NS_WARN_IF(aErr.Failed())) {
+    return nullptr;
+  }
+
+  // MOZ_ASSERT(actor->GetWrapper());
+  JS::Rooted<JSObject*> actorJsImpl(aCx, actor->GetWrapper());
+  JSAutoRealm ar(aCx, actorJsImpl);
+
+  JS::Rooted<JS::Value> sendQuery(aCx);
+  if (NS_WARN_IF(!JS_GetProperty(aCx, actorJsImpl, "sendQuery", &sendQuery))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!sendQuery.isObject())) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!JS::IsCallable(&sendQuery.toObject()))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  JS::Rooted<JS::Value> msgName(aCx, JS::StringValue(JS_NewUCStringCopyZ(aCx, u"BerytusAgentTarget:invokeRequestHandler")));
+  JS::Rooted<JS::Value> promiseVal(aCx);
+  JS::RootedVector<JS::Value> args(aCx);
+  if (NS_WARN_IF(!args.append(msgName))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  JS::Rooted<JSObject*> msgData(aCx, JS_NewPlainObject(aCx));
+  if (NS_WARN_IF(!msgData)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  JS::Rooted<JS::Value> managerId(aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, mManagerId.get(), mManagerId.Length())));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "managerId", managerId))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  const char16_t* groupBuf;
+  aGroup.GetData(&groupBuf);
+  JS::Rooted<JS::Value> group(
+    aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, groupBuf, aGroup.Length())));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "group", group))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  const char16_t* methodBuf;
+  aMethod.GetData(&methodBuf);
+  JS::Rooted<JS::Value> method(
+    aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, methodBuf, aMethod.Length())));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "method", method))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+
+  JS::Rooted<JS::Value> reqCxJS(aCx);
+  if (NS_WARN_IF(!aReqCx.ToJSVal(aCx, aReqCx, &reqCxJS))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestContext", reqCxJS))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (aReqArgs) {
+    JS::Rooted<JS::Value> reqArgsJS(aCx);
+    if (NS_WARN_IF(!aReqArgs->ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+      aErr.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+    if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", reqArgsJS))) {
+      aErr.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  }
+  if (NS_WARN_IF(!args.append(JS::ObjectValue(*msgData)))) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (!JS_CallFunctionValue(aCx, actorJsImpl, sendQuery, JS::HandleValueArray(args), //JS::HandleValueArray::empty(), //JS::HandleValueArray(aData),
+                &promiseVal)) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (NS_WARN_IF(!promiseVal.isObject())) {
+    aErr.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  RefPtr<dom::Promise> promise = dom::Promise::Create(mGlobal, aErr);
+  if (NS_WARN_IF(aErr.Failed())) {
+    return nullptr;
+  }
+  promise->MaybeResolve(promiseVal);
+  return promise.forget();
+}
+
+bool JSValIsNumber(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  aRv = aValue.isNumber() || aValue.isNumber();
   return true;
 }
-bool Int32FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, int32_t& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+bool NumberFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv) {
+  if (aValue.isInt32()) {
+    aRv = static_cast<double>(aValue.toInt32());
+    return true;
+  }
+  if (NS_WARN_IF(!aValue.isNumber())) {
     return false;
   }
-  aRv = aValue.toInt32();
+  aRv = aValue.toNumber();
   return true;
 }
-bool Int32ToJSVal(JSContext* aCx, const int32_t& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
+bool NumberToJSVal(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv) {
+  aRv.setNumber(aValue);
   return true;
 }
 bool DocumentMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -56,7 +180,7 @@ bool DocumentMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsInt32(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!JSValIsNumber(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -77,7 +201,7 @@ bool DocumentMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, D
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!Int32FromJSVal(aCx, propVal, aRv.mId))) {
+  if (NS_WARN_IF(!NumberFromJSVal(aCx, propVal, aRv.mId))) {
     return false;
   }
   
@@ -90,7 +214,7 @@ bool DocumentMetadata::ToJSVal(JSContext* aCx, const DocumentMetadata& aValue, J
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!Int32ToJSVal(aCx, aValue.mId, &memberVal0))) {
+  if (NS_WARN_IF(!NumberToJSVal(aCx, aValue.mId, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -166,12 +290,20 @@ bool StringFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  JSString* str = aValue.toString();
   JS::AutoCheckCannotGC nogc;
+  JSString* str = aValue.toString();
   size_t len;
-  const char16_t* buf =
-    JS_GetTwoByteStringCharsAndLength(aCx, nogc, str, &len);
-  aRv = nsString(buf, len);
+  if (!JS::StringHasLatin1Chars(str)) {
+    const char16_t* buf =
+      JS_GetTwoByteStringCharsAndLength(aCx, nogc, str, &len);
+    len = JS::GetStringLength(str);
+    aRv.Assign(buf, len);
+    return true;
+  }
+  // Latin1/OneByte JSString.
+  const JS::Latin1Char* buf =
+    JS_GetLatin1StringCharsAndLength(aCx, nogc, str, &len);
+  CopyASCIItoUTF16(Span(reinterpret_cast<const char*>(buf), len), aRv);
   return true;
 }
 bool StringToJSVal(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv) {
@@ -284,7 +416,7 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "port", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsInt32(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!JSValIsNumber(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -341,7 +473,7 @@ bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParam
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "port", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!Int32FromJSVal(aCx, propVal, aRv.mPort))) {
+  if (NS_WARN_IF(!NumberFromJSVal(aCx, propVal, aRv.mPort))) {
     return false;
   }
   
@@ -392,7 +524,7 @@ bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHand
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!Int32ToJSVal(aCx, aValue.mPort, &memberVal3))) {
+  if (NS_WARN_IF(!NumberToJSVal(aCx, aValue.mPort, &memberVal3))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "port", memberVal3))) {
@@ -626,6 +758,64 @@ bool GetSigningKeyArgs::ToJSVal(JSContext* aCx, const GetSigningKeyArgs& aValue,
   return true;
 }
 
+ErrorResult Failure::ToErrorResult() const {
+  ErrorResult rv;
+  nsresult result = mException->GetResult();
+    const nsCString& msg = mException->GetMessageMoz();
+
+  if (result == NS_ERROR_ABORT) {
+    rv.ThrowAbortError(
+      msg.Length() == 0
+        ? "Request aborted"_ns
+        : msg
+    );
+  } else {
+    rv.ThrowInvalidStateError(
+      msg.Length() == 0
+        ? "Request failed"_ns
+        : msg
+    );
+  }
+  return rv;
+}
+bool Failure::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Failure& aRv) {
+  nsresult result = NS_ERROR_FAILURE;
+  nsIStackFrame* stackFrame = nullptr;
+  nsISupports* data = nullptr;
+  nsCString msg = BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE;
+  nsCString excpName = BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME;
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  if (NS_WARN_IF(js::IsCrossCompartmentWrapper(&aValue.toObject()))) {
+    return false;
+  }
+  JS::RootedObject errorObj(aCx, &aValue.toObject());
+  JS::RootedValue messageVal(aCx);
+  JS::RootedValue resultVal(aCx);
+  if (JS_GetProperty(aCx, errorObj, "result", &resultVal)) {
+    if (resultVal.isInt32()) {
+      result = nsresult(resultVal.toInt32());
+    } else if (resultVal.isDouble()) {
+      result = nsresult(resultVal.toDouble());
+    }
+  }
+  if (JS_GetProperty(aCx, errorObj, "message", &messageVal)) {
+    nsString twoByteMsg;
+    if (NS_WARN_IF(!StringFromJSVal(aCx, messageVal, twoByteMsg))) {
+      return false;
+    }
+    // additional copy... TODO(berytus): possibly optimise this.
+    msg = NS_ConvertUTF16toUTF8(twoByteMsg);
+  }
+  aRv.mException =
+      new mozilla::dom::Exception(msg,
+                                  result,
+                                  excpName,
+                                  stackFrame,
+                                  data);
+  return true;
+}
 
 bool JSValIsMaybe_nsString_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
@@ -654,32 +844,32 @@ bool Maybe_nsString_ToJSVal(JSContext* aCx, const Maybe<nsString>& aValue, JS::M
 
   return StringToJSVal(aCx, aValue.ref(), aRv);
 }
-bool JSValIsMaybe_int32_t_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool JSValIsMaybe_double_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return JSValIsInt32(aCx, aValue, aRv);
+  return JSValIsNumber(aCx, aValue, aRv);
 }
-bool Maybe_int32_t_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<int32_t>& aRv) {
+bool Maybe_double_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<double>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   
   aRv.emplace();
-  if (NS_WARN_IF(!Int32FromJSVal(aCx, aValue, *aRv))) {
+  if (NS_WARN_IF(!NumberFromJSVal(aCx, aValue, *aRv))) {
     return false;
   }
   return true;
 }
-bool Maybe_int32_t_ToJSVal(JSContext* aCx, const Maybe<int32_t>& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool Maybe_double_ToJSVal(JSContext* aCx, const Maybe<double>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return Int32ToJSVal(aCx, aValue.ref(), aRv);
+  return NumberToJSVal(aCx, aValue.ref(), aRv);
 }
 bool PartialAccountIdentity::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
@@ -876,7 +1066,7 @@ bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "schemaVersion", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsMaybe_int32_t_(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!JSValIsMaybe_double_(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -917,7 +1107,7 @@ bool AccountConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "schemaVersion", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!Maybe_int32_t_FromJSVal(aCx, propVal, aRv.mSchemaVersion))) {
+  if (NS_WARN_IF(!Maybe_double_FromJSVal(aCx, propVal, aRv.mSchemaVersion))) {
     return false;
   }
   
@@ -948,7 +1138,7 @@ bool AccountConstraints::ToJSVal(JSContext* aCx, const AccountConstraints& aValu
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!Maybe_int32_t_ToJSVal(aCx, aValue.mSchemaVersion, &memberVal1))) {
+  if (NS_WARN_IF(!Maybe_double_ToJSVal(aCx, aValue.mSchemaVersion, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "schemaVersion", memberVal1))) {
@@ -1775,7 +1965,7 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsInt32(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!JSValIsNumber(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -1828,7 +2018,7 @@ bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<J
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!Int32FromJSVal(aCx, propVal, aRv.mAesKeyLength))) {
+  if (NS_WARN_IF(!NumberFromJSVal(aCx, propVal, aRv.mAesKeyLength))) {
     return false;
   }
   
@@ -1881,7 +2071,7 @@ bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialK
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!Int32ToJSVal(aCx, aValue.mAesKeyLength, &memberVal4))) {
+  if (NS_WARN_IF(!NumberToJSVal(aCx, aValue.mAesKeyLength, &memberVal4))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "aesKeyLength", memberVal4))) {
@@ -1989,7 +2179,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsInt32(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!JSValIsNumber(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2066,7 +2256,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!Int32FromJSVal(aCx, propVal, aRv.mAesKeyLength))) {
+  if (NS_WARN_IF(!NumberFromJSVal(aCx, propVal, aRv.mAesKeyLength))) {
     return false;
   }
   
@@ -2149,7 +2339,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal7(aCx);
   
-  if (NS_WARN_IF(!Int32ToJSVal(aCx, aValue.mAesKeyLength, &memberVal7))) {
+  if (NS_WARN_IF(!NumberToJSVal(aCx, aValue.mAesKeyLength, &memberVal7))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "aesKeyLength", memberVal7))) {
@@ -3102,7 +3292,7 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "version", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsInt32(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!JSValIsNumber(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3159,7 +3349,7 @@ bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Rec
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "version", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!Int32FromJSVal(aCx, propVal, aRv.mVersion))) {
+  if (NS_WARN_IF(!NumberFromJSVal(aCx, propVal, aRv.mVersion))) {
     return false;
   }
   
@@ -3196,7 +3386,7 @@ bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::M
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!Int32ToJSVal(aCx, aValue.mVersion, &memberVal0))) {
+  if (NS_WARN_IF(!NumberToJSVal(aCx, aValue.mVersion, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "version", memberVal0))) {
@@ -4860,91 +5050,31 @@ bool ChallengeMessageResponse::ToJSVal(JSContext* aCx, const ChallengeMessageRes
 
 RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs) {
   RefPtr<ManagerGetSigningKeyResult::Private> outPromise = new ManagerGetSigningKeyResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"manager"_ns;
-  nsString method = u"getSigningKey"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!PreliminaryRequestContext::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!GetSigningKeyArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"manager"_ns,
+                                            u"getSigningKey"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -4952,215 +5082,111 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     nsString out;
     if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs) {
   RefPtr<ManagerGetCredentialsMetadataResult::Private> outPromise = new ManagerGetCredentialsMetadataResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"manager"_ns;
-  nsString method = u"getCredentialsMetadata"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!PreliminaryRequestContext::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!GetCredentialsMetadataArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"manager"_ns,
+                                            u"getCredentialsMetadata"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    int32_t out;
-    if (NS_WARN_IF(!Int32FromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+    double out;
+    if (NS_WARN_IF(!NumberFromJSVal(aCx, aValue, out))) {
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs) {
   RefPtr<ChannelGenerateKeyExchangeParametersResult::Private> outPromise = new ChannelGenerateKeyExchangeParametersResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"channel"_ns;
-  nsString method = u"generateKeyExchangeParameters"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!GenerateKeyExchangeParametersArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"channel"_ns,
+                                            u"generateKeyExchangeParameters"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -5168,107 +5194,55 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     PartialKeyExchangeParametersFromScm out;
     if (NS_WARN_IF(!PartialKeyExchangeParametersFromScm::FromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs) {
   RefPtr<ChannelEnableEndToEndEncryptionResult::Private> outPromise = new ChannelEnableEndToEndEncryptionResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"channel"_ns;
-  nsString method = u"enableEndToEndEncryption"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!EnableEndToEndEncryptionArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"channel"_ns,
+                                            u"enableEndToEndEncryption"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -5276,202 +5250,106 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ArrayBuffer out;
     if (NS_WARN_IF(!ArrayBufferFromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContext& aContext) {
   RefPtr<ChannelCloseChannelResult::Private> outPromise = new ChannelCloseChannelResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"channel"_ns;
-  nsString method = u"closeChannel"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"channel"_ns,
+                                            u"closeChannel"_ns,
+                                            aContext,
+                                            static_cast<PreliminaryRequestContext*>(nullptr),
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs) {
   RefPtr<LoginApproveOperationResult::Private> outPromise = new LoginApproveOperationResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"login"_ns;
-  nsString method = u"approveOperation"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContext::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!ApproveOperationArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"login"_ns,
+                                            u"approveOperation"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -5479,194 +5357,106 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ELoginUserIntent out;
     if (NS_WARN_IF(!ELoginUserIntentFromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<LoginCloseOpeationResult> AgentProxy::Login_CloseOpeation(RequestContextWithOperation& aContext) {
   RefPtr<LoginCloseOpeationResult::Private> outPromise = new LoginCloseOpeationResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"login"_ns;
-  nsString method = u"closeOpeation"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"login"_ns,
+                                            u"closeOpeation"_ns,
+                                            aContext,
+                                            static_cast<PreliminaryRequestContext*>(nullptr),
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext) {
   RefPtr<LoginGetRecordMetadataResult::Private> outPromise = new LoginGetRecordMetadataResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"login"_ns;
-  nsString method = u"getRecordMetadata"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"login"_ns,
+                                            u"getRecordMetadata"_ns,
+                                            aContext,
+                                            static_cast<PreliminaryRequestContext*>(nullptr),
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -5674,305 +5464,157 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     RecordMetadata out;
     if (NS_WARN_IF(!RecordMetadata::FromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs) {
   RefPtr<LoginUpdateMetadataResult::Private> outPromise = new LoginUpdateMetadataResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"login"_ns;
-  nsString method = u"updateMetadata"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!UpdateMetadataArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"login"_ns,
+                                            u"updateMetadata"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs) {
   RefPtr<AccountCreationApproveTransitionToAuthOpResult::Private> outPromise = new AccountCreationApproveTransitionToAuthOpResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountCreation"_ns;
-  nsString method = u"approveTransitionToAuthOp"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!ApproveTransitionToAuthOpArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountCreation"_ns,
+                                            u"approveTransitionToAuthOp"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithOperation& aContext) {
   RefPtr<AccountCreationGetUserAttributesResult::Private> outPromise = new AccountCreationGetUserAttributesResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountCreation"_ns;
-  nsString method = u"getUserAttributes"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountCreation"_ns,
+                                            u"getUserAttributes"_ns,
+                                            aContext,
+                                            static_cast<PreliminaryRequestContext*>(nullptr),
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -5980,210 +5622,106 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     nsTArray<UserAttribute> out;
     if (NS_WARN_IF(!nsTArray_UserAttribute_FromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(RequestContextWithOperation& aContext, AddFieldArgs& aArgs) {
   RefPtr<AccountCreationAddFieldResult::Private> outPromise = new AccountCreationAddFieldResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountCreation"_ns;
-  nsString method = u"addField"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!AddFieldArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountCreation"_ns,
+                                            u"addField"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_RejectFieldValue(RequestContextWithOperation& aContext, RejectFieldValueArgs& aArgs) {
   RefPtr<AccountCreationRejectFieldValueResult::Private> outPromise = new AccountCreationRejectFieldValueResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountCreation"_ns;
-  nsString method = u"rejectFieldValue"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!RejectFieldValueArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountCreation"_ns,
+                                            u"rejectFieldValue"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -6191,416 +5729,208 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Variant<nsString, ArrayBuffer> *out;
     if (NS_WARN_IF(!Variant_nsString__ArrayBuffer_FromJSVal(aCx, aValue, &out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs) {
   RefPtr<AccountAuthenticationApproveChallengeRequestResult::Private> outPromise = new AccountAuthenticationApproveChallengeRequestResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountAuthentication"_ns;
-  nsString method = u"approveChallengeRequest"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!ApproveChallengeRequestArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountAuthentication"_ns,
+                                            u"approveChallengeRequest"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs) {
   RefPtr<AccountAuthenticationAbortChallengeResult::Private> outPromise = new AccountAuthenticationAbortChallengeResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountAuthentication"_ns;
-  nsString method = u"abortChallenge"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!AbortChallengeArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountAuthentication"_ns,
+                                            u"abortChallenge"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs) {
   RefPtr<AccountAuthenticationCloseChallengeResult::Private> outPromise = new AccountAuthenticationCloseChallengeResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountAuthentication"_ns;
-  nsString method = u"closeChallenge"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!CloseChallengeArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountAuthentication"_ns,
+                                            u"closeChallenge"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     void* out = nullptr;
-    outPromise->Resolve(std::move(out), __func__);
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::AccountAuthentication_RespondToChallengeMessage(RequestContextWithOperation& aContext, RespondToChallengeMessageArgs& aArgs) {
   RefPtr<AccountAuthenticationRespondToChallengeMessageResult::Private> outPromise = new AccountAuthenticationRespondToChallengeMessageResult::Private(__func__);
-  ErrorResult rv;
+  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
   if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    outPromise->Reject(Failure(), __func__);
     return outPromise;
   }
 
-  mozilla::dom::AutoJSAPI jsapi;
-  if (NS_WARN_IF(!jsapi.Init(mGlobal))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
 
-  JSContext* cx = jsapi.cx();
-
-  RefPtr<mozilla::dom::JSWindowActorChild> actor =
-    wgc->GetActor(cx, "BerytusAgentTarget"_ns, rv);
-  if (NS_WARN_IF(rv.Failed())) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSObject*> rMsgData(cx, JS_NewPlainObject(cx));
-  if (NS_WARN_IF(!rMsgData)) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> rManagerId(
-    cx, JS_NewUCStringCopyN(cx, mManagerId.get(), mManagerId.Length()));
-  JS::Rooted<JS::Value> vManagerId(cx, StringValue(rManagerId));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "managerId", vManagerId))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  nsString group = u"accountAuthentication"_ns;
-  nsString method = u"respondToChallengeMessage"_ns;
-
-  JS::Rooted<JSString*> rGroup(
-    cx, JS_NewUCStringCopyN(cx, group.get(), group.Length()));
-  JS::Rooted<JS::Value> vGroup(cx, StringValue(rGroup));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "group", vGroup))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JSString*> jMethod(
-    cx, JS_NewUCStringCopyN(cx, method.get(), method.Length()));
-  JS::Rooted<JS::Value> vMethod(cx, StringValue(jMethod));
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "method", vMethod))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vReqCx(cx);
-  if (NS_WARN_IF(!RequestContextWithOperation::ToJSVal(cx, aContext, &vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestContext", vReqCx))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  JS::Rooted<JS::Value> vReqArgs(cx);
-  if (NS_WARN_IF(!RespondToChallengeMessageArgs::ToJSVal(cx, aArgs, &vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(cx, rMsgData, "requestArgs", vReqArgs))) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
-    return outPromise;
-  }
-
-  JS::Rooted<JS::Value> vMsgData(cx, JS::ObjectValue(*rMsgData));
-
-  RefPtr<mozilla::dom::Promise> prom = actor->SendQuery(cx, u"BerytusAgentTarget:invokeRequestHandler"_ns, vMsgData, rv);
-  if (rv.Failed()) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"accountAuthentication"_ns,
+                                            u"respondToChallengeMessage"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
     return outPromise;
   }
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -6608,18 +5938,26 @@ RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::Account
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ChallengeMessageResponse out;
     if (NS_WARN_IF(!ChallengeMessageResponse::FromJSVal(aCx, aValue, out))) {
-      outPromise->Reject(NS_ERROR_FAILURE, __func__);
-      return;
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
     }
     
-    outPromise->Resolve(std::move(out), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    outPromise->Reject(NS_ERROR_FAILURE, __func__);
+    Failure fr;
+    Failure::FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
-  prom->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  }
   return outPromise;
 }
 

@@ -10,7 +10,7 @@ export class BerytusAgentTargetParent extends JSWindowActorParent {
         }
         return group in target;
     }
-    async receiveMessage(msg) {
+    async #processMessage(msg) {
         if (msg.name !== `${Actor}:invokeRequestHandler`) {
             throw new Error(`Received malformed message name (${msg.name})`);
         }
@@ -31,5 +31,26 @@ export class BerytusAgentTargetParent extends JSWindowActorParent {
         }
         const result = await fn.apply(target, [requestContext, requestArgs]);
         return result;
+    }
+    async receiveMessage(msg) {
+        try {
+            return (await this.#processMessage(msg));
+        }
+        catch (e) {
+            console.error(e);
+            // Some errors, such as Components.Exception,
+            // cannot be cloned. Here we throw plain objects instead.
+            const defaultErr = {
+                result: Cr.NS_ERROR_FAILURE,
+                message: "Exception occurred during request processing."
+            };
+            if (typeof e !== "object" || e == null) {
+                throw defaultErr;
+            }
+            throw {
+                result: e.result || defaultErr.result,
+                message: e.message || defaultErr.message
+            };
+        }
     }
 }
