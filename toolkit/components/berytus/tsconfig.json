@@ -1,0 +1,19 @@
+{
+    "extends": "./tsconfig.module-paths.json",
+    "include": [
+        "index.d.ts",
+        "src/**/*.ts",
+        "src/**/*.mts"
+    ],
+    "compilerOptions": {
+        "baseUrl": ".",
+        "module": "ES6",
+        "target": "ES2022",
+        "outDir": "modules",
+        "declaration": false,
+        "strict": true,
+        "esModuleInterop": true,
+        "noErrorTruncation": true,
+        "moduleResolution": "node"
+    }
+}

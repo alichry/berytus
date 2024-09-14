@@ -20,6 +20,7 @@ DIRS += [
     "apppicker",
     "asyncshutdown",
     "backgroundhangmonitor",
+    "berytus",
     "bitsdownload",
     "browser",
     "cascade_bloom_filter",

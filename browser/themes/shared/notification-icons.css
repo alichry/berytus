@@ -197,6 +197,10 @@
   list-style-image: url(chrome://browser/skin/login.svg);
 }
 
+#berytus-notification-icon {
+  list-style-image: url(chrome://browser/skin/berytus-login.svg);
+}
+
 #webRTC-previewVideo {
   border-radius: var(--border-radius-small);
   border: 1px solid var(--panel-separator-color);

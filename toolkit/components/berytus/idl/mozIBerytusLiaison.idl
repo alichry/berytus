@@ -1,0 +1,23 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#include "nsISupports.idl"
+//http://mozilla.pettay.fi/cgi-bin/mozuuid.pl
+
+[scriptable, uuid(041c46b6-906e-47c3-8151-350a6ee0e545)]
+interface mozIBerytusSecretManagerInfo : nsISupports {
+    cenum ManagerType : 8 {
+        EManagerTypeNative = 0,
+        EManagerTypeExtension = 1
+    };
+
+    readonly attribute mozIBerytusSecretManagerInfo_ManagerType type;
+    readonly attribute AString label;
+    readonly attribute AString id;
+};
+
+[scriptable, uuid(fff18967-7175-4f56-905e-265fc0ef73b5)]
+interface mozIBerytusLiaison : nsISupports {
+    readonly attribute Array<mozIBerytusSecretManagerInfo> managers;
+};

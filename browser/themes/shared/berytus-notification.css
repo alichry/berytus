@@ -1,0 +1,203 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Adapted from identity-credential-notificatio.css */
+
+#berytus-notification {
+    --list-item-border: color-mix(in srgb, currentColor 10%, transparent);
+    --list-item-checked-bgcolor: color-mix(in srgb, var(--button-primary-bgcolor) 6%, transparent);
+    --list-item-checked-border: color-mix(in srgb, var(--button-primary-bgcolor) 20%, transparent);
+
+    /**
+     * Ported and adapted from Mozilla v117.01a;
+     * --checkbox-unchecked-bgcolor and others
+     * seems to have been removed. We bring
+     * them back here, in adapted form, for now.
+     */
+    --checkbox-unchecked-bgcolor: var(--panel-background);
+    --checkbox-border-color: ButtonFace;
+    --checkbox-checked-bgcolor: SelectedItem;
+    --checkbox-checked-hover-bgcolor: SelectedItem;
+    --checkbox-unchecked-hover-bgcolor: var(--checkbox-checked-hover-bgcolor);
+    --checkbox-checked-color: var(--primary-button-text-color);
+    --checkbox-checked-border-color: var(--checkbox-border-color);
+    --checkbox-unchecked-active-bgcolor: var(--checkbox-checked-bgcolor);
+    --checkbox-checked-active-bgcolor: var(--checkbox-checked-bgcolor);
+    /* $ */
+
+    /* --list-item-checked-bgcolor: #4a044a;
+    --list-item-checked-border: #9d0c80; */
+}
+
+@media (prefers-contrast) {
+    #berytus {
+        --list-item-border: ThreeDShadow;
+        --list-item-checked-bgcolor: transparent;
+        --list-item-checked-border: AccentColor;
+    }
+}
+
+#berytus-secret-manager-selector-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 540px;
+    overflow: auto;
+}
+
+.berytus-header-container {
+    margin: 16px 16px -16px 18px;
+}
+
+.berytus-header-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.berytus-header-icon {
+    width: 16px;
+    height: 16px;
+    margin-inline-end: 8px;
+    margin-top: 2px;
+    /* fill: white; */
+    -moz-context-properties: fill, fill-opacity;
+    fill: currentColor;
+}
+
+.berytus-header-title {
+    font-weight: 600;
+    margin-top: 2px;
+    margin-bottom: 6px;
+
+}
+
+#berytus-header-text {
+    /* font-weight: 600; */
+    font-weight: 400;
+}
+
+
+.berytus-secret-manager-list-item {
+    display: flex;
+    gap: 18px;
+    padding-block: max(calc(var(--arrowpanel-menuitem-padding-block) * 2), 4px);
+    padding-inline: calc(var(--arrowpanel-menuitem-padding-inline) * 2);
+    border: 2px solid var(--list-item-border);
+    border-radius: 4px;
+}
+
+.berytus-secret-manager-list-item.checked {
+    background-color: var(--list-item-checked-bgcolor);
+    border-color: var(--list-item-checked-border);
+}
+
+.berytus-secret-manager-list-item-radio {
+    appearance: none;
+    background-color: var(--checkbox-unchecked-bgcolor);
+    background-image: url("chrome://global/skin/icons/radio.svg");
+    border: 1px solid var(--checkbox-border-color);
+    border-radius: 20%;
+    align-self: center;
+    outline: none;
+    -moz-context-properties: fill;
+    fill: transparent;
+    width: 18px;
+    height: 18px;
+}
+
+.berytus-secret-manager-list-item-radio:focus-visible {
+    outline-offset: var(--focus-outline-offset);
+}
+
+.berytus-secret-manager-list-item-radio:hover {
+    background-color: var(--checkbox-unchecked-hover-bgcolor);
+}
+
+.berytus-secret-manager-list-item-radio:hover:active {
+    background-color: var(--checkbox-unchecked-active-bgcolor);
+}
+
+.berytus-secret-manager-list-item-radio:checked {
+    fill: var(--checkbox-checked-color);
+    background-color: var(--checkbox-checked-bgcolor);
+    border-color: var(--checkbox-checked-border-color);
+}
+
+.berytus-secret-manager-list-item-radio:checked:hover {
+    background-color: var(--checkbox-checked-hover-bgcolor);
+}
+
+.berytus-secret-manager-list-item-radio:checked:hover:active {
+    background-color: var(--checkbox-checked-active-bgcolor);
+}
+
+.berytus-secret-manager-list-item-icon {
+    -moz-context-properties: fill, fill-opacity;
+    fill: currentColor;
+    fill-opacity: 0.6;
+    /* clip-path: circle(50%); */
+    width: 32px;
+    height: 32px;
+}
+
+.berytus-secret-manager-list-item>.berytus-secret-manager-list-item-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.identity-credential-list-item-label-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.identity-credential-list-item-label-primary {
+    font-weight: 600;
+}
+
+.identity-credential-list-item-label-secondary {
+    font-size: 80%;
+}
+
+.berytus-secret-manager-list-item-icon {
+    align-self: center;
+    /* width: 32px; */
+    width: 44px;
+    height: 44px;
+}
+
+.berytus-secret-manager-list-item-metadata {
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; */
+    gap: 4px;
+}
+
+.berytus-secret-manager-list-item-metadata-nb-accounts-container {
+    align-self: center;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+
+.berytus-secret-manager-list-item-metadata-spinner-icon {
+    width: 16px;
+}
+
+.berytus-secret-manager-list-item-metadata-error-icon {
+    width: 16px;
+}
+
+.berytus-secret-manager-list-item-metadata-nb-accounts-icon {
+    width: 16px;
+    fill: white;
+    -moz-context-properties: fill, fill-opacity;
+    fill-opacity: 0.8;
+}
+
+.berytus-secret-manager-list-item-stretch-till-end {
+    flex: 1;
+}
