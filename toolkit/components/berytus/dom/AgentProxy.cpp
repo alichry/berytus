@@ -1902,6 +1902,7 @@ bool ArrayBufferFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBuf
   return true;
 }
 bool ArrayBufferToJSVal(JSContext* aCx, const ArrayBuffer& aValue, JS::MutableHandle<JS::Value> aRv) {
+  MOZ_ASSERT(aValue.Obj()); // TODO(berytus): Remove or keep this.
   aRv.setObject(*aValue.Obj());
   return true;
 }

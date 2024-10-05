@@ -2,9 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { liaison } from "resource://gre/modules/BerytusLiaison.sys.mjs";
-import type { ESecretManagerType } from "./Liaison.sys.mjs";
+import { liaison, ESecretManagerType } from "resource://gre/modules/BerytusLiaison.sys.mjs";
 import type { CredentialsMetadata, GetCredentialsMetadataArgs } from "./types";
+import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+
+const lazy = {};
+XPCOMUtils.defineLazyPreferenceGetter(
+    lazy,
+    "TEST_AUTO_SELECT_BUILTIN",
+    "dom.security.berytus.test_auto_select_builtin",
+    false
+);
 
 export interface ManangerSelectionEntry {
     manager: {
@@ -70,6 +78,15 @@ class Prompter {
                 "No secret managers were found! " +
                 "Cannot prompt for secret manager selection."
             );
+        }
+        // @ts-ignore: TS does not captures assertion here
+        if (lazy.TEST_AUTO_SELECT_BUILTIN) {
+            const builtIn = managerEntries.find(m => m.manager.type === ESecretManagerType.Native);
+            if (! builtIn) {
+                throw new Error('Built-in manager was not found!');
+            }
+            await builtIn.credentialsMetadata;
+            return builtIn.manager.id;
         }
         return new Promise((resolve, reject) => {
             const { ownerDocument } = browser as { ownerDocument: Document };

@@ -1047,6 +1047,7 @@ ${this.exportToJsValFunction().functionImpl}`;
             functionName,
             functionDef: `${funcDef};`,
             functionImpl: `${funcDef} {
+  MOZ_ASSERT(aValue.Obj()); // TODO(berytus): Remove or keep this.
   aRv.setObject(*aValue.Obj());
   return true;
 }`

@@ -1,7 +1,10 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-import { liaison } from "resource://gre/modules/BerytusLiaison.sys.mjs";
+import { liaison, ESecretManagerType } from "resource://gre/modules/BerytusLiaison.sys.mjs";
+import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+const lazy = {};
+XPCOMUtils.defineLazyPreferenceGetter(lazy, "TEST_AUTO_SELECT_BUILTIN", "dom.security.berytus.test_auto_select_builtin", false);
 const collectCredentialsMetadata = async (innerWindowId, args) => {
     const managers = liaison.managers;
     const entries = [];
@@ -32,6 +35,15 @@ class Prompter {
         if (managerEntries.length === 0) {
             throw new Error("No secret managers were found! " +
                 "Cannot prompt for secret manager selection.");
+        }
+        // @ts-ignore: TS does not captures assertion here
+        if (lazy.TEST_AUTO_SELECT_BUILTIN) {
+            const builtIn = managerEntries.find(m => m.manager.type === ESecretManagerType.Native);
+            if (!builtIn) {
+                throw new Error('Built-in manager was not found!');
+            }
+            await builtIn.credentialsMetadata;
+            return builtIn.manager.id;
         }
         return new Promise((resolve, reject) => {
             const { ownerDocument } = browser;
