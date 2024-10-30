@@ -3,10 +3,26 @@
 set -e
 
 PROJ="$(dirname "$(realpath "$0")")"
-SUBDIRS="toolkit/components/berytus
-dom/berytus"
-#FILES="dom/webidl/Berytus*"r
-MOZILLA_FILES="toolkit/components/moz.build"
+BERYTUS_SUBDIRS="toolkit/components/berytus
+dom/berytus
+testing/web-platform/tests/berytus
+testing/web-platform/meta/berytus"
+# Note: make sure there are no unescaped tokens (e.g. whitespace)
+# in the paths specified in BERYTUS_FILES. This is to allow
+# glob patterns within the paths; see cpAllBerytusFiles()
+BERYTUS_FILES="browser/themes/shared/berytus-notification.css
+browser/themes/shared/icons/berytus-login.svg
+dom/webidl/Berytus*"
+MOZILLA_FILES="toolkit/components/moz.build
+toolkit/modules/ActorManagerParent.sys.mjs
+browser/base/content/navigator-toolbox.inc.xhtml
+browser/base/content/popup-notifications.inc
+browser/themes/shared/browser-shared.css
+browser/themes/shared/jar.inc.mn
+browser/themes/shared/notification-icons.css
+dom/webidl/moz.build
+dom/bindings/Bindings.conf"
+IGNORE_DIRS="node_modules/"
 
 usage="Berytus source code (ex|im)port usage:
 
@@ -28,7 +44,7 @@ printUsage() {
     echo "$usage" >&2
 }
 
-syncMozDir() {
+syncDir() {
     local subdir
     local mozsrc
     local mozdest
@@ -50,19 +66,23 @@ syncMozDir() {
             return 1
             ;;
     esac
+    if [ ! -d  "$mozsrc/$subdir" ]; then
+        echo "Subdir does not exists! ($mozsrc/$subdir/)" >&2
+        return 1
+    fi
     mkdir -p "$mozdest/$subdir"
-    rsync -rtpoglv "$mozsrc/$subdir/" "$mozdest/$subdir"
+    rsync -rtpoglv --exclude $IGNORE_DIRS "$mozsrc/$subdir/" "$mozdest/$subdir"
 }
 
-syncAllMozDirs() {
+syncAllBerytusDirs() {
     local mozsrc
     local mozdest
     mozsrc="$1"
     mozdest="$2"
 
-    for subdir in $SUBDIRS
+    for subdir in $BERYTUS_SUBDIRS
     do
-        syncMozDir "$subdir" "$mozsrc" "$mozdest"
+        syncDir "$subdir" "$mozsrc" "$mozdest"
     done
 }
 
@@ -198,6 +218,24 @@ diff -u \"$mozsrc/$orig\" \"$mozdest/$mozfile\"
     echo "Successfully patched Mozilla File '$mozdest/$mozfile'" >&2
 }
 
+cpAllBerytusFiles() {
+    local mozsrc
+    local mozdest
+    local dir
+    mozsrc="$1"
+    mozdest="$2"
+    for file in $BERYTUS_FILES
+    do
+        dir="$(dirname "$file")"
+        mkdir -p "$mozdest/$dir"
+
+        if ! cp "$mozsrc/"$file "$mozdest/$dir/"; then
+            echo "Failed to copy file ($mozsrc/$file) to dir ($mozdest/$dir/)" >&2
+            return 1
+        fi
+    done
+}
+
 importAllMozillaFiles() {
     local mozsrc
     local mozdest
@@ -227,8 +265,9 @@ importBerytus() {
     mozdest="$PROJ/mozilla-unified"
     rm -rf "$mozdest"
     mkdir "$mozdest"
-    syncAllMozDirs "$mozsrc" "$mozdest"
+    syncAllBerytusDirs "$mozsrc" "$mozdest"
     importAllMozillaFiles "$mozsrc" "$mozdest"
+    cpAllBerytusFiles "$mozsrc" "$mozdest"
 }
 
 exportBerytus() {
@@ -236,8 +275,39 @@ exportBerytus() {
     local mozdest
     mozsrc="$PROJ/mozilla-unified"
     mozdest="$1"
-    syncAllMozDirs "$mozsrc" "$mozdest"
+    syncAllBerytusDirs "$mozsrc" "$mozdest"
     exportAllMozillaFiles "$mozsrc" "$mozdest"
+    cpAllBerytusFiles "$mozsrc" "$mozdest"
+}
+
+# Use this to compare the tree strcture
+# of two mozilla unified projects.
+diffProjects() {
+    local mozsrc
+    local mozdest
+    local dir
+    local f1
+    local f2
+    mozsrc="$1"
+    mozdest="$2"
+    dir="$(mktemp -d)"
+    f1="$dir/src.find"
+    f2="$dir/dest.find"
+    trimPaths() {
+        sed '\|/node_modules/|d;
+             \|/\.git/|d;
+             \|./obj-|d;
+             \|/__pycache__|d;
+             \|./build/|d'
+    }
+    files() {
+        cd "$1"
+        find . | trimPaths | sort
+    }
+    files "$mozsrc" > "$f1"
+    files "$mozdest" > "$f2"
+
+    echo "To see the output, run $ diff \"$f1\" \"$f2\" | less"
 }
 
 run() {
