@@ -12,16 +12,18 @@ testing/web-platform/meta/berytus"
 # glob patterns within the paths; see cpAllBerytusFiles()
 BERYTUS_FILES="browser/themes/shared/berytus-notification.css
 browser/themes/shared/icons/berytus-login.svg
+.vscode/berytus.code-workspace
 dom/webidl/Berytus*"
 MOZILLA_FILES="toolkit/components/moz.build
+dom/moz.build
+dom/webidl/moz.build
+dom/bindings/Bindings.conf
 toolkit/modules/ActorManagerParent.sys.mjs
 browser/base/content/navigator-toolbox.inc.xhtml
 browser/base/content/popup-notifications.inc
 browser/themes/shared/browser-shared.css
 browser/themes/shared/jar.inc.mn
-browser/themes/shared/notification-icons.css
-dom/webidl/moz.build
-dom/bindings/Bindings.conf"
+browser/themes/shared/notification-icons.css"
 IGNORE_DIRS="node_modules/"
 
 usage="Berytus source code (ex|im)port usage:
