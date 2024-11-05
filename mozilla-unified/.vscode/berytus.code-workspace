@@ -1,0 +1,71 @@
+{
+    "folders": [
+        {
+            // Docs and release notes
+            "name": "root",
+            "path": "../",
+        },
+        {
+            "name": "toolkit-berytus",
+            "path": "../toolkit/components/berytus"
+        },
+        {
+            "name": "dom-berytus",
+            "path": "../dom/berytus"
+        },
+        {
+            "name": "wpt-berytus-tests",
+            "path": "../testing/web-platform/tests/berytus"
+        },
+        {
+            "name": "wpt-berytus-meta",
+            "path": "../testing/web-platform/meta/berytus"
+        },
+        {
+            "name": "webidl",
+            "path": "../dom/webidl",
+
+        },
+        // {
+        //     "name": "secretstar",
+        //     "path": "../secretstar"
+        // },
+        // {
+        //     "name": "berytus-web",
+        //     "path": "../berytus-web"
+        // }
+    ],
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "berytus-wpt",
+                "command": "./mach",
+                "type": "shell",
+                "args": [
+                    "wpt",
+                    "--debug-build",
+                    "testing/web-platform/tests/berytus"
+                ]
+            },
+            {
+                "label": "berytus-xpcshell",
+                "command": "./mach",
+                "type": "shell",
+                "args": [
+                    "xpcshell-test",
+                    "--tag",
+                    "berytus",
+                    "--verbose-if-fails"
+                ],
+                "presentation": {
+                    "reveal": "always"
+                },
+                "group": "test"
+            }
+        ]
+    },
+    "settings": {
+        "git.enabled": true
+    }
+}

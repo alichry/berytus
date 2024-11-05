@@ -1,0 +1,10 @@
+--- browser/themes/shared/browser-shared.css.orig	2024-10-31 21:28:22
++++ browser/themes/shared/browser-shared.css	2024-10-31 21:28:22
+@@ -19,6 +19,7 @@
+ @import url("chrome://browser/skin/notification-icons.css");
+ @import url("chrome://browser/skin/addon-notification.css");
+ @import url("chrome://browser/skin/identity-credential-notification.css");
++@import url("chrome://browser/skin/berytus-notification.css");
+ @import url("chrome://browser/skin/urlbarView.css");
+ @import url("chrome://browser/skin/autocomplete.css");
+ @import url("chrome://browser/skin/places/editBookmarkPanel.css");

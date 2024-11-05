@@ -1,0 +1,18 @@
+--- browser/themes/shared/jar.inc.mn.orig	2024-10-31 21:28:22
++++ browser/themes/shared/jar.inc.mn	2024-10-31 21:28:22
+@@ -20,6 +20,7 @@
+   skin/classic/browser/browser-shared.css                      (../shared/browser-shared.css)
+   skin/classic/browser/formautofill-notification.css           (../shared/formautofill-notification.css)
+   skin/classic/browser/identity-credential-notification.css    (../shared/identity-credential-notification.css)
++  skin/classic/browser/berytus-notification.css                (../shared/berytus-notification.css)
+   skin/classic/browser/light-dark-overrides.css                (../shared/light-dark-overrides.css)
+   skin/classic/browser/menupanel.css                           (../shared/menupanel.css)
+   skin/classic/browser/notification-icons.css                  (../shared/notification-icons.css)
+@@ -178,6 +179,7 @@
+   skin/classic/browser/import-export.svg              (../shared/icons/import-export.svg)
+   skin/classic/browser/library.svg                    (../shared/icons/library.svg)
+   skin/classic/browser/login.svg                      (../shared/icons/login.svg)
++  skin/classic/browser/berytus-login.svg              (../shared/icons/berytus-login.svg)
+   skin/classic/browser/logo-android.svg               (../shared/icons/logo-android.svg)
+   skin/classic/browser/logo-ios.svg                   (../shared/icons/logo-ios.svg)
+   skin/classic/browser/mail.svg                       (../shared/icons/mail.svg)
