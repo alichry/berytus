@@ -2,6 +2,10 @@ import { RequestHandlerParser } from "./RequestHandlerParser.js";
 import type { ParsedType } from "./type-parser.js";
 import { capitalise, UniqueArray } from "./dom-proxy.js";
 
+const decaptialise = (str: string) => {
+    return str.charAt(0).toLowerCase() + str.substring(1);
+}
+
 export const generateWebExtsSchema = async () => {
     const h = new RequestHandlerParser();
     const typeIterator = h.typeIterator();
@@ -35,9 +39,81 @@ export const generateWebExtsSchema = async () => {
     const enumGenerator = new WebExtsEnumSchemaGenerator();
     apiGenerator.enums.forEach(e => {
         enumGenerator.defineEnum(e.parsedType);
-    })
-
-    return [apiGenerator.schema, ...enumGenerator.schema];
+    });
+    const requestHandlerPropertiesDef: Record<string, RefSchemaEntry> =  {};
+    apiGenerator.groups.forEach(group => {
+        requestHandlerPropertiesDef[decaptialise(group.id).replace('RequestHandler', '')] = {
+            $ref: group.id
+        }
+    });
+    apiGenerator.addTypeDef({
+        id: "RequestHandler",
+        schema: {
+            type: "object",
+            properties: requestHandlerPropertiesDef
+        }
+    });
+    apiGenerator.addApiMethod(
+        'registerRequestHandler',
+        [
+            {
+                name: "requestHandler",
+                $ref: 'RequestHandler'
+            }
+        ],
+        true
+    );
+    apiGenerator.addApiMethod(
+        'unregisterRequestHandler',
+        [],
+        true
+    );
+    apiGenerator.addApiMethod(
+        'resolveRequest',
+        [
+            {
+                name: "requestId",
+                type: "string"
+            },
+            {
+                name: "value",
+                type: "any"
+            }
+        ],
+        true
+    );
+    apiGenerator.addApiMethod(
+        'rejectRequest',
+        [
+            {
+                name: "requestId",
+                type: "string"
+            },
+            {
+                name: "reason",
+                type: "any"
+            }
+        ],
+        true
+    );
+    return [
+        {
+            "namespace": "manifest",
+            "types": [
+                {
+                    "$extend": "OptionalPermission",
+                    "choices": [
+                        {
+                            "type": "string",
+                            "enum": ["berytus"]
+                        }
+                    ]
+                }
+            ]
+        },
+        apiGenerator.schema,
+        ...enumGenerator.schema
+    ];
 }
 
 export interface ValueSchemaEntry {
@@ -47,6 +123,7 @@ export interface ValueSchemaEntry {
 export interface TypeSchemaEntry {
     type: "object" | "string" | "number" | "boolean" | string;
     optional?: true;
+    description?: string;
 }
 
 export interface RefSchemaEntry {
@@ -70,12 +147,13 @@ export interface ArrayBufferSchemaEntry {
 export type ObjectAttributeSchemaEntry = ValueSchemaEntry
     | RefSchemaEntry
     | EnumSchemaEntry
-    | TypeSchemaEntry;
+    | TypeSchemaEntry
+    | ArraySchemaEntry;
 
 export type ObjectFunctionParameterEntry = {
-    name: string, type: string
+    name: string; type: string; optional?: true
 } | {
-    name: string, $ref: string
+    name: string, $ref: string; optional?: true
 };
 
 export interface ObjectFunctionSchemaEntry {
@@ -100,13 +178,14 @@ export interface ChoicesSchemaEntry {
     choices: SchemaDef[];
 }
 
-export type SchemaDef = ValueSchemaEntry
-    | TypeSchemaEntry
+export type SchemaDef =
+    TypeSchemaEntry
     | ArrayBufferSchemaEntry
     | RefSchemaEntry
     | ObjectFunctionSchemaEntry
     | ObjectSchemaEntry
-    | ChoicesSchemaEntry;
+    | ChoicesSchemaEntry
+    | EnumSchemaEntry;
 
 interface IDef {
     id: string;
@@ -167,28 +246,46 @@ class ObjectDef implements IDef {
         this.attrs.forEach(attr => {
             let entry: ObjectAttributeSchemaEntry;
             if ("$ref" in attr) {
+                const { $ref, optional } = attr;
                 entry = {
-                    "$ref": attr.$ref
+                    $ref: $ref,
+                    ...(optional ? { optional } : undefined)
                 };
             } else if ("value" in attr) {
                 entry = {
-                    "value": attr.value
+                    value: attr.value
                 };
             } else if ("enum" in attr) {
+                const {
+                    type,
+                    enum: _enum,
+                    optional,
+                    description
+                } = attr;
                 entry = {
-                    type: attr.type,
-                    enum: attr.enum
+                    type: type,
+                    enum: _enum,
+                    ...(optional ? { optional } : undefined),
+                    ...(description ? { description } : undefined)
                 };
                 if (attr.optional !== undefined) {
                     entry.optional = attr.optional;
                 }
+            } else if ("items" in attr) {
+                const { type, items, optional, description } = attr;
+                entry = {
+                    type,
+                    ...(optional ? { optional } : undefined),
+                    ...(description ? { description } : undefined),
+                    items
+                };
             } else {
+                const { type, optional, description } = attr;
                 entry = {
-                    type: attr.type
+                    type,
+                    ...(optional ? { optional } : undefined),
+                    ...(description ? { description } : undefined)
                 };
-                if (attr.optional !== undefined) {
-                    entry.optional = attr.optional;
-                }
             }
             res[attr.name] = entry;
         });
@@ -230,19 +327,22 @@ class UnionDef implements IDef {
 class ApiFunctionDef {
     name: string;
     parameters: Array<ObjectFunctionParameterEntry>;
+    async: boolean;
 
     constructor(
         id: string,
-        parameters: Array<ObjectFunctionParameterEntry>
+        parameters: Array<ObjectFunctionParameterEntry>,
+        async: boolean
     ) {
         this.name = id;
         this.parameters = parameters;
+        this.async = async;
     }
 
     get schema() {
         return {
-            id: this.name,
             type: "function",
+            ...(this.async ? { async: this.async } : undefined ),
             parameters: this.parameters
         }
     }
@@ -269,12 +369,18 @@ class WebExtsApiSchemaGenerator {
         return groupDef;
     }
 
+    addTypeDef(def: IDef) {
+        this.defs.push(def);
+    }
+
     addApiMethod(
         method: string,
-        parsedParameters: Array<ParameterArg>
+        parameters: Array<ObjectFunctionParameterEntry>,
+        async: boolean
     ) {
-        const parameters = this.defineParameters(parsedParameters);
-        this.methods.push(new ApiFunctionDef(method, parameters));
+        this.methods.push(new ApiFunctionDef(
+            method, parameters, async
+        ));
     }
 
     addHandlerMethod(
@@ -379,7 +485,38 @@ class WebExtsApiSchemaGenerator {
             );
         }
         const subTypes = parsedType.options.map(pt => this.defineType(pt));
-        const unionDef = new UnionDef(parsedType.alias, subTypes);
+        const [literalsAsEnum, otherSubTypes] = subTypes.reduce((res, curr) => {
+            let [literalEnum, otherSubTypes] = res;
+            if (!("value" in curr)) {
+                otherSubTypes.push(curr);
+                return res;
+            }
+            const valueType = typeof curr.value;
+            switch (valueType) {
+                case "boolean":
+                case "number":
+                    if (! otherSubTypes.find(s => "type" in s &&  s.type === valueType)) {
+                        otherSubTypes.push({ type: valueType });
+                    }
+                    console.warn(
+                        `Non-string Literal Value (${curr.value}) encountered when defining a Union`
+                    );
+                    break;
+                case "string":
+                    if (! literalEnum) {
+                        res[0] = literalEnum = {
+                            type: valueType,
+                            enum: []
+                        };
+                    }
+                    literalEnum.enum.push(curr.value as string | number);
+                    break;
+                default:
+                    throw new Error("Invalid literal type.");
+            }
+            return res;
+        }, [undefined, []] as [EnumSchemaEntry | undefined, Array<TypeSchemaEntry | RefSchemaEntry>]);
+        const unionDef = new UnionDef(parsedType.alias, ! literalsAsEnum ? otherSubTypes : [literalsAsEnum, ...otherSubTypes]);
         this.defs.push(unionDef);
         if (parsedType.optional === undefined) {
             return { $ref: unionDef.id };
@@ -396,15 +533,20 @@ class WebExtsApiSchemaGenerator {
                 "Wrong type passed to getLiteralSchemaEntry"
             );
         }
-        switch (typeof parsedType.value) {
+        // @ts-ignore JSON.parse accepts a number/boolean type
+        const value = JSON.parse(parsedType.value);
+        switch (typeof value) {
             case "number":
             case "string":
             case "boolean":
                 return {
-                    value: parsedType.value
+                    value
                 };
             default:
-                throw new Error("Unrecognised type literal " + parsedType.value);
+                throw new Error(
+                    "Unrecognised type literal "
+                    + parsedType.value + " -- " + value
+                );
         }
     }
 
@@ -415,6 +557,9 @@ class WebExtsApiSchemaGenerator {
             );
         }
         const itemType = this.defineType(parsedType.itemType);
+        if ("value" in itemType) {
+            throw new Error("Literals cannot be in arrays.");
+        }
         if (parsedType.optional === undefined) {
             return {
                 type: "array",
@@ -446,17 +591,15 @@ class WebExtsApiSchemaGenerator {
             return type;
         }, typeof parsedType.choices[0].value as "string" | "number");
         this.enums.push({ id: parsedType.alias, parsedType });
-        if (parsedType.optional === undefined) {
-            return {
+        const description = `See berytus.enums.${parsedType.alias} for mappings`;
+        return WebExtsApiSchemaGenerator.#maybeIncludeOptional<EnumSchemaEntry>(
+            {
                 enum: enumValues,
-                type: enumType
-            };
-        }
-        return {
-            enum: enumValues,
-            type: enumType,
-            optional: parsedType.optional
-        };
+                type: enumType,
+                description,
+            },
+            parsedType.optional
+        );
     }
 
     getPrimitiveEntry(parsedType: ParsedType): TypeSchemaEntry {
@@ -465,17 +608,18 @@ class WebExtsApiSchemaGenerator {
             case "number":
             case "string":
             case "pattern":
-                const typeName = parsedType.type === "pattern"
-                    ? "string" : parsedType.type;
-                if (parsedType.optional === undefined) {
-                    return {
-                        type: parsedType.type
-                    };
-                }
-                return {
-                    type: parsedType.type,
-                    optional: parsedType.optional
-                };
+                let typeName = parsedType.type;
+                return WebExtsApiSchemaGenerator.#maybeIncludeOptional<TypeSchemaEntry>(
+                    {
+                        type: typeName === "pattern" ? "string" : typeName,
+                        ...(
+                            parsedType.type === "pattern"
+                            ? { pattern: parsedType.regexp.source }
+                            : undefined
+                        )
+                    },
+                    parsedType.optional
+                );
             default:
                 throw new Error("Wrong type passed to getPrimitiveEntry");
         }
@@ -510,13 +654,14 @@ class WebExtsApiSchemaGenerator {
     get schema() {
         return {
             namespace: "berytus",
+            permissions: ["berytus"],
             types: [...this.defs, ...this.groups].map(d => {
                 return {
                     id: d.id,
                     ...d.schema
                 }
             }),
-            properties: [],
+            properties: {},
             functions: this.methods.map(m => {
                 return {
                     name: m.name,
@@ -524,6 +669,16 @@ class WebExtsApiSchemaGenerator {
                 }
             })
         };
+    }
+
+    static #maybeIncludeOptional<T extends object>(obj: T, optional?: boolean): T | T & { optional: boolean } {
+        if (optional) {
+            return {
+                ...obj,
+                optional
+            } as const;
+        }
+        return obj;
     }
 }
 

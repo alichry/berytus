@@ -274,16 +274,27 @@ class VoidType extends TypeSymbol implements IType {
     }
 }
 
-class EnumType extends BasicType implements IType {
-    members: Array<string>;
-    constructor(enumSymbol: string, members: Array<string>) {
+interface EnumMember {
+    name: string;
+    value: string | number;
+}
+
+class UintEnumType extends BasicType implements IType {
+    members: Array<EnumMember>;
+    constructor(enumSymbol: string, members: Array<EnumMember>) {
         super(enumSymbol);
+        if (members.find(m => typeof m.value !== 'number')) {
+            throw new Error(
+                `Cannot create UintEnumType for ${enumSymbol}; one `
+                + `of the member's value was not a number.`
+            );
+        }
         this.members = members;
     }
 
     get definition(): string {
         return `enum ${this.symbol} {
-  ${this.members.map(m => `${this.symbol}_${m}`).join(",\n    ")},
+  ${this.members.map(m => `${this.symbol}_${m.name} = ${m.value}`).join(",\n    ")},
   ${this.symbol}_EndGuard_
 };
 ${this.isJsValValidFunction().functionDef}
@@ -342,6 +353,148 @@ ${this.exportToJsValFunction().functionImpl}`;
             functionDef: `${funcDef};`,
             functionImpl: `${funcDef} {
   aRv.setInt32(aValue);
+  return true;
+}`
+        }
+    }
+}
+
+class StringEnumType extends BasicType implements IType {
+    members: Array<EnumMember>;
+    constructor(enumSymbol: string, members: Array<EnumMember>) {
+        super(enumSymbol);
+        if (members.find(m => typeof m.value !== 'string')) {
+            throw new Error(
+                `Cannot create UintEnumType for ${enumSymbol}; one `
+                + `of the member's value was not a string.`
+            );
+        }
+        this.members = members;
+    }
+
+    get definition(): string {
+        return `struct ${this.symbol} {
+  uint8_t mVal;
+  ${this.symbol}() : mVal(0) {}
+  ${this.symbol}(uint8_t aVal) : mVal(aVal) {};
+  ${this.labeledCreatorsFunctions().map(a => a.functionDef).join("\n")}
+  ${this.toStringFunction().functionDef}
+  ${this.fromStringFunction().functionDef}
+  ${this.isJsValValidFunction().functionDef}
+  ${this.importFromJsValFunction().functionDef}
+  ${this.exportToJsValFunction().functionDef}
+};
+`
+    }
+
+    get implementation(): string {
+        return `${this.toStringFunction().functionImpl}
+${this.labeledCreatorsFunctions().map(a => a.functionImpl).join("\n")}
+${this.fromStringFunction().functionImpl}
+${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`;
+    }
+
+    labeledCreatorsFunctions(): GeneratedFunction[] {
+        return this.members.map((m, i) => {
+            const functionName = m.name;
+            return {
+                functionName: `${this.symbol}::${functionName}`,
+                functionDef: `static ${this.symbol} ${functionName}();`,
+                functionImpl: `${this.symbol} ${this.symbol}::${functionName}() {
+  return ${this.symbol}(uint8_t(${i}));
+}`
+            }
+        })
+    }
+
+    toStringFunction(): GeneratedFunction {
+        const functionName = 'ToString';
+        const params = `nsString& aRetVal`;
+        return {
+            functionName,
+            functionDef: `void ${functionName}(${params}) const;`,
+            functionImpl: `void ${this.symbol}::${functionName}(${params}) const {
+${this.members.map((m, i) => `  if (mVal == ${i}) {
+    aRetVal.Assign(u"${m.value}"_ns);
+    return;
+  }`).join("\n")}
+}`
+        }
+    }
+
+    fromStringFunction(): GeneratedFunction {
+        const functionName = 'FromString';
+        const params = `const nsString& aVal, ${this.symbol}& aRetVal`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  ${this.members.map((m, i) => `if (aVal.Equals(u"${m.value}"_ns)) {
+    aRetVal.mVal = ${i};
+    return true;
+  }`).join("\n")}
+  return false;
+}`
+        }
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = 'IsJSValueValid';
+        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  ${this.symbol} e;
+  aRv = ${this.fromStringFunction().functionName}(strVal, e);
+  return true;
+}`
+        }
+    }
+
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = `FromJSVal`;
+        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!${this.symbol}::${this.fromStringFunction().functionName}(strVal, aRv))) {
+    return false;
+  }
+  return true;
+}`
+        }
+    }
+
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = `ToJSVal`;
+        const params = `JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+    return false;
+  }
   return true;
 }`
         }
@@ -1742,10 +1895,19 @@ class AgentProxyGenerator {
                 "Wrong type passed to defineEnum"
             );
         }
-        const enumType = new EnumType(
-            parsedType.alias,
-            parsedType.choices.map(({ name, value }) =>  `${name} = ${value}`)
-        );
+        let enumType: StringEnumType | UintEnumType;
+        if (typeof parsedType.choices[0].value === "number") {
+            enumType = new UintEnumType(
+                parsedType.alias,
+                parsedType.choices
+            );
+        } else {
+            enumType = new StringEnumType(
+                parsedType.alias,
+                parsedType.choices
+            );
+        }
+
         this.defs.push(enumType);
         if (parsedType.optional) {
             const maybeType = new MaybeType(enumType);

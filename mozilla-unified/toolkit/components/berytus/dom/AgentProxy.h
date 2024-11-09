@@ -250,15 +250,20 @@ struct EnableEndToEndEncryptionArgs : IJSWord<EnableEndToEndEncryptionArgs> {
 };
 using ChannelEnableEndToEndEncryptionResult = MozPromise<ArrayBuffer, Failure, true>;
 using ChannelCloseChannelResult = MozPromise<void*, Failure, true>;
-enum ELoginUserIntent {
-  ELoginUserIntent_PendingDeclaration = 0,
-    ELoginUserIntent_Authenticate = 1,
-    ELoginUserIntent_Register = 2,
-  ELoginUserIntent_EndGuard_
+struct ELoginUserIntent {
+  uint8_t mVal;
+  ELoginUserIntent() : mVal(0) {}
+  ELoginUserIntent(uint8_t aVal) : mVal(aVal) {};
+  static ELoginUserIntent PendingDeclaration();
+static ELoginUserIntent Authenticate();
+static ELoginUserIntent Register();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, ELoginUserIntent& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ELoginUserIntent& aRv);
+  static bool ToJSVal(JSContext* aCx, const ELoginUserIntent& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsELoginUserIntent(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool ELoginUserIntentFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ELoginUserIntent& aRv);
-bool ELoginUserIntentToJSVal(JSContext* aCx, const ELoginUserIntent& aValue, JS::MutableHandle<JS::Value> aRv);
+
 bool JSValIsVariant_nsString_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv);
 bool Variant_nsString_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<nsString>** aRv);
 bool Variant_nsString_ToJSVal(JSContext* aCx, const Variant<nsString>& aValue, JS::MutableHandle<JS::Value> aRv);
@@ -276,25 +281,35 @@ struct RequestedUserAttribute : IJSWord<RequestedUserAttribute> {
 bool JSValIsnsTArray_RequestedUserAttribute_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 bool nsTArray_RequestedUserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<RequestedUserAttribute>& aRv);
 bool nsTArray_RequestedUserAttribute_ToJSVal(JSContext* aCx, const nsTArray<RequestedUserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv);
-enum EOpeationType {
-  EOpeationType_PendingDeclaration = 0,
-    EOpeationType_Registration = 1,
-    EOpeationType_Authentication = 2,
-  EOpeationType_EndGuard_
+struct EOperationType {
+  uint8_t mVal;
+  EOperationType() : mVal(0) {}
+  EOperationType(uint8_t aVal) : mVal(aVal) {};
+  static EOperationType PendingDeclaration();
+static EOperationType Registration();
+static EOperationType Authentication();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, EOperationType& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationType& aRv);
+  static bool ToJSVal(JSContext* aCx, const EOperationType& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsEOpeationType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool EOpeationTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOpeationType& aRv);
-bool EOpeationTypeToJSVal(JSContext* aCx, const EOpeationType& aValue, JS::MutableHandle<JS::Value> aRv);
-enum EOperationStatus {
-  EOperationStatus_Pending = 0,
-    EOperationStatus_Created = 1,
-    EOperationStatus_Aborted = 2,
-    EOperationStatus_Finished = 4,
-  EOperationStatus_EndGuard_
+
+struct EOperationStatus {
+  uint8_t mVal;
+  EOperationStatus() : mVal(0) {}
+  EOperationStatus(uint8_t aVal) : mVal(aVal) {};
+  static EOperationStatus Pending();
+static EOperationStatus Created();
+static EOperationStatus Aborted();
+static EOperationStatus Finished();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, EOperationStatus& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv);
+  static bool ToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsEOperationStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool EOperationStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv);
-bool EOperationStatusToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv);
+
 struct OperationState : IJSWord<OperationState> {
   
   
@@ -307,7 +322,7 @@ struct LoginOperationMetadata : IJSWord<LoginOperationMetadata> {
   ELoginUserIntent mIntent;
   nsTArray<RequestedUserAttribute> mRequestedUserAttributes;
   nsString mId;
-  EOpeationType mType;
+  EOperationType mType;
   EOperationStatus mStatus;
   OperationState mState;
   
@@ -327,7 +342,7 @@ struct ApproveOperationArgs : IJSWord<ApproveOperationArgs> {
 using LoginApproveOperationResult = MozPromise<ELoginUserIntent, Failure, true>;
 struct OperationMetadata : IJSWord<OperationMetadata> {
   nsString mId;
-  EOpeationType mType;
+  EOperationType mType;
   EOperationStatus mStatus;
   OperationState mState;
   
@@ -347,15 +362,20 @@ struct RequestContextWithOperation : IJSWord<RequestContextWithOperation> {
   static bool ToJSVal(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv);
 };
 using LoginCloseOpeationResult = MozPromise<void*, Failure, true>;
-enum EMetadataStatus {
-  EMetadataStatus_Pending = 0,
-    EMetadataStatus_Created = 1,
-    EMetadataStatus_Retired = 2,
-  EMetadataStatus_EndGuard_
+struct EMetadataStatus {
+  uint8_t mVal;
+  EMetadataStatus() : mVal(0) {}
+  EMetadataStatus(uint8_t aVal) : mVal(aVal) {};
+  static EMetadataStatus Pending();
+static EMetadataStatus Created();
+static EMetadataStatus Retired();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, EMetadataStatus& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv);
+  static bool ToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsEMetadataStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool EMetadataStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv);
-bool EMetadataStatusToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv);
+
 struct RecordMetadata : IJSWord<RecordMetadata> {
   double mVersion;
   EMetadataStatus mStatus;
@@ -402,17 +422,22 @@ bool JSValIsnsTArray_UserAttribute_(JSContext *aCx, const JS::Handle<JS::Value> 
 bool nsTArray_UserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<UserAttribute>& aRv);
 bool nsTArray_UserAttribute_ToJSVal(JSContext* aCx, const nsTArray<UserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv);
 using AccountCreationGetUserAttributesResult = MozPromise<nsTArray<UserAttribute>, Failure, true>;
-enum EFieldType {
-  EFieldType_Identity = 0,
-    EFieldType_ForeignIdentity = 1,
-    EFieldType_Password = 2,
-    EFieldType_SecurePassword = 3,
-    EFieldType_Key = 4,
-  EFieldType_EndGuard_
+struct EFieldType {
+  uint8_t mVal;
+  EFieldType() : mVal(0) {}
+  EFieldType(uint8_t aVal) : mVal(aVal) {};
+  static EFieldType Identity();
+static EFieldType ForeignIdentity();
+static EFieldType Password();
+static EFieldType SecurePassword();
+static EFieldType Key();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, EFieldType& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EFieldType& aRv);
+  static bool ToJSVal(JSContext* aCx, const EFieldType& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsEFieldType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool EFieldTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EFieldType& aRv);
-bool EFieldTypeToJSVal(JSContext* aCx, const EFieldType& aValue, JS::MutableHandle<JS::Value> aRv);
+
 struct BaseFieldMetadata : IJSWord<BaseFieldMetadata> {
   EFieldType mFieldType;
   nsString mFieldId;
@@ -465,17 +490,22 @@ bool JSValIsVariant_nsString__ArrayBuffer_(JSContext* aCx, JS::Handle<JS::Value>
 bool Variant_nsString__ArrayBuffer_FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Variant<nsString, ArrayBuffer>** aRv);
 bool Variant_nsString__ArrayBuffer_ToJSVal(JSContext* aCx, const Variant<nsString, ArrayBuffer>& aValue, JS::MutableHandle<JS::Value> aRv);
 using AccountCreationRejectFieldValueResult = MozPromise<Variant<nsString, ArrayBuffer>*, Failure, true>;
-enum EChallengeType {
-  EChallengeType_Identification = 0,
-    EChallengeType_DigitalSignature = 1,
-    EChallengeType_Password = 2,
-    EChallengeType_SecureRemotePassword = 3,
-    EChallengeType_ForeignIdentityOtp = 4,
-  EChallengeType_EndGuard_
+struct EChallengeType {
+  uint8_t mVal;
+  EChallengeType() : mVal(0) {}
+  EChallengeType(uint8_t aVal) : mVal(aVal) {};
+  static EChallengeType Identification();
+static EChallengeType DigitalSignature();
+static EChallengeType Password();
+static EChallengeType SecureRemotePassword();
+static EChallengeType ForeignIdentityOtp();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, EChallengeType& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv);
+  static bool ToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsEChallengeType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool EChallengeTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv);
-bool EChallengeTypeToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv);
+
 struct ChallengeParameters : IJSWord<ChallengeParameters> {
   
   
@@ -484,17 +514,22 @@ struct ChallengeParameters : IJSWord<ChallengeParameters> {
   static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeParameters& aRv);
   static bool ToJSVal(JSContext* aCx, const ChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-enum EChallengeStatus {
-  EChallengeStatus_Invalid = 0,
-    EChallengeStatus_Pending = 1,
-    EChallengeStatus_Active = 2,
-    EChallengeStatus_Aborted = 3,
-    EChallengeStatus_Sealed = 4,
-  EChallengeStatus_EndGuard_
+struct EChallengeStatus {
+  uint8_t mVal;
+  EChallengeStatus() : mVal(0) {}
+  EChallengeStatus(uint8_t aVal) : mVal(aVal) {};
+  static EChallengeStatus Invalid();
+static EChallengeStatus Pending();
+static EChallengeStatus Active();
+static EChallengeStatus Aborted();
+static EChallengeStatus Sealed();
+  void ToString(nsString& aRetVal) const;
+  static bool FromString(const nsString& aVal, EChallengeStatus& aRetVal);
+  static bool IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+  static bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv);
+  static bool ToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv);
 };
-bool JSValIsEChallengeStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-bool EChallengeStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv);
-bool EChallengeStatusToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv);
+
 struct ChallengeMetadata : IJSWord<ChallengeMetadata> {
   nsString mId;
   EChallengeType mType;

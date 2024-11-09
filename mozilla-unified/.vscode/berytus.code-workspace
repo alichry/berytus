@@ -62,7 +62,21 @@
                     "reveal": "always"
                 },
                 "group": "test"
-            }
+            },
+            {
+                "label": "berytus-webexts-xpcshell",
+                "command": "./mach",
+                "type": "shell",
+                "args": [
+                    "xpcshell-test",
+                    "--verbose-if-fails",
+                    "toolkit/components/extensions/test/xpcshell/test_ext_berytus*"
+                ],
+                "presentation": {
+                    "reveal": "always"
+                },
+                "group": "test"
+            },
         ]
     },
     "settings": {

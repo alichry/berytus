@@ -2481,27 +2481,75 @@ bool EnableEndToEndEncryptionArgs::ToJSVal(JSContext* aCx, const EnableEndToEndE
 
 
 
-bool JSValIsELoginUserIntent(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void ELoginUserIntent::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"PendingDeclaration"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"Authenticate"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Register"_ns);
+    return;
+  }
+}
+ELoginUserIntent ELoginUserIntent::PendingDeclaration() {
+  return ELoginUserIntent(uint8_t(0));
+}
+ELoginUserIntent ELoginUserIntent::Authenticate() {
+  return ELoginUserIntent(uint8_t(1));
+}
+ELoginUserIntent ELoginUserIntent::Register() {
+  return ELoginUserIntent(uint8_t(2));
+}
+bool ELoginUserIntent::FromString(const nsString& aVal, ELoginUserIntent& aRetVal) {
+  if (aVal.Equals(u"PendingDeclaration"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"Authenticate"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Register"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+  return false;
+}
+bool ELoginUserIntent::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(ELoginUserIntent::ELoginUserIntent_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  ELoginUserIntent e;
+  aRv = ELoginUserIntent::FromString(strVal, e);
+  return true;
+}
+bool ELoginUserIntent::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ELoginUserIntent& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!ELoginUserIntent::ELoginUserIntent::FromString(strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool ELoginUserIntentFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ELoginUserIntent& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+bool ELoginUserIntent::ToJSVal(JSContext* aCx, const ELoginUserIntent& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(ELoginUserIntent::ELoginUserIntent_EndGuard_)) {
-    return false;
-  }
-  aRv = static_cast<ELoginUserIntent>(aValue.toInt32());
-  return true;
-}
-bool ELoginUserIntentToJSVal(JSContext* aCx, const ELoginUserIntent& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
   return true;
 }
 bool JSValIsVariant_nsString_(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -2693,50 +2741,157 @@ bool nsTArray_RequestedUserAttribute_ToJSVal(JSContext* aCx, const nsTArray<Requ
   aRv.setObject(*array);
   return true;
 }
-bool JSValIsEOpeationType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void EOperationType::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"PendingDeclaration"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"Registration"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Authentication"_ns);
+    return;
+  }
+}
+EOperationType EOperationType::PendingDeclaration() {
+  return EOperationType(uint8_t(0));
+}
+EOperationType EOperationType::Registration() {
+  return EOperationType(uint8_t(1));
+}
+EOperationType EOperationType::Authentication() {
+  return EOperationType(uint8_t(2));
+}
+bool EOperationType::FromString(const nsString& aVal, EOperationType& aRetVal) {
+  if (aVal.Equals(u"PendingDeclaration"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"Registration"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Authentication"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+  return false;
+}
+bool EOperationType::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EOpeationType::EOpeationType_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  EOperationType e;
+  aRv = EOperationType::FromString(strVal, e);
+  return true;
+}
+bool EOperationType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationType& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!EOperationType::EOperationType::FromString(strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool EOpeationTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOpeationType& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
-    return false;
-  }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EOpeationType::EOpeationType_EndGuard_)) {
-    return false;
-  }
-  aRv = static_cast<EOpeationType>(aValue.toInt32());
-  return true;
-}
-bool EOpeationTypeToJSVal(JSContext* aCx, const EOpeationType& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
-  return true;
-}
-bool JSValIsEOperationStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
-    return false;
-  }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EOperationStatus::EOperationStatus_EndGuard_)) {
+bool EOperationType::ToJSVal(JSContext* aCx, const EOperationType& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool EOperationStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void EOperationStatus::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"Pending"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"Created"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Aborted"_ns);
+    return;
+  }
+  if (mVal == 3) {
+    aRetVal.Assign(u"Finished"_ns);
+    return;
+  }
+}
+EOperationStatus EOperationStatus::Pending() {
+  return EOperationStatus(uint8_t(0));
+}
+EOperationStatus EOperationStatus::Created() {
+  return EOperationStatus(uint8_t(1));
+}
+EOperationStatus EOperationStatus::Aborted() {
+  return EOperationStatus(uint8_t(2));
+}
+EOperationStatus EOperationStatus::Finished() {
+  return EOperationStatus(uint8_t(3));
+}
+bool EOperationStatus::FromString(const nsString& aVal, EOperationStatus& aRetVal) {
+  if (aVal.Equals(u"Pending"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"Created"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Aborted"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+if (aVal.Equals(u"Finished"_ns)) {
+    aRetVal.mVal = 3;
+    return true;
+  }
+  return false;
+}
+bool EOperationStatus::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EOperationStatus::EOperationStatus_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
     return false;
   }
-  aRv = static_cast<EOperationStatus>(aValue.toInt32());
+  EOperationStatus e;
+  aRv = EOperationStatus::FromString(strVal, e);
   return true;
 }
-bool EOperationStatusToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
+bool EOperationStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!EOperationStatus::EOperationStatus::FromString(strVal, aRv))) {
+    return false;
+  }
+  return true;
+}
+bool EOperationStatus::ToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+    return false;
+  }
   return true;
 }
 bool OperationState::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -2781,7 +2936,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "intent", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsELoginUserIntent(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!ELoginUserIntent::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2817,7 +2972,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEOpeationType(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EOperationType::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2829,7 +2984,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEOperationStatus(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EOperationStatus::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -2862,7 +3017,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "intent", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!ELoginUserIntentFromJSVal(aCx, propVal, aRv.mIntent))) {
+  if (NS_WARN_IF(!ELoginUserIntent::FromJSVal(aCx, propVal, aRv.mIntent))) {
     return false;
   }
   
@@ -2886,7 +3041,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EOpeationTypeFromJSVal(aCx, propVal, aRv.mType))) {
+  if (NS_WARN_IF(!EOperationType::FromJSVal(aCx, propVal, aRv.mType))) {
     return false;
   }
   
@@ -2894,7 +3049,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EOperationStatusFromJSVal(aCx, propVal, aRv.mStatus))) {
+  if (NS_WARN_IF(!EOperationStatus::FromJSVal(aCx, propVal, aRv.mStatus))) {
     return false;
   }
   
@@ -2915,7 +3070,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!ELoginUserIntentToJSVal(aCx, aValue.mIntent, &memberVal0))) {
+  if (NS_WARN_IF(!ELoginUserIntent::ToJSVal(aCx, aValue.mIntent, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "intent", memberVal0))) {
@@ -2945,7 +3100,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!EOpeationTypeToJSVal(aCx, aValue.mType, &memberVal3))) {
+  if (NS_WARN_IF(!EOperationType::ToJSVal(aCx, aValue.mType, &memberVal3))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal3))) {
@@ -2955,7 +3110,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!EOperationStatusToJSVal(aCx, aValue.mStatus, &memberVal4))) {
+  if (NS_WARN_IF(!EOperationStatus::ToJSVal(aCx, aValue.mStatus, &memberVal4))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal4))) {
@@ -3058,7 +3213,7 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEOpeationType(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EOperationType::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3070,7 +3225,7 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEOperationStatus(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EOperationStatus::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3111,7 +3266,7 @@ bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EOpeationTypeFromJSVal(aCx, propVal, aRv.mType))) {
+  if (NS_WARN_IF(!EOperationType::FromJSVal(aCx, propVal, aRv.mType))) {
     return false;
   }
   
@@ -3119,7 +3274,7 @@ bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EOperationStatusFromJSVal(aCx, propVal, aRv.mStatus))) {
+  if (NS_WARN_IF(!EOperationStatus::FromJSVal(aCx, propVal, aRv.mStatus))) {
     return false;
   }
   
@@ -3150,7 +3305,7 @@ bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!EOpeationTypeToJSVal(aCx, aValue.mType, &memberVal1))) {
+  if (NS_WARN_IF(!EOperationType::ToJSVal(aCx, aValue.mType, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -3160,7 +3315,7 @@ bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!EOperationStatusToJSVal(aCx, aValue.mStatus, &memberVal2))) {
+  if (NS_WARN_IF(!EOperationStatus::ToJSVal(aCx, aValue.mStatus, &memberVal2))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal2))) {
@@ -3299,27 +3454,75 @@ bool RequestContextWithOperation::ToJSVal(JSContext* aCx, const RequestContextWi
 }
 
 
-bool JSValIsEMetadataStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void EMetadataStatus::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"Pending"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"Created"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Retired"_ns);
+    return;
+  }
+}
+EMetadataStatus EMetadataStatus::Pending() {
+  return EMetadataStatus(uint8_t(0));
+}
+EMetadataStatus EMetadataStatus::Created() {
+  return EMetadataStatus(uint8_t(1));
+}
+EMetadataStatus EMetadataStatus::Retired() {
+  return EMetadataStatus(uint8_t(2));
+}
+bool EMetadataStatus::FromString(const nsString& aVal, EMetadataStatus& aRetVal) {
+  if (aVal.Equals(u"Pending"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"Created"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Retired"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+  return false;
+}
+bool EMetadataStatus::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EMetadataStatus::EMetadataStatus_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  EMetadataStatus e;
+  aRv = EMetadataStatus::FromString(strVal, e);
+  return true;
+}
+bool EMetadataStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!EMetadataStatus::EMetadataStatus::FromString(strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool EMetadataStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+bool EMetadataStatus::ToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EMetadataStatus::EMetadataStatus_EndGuard_)) {
-    return false;
-  }
-  aRv = static_cast<EMetadataStatus>(aValue.toInt32());
-  return true;
-}
-bool EMetadataStatusToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
   return true;
 }
 bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -3346,7 +3549,7 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEMetadataStatus(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EMetadataStatus::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3399,7 +3602,7 @@ bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Rec
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EMetadataStatusFromJSVal(aCx, propVal, aRv.mStatus))) {
+  if (NS_WARN_IF(!EMetadataStatus::FromJSVal(aCx, propVal, aRv.mStatus))) {
     return false;
   }
   
@@ -3438,7 +3641,7 @@ bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!EMetadataStatusToJSVal(aCx, aValue.mStatus, &memberVal1))) {
+  if (NS_WARN_IF(!EMetadataStatus::ToJSVal(aCx, aValue.mStatus, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal1))) {
@@ -3763,27 +3966,97 @@ bool nsTArray_UserAttribute_ToJSVal(JSContext* aCx, const nsTArray<UserAttribute
   return true;
 }
 
-bool JSValIsEFieldType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void EFieldType::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"Identity"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"ForeignIdentity"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Password"_ns);
+    return;
+  }
+  if (mVal == 3) {
+    aRetVal.Assign(u"SecurePassword"_ns);
+    return;
+  }
+  if (mVal == 4) {
+    aRetVal.Assign(u"Key"_ns);
+    return;
+  }
+}
+EFieldType EFieldType::Identity() {
+  return EFieldType(uint8_t(0));
+}
+EFieldType EFieldType::ForeignIdentity() {
+  return EFieldType(uint8_t(1));
+}
+EFieldType EFieldType::Password() {
+  return EFieldType(uint8_t(2));
+}
+EFieldType EFieldType::SecurePassword() {
+  return EFieldType(uint8_t(3));
+}
+EFieldType EFieldType::Key() {
+  return EFieldType(uint8_t(4));
+}
+bool EFieldType::FromString(const nsString& aVal, EFieldType& aRetVal) {
+  if (aVal.Equals(u"Identity"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"ForeignIdentity"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Password"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+if (aVal.Equals(u"SecurePassword"_ns)) {
+    aRetVal.mVal = 3;
+    return true;
+  }
+if (aVal.Equals(u"Key"_ns)) {
+    aRetVal.mVal = 4;
+    return true;
+  }
+  return false;
+}
+bool EFieldType::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EFieldType::EFieldType_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  EFieldType e;
+  aRv = EFieldType::FromString(strVal, e);
+  return true;
+}
+bool EFieldType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EFieldType& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!EFieldType::EFieldType::FromString(strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool EFieldTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EFieldType& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+bool EFieldType::ToJSVal(JSContext* aCx, const EFieldType& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EFieldType::EFieldType_EndGuard_)) {
-    return false;
-  }
-  aRv = static_cast<EFieldType>(aValue.toInt32());
-  return true;
-}
-bool EFieldTypeToJSVal(JSContext* aCx, const EFieldType& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
   return true;
 }
 bool BaseFieldMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -3798,7 +4071,7 @@ bool BaseFieldMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldType", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEFieldType(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EFieldType::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -3843,7 +4116,7 @@ bool BaseFieldMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldType", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EFieldTypeFromJSVal(aCx, propVal, aRv.mFieldType))) {
+  if (NS_WARN_IF(!EFieldType::FromJSVal(aCx, propVal, aRv.mFieldType))) {
     return false;
   }
   
@@ -3872,7 +4145,7 @@ bool BaseFieldMetadata::ToJSVal(JSContext* aCx, const BaseFieldMetadata& aValue,
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!EFieldTypeToJSVal(aCx, aValue.mFieldType, &memberVal0))) {
+  if (NS_WARN_IF(!EFieldType::ToJSVal(aCx, aValue.mFieldType, &memberVal0))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "fieldType", memberVal0))) {
@@ -4343,27 +4616,97 @@ bool Variant_nsString__ArrayBuffer_ToJSVal(JSContext* aCx, const Variant<nsStrin
   return aValue.match(Variant_nsString__ArrayBuffer_ToJSValMatcher(aCx, aRv));
 }
 
-bool JSValIsEChallengeType(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void EChallengeType::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"Identification"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"DigitalSignature"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Password"_ns);
+    return;
+  }
+  if (mVal == 3) {
+    aRetVal.Assign(u"SecureRemotePassword"_ns);
+    return;
+  }
+  if (mVal == 4) {
+    aRetVal.Assign(u"ForeignIdentityOtp"_ns);
+    return;
+  }
+}
+EChallengeType EChallengeType::Identification() {
+  return EChallengeType(uint8_t(0));
+}
+EChallengeType EChallengeType::DigitalSignature() {
+  return EChallengeType(uint8_t(1));
+}
+EChallengeType EChallengeType::Password() {
+  return EChallengeType(uint8_t(2));
+}
+EChallengeType EChallengeType::SecureRemotePassword() {
+  return EChallengeType(uint8_t(3));
+}
+EChallengeType EChallengeType::ForeignIdentityOtp() {
+  return EChallengeType(uint8_t(4));
+}
+bool EChallengeType::FromString(const nsString& aVal, EChallengeType& aRetVal) {
+  if (aVal.Equals(u"Identification"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"DigitalSignature"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Password"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+if (aVal.Equals(u"SecureRemotePassword"_ns)) {
+    aRetVal.mVal = 3;
+    return true;
+  }
+if (aVal.Equals(u"ForeignIdentityOtp"_ns)) {
+    aRetVal.mVal = 4;
+    return true;
+  }
+  return false;
+}
+bool EChallengeType::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EChallengeType::EChallengeType_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  EChallengeType e;
+  aRv = EChallengeType::FromString(strVal, e);
+  return true;
+}
+bool EChallengeType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!EChallengeType::EChallengeType::FromString(strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool EChallengeTypeFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+bool EChallengeType::ToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EChallengeType::EChallengeType_EndGuard_)) {
-    return false;
-  }
-  aRv = static_cast<EChallengeType>(aValue.toInt32());
-  return true;
-}
-bool EChallengeTypeToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
   return true;
 }
 bool ChallengeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -4396,27 +4739,97 @@ bool ChallengeParameters::ToJSVal(JSContext* aCx, const ChallengeParameters& aVa
   return true;
 }
 
-bool JSValIsEChallengeStatus(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+void EChallengeStatus::ToString(nsString& aRetVal) const {
+  if (mVal == 0) {
+    aRetVal.Assign(u"Invalid"_ns);
+    return;
+  }
+  if (mVal == 1) {
+    aRetVal.Assign(u"Pending"_ns);
+    return;
+  }
+  if (mVal == 2) {
+    aRetVal.Assign(u"Active"_ns);
+    return;
+  }
+  if (mVal == 3) {
+    aRetVal.Assign(u"Aborted"_ns);
+    return;
+  }
+  if (mVal == 4) {
+    aRetVal.Assign(u"Sealed"_ns);
+    return;
+  }
+}
+EChallengeStatus EChallengeStatus::Invalid() {
+  return EChallengeStatus(uint8_t(0));
+}
+EChallengeStatus EChallengeStatus::Pending() {
+  return EChallengeStatus(uint8_t(1));
+}
+EChallengeStatus EChallengeStatus::Active() {
+  return EChallengeStatus(uint8_t(2));
+}
+EChallengeStatus EChallengeStatus::Aborted() {
+  return EChallengeStatus(uint8_t(3));
+}
+EChallengeStatus EChallengeStatus::Sealed() {
+  return EChallengeStatus(uint8_t(4));
+}
+bool EChallengeStatus::FromString(const nsString& aVal, EChallengeStatus& aRetVal) {
+  if (aVal.Equals(u"Invalid"_ns)) {
+    aRetVal.mVal = 0;
+    return true;
+  }
+if (aVal.Equals(u"Pending"_ns)) {
+    aRetVal.mVal = 1;
+    return true;
+  }
+if (aVal.Equals(u"Active"_ns)) {
+    aRetVal.mVal = 2;
+    return true;
+  }
+if (aVal.Equals(u"Aborted"_ns)) {
+    aRetVal.mVal = 3;
+    return true;
+  }
+if (aVal.Equals(u"Sealed"_ns)) {
+    aRetVal.mVal = 4;
+    return true;
+  }
+  return false;
+}
+bool EChallengeStatus::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EChallengeStatus::EChallengeStatus_EndGuard_)) {
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  EChallengeStatus e;
+  aRv = EChallengeStatus::FromString(strVal, e);
+  return true;
+}
+bool EChallengeStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv) {
+  if (NS_WARN_IF(!aValue.isString())) {
+    return false;
+  }
+  nsString strVal;
+  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!EChallengeStatus::EChallengeStatus::FromString(strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool EChallengeStatusFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv) {
-  if (NS_WARN_IF(!aValue.isInt32())) {
+bool EChallengeStatus::ToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
+  nsString strVal;
+  aValue.ToString(strVal);
+  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
     return false;
   }
-  if (aValue.toInt32() >= static_cast<uint8_t>(EChallengeStatus::EChallengeStatus_EndGuard_)) {
-    return false;
-  }
-  aRv = static_cast<EChallengeStatus>(aValue.toInt32());
-  return true;
-}
-bool EChallengeStatusToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
-  aRv.setInt32(aValue);
   return true;
 }
 bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -4443,7 +4856,7 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEChallengeType(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EChallengeType::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4467,7 +4880,7 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!JSValIsEChallengeStatus(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!EChallengeStatus::IsJSValueValid(aCx, propVal, isValid))) {
     return false;
   }
   if (!isValid) {
@@ -4496,7 +4909,7 @@ bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EChallengeTypeFromJSVal(aCx, propVal, aRv.mType))) {
+  if (NS_WARN_IF(!EChallengeType::FromJSVal(aCx, propVal, aRv.mType))) {
     return false;
   }
   
@@ -4512,7 +4925,7 @@ bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!EChallengeStatusFromJSVal(aCx, propVal, aRv.mStatus))) {
+  if (NS_WARN_IF(!EChallengeStatus::FromJSVal(aCx, propVal, aRv.mStatus))) {
     return false;
   }
   
@@ -4535,7 +4948,7 @@ bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!EChallengeTypeToJSVal(aCx, aValue.mType, &memberVal1))) {
+  if (NS_WARN_IF(!EChallengeType::ToJSVal(aCx, aValue.mType, &memberVal1))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -4555,7 +4968,7 @@ bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!EChallengeStatusToJSVal(aCx, aValue.mStatus, &memberVal3))) {
+  if (NS_WARN_IF(!EChallengeStatus::ToJSVal(aCx, aValue.mStatus, &memberVal3))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal3))) {
@@ -5398,7 +5811,7 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ELoginUserIntent out;
-    if (NS_WARN_IF(!ELoginUserIntentFromJSVal(aCx, aValue, out))) {
+    if (NS_WARN_IF(!ELoginUserIntent::FromJSVal(aCx, aValue, out))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);

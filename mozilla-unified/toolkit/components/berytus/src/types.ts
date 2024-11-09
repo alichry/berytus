@@ -55,23 +55,23 @@ export interface DocumentMetadata {
 }
 
 enum EOperationStatus {
-    Pending = 0,
-    Created = 1,
-    Aborted = 2,
-    Finished = 4
+    Pending = "Pending",
+    Created = "Created",
+    Aborted = "Aborted",
+    Finished = "Finished"
 }
 
-enum EOpeationType {
-    PendingDeclaration = 0,
-    Registration = 1,
-    Authentication = 2
+enum EOperationType {
+    PendingDeclaration = "PendingDeclaration",
+    Registration = "Registration",
+    Authentication = "Authentication"
 }
 
 export interface OperationState {}
 
 export interface OperationMetadata {
     id: string;
-    type: EOpeationType;
+    type: EOperationType;
     status: EOperationStatus;
     /**
      * State about the operation, e.g.:
@@ -104,9 +104,9 @@ export interface RequestContextWithOperation extends RequestContext {
 export type CredentialsMetadata = number;
 
 export enum ELoginUserIntent {
-    PendingDeclaration = 0,
-    Authenticate = 1,
-    Register = 2
+    PendingDeclaration = "PendingDeclaration",
+    Authenticate = "Authenticate",
+    Register = "Register"
 }
 
 type WebAppActor = CryptoActor | OriginActor;
@@ -138,19 +138,19 @@ export interface KeyExchangeParameters
 }
 
 enum EChallengeType {
-    Identification,
-    DigitalSignature,
-    Password,
-    SecureRemotePassword,
-    ForeignIdentityOtp
+    Identification = "Identification",
+    DigitalSignature = "DigitalSignature",
+    Password = "Password",
+    SecureRemotePassword = "SecureRemotePassword",
+    ForeignIdentityOtp = "ForeignIdentityOtp"
 }
 
 enum EChallengeStatus {
-    Invalid,
-    Pending,
-    Active,
-    Aborted,
-    Sealed
+    Invalid = "Invalid",
+    Pending = "Pending",
+    Active = "Active",
+    Aborted = "Aborted",
+    Sealed = "Sealed"
 }
 
 export interface ChallengeParameters {}
@@ -208,11 +208,11 @@ export type UserAttributes = Array<UserAttribute>;
 export type RequestedUserAttributes = Array<RequestedUserAttribute>;
 
 enum EFieldType {
-    Identity = 0,
-    ForeignIdentity = 1,
-    Password = 2,
-    SecurePassword = 3,
-    Key = 4
+    Identity = "Identity",
+    ForeignIdentity = "ForeignIdentity",
+    Password = "Password",
+    SecurePassword = "SecurePassword",
+    Key = "Key"
 };
 
 export interface BaseFieldMetadata {
@@ -228,16 +228,16 @@ export interface FieldValueRejectionReason {
 }
 
 enum EMetadataProperty {
-    Version = 0,
-    Status = 1,
-    Category = 2,
-    ChangePassUrl = 4
+    Version = "Version",
+    Status = "Status",
+    Category = "Category",
+    ChangePassUrl = "ChangePassUrl"
 };
 
 enum EMetadataStatus {
-    Pending = 0,
-    Created = 1,
-    Retired = 2,
+    Pending = "Pending",
+    Created = "Created",
+    Retired = "Retired",
 };
 
 export interface RecordMetadata {

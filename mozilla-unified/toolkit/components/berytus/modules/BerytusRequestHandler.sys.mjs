@@ -763,7 +763,7 @@ export class IsolatedRequestHandler {
         const err = new Components.Exception("Error sending request to secret manager. "
             + "The secret manager unexpectedly threw an exception "
             + "instead of using the reject callback (RequestType: "
-            + `${group}:${String(method)}).`, Cr.NS_ERROR_FAILURE);
+            + `${group}:${String(method)}). Exception: ${excp}`, Cr.NS_ERROR_FAILURE);
         response.reject(err);
     }
 }

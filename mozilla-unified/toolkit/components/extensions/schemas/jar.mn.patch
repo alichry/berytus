@@ -1,0 +1,10 @@
+--- toolkit/components/extensions/schemas/jar.mn.orig	2024-11-07 17:56:49
++++ toolkit/components/extensions/schemas/jar.mn	2024-11-07 17:56:51
+@@ -6,6 +6,7 @@
+ % content extensions %content/extensions/
+     content/extensions/schemas/activity_log.json
+     content/extensions/schemas/alarms.json
++    content/extensions/schemas/berytus.json
+     content/extensions/schemas/browser_action.json
+     content/extensions/schemas/browser_settings.json
+     content/extensions/schemas/browsing_data.json

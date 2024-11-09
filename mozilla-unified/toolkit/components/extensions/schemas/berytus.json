@@ -1,0 +1,1081 @@
+[
+  {
+    "namespace": "manifest",
+    "types": [
+      {
+        "$extend": "OptionalPermission",
+        "choices": [
+          {
+            "type": "string",
+            "enum": [
+              "berytus"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "namespace": "berytus",
+    "permissions": [
+      "berytus"
+    ],
+    "types": [
+      {
+        "id": "Request",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "DocumentMetadata",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          }
+        }
+      },
+      {
+        "id": "PreliminaryRequestContext",
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "Request"
+          },
+          "document": {
+            "$ref": "DocumentMetadata"
+          }
+        }
+      },
+      {
+        "id": "CryptoActor",
+        "type": "object",
+        "properties": {
+          "ed25519Key": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "UriParams",
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "scheme": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "port": {
+            "type": "number"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "OriginActor",
+        "type": "object",
+        "properties": {
+          "originalUri": {
+            "$ref": "UriParams"
+          },
+          "currentUri": {
+            "$ref": "UriParams"
+          }
+        }
+      },
+      {
+        "id": "WebAppActor",
+        "choices": [
+          {
+            "$ref": "CryptoActor"
+          },
+          {
+            "$ref": "OriginActor"
+          }
+        ]
+      },
+      {
+        "id": "GetSigningKeyArgs",
+        "type": "object",
+        "properties": {
+          "webAppActor": {
+            "$ref": "WebAppActor"
+          }
+        }
+      },
+      {
+        "id": "PartialAccountIdentity",
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string"
+          },
+          "fieldValue": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "AccountConstraints",
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "optional": true
+          },
+          "schemaVersion": {
+            "type": "number",
+            "optional": true
+          },
+          "identity": {
+            "type": "array",
+            "optional": true,
+            "items": {
+              "$ref": "PartialAccountIdentity"
+            }
+          }
+        }
+      },
+      {
+        "id": "ChannelConstraints",
+        "type": "object",
+        "properties": {
+          "secretManagerPublicKey": {
+            "type": "array",
+            "optional": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "enableEndToEndEncryption": {
+            "type": "boolean"
+          },
+          "account": {
+            "$ref": "AccountConstraints",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "GetCredentialsMetadataArgs",
+        "type": "object",
+        "properties": {
+          "webAppActor": {
+            "$ref": "WebAppActor"
+          },
+          "channelConstraints": {
+            "$ref": "ChannelConstraints"
+          },
+          "accountConstraints": {
+            "$ref": "AccountConstraints"
+          }
+        }
+      },
+      {
+        "id": "ChannelMetadata",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "constraints": {
+            "$ref": "ChannelConstraints"
+          },
+          "webAppActor": {
+            "$ref": "WebAppActor"
+          },
+          "scmActor": {
+            "$ref": "CryptoActor"
+          }
+        }
+      },
+      {
+        "id": "RequestContext",
+        "type": "object",
+        "properties": {
+          "channel": {
+            "$ref": "ChannelMetadata"
+          },
+          "request": {
+            "$ref": "Request"
+          },
+          "document": {
+            "$ref": "DocumentMetadata"
+          }
+        }
+      },
+      {
+        "id": "InitialKeyExchangeParametersDraft",
+        "type": "object",
+        "properties": {
+          "channelId": {
+            "type": "string"
+          },
+          "webAppX25519Key": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "GenerateKeyExchangeParametersArgs",
+        "type": "object",
+        "properties": {
+          "paramsDraft": {
+            "$ref": "InitialKeyExchangeParametersDraft"
+          }
+        }
+      },
+      {
+        "id": "KeyExchangeParameters",
+        "type": "object",
+        "properties": {
+          "packet": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "webAppX25519Key": {
+            "type": "string"
+          },
+          "scmX25519Key": {
+            "type": "string"
+          },
+          "hkdfHash": {
+            "type": "string"
+          },
+          "hkdfSalt": {
+            "type": "object"
+          },
+          "hkdfInfo": {
+            "type": "object"
+          },
+          "aesKeyLength": {
+            "type": "number"
+          }
+        }
+      },
+      {
+        "id": "EnableEndToEndEncryptionArgs",
+        "type": "object",
+        "properties": {
+          "params": {
+            "$ref": "KeyExchangeParameters"
+          },
+          "webAppPacketSignature": {
+            "type": "object"
+          }
+        }
+      },
+      {
+        "id": "UserAttributeKey",
+        "choices": [
+          {
+            "type": "string",
+            "enum": [
+              "name",
+              "givenName",
+              "familyName",
+              "middleName",
+              "nickname",
+              "profile",
+              "picture",
+              "website",
+              "gender",
+              "birthdate",
+              "zoneinfo",
+              "locale",
+              "address"
+            ]
+          },
+          {
+            "type": "string",
+            "pattern": "^custom:[-_a-zA-Z0-9]+$"
+          }
+        ]
+      },
+      {
+        "id": "RequestedUserAttribute",
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "UserAttributeKey"
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      },
+      {
+        "id": "OperationState",
+        "type": "object",
+        "properties": {}
+      },
+      {
+        "id": "LoginOperationMetadata",
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": [
+              "PendingDeclaration",
+              "Authenticate",
+              "Register"
+            ],
+            "description": "See berytus.enums.ELoginUserIntent for mappings"
+          },
+          "requestedUserAttributes": {
+            "type": "array",
+            "items": {
+              "$ref": "RequestedUserAttribute"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PendingDeclaration",
+              "Registration",
+              "Authentication"
+            ],
+            "description": "See berytus.enums.EOperationType for mappings"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Created",
+              "Aborted",
+              "Finished"
+            ],
+            "description": "See berytus.enums.EOperationStatus for mappings"
+          },
+          "state": {
+            "$ref": "OperationState"
+          }
+        }
+      },
+      {
+        "id": "ApproveOperationArgs",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "LoginOperationMetadata"
+          }
+        }
+      },
+      {
+        "id": "OperationMetadata",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PendingDeclaration",
+              "Registration",
+              "Authentication"
+            ],
+            "description": "See berytus.enums.EOperationType for mappings"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Created",
+              "Aborted",
+              "Finished"
+            ],
+            "description": "See berytus.enums.EOperationStatus for mappings"
+          },
+          "state": {
+            "$ref": "OperationState"
+          }
+        }
+      },
+      {
+        "id": "RequestContextWithOperation",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "OperationMetadata"
+          },
+          "channel": {
+            "$ref": "ChannelMetadata"
+          },
+          "request": {
+            "$ref": "Request"
+          },
+          "document": {
+            "$ref": "DocumentMetadata"
+          }
+        }
+      },
+      {
+        "id": "RecordMetadata",
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Created",
+              "Retired"
+            ],
+            "description": "See berytus.enums.EMetadataStatus for mappings"
+          },
+          "category": {
+            "type": "string"
+          },
+          "changePassUrl": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "UpdateMetadataArgs",
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "$ref": "RecordMetadata"
+          }
+        }
+      },
+      {
+        "id": "ApproveTransitionToAuthOpArgs",
+        "type": "object",
+        "properties": {
+          "newAuthOp": {
+            "$ref": "LoginOperationMetadata"
+          }
+        }
+      },
+      {
+        "id": "BaseFieldMetadata",
+        "type": "object",
+        "properties": {
+          "fieldType": {
+            "type": "string",
+            "enum": [
+              "Identity",
+              "ForeignIdentity",
+              "Password",
+              "SecurePassword",
+              "Key"
+            ],
+            "description": "See berytus.enums.EFieldType for mappings"
+          },
+          "fieldId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "FieldValue",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          }
+        ]
+      },
+      {
+        "id": "AddFieldArgs",
+        "type": "object",
+        "properties": {
+          "field": {
+            "$ref": "BaseFieldMetadata"
+          },
+          "value": {
+            "$ref": "FieldValue",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "FieldValueRejectionReason",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "RejectFieldValueArgs",
+        "type": "object",
+        "properties": {
+          "field": {
+            "$ref": "BaseFieldMetadata"
+          },
+          "reason": {
+            "$ref": "FieldValueRejectionReason"
+          },
+          "optionalNewValue": {
+            "$ref": "FieldValue",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "ChallengeParameters",
+        "type": "object",
+        "properties": {}
+      },
+      {
+        "id": "ChallengeMetadata",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Identification",
+              "DigitalSignature",
+              "Password",
+              "SecureRemotePassword",
+              "ForeignIdentityOtp"
+            ],
+            "description": "See berytus.enums.EChallengeType for mappings"
+          },
+          "parameters": {
+            "$ref": "ChallengeParameters"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Invalid",
+              "Pending",
+              "Active",
+              "Aborted",
+              "Sealed"
+            ],
+            "description": "See berytus.enums.EChallengeStatus for mappings"
+          }
+        }
+      },
+      {
+        "id": "ApproveChallengeRequestArgs",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "ChallengeMetadata"
+          }
+        }
+      },
+      {
+        "id": "ChallengeAbortionReason",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "AbortChallengeArgs",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "ChallengeMetadata"
+          },
+          "reason": {
+            "$ref": "ChallengeAbortionReason"
+          }
+        }
+      },
+      {
+        "id": "CloseChallengeArgs",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "ChallengeMetadata"
+          }
+        }
+      },
+      {
+        "id": "ChallengePayload",
+        "type": "object",
+        "properties": {}
+      },
+      {
+        "id": "ChallengeMessage",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "ChallengePayload"
+          }
+        }
+      },
+      {
+        "id": "RespondToChallengeMessageArgs",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "ChallengeMetadata"
+          },
+          "challengeMessage": {
+            "$ref": "ChallengeMessage"
+          }
+        }
+      },
+      {
+        "id": "RequestHandler",
+        "type": "object",
+        "properties": {
+          "manager": {
+            "$ref": "ManagerRequestHandler"
+          },
+          "channel": {
+            "$ref": "ChannelRequestHandler"
+          },
+          "login": {
+            "$ref": "LoginRequestHandler"
+          },
+          "accountCreation": {
+            "$ref": "AccountCreationRequestHandler"
+          },
+          "accountAuthentication": {
+            "$ref": "AccountAuthenticationRequestHandler"
+          }
+        }
+      },
+      {
+        "id": "ManagerRequestHandler",
+        "type": "object",
+        "properties": {
+          "getSigningKey": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "PreliminaryRequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "GetSigningKeyArgs"
+              }
+            ]
+          },
+          "getCredentialsMetadata": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "PreliminaryRequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "GetCredentialsMetadataArgs"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ChannelRequestHandler",
+        "type": "object",
+        "properties": {
+          "generateKeyExchangeParameters": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "GenerateKeyExchangeParametersArgs"
+              }
+            ]
+          },
+          "enableEndToEndEncryption": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "EnableEndToEndEncryptionArgs"
+              }
+            ]
+          },
+          "closeChannel": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContext"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "LoginRequestHandler",
+        "type": "object",
+        "properties": {
+          "approveOperation": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "ApproveOperationArgs"
+              }
+            ]
+          },
+          "closeOpeation": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              }
+            ]
+          },
+          "getRecordMetadata": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              }
+            ]
+          },
+          "updateMetadata": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "UpdateMetadataArgs"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "AccountCreationRequestHandler",
+        "type": "object",
+        "properties": {
+          "approveTransitionToAuthOp": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "ApproveTransitionToAuthOpArgs"
+              }
+            ]
+          },
+          "getUserAttributes": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              }
+            ]
+          },
+          "addField": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "AddFieldArgs"
+              }
+            ]
+          },
+          "rejectFieldValue": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "RejectFieldValueArgs"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "AccountAuthenticationRequestHandler",
+        "type": "object",
+        "properties": {
+          "approveChallengeRequest": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "ApproveChallengeRequestArgs"
+              }
+            ]
+          },
+          "abortChallenge": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "AbortChallengeArgs"
+              }
+            ]
+          },
+          "closeChallenge": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "CloseChallengeArgs"
+              }
+            ]
+          },
+          "respondToChallengeMessage": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "RespondToChallengeMessageArgs"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "properties": {},
+    "functions": [
+      {
+        "name": "registerRequestHandler",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "requestHandler",
+            "$ref": "RequestHandler"
+          }
+        ]
+      },
+      {
+        "name": "unregisterRequestHandler",
+        "type": "function",
+        "async": true,
+        "parameters": []
+      },
+      {
+        "name": "resolveRequest",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "requestId",
+            "type": "string"
+          },
+          {
+            "name": "value",
+            "type": "any"
+          }
+        ]
+      },
+      {
+        "name": "rejectRequest",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "requestId",
+            "type": "string"
+          },
+          {
+            "name": "reason",
+            "type": "any"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "namespace": "berytus.enum.ELoginUserIntent",
+    "properties": {
+      "PendingDeclaration": {
+        "value": "PendingDeclaration"
+      },
+      "Authenticate": {
+        "value": "Authenticate"
+      },
+      "Register": {
+        "value": "Register"
+      }
+    }
+  },
+  {
+    "namespace": "berytus.enum.EOperationType",
+    "properties": {
+      "PendingDeclaration": {
+        "value": "PendingDeclaration"
+      },
+      "Registration": {
+        "value": "Registration"
+      },
+      "Authentication": {
+        "value": "Authentication"
+      }
+    }
+  },
+  {
+    "namespace": "berytus.enum.EOperationStatus",
+    "properties": {
+      "Pending": {
+        "value": "Pending"
+      },
+      "Created": {
+        "value": "Created"
+      },
+      "Aborted": {
+        "value": "Aborted"
+      },
+      "Finished": {
+        "value": "Finished"
+      }
+    }
+  },
+  {
+    "namespace": "berytus.enum.EMetadataStatus",
+    "properties": {
+      "Pending": {
+        "value": "Pending"
+      },
+      "Created": {
+        "value": "Created"
+      },
+      "Retired": {
+        "value": "Retired"
+      }
+    }
+  },
+  {
+    "namespace": "berytus.enum.EFieldType",
+    "properties": {
+      "Identity": {
+        "value": "Identity"
+      },
+      "ForeignIdentity": {
+        "value": "ForeignIdentity"
+      },
+      "Password": {
+        "value": "Password"
+      },
+      "SecurePassword": {
+        "value": "SecurePassword"
+      },
+      "Key": {
+        "value": "Key"
+      }
+    }
+  },
+  {
+    "namespace": "berytus.enum.EChallengeType",
+    "properties": {
+      "Identification": {
+        "value": "Identification"
+      },
+      "DigitalSignature": {
+        "value": "DigitalSignature"
+      },
+      "Password": {
+        "value": "Password"
+      },
+      "SecureRemotePassword": {
+        "value": "SecureRemotePassword"
+      },
+      "ForeignIdentityOtp": {
+        "value": "ForeignIdentityOtp"
+      }
+    }
+  },
+  {
+    "namespace": "berytus.enum.EChallengeStatus",
+    "properties": {
+      "Invalid": {
+        "value": "Invalid"
+      },
+      "Pending": {
+        "value": "Pending"
+      },
+      "Active": {
+        "value": "Active"
+      },
+      "Aborted": {
+        "value": "Aborted"
+      },
+      "Sealed": {
+        "value": "Sealed"
+      }
+    }
+  }
+]

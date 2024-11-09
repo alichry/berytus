@@ -1,0 +1,18 @@
+--- toolkit/components/extensions/ext-toolkit.json.orig	2024-11-07 17:55:28
++++ toolkit/components/extensions/ext-toolkit.json	2024-11-07 17:55:30
+@@ -14,6 +14,15 @@
+     "scopes": ["addon_parent"],
+     "manifest": ["background"]
+   },
++  "berytus": {
++    "schema": "chrome://extensions/content/schemas/berytus.json",
++    "url": "chrome://extensions/content/parent/ext-berytus.js",
++    "paths": [
++      ["berytus"]
++    ],
++    "scopes": ["addon_parent"],
++    "permissions": ["berytus"]
++  },
+   "browserSettings": {
+     "url": "chrome://extensions/content/parent/ext-browserSettings.js",
+     "schema": "chrome://extensions/content/schemas/browser_settings.json",
