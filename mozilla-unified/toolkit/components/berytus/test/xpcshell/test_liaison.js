@@ -12,7 +12,8 @@ add_task(async function test_register_manager_stores_passed_data() {
         "resource://gre/modules/BerytusRequestHandler.sys.mjs"
     );
 
-    Assert.equal(liaison.managers.length, 0);
+    const defaultManagers = 1;
+    Assert.equal(liaison.managers.length, defaultManagers);
 
     const handlerProxy = createRequestHandlerProxy();
     liaison.registerManager(
@@ -21,7 +22,7 @@ add_task(async function test_register_manager_stores_passed_data() {
         1,
         handlerProxy
     );
-    Assert.equal(liaison.managers.length, 1);
+    Assert.equal(liaison.managers.length, defaultManagers + 1);
 
     const handlerProxy2 = createRequestHandlerProxy();
     liaison.registerManager(
@@ -30,20 +31,20 @@ add_task(async function test_register_manager_stores_passed_data() {
         0,
         handlerProxy2
     );
-    Assert.equal(liaison.managers.length, 2);
+    Assert.equal(liaison.managers.length, defaultManagers + 2);
 
-    Assert.equal(liaison.managers[0].id, "alichry@sample-manager");
-    Assert.equal(liaison.managers[0].type, 1);
-    Assert.equal(liaison.managers[0].label, "SampleManager");
+    Assert.equal(liaison.managers[1].id, "alichry@sample-manager");
+    Assert.equal(liaison.managers[1].type, 1);
+    Assert.equal(liaison.managers[1].label, "SampleManager");
     Assert.equal(
         liaison.getRequestHandler("alichry@sample-manager")
             instanceof PublicRequestHandler,
         true
     );
 
-    Assert.equal(liaison.managers[1].id, "alichry@2nd-sample-manager");
-    Assert.equal(liaison.managers[1].type, 0);
-    Assert.equal(liaison.managers[1].label, "2ndSampleManager");
+    Assert.equal(liaison.managers[2].id, "alichry@2nd-sample-manager");
+    Assert.equal(liaison.managers[2].type, 0);
+    Assert.equal(liaison.managers[2].label, "2ndSampleManager");
     Assert.equal(
         liaison.getRequestHandler("alichry@2nd-sample-manager")
             instanceof PublicRequestHandler,
@@ -56,11 +57,11 @@ add_task(async function test_register_manager_stores_passed_data() {
     );
 
     liaison.ereaseManager("alichry@sample-manager");
-    Assert.equal(liaison.managers.length, 1);
+    Assert.equal(liaison.managers.length, defaultManagers + 1);
 
-    Assert.equal(liaison.managers[0].id, "alichry@2nd-sample-manager");
-    Assert.equal(liaison.managers[0].type, 0);
-    Assert.equal(liaison.managers[0].label, "2ndSampleManager");
+    Assert.equal(liaison.managers[1].id, "alichry@2nd-sample-manager");
+    Assert.equal(liaison.managers[1].type, 0);
+    Assert.equal(liaison.managers[1].label, "2ndSampleManager");
     Assert.equal(
         liaison.getRequestHandler("alichry@2nd-sample-manager")
             instanceof PublicRequestHandler,
@@ -68,7 +69,7 @@ add_task(async function test_register_manager_stores_passed_data() {
     );
 
     liaison.ereaseManager("alichry@2nd-sample-manager");
-    Assert.equal(liaison.managers.length, 0);
+    Assert.equal(liaison.managers.length, defaultManagers);
 });
 
 add_task(async function test_register_manager_validates_input() {

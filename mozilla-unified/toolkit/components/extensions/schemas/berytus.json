@@ -51,6 +51,9 @@
           },
           "document": {
             "$ref": "DocumentMetadata"
+          },
+          "response": {
+            "$ref": "Response"
           }
         }
       },
@@ -214,6 +217,9 @@
           },
           "document": {
             "$ref": "DocumentMetadata"
+          },
+          "response": {
+            "$ref": "Response"
           }
         }
       },
@@ -258,10 +264,12 @@
             "type": "string"
           },
           "hkdfSalt": {
-            "type": "object"
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
           },
           "hkdfInfo": {
-            "type": "object"
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
           },
           "aesKeyLength": {
             "type": "number"
@@ -276,7 +284,8 @@
             "$ref": "KeyExchangeParameters"
           },
           "webAppPacketSignature": {
-            "type": "object"
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
           }
         }
       },
@@ -425,6 +434,9 @@
           },
           "document": {
             "$ref": "DocumentMetadata"
+          },
+          "response": {
+            "$ref": "Response"
           }
         }
       },
@@ -648,6 +660,32 @@
           },
           "challengeMessage": {
             "$ref": "ChallengeMessage"
+          }
+        }
+      },
+      {
+        "id": "Response",
+        "type": "object",
+        "properties": {
+          "resolve": {
+            "type": "function",
+            "async": true,
+            "parameters": [
+              {
+                "name": "value",
+                "type": "any"
+              }
+            ]
+          },
+          "reject": {
+            "type": "function",
+            "async": true,
+            "parameters": [
+              {
+                "name": "reason",
+                "type": "any"
+              }
+            ]
           }
         }
       },

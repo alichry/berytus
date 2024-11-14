@@ -12,6 +12,7 @@ export const generateWebExtsSchema = async () => {
     let item = typeIterator.next();
     let parameters: Array<{ name: string; parsedType: ParsedType }> = [];
     const apiGenerator = new WebExtsApiSchemaGenerator();
+    const contextTypesAliases = new Set<string>();
     while (!item.done) {
         const {
             parsedType,
@@ -22,11 +23,18 @@ export const generateWebExtsSchema = async () => {
         } = item.value;
 
         if (source === "parameter") {
+            if (parameters.length === 0) {
+                if (parsedType.type !== "object") {
+                    throw new Error("Invalid context type");
+                }
+                contextTypesAliases.add(parsedType.alias);
+            }
             parameters.push({
                 name: paramName,
                 parsedType: parsedType
             });
         } else {
+            // TODO(berytus): Think about coupling response type in context
             apiGenerator.addHandlerMethod(
                 group,
                 method.name,
@@ -35,6 +43,37 @@ export const generateWebExtsSchema = async () => {
             parameters.splice(0, parameters.length);
         }
         item = typeIterator.next();
+    }
+    const resolveType = new ObjectDef('Response');
+    resolveType.addFunction({
+        name: "resolve",
+        type: "function",
+        async: true,
+        parameters: [
+            {
+                name: "value",
+                type: "any"
+            }
+        ]
+    });
+    resolveType.addFunction({
+        name: "reject",
+        type: "function",
+        async: true,
+        parameters: [
+            {
+                name: "reason",
+                type: "any"
+            }
+        ]
+    });
+    apiGenerator.addTypeDef(resolveType);
+    for (const alias of contextTypesAliases) {
+        const def = apiGenerator.defs.find(f => f.id === alias)! as ObjectDef;
+        def.addAttribute({
+            name: "response",
+            $ref: resolveType.id
+        });
     }
     const enumGenerator = new WebExtsEnumSchemaGenerator();
     apiGenerator.enums.forEach(e => {
@@ -148,7 +187,8 @@ export type ObjectAttributeSchemaEntry = ValueSchemaEntry
     | RefSchemaEntry
     | EnumSchemaEntry
     | TypeSchemaEntry
-    | ArraySchemaEntry;
+    | ArraySchemaEntry
+    | ObjectSchemaEntry;
 
 export type ObjectFunctionParameterEntry = {
     name: string; type: string; optional?: true
@@ -167,6 +207,7 @@ export interface ObjectSchemaEntry {
     optional?: true;
     properties?: Record<string, SchemaDef>;
     isInstanceOf?: string;
+    description?: string;
 }
 
 export interface EnumSchemaEntry extends TypeSchemaEntry {
@@ -246,45 +287,41 @@ class ObjectDef implements IDef {
         this.attrs.forEach(attr => {
             let entry: ObjectAttributeSchemaEntry;
             if ("$ref" in attr) {
-                const { $ref, optional } = attr;
+                const { name, $ref, ...other } = attr;
                 entry = {
                     $ref: $ref,
-                    ...(optional ? { optional } : undefined)
+                    ...other
                 };
             } else if ("value" in attr) {
+                const { name, value, ...other } = attr;
                 entry = {
-                    value: attr.value
+                    value,
+                    ...other
                 };
             } else if ("enum" in attr) {
                 const {
+                    name,
                     type,
                     enum: _enum,
-                    optional,
-                    description
+                    ...other
                 } = attr;
                 entry = {
                     type: type,
                     enum: _enum,
-                    ...(optional ? { optional } : undefined),
-                    ...(description ? { description } : undefined)
+                    ...other
                 };
-                if (attr.optional !== undefined) {
-                    entry.optional = attr.optional;
-                }
             } else if ("items" in attr) {
-                const { type, items, optional, description } = attr;
+                const { name, type, items, ...other } = attr;
                 entry = {
                     type,
-                    ...(optional ? { optional } : undefined),
-                    ...(description ? { description } : undefined),
+                    ...other,
                     items
                 };
             } else {
-                const { type, optional, description } = attr;
+                const { name, type, ...other } = attr;
                 entry = {
                     type,
-                    ...(optional ? { optional } : undefined),
-                    ...(description ? { description } : undefined)
+                    ...other
                 };
             }
             res[attr.name] = entry;

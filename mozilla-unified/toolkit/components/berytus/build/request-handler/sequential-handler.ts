@@ -7,7 +7,7 @@
 
     protected busy: boolean = false;
 
-    protected preCall(group: string, method: string, args: unknown) {
+    protected async preCall(group: string, method: string, input: PreCallInput) {
         if (this.busy) {
             throw new Components.Exception(
                 'Refusing to send request to secret manager, '
@@ -17,16 +17,16 @@
                 Cr.NS_ERROR_FAILURE
             );
         }
-        super.preCall(group, method, args);
         this.busy = true;
+        await super.preCall(group, method, input);
     }
-    protected preResolve(group: string, method: string, value: unknown) {
+    protected async preResolve(group: string, method: string, value: unknown) {
         this.busy = false;
-        super.preResolve(group, method, value);
+        await super.preResolve(group, method, value);
     }
-    protected preReject(group: string, method: string, value: unknown) {
+    protected async preReject(group: string, method: string, value: unknown) {
         this.busy = false;
-        super.preReject(group, method, value);
+        await super.preReject(group, method, value);
     }
     protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
         this.busy = false;

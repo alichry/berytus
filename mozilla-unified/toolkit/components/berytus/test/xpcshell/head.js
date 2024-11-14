@@ -95,6 +95,7 @@ const sampleRequests = {
                         uri: 'https://example.tld/login'
                     },
                 },
+                channelConstraints: { enableEndToEndEncryption: false },
                 accountConstraints: {}
             }
         }

@@ -55,7 +55,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
 
             code += `
                 try {
-                    self.preCall(${hookArgs});
+                    await self.preCall(${hookArgs});
                 } catch (e) {
                     ${ctxVar}.response.reject(e);
                     return;
@@ -64,18 +64,18 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
             code += `
                 const wrappedResponseCtx: ${responseCtxType} = {
                     response: {
-                        resolve(val: Parameters<${responseCtxType}["response"]["resolve"]>[0]) {
+                        async resolve(val: Parameters<${responseCtxType}["response"]["resolve"]>[0]) {
                             try {
-                                self.preResolve(${hookArgs})
+                                await self.preResolve(${hookArgs})
                             } catch (e) {
                                 ${ctxVar}.response.reject(e);
                                 throw e;
                             }
                             ${ctxVar}.response.resolve(val);
                         },
-                        reject(val: unknown) {
+                        async reject(val: unknown) {
                             try {
-                                self.preReject(${hookArgs});
+                                await self.preReject(${hookArgs});
                             } catch (e) {
                                 ${ctxVar}.response.reject(e);
                                 throw e;

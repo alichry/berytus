@@ -5,6 +5,10 @@
 "use strict";
 
 add_task(async function test_calls_requesthandler() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
     const handlerProxy = createRequestHandlerProxy(
         (group, method, cx, args) => {
             Assert.equal(group, "manager");
@@ -39,6 +43,10 @@ add_task(async function test_calls_requesthandler() {
 });
 
 add_task(async function test_noconcurrent_requests() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
     const handlerProxy = createRequestHandlerProxy(
         (group, method, cx, args) => {
             do_timeout(0, () => {
@@ -80,6 +88,10 @@ add_task(async function test_noconcurrent_requests() {
 });
 
 add_task(async function test_handle_unexcepted_exception() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
     const handlerProxy = createRequestHandlerProxy(
         (group, method, cx, args) => {
             throw new Error("This is bad");
@@ -100,4 +112,33 @@ add_task(async function test_handle_unexcepted_exception() {
             sampleRequests.getCredentialsMetadata().args
         ), /secret manager unexpectedly threw an exception/i
     );
+    liaison.ereaseManager("alichry@sample-manager");
 });
+
+add_task(async function test_handle_invalid_input() {
+// Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
+    const handlerProxy = createRequestHandlerProxy(
+        (group, method, cx, args) => {
+            throw new Error("Should not be reached");
+        }
+    );
+    liaison.registerManager(
+        "alichry@sample-manager",
+        "SampleManager",
+        1,
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    await Assert.rejects(
+        publicHandler.manager.getCredentialsMetadata(
+            null, //{ document: "Should not be a String" },
+            { webAppActor: "Should not be a String" },
+        ), /Malformed input passed to the request handler/i
+    );
+    liaison.ereaseManager("alichry@sample-manager");
+})

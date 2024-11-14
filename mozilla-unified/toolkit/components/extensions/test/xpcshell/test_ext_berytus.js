@@ -178,7 +178,27 @@ add_task(async function test_berytus_handler_getSigningKey() {
 
   Assert.equal(liaison.isManagerRegistered(extension.id), true);
   Assert.equal(
-    await liaison.getRequestHandler(extension.id).manager.getSigningKey(),
+    await liaison.getRequestHandler(extension.id).manager.getSigningKey(
+      { document: { id: 4 } },
+      {
+        webAppActor: {
+          originalUri: {
+            hostname: "example.tld",
+            path: "/",
+            port: 443,
+            scheme: 'https:',
+            uri: 'https://example.tld/'
+          },
+          currentUri: {
+            hostname: "example.tld",
+            path: "/login",
+            port: 443,
+            scheme: 'https:',
+            uri: 'https://example.tld/login'
+          },
+        }
+      }
+    ),
     "MCowBQYDK2VwAyEAJevlUdx72BF8mxdwurBJI9WNgRDMaoYfb0VqywaLOJE="
   );
 

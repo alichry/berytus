@@ -14,7 +14,7 @@ export class IsolatedRequestHandler {
         this.manager = {
             async getSigningKey(context, args) {
                 try {
-                    self.preCall("manager", "getSigningKey", { context, args });
+                    await self.preCall("manager", "getSigningKey", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -22,9 +22,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("manager", "getSigningKey", { context, args });
+                                await self.preResolve("manager", "getSigningKey", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -32,9 +32,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("manager", "getSigningKey", { context, args });
+                                await self.preReject("manager", "getSigningKey", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -57,7 +57,7 @@ export class IsolatedRequestHandler {
             },
             async getCredentialsMetadata(context, args) {
                 try {
-                    self.preCall("manager", "getCredentialsMetadata", { context, args });
+                    await self.preCall("manager", "getCredentialsMetadata", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -65,9 +65,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("manager", "getCredentialsMetadata", { context, args });
+                                await self.preResolve("manager", "getCredentialsMetadata", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -75,9 +75,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("manager", "getCredentialsMetadata", { context, args });
+                                await self.preReject("manager", "getCredentialsMetadata", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -102,7 +102,7 @@ export class IsolatedRequestHandler {
         this.channel = {
             async generateKeyExchangeParameters(context, args) {
                 try {
-                    self.preCall("channel", "generateKeyExchangeParameters", { context, args });
+                    await self.preCall("channel", "generateKeyExchangeParameters", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -110,9 +110,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("channel", "generateKeyExchangeParameters", { context, args });
+                                await self.preResolve("channel", "generateKeyExchangeParameters", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -120,9 +120,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("channel", "generateKeyExchangeParameters", { context, args });
+                                await self.preReject("channel", "generateKeyExchangeParameters", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -145,7 +145,7 @@ export class IsolatedRequestHandler {
             },
             async enableEndToEndEncryption(context, args) {
                 try {
-                    self.preCall("channel", "enableEndToEndEncryption", { context, args });
+                    await self.preCall("channel", "enableEndToEndEncryption", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -153,9 +153,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("channel", "enableEndToEndEncryption", { context, args });
+                                await self.preResolve("channel", "enableEndToEndEncryption", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -163,9 +163,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("channel", "enableEndToEndEncryption", { context, args });
+                                await self.preReject("channel", "enableEndToEndEncryption", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -188,7 +188,7 @@ export class IsolatedRequestHandler {
             },
             async closeChannel(context) {
                 try {
-                    self.preCall("channel", "closeChannel", { context });
+                    await self.preCall("channel", "closeChannel", { context });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -196,9 +196,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("channel", "closeChannel", { context });
+                                await self.preResolve("channel", "closeChannel", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -206,9 +206,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("channel", "closeChannel", { context });
+                                await self.preReject("channel", "closeChannel", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -233,7 +233,7 @@ export class IsolatedRequestHandler {
         this.login = {
             async approveOperation(context, args) {
                 try {
-                    self.preCall("login", "approveOperation", { context, args });
+                    await self.preCall("login", "approveOperation", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -241,9 +241,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("login", "approveOperation", { context, args });
+                                await self.preResolve("login", "approveOperation", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -251,9 +251,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("login", "approveOperation", { context, args });
+                                await self.preReject("login", "approveOperation", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -276,7 +276,7 @@ export class IsolatedRequestHandler {
             },
             async closeOpeation(context) {
                 try {
-                    self.preCall("login", "closeOpeation", { context });
+                    await self.preCall("login", "closeOpeation", { context });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -284,9 +284,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("login", "closeOpeation", { context });
+                                await self.preResolve("login", "closeOpeation", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -294,9 +294,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("login", "closeOpeation", { context });
+                                await self.preReject("login", "closeOpeation", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -319,7 +319,7 @@ export class IsolatedRequestHandler {
             },
             async getRecordMetadata(context) {
                 try {
-                    self.preCall("login", "getRecordMetadata", { context });
+                    await self.preCall("login", "getRecordMetadata", { context });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -327,9 +327,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("login", "getRecordMetadata", { context });
+                                await self.preResolve("login", "getRecordMetadata", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -337,9 +337,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("login", "getRecordMetadata", { context });
+                                await self.preReject("login", "getRecordMetadata", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -362,7 +362,7 @@ export class IsolatedRequestHandler {
             },
             async updateMetadata(context, args) {
                 try {
-                    self.preCall("login", "updateMetadata", { context, args });
+                    await self.preCall("login", "updateMetadata", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -370,9 +370,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("login", "updateMetadata", { context, args });
+                                await self.preResolve("login", "updateMetadata", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -380,9 +380,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("login", "updateMetadata", { context, args });
+                                await self.preReject("login", "updateMetadata", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -407,7 +407,7 @@ export class IsolatedRequestHandler {
         this.accountCreation = {
             async approveTransitionToAuthOp(context, args) {
                 try {
-                    self.preCall("accountCreation", "approveTransitionToAuthOp", { context, args });
+                    await self.preCall("accountCreation", "approveTransitionToAuthOp", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -415,9 +415,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args });
+                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -425,9 +425,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args });
+                                await self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -450,7 +450,7 @@ export class IsolatedRequestHandler {
             },
             async getUserAttributes(context) {
                 try {
-                    self.preCall("accountCreation", "getUserAttributes", { context });
+                    await self.preCall("accountCreation", "getUserAttributes", { context });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -458,9 +458,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountCreation", "getUserAttributes", { context });
+                                await self.preResolve("accountCreation", "getUserAttributes", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -468,9 +468,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountCreation", "getUserAttributes", { context });
+                                await self.preReject("accountCreation", "getUserAttributes", { context });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -493,7 +493,7 @@ export class IsolatedRequestHandler {
             },
             async addField(context, args) {
                 try {
-                    self.preCall("accountCreation", "addField", { context, args });
+                    await self.preCall("accountCreation", "addField", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -501,9 +501,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountCreation", "addField", { context, args });
+                                await self.preResolve("accountCreation", "addField", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -511,9 +511,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountCreation", "addField", { context, args });
+                                await self.preReject("accountCreation", "addField", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -536,7 +536,7 @@ export class IsolatedRequestHandler {
             },
             async rejectFieldValue(context, args) {
                 try {
-                    self.preCall("accountCreation", "rejectFieldValue", { context, args });
+                    await self.preCall("accountCreation", "rejectFieldValue", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -544,9 +544,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountCreation", "rejectFieldValue", { context, args });
+                                await self.preResolve("accountCreation", "rejectFieldValue", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -554,9 +554,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountCreation", "rejectFieldValue", { context, args });
+                                await self.preReject("accountCreation", "rejectFieldValue", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -581,7 +581,7 @@ export class IsolatedRequestHandler {
         this.accountAuthentication = {
             async approveChallengeRequest(context, args) {
                 try {
-                    self.preCall("accountAuthentication", "approveChallengeRequest", { context, args });
+                    await self.preCall("accountAuthentication", "approveChallengeRequest", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -589,9 +589,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args });
+                                await self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -599,9 +599,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountAuthentication", "approveChallengeRequest", { context, args });
+                                await self.preReject("accountAuthentication", "approveChallengeRequest", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -624,7 +624,7 @@ export class IsolatedRequestHandler {
             },
             async abortChallenge(context, args) {
                 try {
-                    self.preCall("accountAuthentication", "abortChallenge", { context, args });
+                    await self.preCall("accountAuthentication", "abortChallenge", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -632,9 +632,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountAuthentication", "abortChallenge", { context, args });
+                                await self.preResolve("accountAuthentication", "abortChallenge", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -642,9 +642,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountAuthentication", "abortChallenge", { context, args });
+                                await self.preReject("accountAuthentication", "abortChallenge", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -667,7 +667,7 @@ export class IsolatedRequestHandler {
             },
             async closeChallenge(context, args) {
                 try {
-                    self.preCall("accountAuthentication", "closeChallenge", { context, args });
+                    await self.preCall("accountAuthentication", "closeChallenge", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -675,9 +675,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountAuthentication", "closeChallenge", { context, args });
+                                await self.preResolve("accountAuthentication", "closeChallenge", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -685,9 +685,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountAuthentication", "closeChallenge", { context, args });
+                                await self.preReject("accountAuthentication", "closeChallenge", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -710,7 +710,7 @@ export class IsolatedRequestHandler {
             },
             async respondToChallengeMessage(context, args) {
                 try {
-                    self.preCall("accountAuthentication", "respondToChallengeMessage", { context, args });
+                    await self.preCall("accountAuthentication", "respondToChallengeMessage", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -718,9 +718,9 @@ export class IsolatedRequestHandler {
                 }
                 const wrappedResponseCtx = {
                     response: {
-                        resolve(val) {
+                        async resolve(val) {
                             try {
-                                self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args });
+                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -728,9 +728,9 @@ export class IsolatedRequestHandler {
                             }
                             context.response.resolve(val);
                         },
-                        reject(val) {
+                        async reject(val) {
                             try {
-                                self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args });
+                                await self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args });
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -767,40 +767,180 @@ export class IsolatedRequestHandler {
         response.reject(err);
     }
 }
+const lazy = {};
+ChromeUtils.defineESModuleGetters(lazy, {
+    Schemas: "resource://gre/modules/Schemas.sys.mjs"
+});
+/**
+ * Implementation copied from Schemas.sys.mjs's Context
+ */
+class ValidationContext {
+    path = [];
+    manifestVersion = 2;
+    currentChoices = new Set();
+    choicePathIndex = 0;
+    matchManifestVersion() {
+        return true;
+    }
+    checkLoadURL(url) {
+        throw new Error("Method not implemented");
+    }
+    hasPermission(perm) {
+        throw new Error("Method not implemented");
+    }
+    logError(err) {
+        console.error(err);
+    }
+    withPath(component, callback) {
+        this.path.push(component);
+        try {
+            return callback();
+        }
+        finally {
+            this.path.pop();
+        }
+    }
+    get choicePath() {
+        let path = this.path.slice(this.choicePathIndex);
+        return path.join(".");
+    }
+    get currentTarget() {
+        return this.path.join(".");
+    }
+    error(errorMessage, choicesMessage = undefined, warning = false) {
+        if (choicesMessage !== null) {
+            let { choicePath } = this;
+            if (choicePath) {
+                choicesMessage = `.${choicePath} must ${choicesMessage}`;
+            }
+            this.currentChoices.add(choicesMessage);
+        }
+        if (this.currentTarget) {
+            let { currentTarget } = this;
+            return {
+                error: () => `${warning ? "Warning" : "Error"} processing ${currentTarget}: ${typeof errorMessage === "function" ? errorMessage() : errorMessage}`,
+            };
+        }
+        return { error: errorMessage };
+    }
+    withChoices(callback) {
+        let { currentChoices, choicePathIndex } = this;
+        let choices = new Set();
+        this.currentChoices = choices;
+        this.choicePathIndex = this.path.length;
+        try {
+            let result = callback();
+            return { result, choices };
+        }
+        finally {
+            this.currentChoices = currentChoices;
+            this.choicePathIndex = choicePathIndex;
+            if (choices.size == 1) {
+                for (let choice of choices) {
+                    currentChoices.add(choice);
+                }
+            }
+            else if (choices.size) {
+                this.error(null, () => {
+                    let array = Array.from(choices, (m) => {
+                        if (typeof m === "function") {
+                            return m();
+                        }
+                        return m;
+                    });
+                    let n = array.length - 1;
+                    array[n] = `or ${array[n]}`;
+                    return `must either [${array.join(", ")}]`;
+                });
+            }
+        }
+    }
+}
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
+    #schema;
     constructor(impl) {
         // TODO(berytus): ensure impl is conformant
         super(impl);
     }
-    preCall(group, method, args) {
-        // TODO(berytus): validate input
+    #validateInput(group, method, parameterType, input) {
+        const { error } = parameterType.normalize(input, new ValidationContext());
+        if (error) {
+            throw new Error(`Malformed input passed to the request handler's `
+                + `${group}:${method} method. Reason: ${typeof error === "function" ? error() : error}`);
+        }
     }
-    preResolve(group, method, value) {
+    async preCall(group, method, input) {
+        const methodType = await this.#getMethodType(group, method);
+        const { parameters } = methodType;
+        if (parameters.length === 0) {
+            throw new Error(`Berytus Schema's RequestHandler type did not '
+                + 'contain parameters for ${group}:${method}.`);
+        }
+        this.#validateInput(group, method, parameters[0].type, input.context);
+        if (parameters[1]) {
+            this.#validateInput(group, method, parameters[1].type, input.args);
+        }
+        await super.preCall(group, method, input);
+    }
+    async preResolve(group, method, value) {
         // TODO(berytus): validate output
+        await super.preResolve(group, method, value);
     }
-    preReject(group, method, value) {
+    async preReject(group, method, value) {
         // TODO(berytus): validate error value
+        await super.preReject(group, method, value);
+    }
+    async #getMethodType(group, method) {
+        const schema = await this.#getSchema();
+        const requestHandlerType = schema.get("RequestHandler");
+        if (!requestHandlerType) {
+            throw new Error(`Berytus Schema did not contain a "RequestHandler" type.`);
+        }
+        if (!(group in requestHandlerType.properties)) {
+            throw new Error(`Berytus Schema's RequestHandler type did not contain `
+                + ` a property for (group:) ${group}`);
+        }
+        let groupHandlerType = requestHandlerType.properties[group].type;
+        if ("reference" in groupHandlerType) {
+            groupHandlerType = groupHandlerType.targetType;
+        }
+        if (!(method in groupHandlerType.properties)) {
+            throw new Error(`Berytus Schema's RequestHandler.${group} type did not contain `
+                + ` a property for (method:) ${method}`);
+        }
+        const methodType = groupHandlerType.properties[method].type;
+        return methodType;
+    }
+    async #getSchema() {
+        if (this.#schema) {
+            return this.#schema;
+        }
+        // @ts-ignore: TS did not catch assertion for "lazy"
+        await lazy.Schemas.load("chrome://extensions/content/schemas/berytus.json");
+        // @ts-ignore: TS did not catch assertion for "lazy"
+        this.#schema = lazy.Schemas.getNamespace("berytus");
+        return this.#schema;
     }
 }
 export class SequentialRequestHandler extends ValidatedRequestHandler {
     busy = false;
-    preCall(group, method, args) {
+    async preCall(group, method, input) {
         if (this.busy) {
             throw new Components.Exception('Refusing to send request to secret manager, '
                 + 'an existing request is still pending. '
                 + 'make sure to send one request at a time '
                 + 'to the secret manager.', Cr.NS_ERROR_FAILURE);
         }
-        super.preCall(group, method, args);
         this.busy = true;
+        await super.preCall(group, method, input);
     }
-    preResolve(group, method, value) {
+    async preResolve(group, method, value) {
         this.busy = false;
-        super.preResolve(group, method, value);
+        await super.preResolve(group, method, value);
     }
-    preReject(group, method, value) {
+    async preReject(group, method, value) {
         this.busy = false;
-        super.preReject(group, method, value);
+        await super.preReject(group, method, value);
     }
     handleUnexpectedException(group, method, response, excp) {
         this.busy = false;

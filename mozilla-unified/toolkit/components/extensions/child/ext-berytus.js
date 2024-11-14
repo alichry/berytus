@@ -105,8 +105,8 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPI {
              * @param  {...any} args
              */
             const listener = (ctx, ...args) => {
-                this.requestContexts[ctx.request.requestId] = ctx;
                 const { request } = ctx;
+                this.requestContexts[request.id] = ctx;
                 const { type: requestType } = request;
                 let [requestGroup, requestMethod] = requestType.split("_", 2);
                 requestGroup = requestGroup.charAt(0).toLowerCase() + requestGroup.substring(1);
@@ -124,22 +124,30 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPI {
 
                     let result;
                     try {
-                        result = handler[group][method](ctx, ...args);
+                        result = handler[group][method](Cu.cloneInto({
+                            ...ctx,
+                            response: {
+                                async resolve(val) {
+                                    await context.childManager.callParentAsyncFunction("berytus.resolveRequest", [request.id, val]);
+                                },
+                                async reject(reason) {
+                                    await context.childManager.callParentAsyncFunction("berytus.rejectRequest", [request.id, reason]);
+                                }
+                            }
+                        }, context.cloneScope, { cloneFunctions: true }), ...args);
                     } catch (e) {
                         reject(e);
                         return;
                     }
                     return Promise.resolve(result)
-                        .then((result) => {
-                            context.childManager.callParentFunctionNoReturn("berytus.resolveRequest", [request.id, result]);
-                        })
+                        .then(() => { })
                         .catch((e) => {
                             reject(e);
                         });
                 });
                 // delete the requestContext to indicate that *WE* no longer welcome calls
                 // to `openPageActionPopupIfNecessary`.
-                delete this.requestContexts[ctx.request.requestId];
+                delete this.requestContexts[request.id];
                 return promise;
             }
             listeners[key] = listener;

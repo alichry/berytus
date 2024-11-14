@@ -8,5 +8,6 @@ export type ModuleMap = {
 	"resource://gre/modules/BerytusPromptService.sys.mjs": typeof import("./src/PromptService.sys.mts"),
 	"resource://gre/modules/BerytusPromptServiceChildProxy.sys.mjs": typeof import("./src/PromptServiceChildProxy.sys.mts"),
 	"resource://gre/modules/BerytusRequestHandler.sys.mjs": typeof import("./src/RequestHandler.sys.mts"),
+	"resource://gre/modules/Schemas.sys.mjs": typeof import("./build/paths/types/any.d.ts"),
 	"resource://gre/modules/XPCOMUtils.sys.mjs": typeof import("./build/paths/types/gre/modules/XPCOMUtils.d.ts")
 }
