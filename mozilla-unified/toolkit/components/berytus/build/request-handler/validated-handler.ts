@@ -61,7 +61,7 @@ class ValidationContext {
         if (choicesMessage !== null) {
             let { choicePath } = this;
             if (choicePath) {
-                choicesMessage = \`.\${choicePath} must \${choicesMessage}\`;
+                choicesMessage = \`.\${choicePath} must \${typeof choicesMessage === "function" ? choicesMessage() : choicesMessage}\`;
             }
 
             this.currentChoices.add(choicesMessage);
@@ -115,6 +115,19 @@ class ValidationContext {
     }
 }
 
+class ResolutionError extends Error {
+    reason: string;
+
+    constructor(msg: string, reason: string) {
+        super(msg);
+        this.reason = reason;
+    }
+
+    get name() {
+        return "ResolutionError";
+    }
+}
+
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema: any;
 
@@ -123,26 +136,25 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         super(impl);
     }
 
-    #validateInput(
-        group: string,
-        method: string,
-        parameterType: any,
-        input: unknown
+    #validateValue(
+        typeEntry: any,
+        value: unknown,
+        message: string
     ) {
-        const { error } = parameterType.normalize(
-            input,
+        const { error } = typeEntry.normalize(
+            value,
             new ValidationContext()
         );
         if (error) {
-            throw new Error(
-                \`Malformed input passed to the request handler's \`
-                + \`\${group}:\${method} method. Reason: \${typeof error === "function" ? error() : error}\`
+            throw new ResolutionError(
+                message,
+                (typeof error === "function" ? error() : error)
             );
         }
     }
 
     protected async preCall(group: string, method: string, input: PreCallInput) {
-        const methodType = await this.#getMethodType(group, method);
+        const methodType = await this.#getMethodTypeEntry(group, method);
         const { parameters } = methodType;
         if (parameters.length === 0) {
             throw new Error(
@@ -150,25 +162,32 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
                 + \'contain parameters for \${group}:\${method}.\`
             );
         }
-        this.#validateInput(
-            group,
-            method,
+        const message = \`Malformed input passed to the request handler's \`
+            + \`\${group}:\${method} method. Reason:\`;
+
+        this.#validateValue(
             parameters[0].type,
-            input.context
+            input.context,
+            message
         );
         if (parameters[1]) {
-            this.#validateInput(
-                group,
-                method,
+            this.#validateValue(
                 parameters[1].type,
-                input.args
+                input.args,
+                message
             );
         }
         await super.preCall(group, method, input);
     }
 
     protected async preResolve(group: string, method: string, value: unknown) {
-        // TODO(berytus): validate output
+        const resultType = await this.#getMethodResultTypeEntry(group, method);
+        this.#validateValue(
+            resultType,
+            value,
+            \`Malformed output passed from the request handler's \`
+            + \`\${group}:\${method} method. Reason:\`
+        );
         await super.preResolve(group, method, value);
     }
 
@@ -177,7 +196,21 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         await super.preReject(group, method, value);
     }
 
-    async #getMethodType(group: string, method: string) {
+    async #getMethodResultTypeEntry(group: string, method: string) {
+        group = group.charAt(0).toUpperCase() + group.substring(1);
+        method = method.charAt(0).toUpperCase() + method.substring(1);
+        const schema = await this.#getSchema();
+        const id = group + method + "Result"
+        let resultType = schema.get(id);
+        if (! resultType) {
+            throw new Error(
+                \`Berytus Schema did not contain a "\${id}" type.\`
+            );
+        }
+        return resultType;
+    }
+
+    async #getMethodTypeEntry(group: string, method: string) {
         const schema = await this.#getSchema();
         const requestHandlerType = schema.get("RequestHandler");
         if (! requestHandlerType) {

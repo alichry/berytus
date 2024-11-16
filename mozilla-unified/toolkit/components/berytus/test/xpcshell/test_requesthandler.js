@@ -116,7 +116,7 @@ add_task(async function test_handle_unexcepted_exception() {
 });
 
 add_task(async function test_handle_invalid_input() {
-// Need a profile to be setup; otherwise ValidatedRequestHandler
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
     // would not be able to retrieve the Schema.
     do_get_profile();
 
@@ -142,3 +142,38 @@ add_task(async function test_handle_invalid_input() {
     );
     liaison.ereaseManager("alichry@sample-manager");
 })
+
+add_task(async function test_handle_invalid_output() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
+    const promises = [];
+    const handlerProxy = createRequestHandlerProxy(
+        async(group, method, cx, args) => {
+            promises.push(
+                Assert.rejects(
+                    cx.response.resolve("Bla Bla"),
+                    /^Error: Expected number instead of "Bla Bla"/i
+                )
+            )
+        }
+    );
+    liaison.registerManager(
+        "alichry@sample-manager",
+        "SampleManager",
+        1,
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    await Assert.rejects(
+        publicHandler.manager.getCredentialsMetadata(
+            sampleRequests.getCredentialsMetadata().context,
+            sampleRequests.getCredentialsMetadata().args
+        ), /Malformed output passed from the request handler/i
+    );
+    await Promise.all(promises);
+    liaison.ereaseManager("alichry@sample-manager");
+});

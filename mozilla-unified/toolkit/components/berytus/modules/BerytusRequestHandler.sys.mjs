@@ -24,17 +24,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("manager", "getSigningKey", { context, args });
+                                await self.preResolve("manager", "getSigningKey", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("manager", "getSigningKey", { context, args });
+                                await self.preReject("manager", "getSigningKey", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -67,17 +67,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("manager", "getCredentialsMetadata", { context, args });
+                                await self.preResolve("manager", "getCredentialsMetadata", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("manager", "getCredentialsMetadata", { context, args });
+                                await self.preReject("manager", "getCredentialsMetadata", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -112,17 +112,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "generateKeyExchangeParameters", { context, args });
+                                await self.preResolve("channel", "generateKeyExchangeParameters", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "generateKeyExchangeParameters", { context, args });
+                                await self.preReject("channel", "generateKeyExchangeParameters", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -155,17 +155,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "enableEndToEndEncryption", { context, args });
+                                await self.preResolve("channel", "enableEndToEndEncryption", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "enableEndToEndEncryption", { context, args });
+                                await self.preReject("channel", "enableEndToEndEncryption", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -198,17 +198,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "closeChannel", { context });
+                                await self.preResolve("channel", "closeChannel", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "closeChannel", { context });
+                                await self.preReject("channel", "closeChannel", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -243,17 +243,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "approveOperation", { context, args });
+                                await self.preResolve("login", "approveOperation", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "approveOperation", { context, args });
+                                await self.preReject("login", "approveOperation", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -286,17 +286,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "closeOpeation", { context });
+                                await self.preResolve("login", "closeOpeation", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "closeOpeation", { context });
+                                await self.preReject("login", "closeOpeation", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -329,17 +329,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "getRecordMetadata", { context });
+                                await self.preResolve("login", "getRecordMetadata", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "getRecordMetadata", { context });
+                                await self.preReject("login", "getRecordMetadata", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -372,17 +372,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "updateMetadata", { context, args });
+                                await self.preResolve("login", "updateMetadata", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "updateMetadata", { context, args });
+                                await self.preReject("login", "updateMetadata", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -417,17 +417,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args });
+                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args });
+                                await self.preReject("accountCreation", "approveTransitionToAuthOp", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -460,17 +460,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "getUserAttributes", { context });
+                                await self.preResolve("accountCreation", "getUserAttributes", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "getUserAttributes", { context });
+                                await self.preReject("accountCreation", "getUserAttributes", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -503,17 +503,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "addField", { context, args });
+                                await self.preResolve("accountCreation", "addField", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "addField", { context, args });
+                                await self.preReject("accountCreation", "addField", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -546,17 +546,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "rejectFieldValue", { context, args });
+                                await self.preResolve("accountCreation", "rejectFieldValue", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "rejectFieldValue", { context, args });
+                                await self.preReject("accountCreation", "rejectFieldValue", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -591,17 +591,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args });
+                                await self.preResolve("accountAuthentication", "approveChallengeRequest", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "approveChallengeRequest", { context, args });
+                                await self.preReject("accountAuthentication", "approveChallengeRequest", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -634,17 +634,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "abortChallenge", { context, args });
+                                await self.preResolve("accountAuthentication", "abortChallenge", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "abortChallenge", { context, args });
+                                await self.preReject("accountAuthentication", "abortChallenge", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -677,17 +677,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "closeChallenge", { context, args });
+                                await self.preResolve("accountAuthentication", "closeChallenge", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "closeChallenge", { context, args });
+                                await self.preReject("accountAuthentication", "closeChallenge", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -720,17 +720,17 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args });
+                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             context.response.resolve(val);
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args });
+                                await self.preReject("accountAuthentication", "respondToChallengeMessage", val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -811,7 +811,7 @@ class ValidationContext {
         if (choicesMessage !== null) {
             let { choicePath } = this;
             if (choicePath) {
-                choicesMessage = `.${choicePath} must ${choicesMessage}`;
+                choicesMessage = `.${choicePath} must ${typeof choicesMessage === "function" ? choicesMessage() : choicesMessage}`;
             }
             this.currentChoices.add(choicesMessage);
         }
@@ -856,41 +856,65 @@ class ValidationContext {
         }
     }
 }
+class ResolutionError extends Error {
+    reason;
+    constructor(msg, reason) {
+        super(msg);
+        this.reason = reason;
+    }
+    get name() {
+        return "ResolutionError";
+    }
+}
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema;
     constructor(impl) {
         // TODO(berytus): ensure impl is conformant
         super(impl);
     }
-    #validateInput(group, method, parameterType, input) {
-        const { error } = parameterType.normalize(input, new ValidationContext());
+    #validateValue(typeEntry, value, message) {
+        const { error } = typeEntry.normalize(value, new ValidationContext());
         if (error) {
-            throw new Error(`Malformed input passed to the request handler's `
-                + `${group}:${method} method. Reason: ${typeof error === "function" ? error() : error}`);
+            throw new ResolutionError(message, (typeof error === "function" ? error() : error));
         }
     }
     async preCall(group, method, input) {
-        const methodType = await this.#getMethodType(group, method);
+        const methodType = await this.#getMethodTypeEntry(group, method);
         const { parameters } = methodType;
         if (parameters.length === 0) {
             throw new Error(`Berytus Schema's RequestHandler type did not '
                 + 'contain parameters for ${group}:${method}.`);
         }
-        this.#validateInput(group, method, parameters[0].type, input.context);
+        const message = `Malformed input passed to the request handler's `
+            + `${group}:${method} method. Reason:`;
+        this.#validateValue(parameters[0].type, input.context, message);
         if (parameters[1]) {
-            this.#validateInput(group, method, parameters[1].type, input.args);
+            this.#validateValue(parameters[1].type, input.args, message);
         }
         await super.preCall(group, method, input);
     }
     async preResolve(group, method, value) {
-        // TODO(berytus): validate output
+        const resultType = await this.#getMethodResultTypeEntry(group, method);
+        this.#validateValue(resultType, value, `Malformed output passed from the request handler's `
+            + `${group}:${method} method. Reason:`);
         await super.preResolve(group, method, value);
     }
     async preReject(group, method, value) {
         // TODO(berytus): validate error value
         await super.preReject(group, method, value);
     }
-    async #getMethodType(group, method) {
+    async #getMethodResultTypeEntry(group, method) {
+        group = group.charAt(0).toUpperCase() + group.substring(1);
+        method = method.charAt(0).toUpperCase() + method.substring(1);
+        const schema = await this.#getSchema();
+        const id = group + method + "Result";
+        let resultType = schema.get(id);
+        if (!resultType) {
+            throw new Error(`Berytus Schema did not contain a "${id}" type.`);
+        }
+        return resultType;
+    }
+    async #getMethodTypeEntry(group, method) {
         const schema = await this.#getSchema();
         const requestHandlerType = schema.get("RequestHandler");
         if (!requestHandlerType) {

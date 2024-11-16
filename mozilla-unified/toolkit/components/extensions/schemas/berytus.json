@@ -120,6 +120,10 @@
         }
       },
       {
+        "id": "ManagerGetSigningKeyResult",
+        "type": "string"
+      },
+      {
         "id": "PartialAccountIdentity",
         "type": "object",
         "properties": {
@@ -188,6 +192,10 @@
         }
       },
       {
+        "id": "ManagerGetCredentialsMetadataResult",
+        "type": "number"
+      },
+      {
         "id": "ChannelMetadata",
         "type": "object",
         "properties": {
@@ -245,6 +253,33 @@
         }
       },
       {
+        "id": "PartialKeyExchangeParametersFromScm",
+        "type": "object",
+        "properties": {
+          "scmX25519Key": {
+            "type": "string"
+          },
+          "hkdfHash": {
+            "type": "string"
+          },
+          "hkdfSalt": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          "hkdfInfo": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          "aesKeyLength": {
+            "type": "number"
+          }
+        }
+      },
+      {
+        "id": "ChannelGenerateKeyExchangeParametersResult",
+        "$ref": "PartialKeyExchangeParametersFromScm"
+      },
+      {
         "id": "KeyExchangeParameters",
         "type": "object",
         "properties": {
@@ -288,6 +323,15 @@
             "isInstanceOf": "ArrayBuffer"
           }
         }
+      },
+      {
+        "id": "ChannelEnableEndToEndEncryptionResult",
+        "type": "object",
+        "isInstanceOf": "ArrayBuffer"
+      },
+      {
+        "id": "ChannelCloseChannelResult",
+        "type": "any"
       },
       {
         "id": "UserAttributeKey",
@@ -389,6 +433,16 @@
         }
       },
       {
+        "id": "LoginApproveOperationResult",
+        "enum": [
+          "PendingDeclaration",
+          "Authenticate",
+          "Register"
+        ],
+        "type": "string",
+        "description": "See berytus.enums.ELoginUserIntent for mappings"
+      },
+      {
         "id": "OperationMetadata",
         "type": "object",
         "properties": {
@@ -441,6 +495,10 @@
         }
       },
       {
+        "id": "LoginCloseOpeationResult",
+        "type": "any"
+      },
+      {
         "id": "RecordMetadata",
         "type": "object",
         "properties": {
@@ -465,6 +523,10 @@
         }
       },
       {
+        "id": "LoginGetRecordMetadataResult",
+        "$ref": "RecordMetadata"
+      },
+      {
         "id": "UpdateMetadataArgs",
         "type": "object",
         "properties": {
@@ -474,12 +536,42 @@
         }
       },
       {
+        "id": "LoginUpdateMetadataResult",
+        "type": "any"
+      },
+      {
         "id": "ApproveTransitionToAuthOpArgs",
         "type": "object",
         "properties": {
           "newAuthOp": {
             "$ref": "LoginOperationMetadata"
           }
+        }
+      },
+      {
+        "id": "AccountCreationApproveTransitionToAuthOpResult",
+        "type": "any"
+      },
+      {
+        "id": "UserAttribute",
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "UserAttributeKey"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "AccountCreationGetUserAttributesResult",
+        "type": "array",
+        "items": {
+          "$ref": "UserAttribute"
         }
       },
       {
@@ -532,6 +624,10 @@
         }
       },
       {
+        "id": "AccountCreationAddFieldResult",
+        "type": "any"
+      },
+      {
         "id": "FieldValueRejectionReason",
         "type": "object",
         "properties": {
@@ -555,6 +651,10 @@
             "optional": true
           }
         }
+      },
+      {
+        "id": "AccountCreationRejectFieldValueResult",
+        "$ref": "FieldValue"
       },
       {
         "id": "ChallengeParameters",
@@ -605,6 +705,10 @@
         }
       },
       {
+        "id": "AccountAuthenticationApproveChallengeRequestResult",
+        "type": "any"
+      },
+      {
         "id": "ChallengeAbortionReason",
         "type": "object",
         "properties": {
@@ -626,6 +730,10 @@
         }
       },
       {
+        "id": "AccountAuthenticationAbortChallengeResult",
+        "type": "any"
+      },
+      {
         "id": "CloseChallengeArgs",
         "type": "object",
         "properties": {
@@ -633,6 +741,10 @@
             "$ref": "ChallengeMetadata"
           }
         }
+      },
+      {
+        "id": "AccountAuthenticationCloseChallengeResult",
+        "type": "any"
       },
       {
         "id": "ChallengePayload",
@@ -662,6 +774,19 @@
             "$ref": "ChallengeMessage"
           }
         }
+      },
+      {
+        "id": "ChallengeMessageResponse",
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "ChallengePayload"
+          }
+        }
+      },
+      {
+        "id": "AccountAuthenticationRespondToChallengeMessageResult",
+        "$ref": "ChallengeMessageResponse"
       },
       {
         "id": "Response",

@@ -34,13 +34,23 @@ export const generateWebExtsSchema = async () => {
                 parsedType: parsedType
             });
         } else {
-            // TODO(berytus): Think about coupling response type in context
             apiGenerator.addHandlerMethod(
                 group,
                 method.name,
                 parameters
             );
             parameters.splice(0, parameters.length);
+            const definedResultType = apiGenerator.defineType(parsedType);
+            if ("value" in definedResultType) {
+                throw new Error("Method result cannot be a literal value");
+            }
+            apiGenerator.addTypeDef({
+                id: capitalise(group) + capitalise(method.name)
+                    + 'Result',
+                schema: {
+                    ...definedResultType
+                }
+            });
         }
         item = typeIterator.next();
     }

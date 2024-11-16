@@ -66,16 +66,16 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<${responseCtxType}["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve(${hookArgs})
-                            } catch (e) {
+                                await self.preResolve("${group}", "${name}", val)
+                            } catch (e: any) {
                                 ${ctxVar}.response.reject(e);
-                                throw e;
+                                throw new Error(e.reason || "ResolutionFailure");
                             }
                             ${ctxVar}.response.resolve(val);
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject(${hookArgs});
+                                await self.preReject("${group}", "${name}", val);
                             } catch (e) {
                                 ${ctxVar}.response.reject(e);
                                 throw e;
