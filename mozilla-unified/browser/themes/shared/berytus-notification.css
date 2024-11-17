@@ -91,6 +91,11 @@
     border-color: var(--list-item-checked-border);
 }
 
+.berytus-secret-manager-list-item.metadata-error {
+    background-color: rgb(255, 0, 0, 0.05) !important;
+    border: none !important;
+}
+
 .berytus-secret-manager-list-item-radio {
     appearance: none;
     background-color: var(--checkbox-unchecked-bgcolor);
@@ -129,6 +134,12 @@
 
 .berytus-secret-manager-list-item-radio:checked:hover:active {
     background-color: var(--checkbox-checked-active-bgcolor);
+}
+
+.berytus-secret-manager-list-item-radio:disabled {
+    background-image: none !important;
+    background-color: gray !important;
+    opacity: 0.15;
 }
 
 .berytus-secret-manager-list-item-icon {
@@ -183,12 +194,19 @@
     gap: 8px;
 }
 
+.berytus-secret-manager-list-item-metadata-nb-accounts-container[hidden] {
+    display: none !important;
+}
+
 .berytus-secret-manager-list-item-metadata-spinner-icon {
     width: 16px;
 }
 
 .berytus-secret-manager-list-item-metadata-error-icon {
     width: 16px;
+    fill: red;
+    -moz-context-properties: fill, fill-opacity;
+    fill-opacity: 0.8;
 }
 
 .berytus-secret-manager-list-item-metadata-nb-accounts-icon {
@@ -200,4 +218,12 @@
 
 .berytus-secret-manager-list-item-stretch-till-end {
     flex: 1;
+}
+
+#berytus-notification > .popup-notification-primary-button {
+    display: none;
+}
+
+#berytus-notification > .popup-notification-primary-button.shown {
+    display: block;
 }

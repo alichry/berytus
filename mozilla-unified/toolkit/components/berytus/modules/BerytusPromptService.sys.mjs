@@ -13,11 +13,21 @@ const collectCredentialsMetadata = async (innerWindowId, args) => {
     const relevantManagers = keys && keys.length > 0
         ? (await Promise.all(managers.map(async (manager) => {
             const handler = liaison.getRequestHandler(manager.id);
-            const key = await handler.manager.getSigningKey(context, { webAppActor: args.webAppActor });
+            let key;
+            try {
+                key = await handler.manager.getSigningKey(context, { webAppActor: args.webAppActor });
+            }
+            catch (e) {
+                return null;
+            }
             if (keys.indexOf(key) !== -1) {
                 return manager;
             }
             return null;
+            // TODO(berytus): Perhaps, in the future, we could
+            // include another list of managers, the ones that
+            // threw an exceptions (see try-catch above), and the
+            // ones who where filtered out.
         }))).filter(m => !!m)
         : managers;
     for (let i = 0; i < relevantManagers.length; i++) {
@@ -64,6 +74,21 @@ class Prompter {
                 listBox.removeChild(listBox.firstChild);
             }
             const itemTemplate = ownerDocument.getElementById("template-berytus-secret-manager-list-item");
+            let atLeastOneManagerCanBeSelected = false;
+            const updateSelectButton = () => {
+                const primaryButton = ownerDocument.getElementById('berytus-notification')
+                    .getElementsByClassName('popup-notification-primary-button')[0];
+                if (!primaryButton) {
+                    return; // popup is not shown yet.
+                }
+                if (atLeastOneManagerCanBeSelected) {
+                    primaryButton.removeAttribute("disabled");
+                }
+                else {
+                    primaryButton.setAttribute("disabled", "true");
+                }
+                primaryButton.classList.add("shown");
+            };
             for (let i = 0; i < managerEntries.length; i++) {
                 const { manager, credentialsMetadata } = managerEntries[i];
                 //const extInfo = Prompter.#getExtensionInfo(manager.id);
@@ -92,33 +117,42 @@ class Prompter {
                 newItem.getElementsByClassName("berytus-secret-manager-list-item-label-primary")[0].textContent = manager.label;
                 newItem.getElementsByClassName("berytus-secret-manager-list-item-label-secondary")[0].textContent = manager.id;
                 const spinner = newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-spinner-icon")[0];
-                spinner.setAttribute('hidden', "false");
+                spinner.removeAttribute('hidden');
                 Promise.resolve(credentialsMetadata)
                     .then((metadata) => {
+                    atLeastOneManagerCanBeSelected = true;
                     const nbAccountElement = newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-nb-accounts")[0];
                     nbAccountElement.textContent = String(metadata);
                     spinner.setAttribute('hidden', "true");
-                    newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-nb-accounts-container")[0].setAttribute("hidden", "false");
+                    newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-nb-accounts-container")[0].removeAttribute("hidden");
                 })
                     .catch((err) => {
                     const warningIconElement = newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-error-icon")[0];
                     warningIconElement.setAttribute('alt', 'An error has occurred while retrieving credentials metadata from the secret manager.');
                     spinner.setAttribute('hidden', "true");
-                    warningIconElement.setAttribute("hidden", "false");
+                    warningIconElement.removeAttribute("hidden");
                     newItem.classList.add('metadata-error');
-                    // At the moment, the item can still be selected despite the error.
-                    // not a huge concern for the proof of concept.
-                });
+                    newRadio.setAttribute('disabled', "true");
+                })
+                    .finally(() => updateSelectButton());
                 listBox.append(newItem);
             }
             const options = {
                 hideClose: true,
                 eventCallback: (topic, nextRemovalReason, isCancel) => {
-                    if (topic == "removed" && isCancel) {
+                    if (topic === "removed" && isCancel) {
                         reject(new Components.Exception("", Cr.NS_ERROR_ABORT));
+                        return;
+                    }
+                    if (topic === "shown") {
+                        updateSelectButton();
+                        return;
                     }
                 },
             };
+            // TODO(berytus): Throw an error if
+            // zero managers can be selected due
+            // to an error being thrown in getCredMetadata
             const mainAction = {
                 label: 'Select',
                 accessKey: 'S',
@@ -140,7 +174,7 @@ class Prompter {
                 " would like to communicate with your secret manager to create a new " +
                 "account or login with an existing one. Please select your preferred " +
                 "manager to proceed.";
-            ownerDocument.getElementById("berytus-header").hidden = false;
+            ownerDocument.getElementById("berytus-header").removeAttribute('hidden');
             browser.ownerGlobal.PopupNotifications.show(browser, "berytus", "", //"Berytus",
             "berytus-notification-icon", mainAction, secondaryActions, options);
         });

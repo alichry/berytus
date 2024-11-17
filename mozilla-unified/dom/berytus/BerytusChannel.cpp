@@ -222,8 +222,16 @@ already_AddRefed<Promise> BerytusChannel::Create(const GlobalObject& aGlobal, co
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-
-    outPromise->MaybeReject(NS_ERROR_FAILURE);
+    berytus::Failure fr;
+    berytus::Failure::FromJSVal(aCx, aValue, fr);
+    ErrorResult err = fr.ToErrorResult();
+    RefPtr<Promise> rejProm = Promise::CreateRejectedWithErrorResult(outPromise->GetGlobalObject(), err);
+    if (NS_WARN_IF(err.Failed())) {
+      // rejPromise was not created successfully.
+      outPromise->MaybeReject(err.StealNSResult());
+      return;
+    }
+    outPromise->MaybeResolve(rejProm);
   };
   selectPromise->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsGlobal);
   return outPromise.forget();

@@ -8,43 +8,45 @@ export class XPPromptServiceChildProxy {
         const originalUri = innerWindow.browsingContext.docShell.currentDocumentChannel.originalURI;
         const browsingContext = innerWindow.browsingContext;
         const actor = getChildActor(browsingContext, 'BerytusPromptService');
-        const identity = {};
+        //const identity: Record<string, string> = {};
+        const identity = [];
         for (const { name, value } of args_accountConstraints_identity.enumerator) {
-            identity[name] = value;
+            identity.push({ fieldId: name, fieldValue: value });
         }
+        const args = {
+            webAppActor: args_webAppCryptoActor?.length > 0
+                ? { ed25519Key: args_webAppCryptoActor }
+                : {
+                    currentUri: {
+                        uri: currentUri.spec,
+                        scheme: currentUri.scheme,
+                        hostname: currentUri.host,
+                        port: currentUri.port,
+                        path: currentUri.filePath
+                    },
+                    originalUri: {
+                        uri: originalUri.spec,
+                        scheme: originalUri.scheme,
+                        hostname: originalUri.host,
+                        port: originalUri.port,
+                        path: originalUri.filePath
+                    }
+                },
+            channelConstraints: {
+                secretManagerPublicKey: args_channelConstraints_secretManagerPublicKey,
+                enableEndToEndEncryption: args_channelConstraints_enableEndToEndEncryption
+            },
+            accountConstraints: {
+                category: args_accountConstraints_category?.length > 0
+                    ? args_accountConstraints_category : undefined,
+                schemaVersion: args_accountConstraints_schemaVersion !== 0
+                    ? args_accountConstraints_schemaVersion : undefined,
+                identity
+            }
+        };
         const selectedId = await actor.sendQuery('BerytusPromptService:promptUsingPopupNotification', [
             browsingContext,
-            {
-                webAppActor: args_webAppCryptoActor?.length > 0
-                    ? { ed25519Key: args_webAppCryptoActor }
-                    : {
-                        currentUri: {
-                            uri: currentUri.spec,
-                            scheme: currentUri.scheme,
-                            hostname: currentUri.host,
-                            port: currentUri.port,
-                            path: currentUri.filePath
-                        },
-                        originalUri: {
-                            uri: originalUri.spec,
-                            scheme: originalUri.scheme,
-                            hostname: originalUri.host,
-                            port: originalUri.port,
-                            path: originalUri.filePath
-                        }
-                    },
-                channelConstraints: {
-                    secretManagerPublicKey: args_channelConstraints_secretManagerPublicKey,
-                    enableEndToEndEncryption: args_channelConstraints_enableEndToEndEncryption
-                },
-                accountConstraints: {
-                    category: args_accountConstraints_category?.length > 0
-                        ? args_accountConstraints_category : undefined,
-                    schemaVersion: args_accountConstraints_schemaVersion !== 0
-                        ? args_accountConstraints_schemaVersion : undefined,
-                    identity
-                }
-            }
+            args
         ]);
         return selectedId;
     }
