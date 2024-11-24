@@ -6,7 +6,7 @@ import { project } from './Project.js';
 import { Type, EnumMember, ts } from 'ts-morph';
 
 type Atom = "any" | "string" | "number" | "boolean" | "undefined"
-    | "null" | "ArrayBuffer";
+    | "null" | "ArrayBuffer" | "ArrayBufferView";
 
 export type ParsedType = {
     type: Atom;
@@ -39,6 +39,7 @@ export type ParsedType = {
     keyChoices?: string[] | number[]
 } | {
     type: "literal";
+    // TODO(beytus): I don't think optional is appropriate here.
     optional?: true;
     value: string | number | boolean;
 } | {
@@ -51,6 +52,9 @@ export type ParsedType = {
     resolveType: ParsedType
 };
 
+interface ParseOptions {
+    unionAliasGenerator?(options: ParsedType[]): string;
+}
 
 const typeChecker = project.getTypeChecker();
 
@@ -79,11 +83,15 @@ const typeChecker = project.getTypeChecker();
  *
  * any/unknown/void/never is mapped to any
  */
-export const parseType = (int: Type): ParsedType => {
+export const parseType = (int: Type, opts: ParseOptions = {}): ParsedType => {
     if (int.isNumberLiteral() || int.isStringLiteral() || int.isBooleanLiteral()) {
+        const value = int.getLiteralValueOrThrow(); //int.getText()
+        if (typeof value !== "string" && typeof value !== "number") {
+            throw new Error("Bad literal value; bigints are not supported");
+        }
         return {
             type: 'literal',
-            value: int.getText()
+            value
         }
     }
     if (int.isString()) {
@@ -110,7 +118,7 @@ export const parseType = (int: Type): ParsedType => {
         const itemType = int.getTypeArguments()[0]
         return {
             type: 'Array',
-            itemType: parseType(itemType)
+            itemType: parseType(itemType, opts)
         }
     }
     // if (int.getText() === 'Uint8Array') {
@@ -122,6 +130,9 @@ export const parseType = (int: Type): ParsedType => {
         return {
             type: 'ArrayBuffer'
         }
+    }
+    if (int.getText() === 'ArrayBufferView') {
+        return { type: 'ArrayBufferView' }
     }
     if (int.getTargetType()?.getSymbol()?.getName() === 'Promise') {
         throw new Error('Promises are not supported in type parser');
@@ -146,7 +157,7 @@ export const parseType = (int: Type): ParsedType => {
         const properties: Record<string, ParsedType> = {};
         int.getProperties().forEach(prop => {
             properties[prop.getName()] =
-                parseType(prop.getValueDeclarationOrThrow().getType());
+                parseType(prop.getValueDeclarationOrThrow().getType(), opts);
         })
         return {
             type: 'object',
@@ -214,7 +225,8 @@ export const parseType = (int: Type): ParsedType => {
             const type = new Type(project._context, compilerUnionMembers[i]) as Type;
             options.push(
                 parseType(
-                    type
+                    type,
+                    opts
                 )
             );
         }
@@ -227,9 +239,14 @@ export const parseType = (int: Type): ParsedType => {
                 ...options[undefinedIndex + 1 % 2]
             };
         }
-        const alias = int.getAliasSymbol()?.getName() || int.getSymbol()?.getName();
+        let alias = int.getAliasSymbol()?.getName() || int.getSymbol()?.getName();
         if (! alias) {
-            throw new Error('Missing alias for union! Ensure every union type is defined using an alias.');
+            if (! opts.unionAliasGenerator) {
+                throw new Error(
+                    'Missing alias for union! Ensure every union type is defined using an alias.'
+                );
+            }
+            alias = opts.unionAliasGenerator(options);
         }
         return {
             type: 'union',

@@ -339,18 +339,78 @@
           {
             "type": "string",
             "enum": [
-              "name",
-              "givenName",
-              "familyName",
-              "middleName",
-              "nickname",
-              "profile",
-              "picture",
-              "website",
-              "gender",
-              "birthdate",
-              "zoneinfo",
-              "locale",
+              "name"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "givenName"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "familyName"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "middleName"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "nickname"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "profile"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "picture"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "website"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "gender"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "birthdate"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "zoneinfo"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "locale"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
               "address"
             ]
           },
@@ -575,6 +635,376 @@
         }
       },
       {
+        "id": "BerytusFieldCategoryOptions",
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusForeignIdentityFieldOptions",
+        "type": "object",
+        "properties": {
+          "private": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BufferSource",
+        "choices": [
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBufferView"
+          }
+        ]
+      },
+      {
+        "id": "AesGcmParams",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "iv": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          "additionalData": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer",
+            "optional": true
+          },
+          "tagLength": {
+            "type": "number"
+          }
+        }
+      },
+      {
+        "id": "BerytusEncryptedPacket",
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "$ref": "AesGcmParams"
+          },
+          "ciphertext": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          }
+        }
+      },
+      {
+        "id": "nullOrstringOrBerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
+        "id": "BerytusForeignIdentityField",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "ForeignIdentity"
+            ]
+          },
+          "options": {
+            "$ref": "BerytusForeignIdentityFieldOptions"
+          },
+          "value": {
+            "$ref": "nullOrstringOrBerytusEncryptedPacket"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusIdentityFieldOptions",
+        "type": "object",
+        "properties": {
+          "humanReadable": {
+            "type": "boolean"
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "maxLength": {
+            "type": "number"
+          },
+          "allowedCharacters": {
+            "type": "string",
+            "optional": true
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusIdentityField",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Identity"
+            ]
+          },
+          "options": {
+            "$ref": "BerytusIdentityFieldOptions"
+          },
+          "value": {
+            "$ref": "nullOrstringOrBerytusEncryptedPacket"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusKeyFieldOptions",
+        "type": "object",
+        "properties": {
+          "alg": {
+            "type": "number"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "ArrayBufferOrBerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
+        "id": "BerytusKeyFieldValue",
+        "type": "object",
+        "properties": {
+          "publicKey": {
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusKeyField",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Key"
+            ]
+          },
+          "options": {
+            "$ref": "BerytusKeyFieldOptions"
+          },
+          "value": {
+            "$ref": "BerytusKeyFieldValue"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusPasswordFieldOptions",
+        "type": "object",
+        "properties": {
+          "passwordRules": {
+            "type": "string",
+            "optional": true
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusPasswordField",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Password"
+            ]
+          },
+          "options": {
+            "$ref": "BerytusPasswordFieldOptions"
+          },
+          "value": {
+            "$ref": "nullOrstringOrBerytusEncryptedPacket"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusSecurePasswordFieldOptions",
+        "type": "object",
+        "properties": {
+          "identityFieldId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusSecurePasswordFieldValue",
+        "type": "object",
+        "properties": {
+          "salt": {
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
+          },
+          "verifier": {
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusSecurePasswordField",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SecurePassword"
+            ]
+          },
+          "options": {
+            "$ref": "BerytusSecurePasswordFieldOptions"
+          },
+          "value": {
+            "$ref": "BerytusSecurePasswordFieldValue"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusSharedKeyFieldOptions",
+        "type": "object",
+        "properties": {
+          "alg": {
+            "type": "number"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusSharedKeyFieldValue",
+        "type": "object",
+        "properties": {
+          "privateKey": {
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusSharedKeyField",
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SharedKey"
+            ]
+          },
+          "options": {
+            "$ref": "BerytusSharedKeyFieldOptions"
+          },
+          "value": {
+            "$ref": "BerytusSharedKeyFieldValue"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusFieldUnion",
+        "choices": [
+          {
+            "$ref": "BerytusForeignIdentityField"
+          },
+          {
+            "$ref": "BerytusIdentityField"
+          },
+          {
+            "$ref": "BerytusKeyField"
+          },
+          {
+            "$ref": "BerytusPasswordField"
+          },
+          {
+            "$ref": "BerytusSecurePasswordField"
+          },
+          {
+            "$ref": "BerytusSharedKeyField"
+          }
+        ]
+      },
+      {
+        "id": "AddFieldArgs",
+        "type": "object",
+        "properties": {
+          "field": {
+            "$ref": "BerytusFieldUnion"
+          }
+        }
+      },
+      {
+        "id": "AccountCreationAddFieldResult",
+        "$ref": "BerytusFieldUnion"
+      },
+      {
         "id": "BaseFieldMetadata",
         "type": "object",
         "properties": {
@@ -599,6 +1029,28 @@
         }
       },
       {
+        "id": "FieldValueRejectionReason",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "EncryptedPacket",
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "$ref": "AesGcmParams"
+          },
+          "ciphertext": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          }
+        }
+      },
+      {
         "id": "FieldValue",
         "choices": [
           {
@@ -607,34 +1059,11 @@
           {
             "type": "object",
             "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "$ref": "EncryptedPacket"
           }
         ]
-      },
-      {
-        "id": "AddFieldArgs",
-        "type": "object",
-        "properties": {
-          "field": {
-            "$ref": "BaseFieldMetadata"
-          },
-          "value": {
-            "$ref": "FieldValue",
-            "optional": true
-          }
-        }
-      },
-      {
-        "id": "AccountCreationAddFieldResult",
-        "type": "any"
-      },
-      {
-        "id": "FieldValueRejectionReason",
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          }
-        }
       },
       {
         "id": "RejectFieldValueArgs",

@@ -24,7 +24,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("manager", "getSigningKey", val);
+                                await self.preResolve("manager", "getSigningKey", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -34,7 +34,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("manager", "getSigningKey", val);
+                                await self.preReject("manager", "getSigningKey", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -67,7 +67,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("manager", "getCredentialsMetadata", val);
+                                await self.preResolve("manager", "getCredentialsMetadata", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -77,7 +77,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("manager", "getCredentialsMetadata", val);
+                                await self.preReject("manager", "getCredentialsMetadata", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -112,7 +112,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "generateKeyExchangeParameters", val);
+                                await self.preResolve("channel", "generateKeyExchangeParameters", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -122,7 +122,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "generateKeyExchangeParameters", val);
+                                await self.preReject("channel", "generateKeyExchangeParameters", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -155,7 +155,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "enableEndToEndEncryption", val);
+                                await self.preResolve("channel", "enableEndToEndEncryption", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -165,7 +165,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "enableEndToEndEncryption", val);
+                                await self.preReject("channel", "enableEndToEndEncryption", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -198,7 +198,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "closeChannel", val);
+                                await self.preResolve("channel", "closeChannel", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -208,7 +208,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "closeChannel", val);
+                                await self.preReject("channel", "closeChannel", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -243,7 +243,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "approveOperation", val);
+                                await self.preResolve("login", "approveOperation", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -253,7 +253,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "approveOperation", val);
+                                await self.preReject("login", "approveOperation", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -286,7 +286,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "closeOpeation", val);
+                                await self.preResolve("login", "closeOpeation", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -296,7 +296,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "closeOpeation", val);
+                                await self.preReject("login", "closeOpeation", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -329,7 +329,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "getRecordMetadata", val);
+                                await self.preResolve("login", "getRecordMetadata", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -339,7 +339,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "getRecordMetadata", val);
+                                await self.preReject("login", "getRecordMetadata", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -372,7 +372,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "updateMetadata", val);
+                                await self.preResolve("login", "updateMetadata", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -382,7 +382,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "updateMetadata", val);
+                                await self.preReject("login", "updateMetadata", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -417,7 +417,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", val);
+                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -427,7 +427,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "approveTransitionToAuthOp", val);
+                                await self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -460,7 +460,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "getUserAttributes", val);
+                                await self.preResolve("accountCreation", "getUserAttributes", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -470,7 +470,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "getUserAttributes", val);
+                                await self.preReject("accountCreation", "getUserAttributes", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -503,7 +503,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "addField", val);
+                                await self.preResolve("accountCreation", "addField", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -513,7 +513,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "addField", val);
+                                await self.preReject("accountCreation", "addField", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -546,7 +546,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountCreation", "rejectFieldValue", val);
+                                await self.preResolve("accountCreation", "rejectFieldValue", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -556,7 +556,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountCreation", "rejectFieldValue", val);
+                                await self.preReject("accountCreation", "rejectFieldValue", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -591,7 +591,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "approveChallengeRequest", val);
+                                await self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -601,7 +601,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "approveChallengeRequest", val);
+                                await self.preReject("accountAuthentication", "approveChallengeRequest", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -634,7 +634,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "abortChallenge", val);
+                                await self.preResolve("accountAuthentication", "abortChallenge", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -644,7 +644,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "abortChallenge", val);
+                                await self.preReject("accountAuthentication", "abortChallenge", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -677,7 +677,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "closeChallenge", val);
+                                await self.preResolve("accountAuthentication", "closeChallenge", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -687,7 +687,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "closeChallenge", val);
+                                await self.preReject("accountAuthentication", "closeChallenge", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -720,7 +720,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", val);
+                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -730,7 +730,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("accountAuthentication", "respondToChallengeMessage", val);
+                                await self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -753,9 +753,9 @@ export class IsolatedRequestHandler {
             },
         };
     }
-    preCall(group, method, args) { }
-    preResolve(group, method, value) { }
-    preReject(group, method, value) { }
+    preCall(group, method, input) { }
+    preResolve(group, method, input, value) { }
+    preReject(group, method, input, value) { }
     handleUnexpectedException(group, method, response, excp) {
         // TODO(berytus): Define what would be the
         // accepted values to reject a request with.
@@ -893,15 +893,24 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         }
         await super.preCall(group, method, input);
     }
-    async preResolve(group, method, value) {
+    async preResolve(group, method, input, value) {
         const resultType = await this.#getMethodResultTypeEntry(group, method);
-        this.#validateValue(resultType, value, `Malformed output passed from the request handler's `
-            + `${group}:${method} method. Reason:`);
-        await super.preResolve(group, method, value);
+        const errorPrefix = `Malformed output passed from the request handler's `
+            + `${group}:${method} method. Reason:`;
+        this.#validateValue(resultType, value, errorPrefix);
+        // Additional validation for accountCreation.addField
+        // TODO(berytus): Test this.
+        if ("$ref" in resultType &&
+            resultType.$ref === "BerytusFieldUnion" &&
+            // @ts-ignore: TODO(berytus) change to any perhaps, and rename value to output.
+            value.value === null) {
+            throw new ResolutionError(errorPrefix, "property \"value\" must not be null");
+        }
+        await super.preResolve(group, method, input, value);
     }
-    async preReject(group, method, value) {
+    async preReject(group, method, input, value) {
         // TODO(berytus): validate error value
-        await super.preReject(group, method, value);
+        await super.preReject(group, method, input, value);
     }
     async #getMethodResultTypeEntry(group, method) {
         group = group.charAt(0).toUpperCase() + group.substring(1);
@@ -958,13 +967,13 @@ export class SequentialRequestHandler extends ValidatedRequestHandler {
         this.busy = true;
         await super.preCall(group, method, input);
     }
-    async preResolve(group, method, value) {
+    async preResolve(group, method, input, value) {
         this.busy = false;
-        await super.preResolve(group, method, value);
+        await super.preResolve(group, method, input, value);
     }
-    async preReject(group, method, value) {
+    async preReject(group, method, input, value) {
         this.busy = false;
-        await super.preReject(group, method, value);
+        await super.preReject(group, method, input, value);
     }
     handleUnexpectedException(group, method, response, excp) {
         this.busy = false;

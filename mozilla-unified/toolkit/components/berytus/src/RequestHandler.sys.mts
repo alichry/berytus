@@ -26,7 +26,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"manager", "getSigningKey">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("manager", "getSigningKey", val)
+                                await self.preResolve("manager", "getSigningKey", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -35,7 +35,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("manager", "getSigningKey", val);
+                                await self.preReject("manager", "getSigningKey", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -70,7 +70,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"manager", "getCredentialsMetadata">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("manager", "getCredentialsMetadata", val)
+                                await self.preResolve("manager", "getCredentialsMetadata", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -79,7 +79,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("manager", "getCredentialsMetadata", val);
+                                await self.preReject("manager", "getCredentialsMetadata", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -116,7 +116,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"channel", "generateKeyExchangeParameters">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("channel", "generateKeyExchangeParameters", val)
+                                await self.preResolve("channel", "generateKeyExchangeParameters", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -125,7 +125,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("channel", "generateKeyExchangeParameters", val);
+                                await self.preReject("channel", "generateKeyExchangeParameters", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -160,7 +160,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"channel", "enableEndToEndEncryption">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("channel", "enableEndToEndEncryption", val)
+                                await self.preResolve("channel", "enableEndToEndEncryption", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -169,7 +169,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("channel", "enableEndToEndEncryption", val);
+                                await self.preReject("channel", "enableEndToEndEncryption", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -204,7 +204,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"channel", "closeChannel">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("channel", "closeChannel", val)
+                                await self.preResolve("channel", "closeChannel", { context }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -213,7 +213,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("channel", "closeChannel", val);
+                                await self.preReject("channel", "closeChannel", { context }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -250,7 +250,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"login", "approveOperation">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("login", "approveOperation", val)
+                                await self.preResolve("login", "approveOperation", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -259,7 +259,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("login", "approveOperation", val);
+                                await self.preReject("login", "approveOperation", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -294,7 +294,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"login", "closeOpeation">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("login", "closeOpeation", val)
+                                await self.preResolve("login", "closeOpeation", { context }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -303,7 +303,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("login", "closeOpeation", val);
+                                await self.preReject("login", "closeOpeation", { context }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -338,7 +338,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"login", "getRecordMetadata">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("login", "getRecordMetadata", val)
+                                await self.preResolve("login", "getRecordMetadata", { context }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -347,7 +347,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("login", "getRecordMetadata", val);
+                                await self.preReject("login", "getRecordMetadata", { context }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -382,7 +382,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"login", "updateMetadata">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("login", "updateMetadata", val)
+                                await self.preResolve("login", "updateMetadata", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -391,7 +391,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("login", "updateMetadata", val);
+                                await self.preReject("login", "updateMetadata", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -428,7 +428,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountCreation", "approveTransitionToAuthOp">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", val)
+                                await self.preResolve("accountCreation", "approveTransitionToAuthOp", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -437,7 +437,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountCreation", "approveTransitionToAuthOp", val);
+                                await self.preReject("accountCreation", "approveTransitionToAuthOp", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -472,7 +472,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountCreation", "getUserAttributes">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountCreation", "getUserAttributes", val)
+                                await self.preResolve("accountCreation", "getUserAttributes", { context }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -481,7 +481,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountCreation", "getUserAttributes", val);
+                                await self.preReject("accountCreation", "getUserAttributes", { context }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -516,7 +516,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountCreation", "addField">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountCreation", "addField", val)
+                                await self.preResolve("accountCreation", "addField", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -525,7 +525,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountCreation", "addField", val);
+                                await self.preReject("accountCreation", "addField", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -560,7 +560,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountCreation", "rejectFieldValue">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountCreation", "rejectFieldValue", val)
+                                await self.preResolve("accountCreation", "rejectFieldValue", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -569,7 +569,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountCreation", "rejectFieldValue", val);
+                                await self.preReject("accountCreation", "rejectFieldValue", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -606,7 +606,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountAuthentication", "approveChallengeRequest">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountAuthentication", "approveChallengeRequest", val)
+                                await self.preResolve("accountAuthentication", "approveChallengeRequest", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -615,7 +615,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountAuthentication", "approveChallengeRequest", val);
+                                await self.preReject("accountAuthentication", "approveChallengeRequest", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -650,7 +650,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountAuthentication", "abortChallenge">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountAuthentication", "abortChallenge", val)
+                                await self.preResolve("accountAuthentication", "abortChallenge", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -659,7 +659,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountAuthentication", "abortChallenge", val);
+                                await self.preReject("accountAuthentication", "abortChallenge", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -694,7 +694,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountAuthentication", "closeChallenge">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountAuthentication", "closeChallenge", val)
+                                await self.preResolve("accountAuthentication", "closeChallenge", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -703,7 +703,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountAuthentication", "closeChallenge", val);
+                                await self.preReject("accountAuthentication", "closeChallenge", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -738,7 +738,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<ResponseContext<"accountAuthentication", "respondToChallengeMessage">["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", val)
+                                await self.preResolve("accountAuthentication", "respondToChallengeMessage", { context, args }, val)
                             } catch (e: any) {
                                 context.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -747,7 +747,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("accountAuthentication", "respondToChallengeMessage", val);
+                                await self.preReject("accountAuthentication", "respondToChallengeMessage", { context, args }, val);
                             } catch (e) {
                                 context.response.reject(e);
                                 throw e;
@@ -773,9 +773,9 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
             },
         };
     }
-    protected preCall(group: string, method: string, args: unknown) {}
-    protected preResolve(group: string, method: string, value: unknown) {}
-    protected preReject(group: string, method: string, value: unknown) {}
+    protected preCall(group: string, method: string, input: unknown) {}
+    protected preResolve(group: string, method: string, input: unknown, value: unknown) {}
+    protected preReject(group: string, method: string, input: unknown, value: unknown) {}
     protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
         // TODO(berytus): Define what would be the
         // accepted values to reject a request with.
@@ -967,20 +967,31 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         await super.preCall(group, method, input);
     }
 
-    protected async preResolve(group: string, method: string, value: unknown) {
+    protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
         const resultType = await this.#getMethodResultTypeEntry(group, method);
+        const errorPrefix = `Malformed output passed from the request handler's `
+            + `${group}:${method} method. Reason:`;
         this.#validateValue(
             resultType,
             value,
-            `Malformed output passed from the request handler's `
-            + `${group}:${method} method. Reason:`
+            errorPrefix
         );
-        await super.preResolve(group, method, value);
+        // Additional validation for accountCreation.addField
+        // TODO(berytus): Test this.
+        if (
+            "$ref" in resultType &&
+            resultType.$ref === "BerytusFieldUnion" &&
+            // @ts-ignore: TODO(berytus) change to any perhaps, and rename value to output.
+            value.value === null
+        ) {
+            throw new ResolutionError(errorPrefix, "property \"value\" must not be null");
+        }
+        await super.preResolve(group, method, input, value);
     }
 
-    protected async preReject(group: string, method: string, value: unknown) {
+    protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
         // TODO(berytus): validate error value
-        await super.preReject(group, method, value);
+        await super.preReject(group, method, input, value);
     }
 
     async #getMethodResultTypeEntry(group: string, method: string) {
@@ -1055,13 +1066,13 @@ export class SequentialRequestHandler extends ValidatedRequestHandler {
         this.busy = true;
         await super.preCall(group, method, input);
     }
-    protected async preResolve(group: string, method: string, value: unknown) {
+    protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
         this.busy = false;
-        await super.preResolve(group, method, value);
+        await super.preResolve(group, method, input, value);
     }
-    protected async preReject(group: string, method: string, value: unknown) {
+    protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
         this.busy = false;
-        await super.preReject(group, method, value);
+        await super.preReject(group, method, input, value);
     }
     protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
         this.busy = false;

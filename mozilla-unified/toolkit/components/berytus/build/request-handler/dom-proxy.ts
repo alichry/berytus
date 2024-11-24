@@ -377,7 +377,7 @@ class StringEnumType extends BasicType implements IType {
   uint8_t mVal;
   ${this.symbol}() : mVal(0) {}
   ${this.symbol}(uint8_t aVal) : mVal(aVal) {};
-  ${this.labeledCreatorsFunctions().map(a => a.functionDef).join("\n")}
+  ${this.labeledCreatorsFunctions().map(a => a.functionDef).join("\n  ")}
   ${this.toStringFunction().functionDef}
   ${this.fromStringFunction().functionDef}
   ${this.isJsValValidFunction().functionDef}
@@ -676,6 +676,160 @@ ${this.exportToJsValFunction().functionImpl}`;
             functionDef: `${funcDef};`,
             functionImpl: `${funcDef} {
   aRv.setBoolean(aValue);
+  return true;
+}`
+        }
+    }
+}
+
+class NullType extends TypeSymbol implements IType {
+    constructor() {
+        super('Nothing');
+    }
+
+    get id() {
+        return "JSNull";
+    }
+
+    get definition() {
+        return `${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`;
+    }
+
+    get implementation() {
+        return `${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`;
+    }
+
+    atArgument(): string {
+        return `Nothing&`;
+    }
+    atReturn(): string {
+        return `Nothing`;
+    }
+    atStruct(): string {
+        return `Nothing`;
+    }
+    atDefinition(): string {
+        return `Nothing`;
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = 'JSValIsNull';
+        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  aRv = aValue.isNull();
+  return true;
+}`
+        }
+    }
+
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = 'NullFromJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  if (NS_WARN_IF(!aValue.isNull())) {
+    return false;
+  }
+  // Nothing to do...
+  return true;
+}`
+        }
+    }
+
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = 'NullToJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  aRv.setNull();
+  return true;
+}`
+        }
+    }
+}
+
+class UndefinedType extends TypeSymbol implements IType {
+    constructor() {
+        super('Nothing');
+    }
+
+    get id() {
+        return "JSUndefined";
+    }
+
+    get definition() {
+        return `${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`;
+    }
+
+    get implementation() {
+        return `${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`;
+    }
+
+    atArgument(): string {
+        return `Nothing&`;
+    }
+    atReturn(): string {
+        return `Nothing`;
+    }
+    atStruct(): string {
+        return `Nothing`;
+    }
+    atDefinition(): string {
+        return `Nothing`;
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = 'JSValIsUndefined';
+        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  aRv = aValue.isUndefined();
+  return true;
+}`
+        }
+    }
+
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = 'UndefinedFromJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  if (NS_WARN_IF(!aValue.isUndefined())) {
+    return false;
+  }
+  // Nothing to do...
+  return true;
+}`
+        }
+    }
+
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = 'UndefinedToJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  aRv.setUndefinedd();
   return true;
 }`
         }
@@ -1179,12 +1333,14 @@ ${this.exportToJsValFunction().functionImpl}`;
   }
   size_t length = 0u;
   uint8_t* bytes = nullptr;
-  if (NS_WARN_IF(!JS::GetObjectAsArrayBuffer(obj, &length, &bytes))) {
+  JSObject* buff = JS::GetObjectAsArrayBuffer(obj, &length, &bytes);
+  if (NS_WARN_IF(!buff)) {
     return false;
   }
   if (NS_WARN_IF(aRv.inited())) {
     return false;
   }
+  // TODO(berytus): Check if we need to pass obj or buff
   if (NS_WARN_IF(!aRv.Init(obj))) {
     return false;
   }
@@ -1195,6 +1351,104 @@ ${this.exportToJsValFunction().functionImpl}`;
 
     exportToJsValFunction(): GeneratedFunction {
         const functionName = 'ArrayBufferToJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  MOZ_ASSERT(aValue.Obj()); // TODO(berytus): Remove or keep this.
+  aRv.setObject(*aValue.Obj());
+  return true;
+}`
+        }
+    }
+}
+
+class ArrayBufferViewType extends TypeSymbol implements IType {
+
+    constructor() {
+        super('ArrayBufferView');
+    }
+
+    get id() {
+        return this.symbol;
+    }
+
+    get definition() {
+        return `${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`;
+    }
+
+    get implementation() {
+        return `${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`;
+    }
+
+    atArgument(): string {
+        return `${this.symbol}&`;
+    }
+    atReturn(): string {
+        return `${this.symbol}`;
+    }
+    atDefinition(): string {
+        return `${this.symbol}`;
+    }
+    atStruct(): string {
+        return `${this.symbol}`;
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = 'JSValIsArrayBufferView';
+        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  if (!aValue.isObject()) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  aRv = JS_IsArrayBufferViewObject(obj);
+  return true;
+}`
+        }
+    }
+
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = 'ArrayBufferViewFromJSVal';
+        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  if (NS_WARN_IF(!JS_IsArrayBufferViewObject(obj))) {
+    return false;
+  }
+  bool isShared;
+  JSObject* buff = JS_GetArrayBufferViewBuffer(aCx, obj, &isShared);
+  if (NS_WARN_IF(!buff)) {
+    return false;
+  }
+  if (NS_WARN_IF(aRv.inited())) {
+    return false;
+  }
+  // TODO(berytus): Test if we need to pass the obj or buff
+  if (NS_WARN_IF(!aRv.Init(obj))) {
+    return false;
+  }
+  return true;
+}`
+        }
+    }
+
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = 'ArrayBufferViewToJSVal';
         const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
@@ -1250,6 +1504,11 @@ class StructType extends TypeSymbol implements IType {
         return `struct ${this.symbol} : IJSWord<${this.symbol}> {
   ${otherMembers.map(m => m.toString() + ';').join("\n  ")}
   ${variantMembers.map(m => m.toString() + ' = nullptr;').join("\n  ")}
+  ${this.symbol}() = default;
+  ${this.members.length > 0 ? `\
+${this.symbol}(${this.members.map(({ member, type }) => `${type.atStruct()}&& ${member.atArgument()}`).join(", ")}) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(${member.atArgument()}))`).join(", ")} {}
+  ${this.symbol}(${this.symbol}&& aOther) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(aOther.${member.atStruct()}))`).join(", ")} {}
+  ` : ""}
   ${variantMembers.length > 0 ? `
   ~${this.symbol}() {
     ${variantMembers.map(({ member }) => `delete ${member.atStruct()};`).join("\n")}
@@ -1733,15 +1992,20 @@ class AgentProxyGenerator {
         if (parsedType.type === "Array") {
             return this.defineArray(parsedType);
         }
-        if (
-            parsedType.type === "undefined"
-            || parsedType.type === "null"
-            || parsedType.type === "any"
-        ) {
+        if (parsedType.type === "any") {
             return new VoidType();
+        }
+        if (parsedType.type === "null") {
+            return this.defineNull(parsedType);
+        }
+        if (parsedType.type === "undefined") {
+            return this.defineUndefined(parsedType);
         }
         if (parsedType.type === "ArrayBuffer") {
             return this.defineArrayBuffer(parsedType);
+        }
+        if (parsedType.type === "ArrayBufferView") {
+            return this.defineArrayBufferView(parsedType);
         }
         if (parsedType.type === "boolean") {
             return this.defineBoolean(parsedType);
@@ -1765,6 +2029,22 @@ class AgentProxyGenerator {
             );
         }
         const abType = new ArrayBufferType();
+        this.defs.push(abType);
+        if (parsedType.optional) {
+            const maybeType = new MaybeType(abType);
+            this.defs.push(maybeType);
+            return maybeType;
+        }
+        return abType;
+    }
+
+    defineArrayBufferView(parsedType: ParsedType): IType {
+        if (parsedType.type !== "ArrayBufferView") {
+            throw new Error(
+                "Wrong type passed to defineArrayBufferView"
+            );
+        }
+        const abType = new ArrayBufferViewType();
         this.defs.push(abType);
         if (parsedType.optional) {
             const maybeType = new MaybeType(abType);
@@ -1856,6 +2136,34 @@ class AgentProxyGenerator {
             return maybeType;
         }
         return boolType;
+    }
+
+    defineNull(parsedType: ParsedType): IType {
+        if (parsedType.type !== "null") {
+            throw new Error(
+                "Wrong type passed to defineNull"
+            );
+        }
+        if (parsedType.optional) {
+            throw new Error("Null types cannot be optional");
+        }
+        const nullType = new NullType();
+        this.defs.push(nullType);
+        return nullType;
+    }
+
+    defineUndefined(parsedType: ParsedType): IType {
+        if (parsedType.type !== "undefined") {
+            throw new Error(
+                "Wrong type passed to defineUndefined"
+            );
+        }
+        if (parsedType.optional) {
+            throw new Error("Undefined types cannot be optional");
+        }
+        const undefinedType = new UndefinedType();
+        this.defs.push(undefinedType);
+        return undefinedType;
     }
 
     defineUnion(parsedType: ParsedType): IType {
@@ -2145,6 +2453,7 @@ public:
 };
 
 using ArrayBuffer = mozilla::dom::ArrayBuffer;
+using ArrayBufferView = mozilla::dom::ArrayBufferView;
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(def => def.definition).join("\n")}
 
 class ${AgentProxyGenerator.className} final : public nsISupports {

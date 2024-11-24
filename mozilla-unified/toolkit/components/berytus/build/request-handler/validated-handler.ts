@@ -180,20 +180,31 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         await super.preCall(group, method, input);
     }
 
-    protected async preResolve(group: string, method: string, value: unknown) {
+    protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
         const resultType = await this.#getMethodResultTypeEntry(group, method);
+        const errorPrefix = \`Malformed output passed from the request handler's \`
+            + \`\${group}:\${method} method. Reason:\`;
         this.#validateValue(
             resultType,
             value,
-            \`Malformed output passed from the request handler's \`
-            + \`\${group}:\${method} method. Reason:\`
+            errorPrefix
         );
-        await super.preResolve(group, method, value);
+        // Additional validation for accountCreation.addField
+        // TODO(berytus): Test this.
+        if (
+            "$ref" in resultType &&
+            resultType.$ref === "BerytusFieldUnion" &&
+            // @ts-ignore: TODO(berytus) change to any perhaps, and rename value to output.
+            value.value === null
+        ) {
+            throw new ResolutionError(errorPrefix, "property \\"value\\" must not be null");
+        }
+        await super.preResolve(group, method, input, value);
     }
 
-    protected async preReject(group: string, method: string, value: unknown) {
+    protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
         // TODO(berytus): validate error value
-        await super.preReject(group, method, value);
+        await super.preReject(group, method, input, value);
     }
 
     async #getMethodResultTypeEntry(group: string, method: string) {

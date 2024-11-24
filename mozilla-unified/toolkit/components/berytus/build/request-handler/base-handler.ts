@@ -66,7 +66,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     response: {
                         async resolve(val: Parameters<${responseCtxType}["response"]["resolve"]>[0]) {
                             try {
-                                await self.preResolve("${group}", "${name}", val)
+                                await self.preResolve(${hookArgs}, val)
                             } catch (e: any) {
                                 ${ctxVar}.response.reject(e);
                                 throw new Error(e.reason || "ResolutionFailure");
@@ -75,7 +75,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                         },
                         async reject(val: unknown) {
                             try {
-                                await self.preReject("${group}", "${name}", val);
+                                await self.preReject(${hookArgs}, val);
                             } catch (e) {
                                 ${ctxVar}.response.reject(e);
                                 throw e;
@@ -110,11 +110,11 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
     }`;
 
     code += `
-    protected preCall(group: string, method: string, args: unknown) {}`;
+    protected preCall(group: string, method: string, input: unknown) {}`;
     code += `
-    protected preResolve(group: string, method: string, value: unknown) {}`;
+    protected preResolve(group: string, method: string, input: unknown, value: unknown) {}`;
     code += `
-    protected preReject(group: string, method: string, value: unknown) {}`;
+    protected preReject(group: string, method: string, input: unknown, value: unknown) {}`;
     code += `
     protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
         // TODO(berytus): Define what would be the

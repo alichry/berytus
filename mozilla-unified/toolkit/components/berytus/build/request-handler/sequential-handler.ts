@@ -20,13 +20,13 @@
         this.busy = true;
         await super.preCall(group, method, input);
     }
-    protected async preResolve(group: string, method: string, value: unknown) {
+    protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
         this.busy = false;
-        await super.preResolve(group, method, value);
+        await super.preResolve(group, method, input, value);
     }
-    protected async preReject(group: string, method: string, value: unknown) {
+    protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
         this.busy = false;
-        await super.preReject(group, method, value);
+        await super.preReject(group, method, input, value);
     }
     protected handleUnexpectedException<G extends keyof RequestHandler, M extends keyof RequestHandler[G]>(group: G, method: M, response: ResponseContext<G, M>["response"], excp: unknown) {
         this.busy = false;

@@ -169,6 +169,11 @@ export interface ValueSchemaEntry {
     value: string | number | boolean;
 }
 
+export interface LiteralValueSchemaEntry extends EnumSchemaEntry {
+    type: "string";
+    enum: [string];
+}
+
 export interface TypeSchemaEntry {
     type: "object" | "string" | "number" | "boolean" | string;
     optional?: true;
@@ -193,7 +198,13 @@ export interface ArrayBufferSchemaEntry {
     optional?: true;
 }
 
-export type ObjectAttributeSchemaEntry = ValueSchemaEntry
+export interface ArrayBufferViewSchemaEntry {
+    type: "object";
+    isInstanceOf: "ArrayBufferView"
+    optional?: true;
+}
+
+export type ObjectAttributeSchemaEntry = LiteralValueSchemaEntry
     | RefSchemaEntry
     | EnumSchemaEntry
     | TypeSchemaEntry
@@ -232,6 +243,7 @@ export interface ChoicesSchemaEntry {
 export type SchemaDef =
     TypeSchemaEntry
     | ArrayBufferSchemaEntry
+    | ArrayBufferViewSchemaEntry
     | RefSchemaEntry
     | ObjectFunctionSchemaEntry
     | ObjectSchemaEntry
@@ -300,12 +312,6 @@ class ObjectDef implements IDef {
                 const { name, $ref, ...other } = attr;
                 entry = {
                     $ref: $ref,
-                    ...other
-                };
-            } else if ("value" in attr) {
-                const { name, value, ...other } = attr;
-                entry = {
-                    value,
                     ...other
                 };
             } else if ("enum" in attr) {
@@ -462,7 +468,7 @@ class WebExtsApiSchemaGenerator {
         });
     }
 
-    defineType(parsedType: ParsedType): ValueSchemaEntry | TypeSchemaEntry | RefSchemaEntry {
+    defineType(parsedType: ParsedType): LiteralValueSchemaEntry | TypeSchemaEntry | RefSchemaEntry {
         if (parsedType.type === "object") {
             return this.defineObject(parsedType);
         }
@@ -478,9 +484,13 @@ class WebExtsApiSchemaGenerator {
         if (parsedType.type === "Array") {
             return this.getArraySchemaEntry(parsedType);
         }
+        if (parsedType.type === "null") {
+            // hopefully this will only get used as a subtype,
+            // when building a union def.
+            return this.getNullEntry(parsedType);
+        }
         if (
             parsedType.type === "undefined"
-            || parsedType.type === "null"
             || parsedType.type === "any"
         ) {
             // TODO(berytus): Think about null and undefined?
@@ -488,6 +498,9 @@ class WebExtsApiSchemaGenerator {
         }
         if (parsedType.type === "ArrayBuffer") {
             return this.getArrayBufferEntry(parsedType);
+        }
+        if (parsedType.type === "ArrayBufferView") {
+            return this.getArrayBufferViewEntry(parsedType);
         }
         if (
             parsedType.type === "boolean" ||
@@ -574,25 +587,28 @@ class WebExtsApiSchemaGenerator {
         };
     }
 
-    getLiteralSchemaEntry(parsedType: ParsedType): ValueSchemaEntry {
+    getLiteralSchemaEntry(parsedType: ParsedType): LiteralValueSchemaEntry {
         if (parsedType.type !== 'literal') {
             throw new Error(
                 "Wrong type passed to getLiteralSchemaEntry"
             );
         }
-        // @ts-ignore JSON.parse accepts a number/boolean type
-        const value = JSON.parse(parsedType.value);
+        const { value } = parsedType;
         switch (typeof value) {
-            case "number":
             case "string":
-            case "boolean":
+                // TODO(berytus): Mozilla does not support literal
+                // "value" properties in object props. We use an enum
+                // instead.
                 return {
-                    value
+                    type: "string",
+                    enum: [value]
                 };
+            case "number":
+            case "boolean":
+                throw new Error("Cannot define a literal value schema entry for numbers/booleans.");
             default:
                 throw new Error(
-                    "Unrecognised type literal "
-                    + parsedType.value + " -- " + value
+                    "Unrecognised type literal " + value
                 );
         }
     }
@@ -672,6 +688,10 @@ class WebExtsApiSchemaGenerator {
         }
     }
 
+    getNullEntry(parsedType: ParsedType): TypeSchemaEntry {
+        return { type: "null" }
+    }
+
     getAnyEntry(parsedType: ParsedType): TypeSchemaEntry {
         if (parsedType.optional === undefined) {
             return {
@@ -694,6 +714,20 @@ class WebExtsApiSchemaGenerator {
         return {
             type: "object",
             isInstanceOf: "ArrayBuffer",
+            optional: parsedType.optional
+        }
+    }
+
+    getArrayBufferViewEntry(parsedType: ParsedType): ArrayBufferViewSchemaEntry {
+        if (parsedType.optional === undefined) {
+            return {
+                type: "object",
+                isInstanceOf: "ArrayBufferView"
+            };
+        }
+        return {
+            type: "object",
+            isInstanceOf: "ArrayBufferView",
             optional: parsedType.optional
         }
     }

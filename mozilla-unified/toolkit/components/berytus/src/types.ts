@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { BerytusFieldUnion } from "./generated/berytus.web";
+
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
     enableEndToEndEncryption: boolean;
@@ -271,8 +273,7 @@ export type ApproveTransitionToAuthOpArgs = {
     newAuthOp: LoginOperationMetadata
 }
 export type AddFieldArgs = {
-    field: BaseFieldMetadata,
-    value?: FieldValue
+    field: BerytusFieldUnion;
 }
 export type RejectFieldValueArgs = {
     field: BaseFieldMetadata,
@@ -349,7 +350,7 @@ export interface RequestHandler {
         addField(
             context: RequestContextWithOperation,
             args: AddFieldArgs
-        ): void;
+        ): BerytusFieldUnion;
         rejectFieldValue(
             context: RequestContextWithOperation,
             args: RejectFieldValueArgs
