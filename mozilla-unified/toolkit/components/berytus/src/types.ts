@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { BerytusFieldUnion } from "./generated/berytus.web";
+import { BerytusFieldUnion, BerytusFieldValueUnion, BerytusUserAttributeDefinition, EBerytusFieldType } from "./generated/berytus.web";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -82,9 +82,15 @@ export interface OperationMetadata {
     state: OperationState;
 }
 
+export interface FieldInfo {
+    id: string;
+    type: EBerytusFieldType;
+}
+
 export interface LoginOperationMetadata extends OperationMetadata {
     intent: ELoginUserIntent;
     requestedUserAttributes: RequestedUserAttributes;
+    fields: Array<FieldInfo>;
 }
 
 // TODO(berytus): Addd LoginOperation : *Metadata which includes state
@@ -101,6 +107,10 @@ export interface RequestContext extends PreliminaryRequestContext {
 
 export interface RequestContextWithOperation extends RequestContext {
     operation: OperationMetadata;
+}
+
+export interface RequestContextWithLoginOperation extends RequestContext {
+    operation: LoginOperationMetadata;
 }
 
 export type CredentialsMetadata = number;
@@ -196,12 +206,11 @@ export type UserAttributeKey = "name" | "givenName" | "familyName" | "middleName
     "locale" |/* "phoneNumber" |*/ "address" | `custom:${string}`;
 
 
-export type UserAttribute = {
+export interface UserAttribute extends BerytusUserAttributeDefinition {
     id: UserAttributeKey;
-    mimeType: string;
-    value: string; // always a string, base64 encode if necessary
 };
-export type RequestedUserAttribute = {
+
+export interface RequestedUserAttribute {
     id: UserAttributeKey;
     required: boolean;
 }
@@ -222,8 +231,6 @@ export interface BaseFieldMetadata {
     fieldId: string;
     description?: string;
 }
-
-export type FieldValue = string | ArrayBuffer;
 
 export interface FieldValueRejectionReason {
     code: string;
@@ -269,16 +276,22 @@ export type ApproveOperationArgs = {
 export type UpdateMetadataArgs = {
     metadata: RecordMetadata
 }
+
+export interface UpdateUserAttributesArgs {
+    userAttributes: Array<UserAttribute>;
+};
+
 export type ApproveTransitionToAuthOpArgs = {
     newAuthOp: LoginOperationMetadata
 }
 export type AddFieldArgs = {
     field: BerytusFieldUnion;
 }
+
 export type RejectFieldValueArgs = {
-    field: BaseFieldMetadata,
+    fieldId: string;
     reason: FieldValueRejectionReason,
-    optionalNewValue?: FieldValue
+    optionalNewValue?: BerytusFieldValueUnion;
 }
 export type ApproveChallengeRequestArgs = {
     challenge: ChallengeMetadata,
@@ -347,14 +360,18 @@ export interface RequestHandler {
         getUserAttributes(
             context: RequestContextWithOperation
         ): UserAttributes;
+        updateUserAttributes(
+            context: RequestContextWithOperation,
+            args: UpdateUserAttributesArgs
+        ): void;
         addField(
-            context: RequestContextWithOperation,
+            context: RequestContextWithLoginOperation,
             args: AddFieldArgs
-        ): BerytusFieldUnion;
+        ): BerytusFieldValueUnion;
         rejectFieldValue(
-            context: RequestContextWithOperation,
+            context: RequestContextWithLoginOperation,
             args: RejectFieldValueArgs
-        ): FieldValue;
+        ): BerytusFieldValueUnion;
     };
     accountAuthentication: {
         approveChallengeRequest(

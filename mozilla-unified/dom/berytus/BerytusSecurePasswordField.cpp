@@ -5,26 +5,46 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusSecurePasswordField.h"
+#include "js/PropertyAndElement.h"
+#include "js/String.h"
+#include "mozilla/OwningNonNull.h"
+#include "mozilla/dom/BerytusField.h"
+#include "js/Value.h"
+#include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/BerytusSecurePasswordFieldBinding.h"
+#include "mozilla/dom/RootedDictionary.h"
+#include "nsCycleCollectionParticipant.h"
 
 namespace mozilla::dom {
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(BerytusSecurePasswordField, BerytusField, (mValue), ())
 NS_IMPL_ADDREF_INHERITED(BerytusSecurePasswordField, BerytusField)
 NS_IMPL_RELEASE_INHERITED(BerytusSecurePasswordField, BerytusField)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusSecurePasswordField)
+NS_INTERFACE_MAP_BEGIN(BerytusSecurePasswordField)
 NS_INTERFACE_MAP_END_INHERITING(BerytusField)
 
 BerytusSecurePasswordField::BerytusSecurePasswordField(
   nsIGlobalObject* aGlobal,
   const nsAString& aFieldId,
-  JS::Handle<JSObject*> aOptions
-) : BerytusField(aGlobal, aFieldId, BerytusFieldType::SecurePassword, aOptions) {}
+  BerytusSecurePasswordFieldOptions&& aFieldOptions
+) : BerytusField(aGlobal,
+                 aFieldId,
+                 BerytusFieldType::SecurePassword,
+                  Nullable<ValueUnion>()),
+    mOptions(std::move(aFieldOptions)) {}
 
-BerytusSecurePasswordField::~BerytusSecurePasswordField()
-{
-    // Add |MOZ_COUNT_DTOR(BerytusSecurePasswordField);| for a non-refcounted object.
-}
+BerytusSecurePasswordField::BerytusSecurePasswordField(
+  nsIGlobalObject* aGlobal,
+  const nsAString& aFieldId,
+  BerytusSecurePasswordFieldOptions&& aFieldOptions,
+  Nullable<ValueUnion>&& aFieldValue
+) : BerytusField(aGlobal,
+                 aFieldId,
+                 BerytusFieldType::SecurePassword,
+                 std::move(aFieldValue)),
+    mOptions(std::move(aFieldOptions)) {}
+
+
+BerytusSecurePasswordField::~BerytusSecurePasswordField() = default;
 
 JSObject*
 BerytusSecurePasswordField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
@@ -32,8 +52,23 @@ BerytusSecurePasswordField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGi
   return BerytusSecurePasswordField_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-nsIGlobalObject* BerytusSecurePasswordField::GetParentObject() const {
-  return mGlobal;
+nsIGlobalObject* BerytusSecurePasswordField::GetParentObject() const { return mGlobal; }
+
+void BerytusSecurePasswordField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
+  if (mCachedOptions) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mOptions.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedOptions = options.toObjectOrNull();
+}
+
+bool BerytusSecurePasswordField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+  return aValue.IsNull() ||
+    (aValue.Value().IsBerytusFieldValueDictionary() && aValue.Value().GetAsBerytusFieldValueDictionary()->Type() == Type());
 }
 
 already_AddRefed<BerytusSecurePasswordField> BerytusSecurePasswordField::Constructor(
@@ -41,77 +76,32 @@ already_AddRefed<BerytusSecurePasswordField> BerytusSecurePasswordField::Constru
   const nsAString& aId,
   const BerytusSecurePasswordFieldOptions& aOptions,
   ErrorResult& aRv
-)
-{
+) {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
   if (!global) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-
   JS::Rooted<JS::Value> jsOptions(aGlobal.Context());
-  aOptions.ToObjectInternal(aGlobal.Context(), &jsOptions);
-  JS::Rooted<JSObject*> object(
-    aGlobal.Context(),
-    &jsOptions.toObject()
-  );
-
-  RefPtr<BerytusSecurePasswordField> obj = new BerytusSecurePasswordField(
+  if (NS_WARN_IF(!aOptions.ToObjectInternal(aGlobal.Context(), &jsOptions))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  RootedDictionary<BerytusSecurePasswordFieldOptions> copiedOptions(aGlobal.Context());
+  if (NS_WARN_IF(!copiedOptions.Init(aGlobal.Context(), jsOptions))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  Nullable<ValueUnion> value;
+  value.SetNull();
+  RefPtr<BerytusSecurePasswordField> field = new BerytusSecurePasswordField(
     global,
     aId,
-    object
+    std::move(copiedOptions),
+    std::move(value)
   );
-  return obj.forget();
+  return field.forget();
 }
 
-bool BerytusSecurePasswordField::HasValue() const {
-  return mValue != nullptr;
-}
-
-void BerytusSecurePasswordField::GetValue(JSContext* aCx,
-                                          Nullable<ValueType>& aRetVal,
-                                          ErrorResult& aRv) const {
-  if (!mValue) {
-    aRetVal.SetNull();
-    return;
-  }
-  aRetVal.SetValue().SetAsBerytusFieldValueDictionary() = mValue;
-}
-
-void BerytusSecurePasswordField::AddValueToJSON(JSContext* aCx,
-                                                JS::Handle<JSObject*> aObj,
-                                                ErrorResult& aRv) {
-  JS::Rooted<JS::Value> value(aCx);
-  if (!mValue) {
-    value.setNull();
-  } else {
-    mValue->ToJSON(aCx, &value, aRv);
-    if (aRv.Failed()) {
-      return;
-    }
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, aObj, "value" ,value))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return;
-  }
-}
-
-void BerytusSecurePasswordField::SetValueImpl(JSContext* aCx,
-                                              const Nullable<ValueType>& aValue,
-                                              ErrorResult& aRv) {
-  if (aValue.IsNull()) {
-    mValue = nullptr;
-    return;
-  }
-  if (aValue.Value().IsBerytusFieldValueDictionary()) {
-    RefPtr<BerytusFieldValueDictionary> v = aValue.Value().GetAsBerytusFieldValueDictionary();
-    if (v->Type() == BerytusFieldType::SecurePassword) {
-      mValue = RefPtr<BerytusSecurePasswordFieldValue>(static_cast<BerytusSecurePasswordFieldValue*>(v.get()));
-      return;
-    }
-  }
-  MOZ_ASSERT(false, "Invalid Value for BerytusSecurePasswordField");
-  aRv.Throw(NS_ERROR_FAILURE);
-}
 
 } // namespace mozilla::dom

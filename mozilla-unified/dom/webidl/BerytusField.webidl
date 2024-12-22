@@ -54,6 +54,8 @@ typedef DOMString BerytusFieldRejectionReasonCode;
  */
 typedef DOMString BerytusFieldId;
 
+typedef (DOMString or BerytusEncryptedPacket or BerytusFieldValueDictionary) BerytusFieldValue;
+
 /**
  * Base interface for Berytus Fields. Each child of this
  * interface should define a constructor.
@@ -66,10 +68,10 @@ interface BerytusField {
      */
     readonly attribute BerytusFieldId id;
     readonly attribute BerytusFieldType type;
+    [Throws]
     readonly attribute object options;
     [Throws]
-    readonly attribute (BerytusDataType or
-                        BerytusFieldValueDictionary)? value;
+    readonly attribute BerytusFieldValue? value;
 
     [Throws]
     object toJSON();

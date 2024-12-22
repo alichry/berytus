@@ -7,6 +7,10 @@
 #TEST_DIRS += ["tests"]
 
 EXPORTS.mozilla.dom += [
+    "BerytusAccount.h",
+    "BerytusAccountAuthenticationOperation.h",
+    "BerytusAccountCreationOperation.h",
+    "BerytusAccountMetadata.h",
     "BerytusAnonymousWebAppActor.h",
     "BerytusBuffer.h",
     "BerytusChallenge.h",
@@ -23,6 +27,7 @@ EXPORTS.mozilla.dom += [
     "BerytusKeyAgreementParameters.h",
     "BerytusKeyField.h",
     "BerytusKeyFieldValue.h",
+    "BerytusLoginOperation.h",
     "BerytusPasswordField.h",
     "BerytusSecretManagerActor.h",
     "BerytusSecurePasswordField.h",
@@ -35,6 +40,10 @@ EXPORTS.mozilla.dom += [
 ]
 
 UNIFIED_SOURCES += [
+    "BerytusAccount.cpp",
+    "BerytusAccountAuthenticationOperation.cpp",
+    "BerytusAccountCreationOperation.cpp",
+    "BerytusAccountMetadata.cpp",
     "BerytusAnonymousWebAppActor.cpp",
     "BerytusBuffer.cpp",
     "BerytusChallenge.cpp",
@@ -51,6 +60,7 @@ UNIFIED_SOURCES += [
     "BerytusKeyAgreementParameters.cpp",
     "BerytusKeyField.cpp",
     "BerytusKeyFieldValue.cpp",
+    "BerytusLoginOperation.cpp",
     "BerytusPasswordField.cpp",
     "BerytusSecretManagerActor.cpp",
     "BerytusSecurePasswordField.cpp",

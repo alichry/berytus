@@ -72,6 +72,25 @@ class PromiseReference {
     }
 }
 
+const originActor = () => {
+    return {
+        originalUri: {
+            hostname: "example.tld",
+            path: "/",
+            port: 443,
+            scheme: 'https:',
+            uri: 'https://example.tld/'
+        },
+        currentUri: {
+            hostname: "example.tld",
+            path: "/login",
+            port: 443,
+            scheme: 'https:',
+            uri: 'https://example.tld/login'
+        },
+    };
+}
+
 const sampleRequests = {
     getCredentialsMetadata() {
         return {
@@ -79,24 +98,44 @@ const sampleRequests = {
                 document: { id: 4 }
             },
             args: {
-                webAppActor: {
-                    originalUri: {
-                        hostname: "example.tld",
-                        path: "/",
-                        port: 443,
-                        scheme: 'https:',
-                        uri: 'https://example.tld/'
-                    },
-                    currentUri: {
-                        hostname: "example.tld",
-                        path: "/login",
-                        port: 443,
-                        scheme: 'https:',
-                        uri: 'https://example.tld/login'
-                    },
-                },
+                webAppActor: originActor(),
                 channelConstraints: { enableEndToEndEncryption: false },
                 accountConstraints: {}
+            }
+        }
+    },
+    addField() {
+        return {
+            context: {
+                document: { id: 4 },
+                channel: {
+                    id: "123",
+                    constraints: {
+                        enableEndToEndEncryption: false
+                    },
+                    webAppActor: originActor(),
+                    scmActor: {
+                        ed25519Key: "MCowBQYDK2VwAyEAJevlUdx72BF8mxdwurBJI9WNgRDMaoYfb0VqywaLOJE="
+                    }
+                },
+                operation: {
+                    id: "456",
+                    type: "Registration",
+                    status: "Pending",
+                    state: {}
+                }
+            },
+            args: {
+                field: {
+                    id: "username",
+                    type: "Identity",
+                    options: {
+                        private: false,
+                        humanReadable: false,
+                        maxLength: 32
+                    },
+                    value: null
+                }
             }
         }
     }

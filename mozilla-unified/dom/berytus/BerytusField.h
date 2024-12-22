@@ -8,17 +8,13 @@
 #define DOM_BERYTUSFIELD_H_
 
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
-#include "nsVariant.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusFieldBinding.h" // BerytusFieldType
 #include "mozilla/Variant.h"
-#include "mozilla/dom/BerytusEncryptedPacket.h"
-#include "mozilla/dom/BerytusFieldValueDictionary.h"
 
 namespace mozilla::dom {
 
@@ -28,18 +24,12 @@ class BerytusField : public nsISupports /* or NonRefcountedDOMObject if this is 
                      public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
 {
 public:
-  using ValueType = OwningStringOrArrayBufferOrBerytusEncryptedPacketOrBerytusFieldValueDictionary;
+  using ValueUnion = OwningStringOrBerytusEncryptedPacketOrBerytusFieldValueDictionary;
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(BerytusField)
 
 public:
-  BerytusField(
-    nsIGlobalObject* aGlobal,
-    const nsAString& aFieldId,
-    const BerytusFieldType& aFieldType,
-    JS::Handle<JSObject*> aOptions
-  );
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,
   // returning an actual global works.
@@ -49,36 +39,46 @@ public:
 
   BerytusFieldType Type() const;
 
-  virtual bool HasValue() const = 0;
-
   void SetValue(JSContext* aCx,
-                const Nullable<ValueType>& aValue,
+                const Nullable<ValueUnion>& aValue,
                 ErrorResult& aRv);
 
-  virtual void GetValue(JSContext* aCx,
-                        Nullable<ValueType>& aRetVal,
-                        ErrorResult& aRv) const = 0;
+  void GetValue(JSContext* aCx,
+                        Nullable<ValueUnion>& aRetVal,
+                        ErrorResult& aRv) const;
 
-  void GetOptions(JSContext* aCx, JS::MutableHandle<JSObject*> aRetVal) const;
+  void GetOptions(JSContext* aCx,
+                  JS::MutableHandle<JSObject*> aRetVal,
+                  ErrorResult& aRv);
 
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JSObject*> aRetVal,
               ErrorResult& aRv);
-
-protected:
+ protected:
+  BerytusField(
+    nsIGlobalObject* aGlobal,
+    const nsAString& aFieldId,
+    const BerytusFieldType& aFieldType,
+    Nullable<ValueUnion>&& aFieldValue
+  );
   virtual ~BerytusField();
   nsCOMPtr<nsIGlobalObject> mGlobal;
   const nsString mFieldId;
   const BerytusFieldType mFieldType;
-  JS::Heap<JSObject*> mOptions;
+  Nullable<ValueUnion> mFieldValue;
+  JS::Heap<JSObject*> mCachedOptions;
 
-  virtual void AddValueToJSON(JSContext* aCx,
-                      JS::Handle<JSObject*> aObj,
-                      ErrorResult& aRv) = 0;
+  virtual bool IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const = 0;
 
   virtual void SetValueImpl(JSContext* aCx,
-                            const Nullable<ValueType>& aValue,
-                            ErrorResult& aRv) = 0;
+                const Nullable<ValueUnion>& aValue,
+                ErrorResult& aRv);
+
+  virtual void CacheOptions(JSContext* aCx, ErrorResult& aRv) = 0;
+
+  void AddValueToJSON(JSContext* aCx,
+                      JS::Handle<JSObject*> aObj,
+                      ErrorResult& aRv);
 private:
   JS::Heap<JSObject*> mCachedJson;
 

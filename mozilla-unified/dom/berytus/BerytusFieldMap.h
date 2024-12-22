@@ -8,10 +8,10 @@
 #define DOM_BERYTUSFIELDMAP_H_
 
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BerytusField.h"
 #include "mozilla/dom/BindingDeclarations.h"
+#include "mozilla/dom/Record.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
@@ -40,6 +40,8 @@ public:
   nsIGlobalObject* GetParentObject() const;
 
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
+
+  const nsTArray<RefPtr<BerytusField>>& List() const;
 
   void AddField(BerytusField* aField, ErrorResult& aRv);
   /* caller should aRv if it has failed first, before checking the returned bool */

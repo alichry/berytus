@@ -9,7 +9,7 @@
 
 #include "js/TypeDecls.h"
 #include "mozilla/ErrorResult.h"
-#include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsIGlobalObject.h"
@@ -22,31 +22,16 @@ class BerytusSharedKeyFieldValue final : public BerytusFieldValueDictionary
 {
 public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusSharedKeyFieldValue, BerytusFieldValueDictionary)
+  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(BerytusSharedKeyFieldValue, BerytusFieldValueDictionary)
 
   BerytusSharedKeyFieldValue(nsIGlobalObject* aGlobal,
-                             const RefPtr<BerytusEncryptedPacket>& aAsEncrypted);
-  BerytusSharedKeyFieldValue(nsIGlobalObject* aGlobal,
-                             CryptoBuffer&& aAsBuffer);
+                             RefPtr<BerytusBuffer>& aBuffer);
 protected:
   ~BerytusSharedKeyFieldValue();
 
-  RefPtr<BerytusEncryptedPacket> mAsEncrypted;
-  CryptoBuffer mAsBuffer;
-
-  JS::Heap<JSObject*> mCachedBuffer;
+  RefPtr<BerytusBuffer> mBuffer;
 
 public:
-  static already_AddRefed<BerytusSharedKeyFieldValue> Create(
-    nsIGlobalObject* aGlobal,
-    const RefPtr<BerytusEncryptedPacket>& aPrivateKeyAsEncryptedPacket,
-    nsresult* aOutRes
-  );
-  static already_AddRefed<BerytusSharedKeyFieldValue> Create(
-    nsIGlobalObject* aGlobal,
-    const ArrayBuffer& aPrivateKeyAsArrayBuffer,
-    nsresult* aOutRes
-  );
   BerytusFieldType Type() override;
 
   nsIGlobalObject* GetParentObject() const;
@@ -60,7 +45,7 @@ public:
 
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JS::Value> aRetVal,
-              ErrorResult& aRv);
+              ErrorResult& aRv) override;
 
   static already_AddRefed<BerytusSharedKeyFieldValue> Constructor(
     GlobalObject& aGlobal,

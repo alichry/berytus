@@ -3,8 +3,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 export const generateValidatedHandler = () => {
+    const typesToImport: Record<string, true> = {
+        "RequestType": true,
+        "RequestHandlerFunctionParameters": true,
+        "RequestHandlerFunctionReturnType": true
+    }
+
     let code = `interface PreCallInput {
-    context: Record<string, unknown>;
+    context: PreliminaryRequestContext;
     args?: unknown
 }
 const lazy = {};
@@ -12,6 +18,9 @@ ChromeUtils.defineESModuleGetters(lazy, {
     Schemas: "resource://gre/modules/Schemas.sys.mjs"
 });
 
+const requestIs = <RT extends RequestType>(requestType: RT, d: { context: PreliminaryRequestContext; args?: unknown; output: unknown}): d is { context: PreliminaryRequestContext; args: RequestHandlerFunctionParameters<RT>[1]; output: RequestHandlerFunctionReturnType<RT> } => {
+    return d.context.request.type === requestType;
+}
 
 /**
  * Implementation copied from Schemas.sys.mjs's Context
@@ -119,7 +128,7 @@ class ResolutionError extends Error {
     reason: string;
 
     constructor(msg: string, reason: string) {
-        super(msg);
+        super(msg + " Reason: " + reason);
         this.reason = reason;
     }
 
@@ -163,7 +172,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
             );
         }
         const message = \`Malformed input passed to the request handler's \`
-            + \`\${group}:\${method} method. Reason:\`;
+            + \`\${group}:\${method} method.\`;
 
         this.#validateValue(
             parameters[0].type,
@@ -180,26 +189,25 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         await super.preCall(group, method, input);
     }
 
-    protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
+    protected async preResolve(group: string, method: string, input: PreCallInput, output: unknown) {
         const resultType = await this.#getMethodResultTypeEntry(group, method);
         const errorPrefix = \`Malformed output passed from the request handler's \`
-            + \`\${group}:\${method} method. Reason:\`;
+            + \`\${group}:\${method} method.\`;
         this.#validateValue(
             resultType,
-            value,
+            output,
             errorPrefix
         );
-        // Additional validation for accountCreation.addField
-        // TODO(berytus): Test this.
-        if (
-            "$ref" in resultType &&
-            resultType.$ref === "BerytusFieldUnion" &&
-            // @ts-ignore: TODO(berytus) change to any perhaps, and rename value to output.
-            value.value === null
-        ) {
-            throw new ResolutionError(errorPrefix, "property \\"value\\" must not be null");
+        const data = { ...input, output };
+        if (requestIs("AccountCreation_AddField", data)) {
+            const fieldTypeEntry = await this.#getFieldTypeEntry(data.args.field.type);
+            this.#validateValue(
+                fieldTypeEntry.properties.value.type,
+                output,
+                errorPrefix
+            );
         }
-        await super.preResolve(group, method, input, value);
+        await super.preResolve(group, method, input, output);
     }
 
     protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
@@ -249,6 +257,18 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         return methodType;
     }
 
+    async #getFieldTypeEntry(fieldType: AddFieldArgs['field']['type']) {
+        const schema = await this.#getSchema();
+        const id = \`Berytus\${fieldType}Field\`;
+        const fieldTypeEntry = schema.get(id);
+        if (! fieldTypeEntry) {
+            throw new Error(
+                \`Berytus Schema did not contain a "\${id}" type.\`
+            );
+        }
+        return fieldTypeEntry;
+    }
+
     async #getSchema() {
         if (this.#schema) {
             return this.#schema;
@@ -262,5 +282,8 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         return this.#schema;
     }
 }`;
-    return code;
+    return {
+        code,
+        typesToImport
+    };
 }

@@ -433,6 +433,29 @@
         }
       },
       {
+        "id": "FieldInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Identity",
+              "ForeignIdentity",
+              "Password",
+              "SecurePassword",
+              "ConsumablePassword",
+              "Key",
+              "SharedKey",
+              "Custom"
+            ],
+            "description": "See berytus.enums.EBerytusFieldType for mappings"
+          }
+        }
+      },
+      {
         "id": "OperationState",
         "type": "object",
         "properties": {}
@@ -454,6 +477,12 @@
             "type": "array",
             "items": {
               "$ref": "RequestedUserAttribute"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "FieldInfo"
             }
           },
           "id": {
@@ -613,17 +642,82 @@
         "type": "any"
       },
       {
+        "id": "BufferSource",
+        "choices": [
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBufferView"
+          }
+        ]
+      },
+      {
+        "id": "AesGcmParams",
+        "type": "object",
+        "properties": {
+          "iv": {
+            "$ref": "BufferSource"
+          },
+          "additionalData": {
+            "$ref": "BufferSource",
+            "optional": true
+          },
+          "tagLength": {
+            "type": "number",
+            "optional": true
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "BerytusEncryptedPacket",
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "$ref": "AesGcmParams"
+          },
+          "ciphertext": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          }
+        }
+      },
+      {
+        "id": "stringOrBufferSourceOrBerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "BufferSource"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
         "id": "UserAttribute",
         "type": "object",
         "properties": {
           "id": {
             "$ref": "UserAttributeKey"
           },
+          "info": {
+            "type": "string",
+            "optional": true
+          },
           "mimeType": {
-            "type": "string"
+            "type": "string",
+            "optional": true
           },
           "value": {
-            "type": "string"
+            "$ref": "stringOrBufferSourceOrBerytusEncryptedPacket"
           }
         }
       },
@@ -632,6 +726,43 @@
         "type": "array",
         "items": {
           "$ref": "UserAttribute"
+        }
+      },
+      {
+        "id": "UpdateUserAttributesArgs",
+        "type": "object",
+        "properties": {
+          "userAttributes": {
+            "type": "array",
+            "items": {
+              "$ref": "UserAttribute"
+            }
+          }
+        }
+      },
+      {
+        "id": "AccountCreationUpdateUserAttributesResult",
+        "type": "any"
+      },
+      {
+        "id": "RequestContextWithLoginOperation",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "LoginOperationMetadata"
+          },
+          "channel": {
+            "$ref": "ChannelMetadata"
+          },
+          "request": {
+            "$ref": "Request"
+          },
+          "document": {
+            "$ref": "DocumentMetadata"
+          },
+          "response": {
+            "$ref": "Response"
+          }
         }
       },
       {
@@ -660,53 +791,6 @@
           "category": {
             "$ref": "BerytusFieldCategoryOptions",
             "optional": true
-          }
-        }
-      },
-      {
-        "id": "BufferSource",
-        "choices": [
-          {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer"
-          },
-          {
-            "type": "object",
-            "isInstanceOf": "ArrayBufferView"
-          }
-        ]
-      },
-      {
-        "id": "AesGcmParams",
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "iv": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer"
-          },
-          "additionalData": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "optional": true
-          },
-          "tagLength": {
-            "type": "number"
-          }
-        }
-      },
-      {
-        "id": "BerytusEncryptedPacket",
-        "type": "object",
-        "properties": {
-          "parameters": {
-            "$ref": "AesGcmParams"
-          },
-          "ciphertext": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer"
           }
         }
       },
@@ -824,6 +908,17 @@
         }
       },
       {
+        "id": "nullOrBerytusKeyFieldValue",
+        "choices": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "BerytusKeyFieldValue"
+          }
+        ]
+      },
+      {
         "id": "BerytusKeyField",
         "type": "object",
         "properties": {
@@ -837,7 +932,7 @@
             "$ref": "BerytusKeyFieldOptions"
           },
           "value": {
-            "$ref": "BerytusKeyFieldValue"
+            "$ref": "nullOrBerytusKeyFieldValue"
           },
           "id": {
             "type": "string"
@@ -905,6 +1000,17 @@
         }
       },
       {
+        "id": "nullOrBerytusSecurePasswordFieldValue",
+        "choices": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "BerytusSecurePasswordFieldValue"
+          }
+        ]
+      },
+      {
         "id": "BerytusSecurePasswordField",
         "type": "object",
         "properties": {
@@ -918,7 +1024,7 @@
             "$ref": "BerytusSecurePasswordFieldOptions"
           },
           "value": {
-            "$ref": "BerytusSecurePasswordFieldValue"
+            "$ref": "nullOrBerytusSecurePasswordFieldValue"
           },
           "id": {
             "type": "string"
@@ -948,6 +1054,17 @@
         }
       },
       {
+        "id": "nullOrBerytusSharedKeyFieldValue",
+        "choices": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "BerytusSharedKeyFieldValue"
+          }
+        ]
+      },
+      {
         "id": "BerytusSharedKeyField",
         "type": "object",
         "properties": {
@@ -961,7 +1078,7 @@
             "$ref": "BerytusSharedKeyFieldOptions"
           },
           "value": {
-            "$ref": "BerytusSharedKeyFieldValue"
+            "$ref": "nullOrBerytusSharedKeyFieldValue"
           },
           "id": {
             "type": "string"
@@ -1001,32 +1118,28 @@
         }
       },
       {
-        "id": "AccountCreationAddFieldResult",
-        "$ref": "BerytusFieldUnion"
-      },
-      {
-        "id": "BaseFieldMetadata",
-        "type": "object",
-        "properties": {
-          "fieldType": {
-            "type": "string",
-            "enum": [
-              "Identity",
-              "ForeignIdentity",
-              "Password",
-              "SecurePassword",
-              "Key"
-            ],
-            "description": "See berytus.enums.EFieldType for mappings"
-          },
-          "fieldId": {
+        "id": "BerytusFieldValueUnion",
+        "choices": [
+          {
             "type": "string"
           },
-          "description": {
-            "type": "string",
-            "optional": true
+          {
+            "$ref": "BerytusEncryptedPacket"
+          },
+          {
+            "$ref": "BerytusKeyFieldValue"
+          },
+          {
+            "$ref": "BerytusSecurePasswordFieldValue"
+          },
+          {
+            "$ref": "BerytusSharedKeyFieldValue"
           }
-        }
+        ]
+      },
+      {
+        "id": "AccountCreationAddFieldResult",
+        "$ref": "BerytusFieldValueUnion"
       },
       {
         "id": "FieldValueRejectionReason",
@@ -1038,52 +1151,24 @@
         }
       },
       {
-        "id": "EncryptedPacket",
-        "type": "object",
-        "properties": {
-          "parameters": {
-            "$ref": "AesGcmParams"
-          },
-          "ciphertext": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer"
-          }
-        }
-      },
-      {
-        "id": "FieldValue",
-        "choices": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer"
-          },
-          {
-            "$ref": "EncryptedPacket"
-          }
-        ]
-      },
-      {
         "id": "RejectFieldValueArgs",
         "type": "object",
         "properties": {
-          "field": {
-            "$ref": "BaseFieldMetadata"
+          "fieldId": {
+            "type": "string"
           },
           "reason": {
             "$ref": "FieldValueRejectionReason"
           },
           "optionalNewValue": {
-            "$ref": "FieldValue",
+            "$ref": "BerytusFieldValueUnion",
             "optional": true
           }
         }
       },
       {
         "id": "AccountCreationRejectFieldValueResult",
-        "$ref": "FieldValue"
+        "$ref": "BerytusFieldValueUnion"
       },
       {
         "id": "ChallengeParameters",
@@ -1413,12 +1498,25 @@
               }
             ]
           },
-          "addField": {
+          "updateUserAttributes": {
             "type": "function",
             "parameters": [
               {
                 "name": "context",
                 "$ref": "RequestContextWithOperation"
+              },
+              {
+                "name": "args",
+                "$ref": "UpdateUserAttributesArgs"
+              }
+            ]
+          },
+          "addField": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContextWithLoginOperation"
               },
               {
                 "name": "args",
@@ -1431,7 +1529,7 @@
             "parameters": [
               {
                 "name": "context",
-                "$ref": "RequestContextWithOperation"
+                "$ref": "RequestContextWithLoginOperation"
               },
               {
                 "name": "args",
@@ -1566,6 +1664,35 @@
     }
   },
   {
+    "namespace": "berytus.enum.EBerytusFieldType",
+    "properties": {
+      "Identity": {
+        "value": "Identity"
+      },
+      "ForeignIdentity": {
+        "value": "ForeignIdentity"
+      },
+      "Password": {
+        "value": "Password"
+      },
+      "SecurePassword": {
+        "value": "SecurePassword"
+      },
+      "ConsumablePassword": {
+        "value": "ConsumablePassword"
+      },
+      "Key": {
+        "value": "Key"
+      },
+      "SharedKey": {
+        "value": "SharedKey"
+      },
+      "Custom": {
+        "value": "Custom"
+      }
+    }
+  },
+  {
     "namespace": "berytus.enum.EOperationType",
     "properties": {
       "PendingDeclaration": {
@@ -1607,26 +1734,6 @@
       },
       "Retired": {
         "value": "Retired"
-      }
-    }
-  },
-  {
-    "namespace": "berytus.enum.EFieldType",
-    "properties": {
-      "Identity": {
-        "value": "Identity"
-      },
-      "ForeignIdentity": {
-        "value": "ForeignIdentity"
-      },
-      "Password": {
-        "value": "Password"
-      },
-      "SecurePassword": {
-        "value": "SecurePassword"
-      },
-      "Key": {
-        "value": "Key"
       }
     }
   },

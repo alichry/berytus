@@ -54,22 +54,26 @@ BerytusWebAppActorType BerytusAnonymousWebAppActor::Type() const {
   return BerytusWebAppActorType::OriginActor;
 }
 
-nsIURI* BerytusAnonymousWebAppActor::GetOriginalURI() const {
+nsIURI* BerytusAnonymousWebAppActor::GetOriginalURI(nsresult& aRv) const {
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
+    aRv = NS_ERROR_FAILURE;
     return nullptr;
   }
   Document* doc = inner->GetDoc();
   nsIURI* uri = doc->GetOriginalURI();
+  aRv = NS_OK;
   return uri;
 }
-nsIURI* BerytusAnonymousWebAppActor::GetCurrentURI() const {
+nsIURI* BerytusAnonymousWebAppActor::GetCurrentURI(nsresult& aRv) const {
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
+    aRv = NS_ERROR_FAILURE;
     return nullptr;
   }
   Document* doc = inner->GetDoc();
   nsIURI* uri = doc->GetDocumentURI();
+  aRv = NS_OK;
   return uri;
 }
 
@@ -86,7 +90,7 @@ already_AddRefed<BerytusAnonymousWebAppActor> BerytusAnonymousWebAppActor::Const
 )
 {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
-  if (!global) {
+  if (NS_WARN_IF(!global)) {
     return nullptr;
   }
 

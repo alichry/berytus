@@ -7,11 +7,18 @@
 #ifndef DOM_BERYTUSBUFFER_H_
 #define DOM_BERYTUSBUFFER_H_
 
+#include "ErrorList.h"
+#include "mozilla/AlreadyAddRefed.h"
+#include "mozilla/berytus/AgentProxy.h"
+#include "mozilla/dom/CryptoBuffer.h"
+#include "mozilla/dom/TypedArray.h"
 #include "nsCycleCollectionParticipant.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "nsDebug.h"
 #include "nsISupports.h"
 
 namespace mozilla {
+
 namespace dom {
 
 class BerytusBuffer final : public nsISupports /* or NonRefcountedDOMObject if this is a
@@ -40,6 +47,13 @@ protected:
     nsresult& aRv
   );
 
+  template<typename... T>
+  static already_AddRefed<BerytusBuffer> FromVariant(
+    nsIGlobalObject* aGlobal,
+    const Variant<T...>& aValue,
+    nsresult& aRv
+  );
+
   void Get(JSContext* aCx,
            OwningArrayBufferOrBerytusEncryptedPacket& aRetVal,
            ErrorResult& aRv);
@@ -47,6 +61,29 @@ protected:
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JS::Value> aRetVal,
               ErrorResult& aRv);
+
+
+  already_AddRefed<BerytusBuffer> Clone(nsresult* aRv) const;
+  
+public:
+
+  struct CreateMatcher {
+    nsIGlobalObject* mGlobal;
+    nsresult mRv;
+
+    CreateMatcher(nsIGlobalObject* aGlobal) : mGlobal(aGlobal), mRv(NS_OK) {}
+
+    already_AddRefed<BerytusBuffer> operator()(const ArrayBuffer& aValue) {
+      return FromArrayBuffer(aValue, mRv);
+    }
+    already_AddRefed<BerytusBuffer> operator()(const ArrayBufferView& aValue) {
+      return FromArrayBufferView(aValue, mRv);
+    }
+    already_AddRefed<BerytusBuffer> operator()(const RefPtr<BerytusEncryptedPacket>& aPacket) {
+      RefPtr<BerytusBuffer> buff = new BerytusBuffer(aPacket);
+      return buff.forget();
+    }
+  };
 };
 
 }  // namespace dom

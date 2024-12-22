@@ -7,56 +7,43 @@
 #ifndef DOM_BERYTUSSECUREPASSWORDFIELD_H_
 #define DOM_BERYTUSSECUREPASSWORDFIELD_H_
 
+#include "BerytusSecurePasswordFieldValue.h"
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
-#include "mozilla/dom/BindingDeclarations.h"
-#include "nsCycleCollectionParticipant.h"
-#include "nsWrapperCache.h"
 #include "mozilla/dom/BerytusField.h"
+#include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusFieldOptionsBinding.h" // BerytusSecurePasswordFieldOptions
-#include "mozilla/dom/BerytusSecurePasswordFieldValue.h"
 
 namespace mozilla::dom {
 
 class BerytusSecurePasswordField final : public BerytusField
 {
 public:
+  using BerytusField::ValueUnion;
+
+public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusSecurePasswordField, BerytusField)
-
-  using BerytusField::BerytusField;
-  using BerytusField::ValueType;
-
   BerytusSecurePasswordField(
     nsIGlobalObject* aGlobal,
     const nsAString& aFieldId,
-    JS::Handle<JSObject*> aOptions
+    BerytusSecurePasswordFieldOptions&& aFieldOptions
   );
 
-  bool HasValue() const override;
-
-  void GetValue(JSContext* aCx,
-                        Nullable<ValueType>& aRetVal,
-                        ErrorResult& aRv) const override;
-
 protected:
+  BerytusSecurePasswordField(
+    nsIGlobalObject* aGlobal,
+    const nsAString& aFieldId,
+    BerytusSecurePasswordFieldOptions&& aFieldOptions,
+    Nullable<ValueUnion>&& aFieldValue
+  );
   ~BerytusSecurePasswordField();
-  RefPtr<BerytusSecurePasswordFieldValue> mValue;
+  BerytusSecurePasswordFieldOptions mOptions;
 
-  void AddValueToJSON(JSContext* aCx,
-                      JS::Handle<JSObject*> aObj,
-                      ErrorResult& aRv) override;
-  void SetValueImpl(JSContext* aCx,
-                    const Nullable<ValueType>& aValue,
-                    ErrorResult& aRv) override;
+  bool IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const override;
 
+  void CacheOptions(JSContext* aCx, ErrorResult& aRv) override;
 public:
-  // This should return something that eventually allows finding a
-  // path to the global this object is associated with.  Most simply,
-  // returning an actual global works.
   nsIGlobalObject* GetParentObject() const;
-
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   static already_AddRefed<BerytusSecurePasswordField> Constructor(
@@ -65,7 +52,6 @@ public:
     const BerytusSecurePasswordFieldOptions& aOptions,
     ErrorResult& aRv
   );
-
 };
 
 } // namespace mozilla::dom

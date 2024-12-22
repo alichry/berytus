@@ -13,20 +13,17 @@ typedef DOMString BerytusAccountCategory;
 
 typedef unsigned long long BerytusAccountVersion;
 
-// dictionary BerytusFieldRejectionParameters {
-//     required (BerytusField or DOMString) field;
-//     required BerytusFieldRejectionReasonCode reason;
-//     /**
-//      * Optional - the desired value to override the field
-//      *  value with.
-//      *
-//      *  Care must be taken here... When plaintext is passed,
-//      *  some field types might only accept strings or buffers.
-//      *  Consult the individual field types' constructors
-//      *  to see what is allowed for the value type.
-//      */
-//     (BerytusDataSource or BerytusFieldValueDictionary) newValue;
-// };
+[GenerateConversionToJS, GenerateInit]
+dictionary BerytusFieldRejectionParameters {
+    required (BerytusField or DOMString) field;
+    required BerytusFieldRejectionReasonCode reason;
+    /**
+     * Optional - the desired value to override the field
+     *  value with. The value type must match with
+     *  the passed field's value type.
+     */
+    BerytusFieldValue newValue;
+};
 
 [SecureContext, Exposed=(Window)]
 interface mixin BerytusAccountMetadata {
@@ -89,23 +86,23 @@ interface mixin BerytusAccount {
     /**
      * The registered user attriibutes with this account record.
      */
-    //readonly attribute BerytusUserAttributeMap userAttributes;
+    readonly attribute BerytusUserAttributeMap userAttributes;
 
     /**
      * The existing fields in the account record.
      * Additional calls to `addFields` will add
      * further entries to the fields map.
      */
-    //readonly attribute BerytusFieldMap fields;
+    readonly attribute BerytusFieldMap fields;
 
-    // [Throws]
-    // Promise<record<DOMString, BerytusField>> addFields(
-    //     BerytusField... field
-    // );
-    // [Throws]
-    // Promise<record<DOMString, BerytusField>> rejectAndReviseFields(
-    //     BerytusFieldRejectionParameters... rejectionParameters
-    // );
+    [Throws]
+    Promise<record<DOMString, BerytusField>> addFields(
+        BerytusField... field
+    );
+    [Throws]
+    Promise<record<DOMString, BerytusField>> rejectAndReviseFields(
+        BerytusFieldRejectionParameters... rejectionParameters
+    );
 
     /**
      * Web applications might want to set (create) an additional
@@ -120,15 +117,11 @@ interface mixin BerytusAccount {
      * saved in the Secret Manager. In this case, the web app frontend
      * could just retrieve the transformed/new/default user attributes
      * and proceed with the registration.
-     *
-     * @param attributes A key-value dictionary where keys are
-     *  user attribute ids (BerytusUserAttributeKey) and the values
-     *  are the desired user attribute value.
      */
-    // [Throws]
-    // Promise<undefined> setUserAttributes(
-    //     record<DOMString, BerytusUserAttributeDefinition> attributes
-    // );
+    [Throws]
+    Promise<undefined> setUserAttributes(
+        sequence<BerytusUserAttributeDefinition> attributes
+    );
 
     /* --------------------------------------------------- */
     /* Extra methods (might not be implemented)            */

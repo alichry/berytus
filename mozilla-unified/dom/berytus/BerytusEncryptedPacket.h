@@ -8,7 +8,7 @@
 #define DOM_BERYTUSENCRYPTEDPACKET_H_
 
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
+#include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/SubtleCryptoBinding.h"

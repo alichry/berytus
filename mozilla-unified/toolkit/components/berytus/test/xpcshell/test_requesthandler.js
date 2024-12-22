@@ -4,6 +4,10 @@
 
 "use strict";
 
+/**
+ * @var {import('../../src/Liaison.sys.mjs')} liaison
+ */
+
 add_task(async function test_calls_requesthandler() {
     // Need a profile to be setup; otherwise ValidatedRequestHandler
     // would not be able to retrieve the Schema.
@@ -172,6 +176,53 @@ add_task(async function test_handle_invalid_output() {
         publicHandler.manager.getCredentialsMetadata(
             sampleRequests.getCredentialsMetadata().context,
             sampleRequests.getCredentialsMetadata().args
+        ), /Malformed output passed from the request handler/i
+    );
+    await Promise.all(promises);
+    liaison.ereaseManager("alichry@sample-manager");
+});
+
+add_task(async function test_handle_invalid_output_addFields() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
+    const promises = [];
+    const handlerProxy = createRequestHandlerProxy(
+        async(group, method, cx, args) => {
+            const { field } = sampleRequests.addField().args;
+            Assert.equal(field.value, null);
+            promises.push(
+                Assert.rejects(
+                    cx.response.resolve(field),
+                    /property "value" must not be null/i
+                ).then(() => Assert.rejects(
+                    cx.response.resolve({
+                        ...field,
+                        type: "ForeignIdentity",
+                        options: {
+                            private: false,
+                            kind: "EmailAddress"
+                        }
+                    }),
+                    /property "type" did not equal "Identity"/i
+                ))
+            )
+        }
+    );
+    liaison.registerManager(
+        "alichry@sample-manager",
+        "SampleManager",
+        1,
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    await Assert.rejects(
+        publicHandler.accountCreation.addField(
+            sampleRequests.addField().context,
+            sampleRequests.addField().args
         ), /Malformed output passed from the request handler/i
     );
     await Promise.all(promises);

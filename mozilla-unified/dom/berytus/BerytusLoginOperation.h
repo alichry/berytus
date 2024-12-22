@@ -10,6 +10,7 @@
 #include "js/TypeDecls.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsWrapperCache.h"
@@ -18,6 +19,8 @@
 
 namespace mozilla::dom {
 
+class BerytusChannel;
+
 class BerytusLoginOperation : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
                               public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
 {
@@ -25,16 +28,22 @@ public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusLoginOperation)
 
+  using CreationPromise = MozPromise<RefPtr<BerytusLoginOperation>, berytus::Failure, true>;
 public:
   BerytusLoginOperation(
     nsIGlobalObject* aGlobalObject,
+    const RefPtr<BerytusChannel>& aChannel,
+    const nsAString& aOperationId,
     const BerytusOnboardingIntent& aIntent
   );
 
 protected:
   virtual ~BerytusLoginOperation();
   nsCOMPtr<nsIGlobalObject> mGlobal;
+  RefPtr<BerytusChannel> mChannel;
+  nsString mId;
   const BerytusOnboardingIntent mIntent;
+  bool mActive;
 
 public:
   // This should return something that eventually allows finding a
@@ -43,6 +52,18 @@ public:
   nsIGlobalObject* GetParentObject() const;
 
   BerytusOnboardingIntent Intent() const;
+
+  bool Active() const;
+
+  already_AddRefed<Promise> Close(ErrorResult& aRv);
+
+  void GetID(nsString& aRv) const;
+
+  static RefPtr<CreationPromise> Create(
+      JSContext* aCx, 
+      nsIGlobalObject* aGlobal,
+      RefPtr<BerytusChannel>& aChannel,
+      const BerytusOnboardingOptions& aOptions);
 };
 
 } // namespace mozilla::dom

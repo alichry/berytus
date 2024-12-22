@@ -7,15 +7,14 @@
 #ifndef DOM_BERYTUSUSERATTRIBUTE_H_
 #define DOM_BERYTUSUSERATTRIBUTE_H_
 
+#include "BerytusEncryptedPacket.h"
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
+#include "nsISupports.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
-#include "mozilla/dom/BerytusEncryptedPacket.h"
-#include "mozilla/dom/BerytusEncryptedPacketBinding.h" // OwningStringOrArrayBufferOrBerytusEncryptedPacket
 #include "mozilla/dom/BerytusUserAttributeBinding.h"
 
 namespace mozilla::dom {
@@ -25,26 +24,24 @@ class BerytusUserAttribute : public nsISupports /* or NonRefcountedDOMObject if 
 {
 public:
   using ValueType = OwningStringOrArrayBufferOrBerytusEncryptedPacket;
-  using SourceValueType = OwningStringOrArrayBufferOrBerytusEncryptedPacket;
+  using SourceValueType = OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket;
   using JSONValueType = OwningStringOrBerytusEncryptedPacketJSON;
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusUserAttribute)
-
-public:
+protected:
   BerytusUserAttribute(
     nsIGlobalObject* aGlobal,
     const nsAString& aId,
     const nsAString& aMimeType,
     const nsAString& aInfo
   );
-
-protected:
   virtual ~BerytusUserAttribute();
   nsCOMPtr<nsIGlobalObject> mGlobal;
   const nsString mId;
   const nsString mMimeType;
   const nsString mInfo;
+  ValueType mValue;
 
 public:
   // This should return something that eventually allows finding a
@@ -66,90 +63,112 @@ public:
     ErrorResult& aRv
   ) const = 0;
 
+  virtual bool CanSetValue(const SourceValueType& aVal) const = 0;
+  virtual bool SetValue(JSContext* aCx, const SourceValueType& aVal) = 0;
+
   void ToJSON(BerytusUserAttributeJSON& aRetVal,
-              ErrorResult& aErr) const;
+              ErrorResult& aRv) const;
+
+  virtual BerytusUserAttributeValueEncodingType ValueEncodingType() const = 0;
+
+  static already_AddRefed<BerytusUserAttribute> Create(
+      JSContext* aCx,
+      nsIGlobalObject* aGlobal,
+      const nsAString& aId,
+      const nsAString& aMimeType,
+      const nsAString& aInfo,
+      const SourceValueType& aValue,
+      nsresult& aRv
+  );
 protected:
   virtual void PopulateValueInJSON(JSONValueType& aRetVal,
                                    ErrorResult& aErr) const = 0;
 };
 
-class BerytusUserAttributeString final : public BerytusUserAttribute {
+template <typename T>
+class BerytusUserAttributeImpl final : public BerytusUserAttribute {};
+
+template<>
+class BerytusUserAttributeImpl<nsString> : public BerytusUserAttribute {
 public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(BerytusUserAttributeString, BerytusUserAttribute)
-
-  BerytusUserAttributeString(
+protected:
+  ~BerytusUserAttributeImpl();
+public:
+  BerytusUserAttributeImpl(
     nsIGlobalObject* aGlobal,
     const nsAString& aId,
     const nsAString& aMimeType,
-    const nsAString& aInfo,
-    const nsAString& aValue
+    const nsAString& aInfo
   );
-
+  bool CanSetValue(const SourceValueType& aVal) const override;
+  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
+  void SetValueInternal(const nsString& aValue);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,
     ErrorResult& aRv
   ) const override;
+  BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  ~BerytusUserAttributeString();
-  nsString mValue;
-
   void PopulateValueInJSON(JSONValueType& aRetVal,
                            ErrorResult& aErr) const override;
 };
 
-class BerytusUserAttributeArrayBuffer final : public BerytusUserAttribute {
+template<>
+class BerytusUserAttributeImpl<ArrayBuffer> final : public BerytusUserAttribute {
 public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusUserAttributeArrayBuffer, BerytusUserAttribute)
-  
-  BerytusUserAttributeArrayBuffer(
+protected:
+  ~BerytusUserAttributeImpl();
+public:
+  BerytusUserAttributeImpl(
     nsIGlobalObject* aGlobal,
     const nsAString& aId,
     const nsAString& aMimeType,
-    const nsAString& aInfo,
-    const ArrayBuffer& aValue
+    const nsAString& aInfo
   );
-
+  bool CanSetValue(const SourceValueType& aVal) const override;
+  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
+  bool SetValueInternal(const ArrayBuffer& aValue);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,
     ErrorResult& aRv
   ) const override;
+  BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  ~BerytusUserAttributeArrayBuffer();
-  JS::Heap<JSObject*> mValue;
-
   void PopulateValueInJSON(JSONValueType& aRetVal,
                            ErrorResult& aErr) const override;
 };
 
-class BerytusUserAttributeEncryptedPacket final : public BerytusUserAttribute {
+template<>
+class BerytusUserAttributeImpl<BerytusEncryptedPacket> final : public BerytusUserAttribute {
 public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(BerytusUserAttributeEncryptedPacket, BerytusUserAttribute)
-
-  BerytusUserAttributeEncryptedPacket(
+protected:
+  ~BerytusUserAttributeImpl();
+public:
+  BerytusUserAttributeImpl(
     nsIGlobalObject* aGlobal,
     const nsAString& aId,
     const nsAString& aMimeType,
-    const nsAString& aInfo,
-    const RefPtr<BerytusEncryptedPacket>& aValue
+    const nsAString& aInfo
   );
-
+  bool CanSetValue(const SourceValueType& aVal) const override;
+  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
+  void SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,
     ErrorResult& aRv
   ) const override;
+  BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  ~BerytusUserAttributeEncryptedPacket();
-  RefPtr<BerytusEncryptedPacket> mValue;
-
   void PopulateValueInJSON(JSONValueType& aRetVal,
                            ErrorResult& aErr) const override;
 };
+
 
 } // namespace mozilla::dom
 

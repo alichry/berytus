@@ -1,19 +1,14 @@
 #ifndef DOM_BERYTUSACCOUNTMETADATA_H_
 #define DOM_BERYTUSACCOUNTMETADATA_H_
 
-#include <type_traits>
-//#include "mozIAuthRealmSession.h"
 #include "mozilla/dom/BerytusAccountBinding.h" // for BerytusAccountStatus
 #include "nsVariant.h"
 #include "nsIGlobalObject.h"
-#include "mozIBerytusRegistrationOperation.h" // mozIBerytusRegistrationOperation
+#include "mozilla/berytus/AgentProxy.h"
+#include "mozilla/dom/BerytusChannel.h"
 
 namespace mozilla::dom {
 
-// template<
-//     class T,
-//     typename = std::enable_if_t<std::is_base_of_v<mozIAuthRealmSession, T>>
-// >
 class BerytusAccountMetadata {
 public:
     void GetCategory(nsString& aRetVal) const;
@@ -44,32 +39,32 @@ public:
         ErrorResult& aRv
     );
 protected:
-    virtual nsIGlobalObject* Global() const = 0; // perhaps These should be placed in a separate class if we implement other Account classes
-    virtual mozIAuthRealmSession* Operation() const = 0; // perhaps These should be placed in a separate class if we implement other Account classes
+    BerytusAccountMetadata();
+    virtual ~BerytusAccountMetadata();
+    virtual nsIGlobalObject* GetParentObject() const = 0;
+    virtual BerytusChannel* Channel() const = 0;
+    virtual BerytusLoginOperation* Operation() = 0;
 
-    BerytusAccountStatus mStatus = BerytusAccountStatus::Pending;
-    uint64_t mVersion = 0;
-    nsString mCategory = nsString();
-    nsString mChangePassUrl = nsString();
+    BerytusAccountStatus mStatus;
+    uint64_t mVersion;
+    nsString mCategory;
+    nsString mChangePassUrl;
 
-    nsresult ReadMetadata();
+    RefPtr<berytus::LoginUpdateMetadataResult>
+    UpdateMetadata(
+        const uint64_t& aVersion,
+        const BerytusAccountStatus& aStatus,
+        const nsAString& aCategory,
+        const nsAString& aChangePassUrl,
+        ErrorResult& aRv
+    );
 
-    nsresult UpdateMetadata(
-        mozIBerytusRegistrationOperation::MetadataProperty&& aProperty,
-        RefPtr<nsVariantCC>& aValue,
-        RefPtr<Promise>& aOutPromise
-    );
-    nsresult UpdateMetadata(
-        nsTArray<mozIBerytusRegistrationOperation::MetadataProperty>& aProperties,
-        nsTArray<RefPtr<nsVariantCC>>& aValues,
-        RefPtr<Promise>& aOutPromise
-    );
-    nsresult ApplyMetadata(
-        nsTArray<RefPtr<nsIPropertyBag2>>& aProperties
-    );
-    nsresult ApplyMetadataProperty(
-        mozIBerytusRegistrationOperation::MetadataProperty& aProperty,
-        nsIVariant* aValue
+    already_AddRefed<Promise> UpdateMetadataPromise(
+        const uint64_t& aVersion,
+        const BerytusAccountStatus& aStatus,
+        const nsAString& aCategory,
+        const nsAString& aChangePassUrl,
+        ErrorResult& aRv
     );
 };
 

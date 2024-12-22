@@ -6,8 +6,11 @@
 
 #include "mozilla/dom/BerytusBuffer.h"
 
+#include "BerytusEncryptedPacket.h"
+#include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/dom/BerytusEncryptedPacketBinding.h" // BerytusEncryptedPacketJSON
 #include "mozilla/Base64.h"
+#include "mozilla/dom/TypedArray.h"
 
 namespace mozilla::dom {
 
@@ -40,7 +43,7 @@ already_AddRefed<BerytusBuffer> BerytusBuffer::FromArrayBuffer(
   nsresult& aRv
 ) {
   CryptoBuffer buf;
-  if (buf.Assign(aValue)) {
+  if (NS_WARN_IF(!buf.Assign(aValue))) {
     aRv = NS_ERROR_OUT_OF_MEMORY;
     return nullptr;
   }
@@ -53,7 +56,7 @@ already_AddRefed<BerytusBuffer> BerytusBuffer::FromArrayBufferView(
   nsresult& aRv
 ) {
   CryptoBuffer buf;
-  if (buf.Assign(aValue)) {
+  if (NS_WARN_IF(!buf.Assign(aValue))) {
     aRv = NS_ERROR_OUT_OF_MEMORY;
     return nullptr;
   }
@@ -108,6 +111,42 @@ void BerytusBuffer::ToJSON(JSContext* aCx,
     return;
   }
   aRetVal.setString(str);
+}
+
+template <typename... T>
+already_AddRefed<BerytusBuffer> BerytusBuffer::FromVariant(
+  nsIGlobalObject* aGlobal,
+  const Variant<T...>& aValue,
+  nsresult& aRv
+) {
+  auto matcher = CreateMatcher(aGlobal);
+  auto buffer = aValue.match(matcher);
+  if (NS_WARN_IF(NS_FAILED(matcher.mRv))) {
+    aRv = matcher.mRv;
+    return nullptr;
+  }
+  aRv = NS_OK;
+  return buffer;
+}
+
+already_AddRefed<BerytusBuffer> BerytusBuffer::Clone(nsresult* aRv) const {
+  RefPtr<BerytusBuffer> newBuffer;
+  if (mAsPacket) {
+    RefPtr<BerytusEncryptedPacket> newPacket = mAsPacket->Clone(aRv);
+    if (NS_WARN_IF(NS_FAILED(*aRv))) {
+      return nullptr;
+    }
+    newBuffer = new BerytusBuffer(newPacket);
+  } else {
+    CryptoBuffer newCryptoBuffer;
+    if (NS_WARN_IF(!newCryptoBuffer.Assign(mAsBuffer))) {
+      *aRv = NS_ERROR_OUT_OF_MEMORY;
+      return nullptr;
+    }
+    newBuffer = new BerytusBuffer(std::move(newCryptoBuffer));
+  }
+  *aRv = NS_OK;
+  return newBuffer.forget();
 }
 
 } // namespace mozilla::dom

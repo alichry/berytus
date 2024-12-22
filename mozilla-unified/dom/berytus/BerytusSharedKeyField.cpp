@@ -5,33 +5,46 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusSharedKeyField.h"
-#include "BerytusFieldValueDictionary.h"
-#include "js/ArrayBuffer.h"
+#include "js/PropertyAndElement.h"
 #include "js/String.h"
+#include "mozilla/OwningNonNull.h"
+#include "mozilla/dom/BerytusField.h"
+#include "js/Value.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/BerytusSharedKeyFieldBinding.h"
+#include "mozilla/dom/RootedDictionary.h"
+#include "nsCycleCollectionParticipant.h"
 
 namespace mozilla::dom {
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(BerytusSharedKeyField, BerytusField, (mValue), ())
 NS_IMPL_ADDREF_INHERITED(BerytusSharedKeyField, BerytusField)
 NS_IMPL_RELEASE_INHERITED(BerytusSharedKeyField, BerytusField)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusSharedKeyField)
+NS_INTERFACE_MAP_BEGIN(BerytusSharedKeyField)
 NS_INTERFACE_MAP_END_INHERITING(BerytusField)
 
 BerytusSharedKeyField::BerytusSharedKeyField(
   nsIGlobalObject* aGlobal,
   const nsAString& aFieldId,
-  JS::Handle<JSObject*> aOptions,
-  const RefPtr<BerytusSharedKeyFieldValue>& aValue
-) : BerytusField(aGlobal, aFieldId, BerytusFieldType::SharedKey, aOptions),
-    mValue(aValue) {}
+  BerytusSharedKeyFieldOptions&& aFieldOptions
+) : BerytusField(aGlobal,
+                 aFieldId,
+                 BerytusFieldType::SharedKey,
+                 Nullable<ValueUnion>()),
+    mOptions(std::move(aFieldOptions)) {}
+
+BerytusSharedKeyField::BerytusSharedKeyField(
+  nsIGlobalObject* aGlobal,
+  const nsAString& aFieldId,
+  BerytusSharedKeyFieldOptions&& aFieldOptions,
+  Nullable<ValueUnion>&& aFieldValue
+) : BerytusField(aGlobal,
+                 aFieldId,
+                 BerytusFieldType::SharedKey,
+                 std::move(aFieldValue)),
+    mOptions(std::move(aFieldOptions)) {}
+
 
 BerytusSharedKeyField::~BerytusSharedKeyField() = default;
-
-nsIGlobalObject* BerytusSharedKeyField::GetParentObject() const {
-  return mGlobal;
-}
 
 JSObject*
 BerytusSharedKeyField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
@@ -39,11 +52,30 @@ BerytusSharedKeyField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenPr
   return BerytusSharedKeyField_Binding::Wrap(aCx, this, aGivenProto);
 }
 
+nsIGlobalObject* BerytusSharedKeyField::GetParentObject() const { return mGlobal; }
+
+void BerytusSharedKeyField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
+  if (mCachedOptions) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mOptions.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedOptions = options.toObjectOrNull();
+}
+
+bool BerytusSharedKeyField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+  return aValue.IsNull() ||
+    (aValue.Value().IsBerytusFieldValueDictionary() && aValue.Value().GetAsBerytusFieldValueDictionary()->Type() == Type());
+}
+
 already_AddRefed<BerytusSharedKeyField> BerytusSharedKeyField::Constructor(
   const GlobalObject& aGlobal,
   const nsAString& aId,
-  const BerytusKeyFieldOptions& aOptions,
-  const Optional<NonNull<BerytusSharedKeyFieldValue>>& aPrivateKeyValue,
+  const BerytusSharedKeyFieldOptions& aOptions,
+  const Optional<NonNull<BerytusSharedKeyFieldValue>>& aDesiredValue,
   ErrorResult& aRv
 ) {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
@@ -51,92 +83,33 @@ already_AddRefed<BerytusSharedKeyField> BerytusSharedKeyField::Constructor(
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-
   JS::Rooted<JS::Value> jsOptions(aGlobal.Context());
-  aOptions.ToObjectInternal(aGlobal.Context(), &jsOptions);
-  JS::Rooted<JSObject*> object(
-    aGlobal.Context(),
-    &jsOptions.toObject()
-  );
-
-  if (!aPrivateKeyValue.WasPassed()) {
-    RefPtr<BerytusSharedKeyField> obj = new BerytusSharedKeyField(
-      global,
-      aId,
-      object,
-      nullptr
-    );
-
-    return obj.forget();
-  }
-
-  nsresult rv;
-
-  RefPtr<BerytusSharedKeyFieldValue> copiedValue = aPrivateKeyValue.Value().Clone(&rv);
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    aRv.Throw(rv);
+  if (NS_WARN_IF(!aOptions.ToObjectInternal(aGlobal.Context(), &jsOptions))) {
+    aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-
-  RefPtr<BerytusSharedKeyField> obj = new BerytusSharedKeyField(
+  RootedDictionary<BerytusSharedKeyFieldOptions> copiedOptions(aGlobal.Context());
+  if (NS_WARN_IF(!copiedOptions.Init(aGlobal.Context(), jsOptions))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  Nullable<ValueUnion> value;
+  if (!aDesiredValue.WasPassed()) {
+    value.SetNull();
+  } else {
+    value.SetValue().SetAsBerytusFieldValueDictionary() =
+      // TODO(berytus): check if creating a pointer
+      // from a reference given by const NonNull<T> is a good idea.
+      OwningNonNull(aDesiredValue.Value());
+  }
+  RefPtr<BerytusSharedKeyField> field = new BerytusSharedKeyField(
     global,
     aId,
-    object,
-    //copiedValue
-    RefPtr(aPrivateKeyValue.InternalValue().get())
+    std::move(copiedOptions),
+    std::move(value)
   );
-
-  return obj.forget();
+  return field.forget();
 }
 
-bool BerytusSharedKeyField::HasValue() const {
-  return mValue != nullptr;
-}
-
-void BerytusSharedKeyField::GetValue(JSContext* aCx,
-                                     Nullable<ValueType>& aRetVal,
-                                     ErrorResult& aRv) const {
-  if (!mValue) {
-    aRetVal.SetNull();
-    return;
-  }
-  aRetVal.SetValue().SetAsBerytusFieldValueDictionary() = mValue;
-}
-
-void BerytusSharedKeyField::AddValueToJSON(JSContext* aCx,
-                                     JS::Handle<JSObject*> aObj,
-                                     ErrorResult& aRv) {
-  JS::Rooted<JS::Value> value(aCx);
-  if (!mValue) {
-    value.setNull();
-  } else {
-    mValue->ToJSON(aCx, &value, aRv);
-    if (aRv.Failed()) {
-      return;
-    }
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, aObj, "value" ,value))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return;
-  }
-}
-
-void BerytusSharedKeyField::SetValueImpl(JSContext* aCx,
-                                   const Nullable<ValueType>& aValue,
-                                   ErrorResult& aRv) {
-  if (aValue.IsNull()) {
-    mValue = nullptr;
-    return;
-  }
-  if (aValue.Value().IsBerytusFieldValueDictionary()) {
-    RefPtr<BerytusFieldValueDictionary> v = aValue.Value().GetAsBerytusFieldValueDictionary();
-    if (v->Type() == BerytusFieldType::SharedKey) {
-      mValue = RefPtr<BerytusSharedKeyFieldValue>(static_cast<BerytusSharedKeyFieldValue*>(v.get()));
-      return;
-    }
-  }
-  MOZ_ASSERT(false, "Invalid Value for BerytusSharedKeyField");
-  aRv.Throw(NS_ERROR_FAILURE);
-}
 
 } // namespace mozilla::dom

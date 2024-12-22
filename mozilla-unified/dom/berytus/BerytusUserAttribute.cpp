@@ -7,17 +7,14 @@
 #include "mozilla/dom/BerytusUserAttribute.h"
 #include "BerytusEncryptedPacket.h"
 #include "ErrorList.h"
+#include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusUserAttributeBinding.h"
 #include "nsCycleCollectionParticipant.h"
 #include "mozilla/Base64.h"
-
-#define RET_NULLPTR_IF(arg) \
-  if ((arg)) { \
-    return nullptr; \
-  }
+#include "nsStringFwd.h"
+#include "nsWrapperCache.h"
 
 namespace mozilla::dom {
-
 
 // Only needed for refcounted objects.
 NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusUserAttribute, mGlobal)
@@ -66,77 +63,192 @@ void BerytusUserAttribute::GetInfo(nsString& aRetVal) const
   aRetVal.Assign(mInfo);
 }
 
-// Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
+bool BerytusUserAttributeImpl<nsString>::CanSetValue(const SourceValueType& aVal) const {
+  return aVal.IsString();
+}
+
+bool BerytusUserAttributeImpl<ArrayBuffer>::CanSetValue(const SourceValueType& aVal) const {
+  return aVal.IsArrayBuffer() || aVal.IsArrayBufferView();
+}
+
+bool BerytusUserAttributeImpl<BerytusEncryptedPacket>::CanSetValue(const SourceValueType& aVal) const {
+  return aVal.IsBerytusEncryptedPacket();
+}
+
+bool BerytusUserAttributeImpl<nsString>::SetValue(JSContext* aCx, const SourceValueType& aVal) {
+  if (NS_WARN_IF(!aVal.IsString())) {
+    return false;
+  }
+  mValue.SetAsString().Assign(aVal.GetAsString());
+  return true;
+}
+
+bool BerytusUserAttributeImpl<ArrayBuffer>::SetValue(JSContext* aCx, const SourceValueType& aVal) {
+  ValueType val;
+  if (aVal.IsArrayBufferView()) {
+    JS::Rooted<JSObject*> view(aCx, aVal.GetAsArrayBufferView().Obj());
+    bool isShared;
+    JSObject* ab = JS_GetArrayBufferViewBuffer(aCx, view, &isShared);
+    if (NS_WARN_IF(!ab)) {
+      return false;
+    }
+    // TODO(berytus): Should we check if buffer is detached?
+    if (NS_WARN_IF(!val.SetAsArrayBuffer().Init(ab))) {
+      return false;
+    }
+    mValue = std::move(val);
+    return true;
+  }
+  if (NS_WARN_IF(!aVal.IsArrayBuffer())) {
+    return false;
+  }
+  if (!val.SetAsArrayBuffer().Init(aVal.GetAsArrayBuffer().Obj())) {
+    return false;
+  }
+  mValue = std::move(val);
+  return true;
+}
+
+bool BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValue(JSContext* aCx, const SourceValueType& aVal) {
+  if (NS_WARN_IF(!aVal.IsBerytusEncryptedPacket())) {
+    return false;
+  }
+  mValue.SetAsBerytusEncryptedPacket() = aVal.GetAsBerytusEncryptedPacket();
+  return true;
+}
+
 void BerytusUserAttribute::ToJSON(
   BerytusUserAttributeJSON& aRetVal,
   ErrorResult& aRv
 ) const
 {
-  NS_WARN_IF(true);
+  aRetVal.mId.Assign(mId);
+  if (mInfo.Length() > 0) {
+    aRetVal.mInfo.Construct(mInfo);
+  }
+  if (mMimeType.Length() > 0) {
+    aRetVal.mMimeType.Construct(mMimeType);
+  }
+  aRetVal.mEncoding = ValueEncodingType();
+  PopulateValueInJSON(aRetVal.mValue, aRv);
 }
 
-NS_IMPL_ADDREF_INHERITED(BerytusUserAttributeString, BerytusUserAttribute)
-NS_IMPL_RELEASE_INHERITED(BerytusUserAttributeString, BerytusUserAttribute)
-NS_INTERFACE_MAP_BEGIN(BerytusUserAttributeString)
-NS_INTERFACE_MAP_END_INHERITING(BerytusUserAttribute)
+already_AddRefed<BerytusUserAttribute> BerytusUserAttribute::Create(
+    JSContext* aCx,
+    nsIGlobalObject* aGlobal,
+    const nsAString& aId,
+    const nsAString& aMimeType,
+    const nsAString& aInfo,
+    const SourceValueType& aValue,
+    nsresult& aRv
+) {
+  RefPtr<BerytusUserAttribute> attr;
+  if (aValue.IsArrayBuffer() || aValue.IsArrayBufferView()) {
+    attr = new BerytusUserAttributeImpl<ArrayBuffer>(
+      aGlobal,
+      aId,
+      aMimeType,
+      aInfo
+    );
+  } else if (aValue.IsString()) {
+    attr = new BerytusUserAttributeImpl<nsString>(
+      aGlobal,
+      aId,
+      aMimeType,
+      aInfo
+    );
+  } else if (aValue.IsBerytusEncryptedPacket()) {
+    attr = new BerytusUserAttributeImpl<BerytusEncryptedPacket>(
+      aGlobal,
+      aId,
+      aMimeType,
+      aInfo
+    );
+  } else {
+    MOZ_ASSERT(false, "Unrecognised source value type");
+    aRv = NS_ERROR_FAILURE;
+    return nullptr;
+  }
+  if (NS_WARN_IF(!attr->SetValue(aCx, aValue))) {
+    aRv = NS_ERROR_FAILURE;
+    return nullptr;
+  }
+  return attr.forget();
+}
 
-BerytusUserAttributeString::BerytusUserAttributeString(
+NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(BerytusUserAttributeImpl<nsString>, BerytusUserAttribute)
+
+BerytusUserAttributeImpl<nsString>::BerytusUserAttributeImpl(
   nsIGlobalObject* aGlobal,
   const nsAString& aId,
   const nsAString& aMimeType,
-  const nsAString& aInfo,
-  const nsAString& aValue
-) : BerytusUserAttribute(aGlobal, aId, aMimeType, aInfo), mValue(aValue)
+  const nsAString& aInfo
+) : BerytusUserAttribute(aGlobal, aId, aMimeType, aInfo)
 {
 }
 
-BerytusUserAttributeString::~BerytusUserAttributeString() {}
+BerytusUserAttributeImpl<nsString>::~BerytusUserAttributeImpl() {}
 
-void BerytusUserAttributeString::GetValue(JSContext* aCx,
+void BerytusUserAttributeImpl<nsString>::GetValue(JSContext* aCx,
                                           ValueType& aRetVal,
                                           ErrorResult& aRv) const {
-  aRetVal.SetAsString().Assign(mValue);
+  MOZ_ASSERT(mValue.IsString());
+  aRetVal.SetAsString().Assign(mValue.GetAsString());
 }
 
-void BerytusUserAttributeString::PopulateValueInJSON(JSONValueType& aRetVal,
+BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<nsString>::ValueEncodingType() const {
+  return BerytusUserAttributeValueEncodingType::None;
+}
+
+void BerytusUserAttributeImpl<nsString>::PopulateValueInJSON(JSONValueType& aRetVal,
                                                      ErrorResult& aErr) const {
-  aRetVal.SetAsString().Assign(mValue);
+  MOZ_ASSERT(mValue.IsString());
+  aRetVal.SetAsString().Assign(mValue.GetAsString());
 }
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(BerytusUserAttributeArrayBuffer, BerytusUserAttribute, (), (mValue))
-NS_IMPL_ADDREF_INHERITED(BerytusUserAttributeArrayBuffer, BerytusUserAttribute)
-NS_IMPL_RELEASE_INHERITED(BerytusUserAttributeArrayBuffer, BerytusUserAttribute)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusUserAttributeArrayBuffer)
-NS_INTERFACE_MAP_END_INHERITING(BerytusUserAttribute)
+void BerytusUserAttributeImpl<nsString>::SetValueInternal(const nsString& aValue) {
+  mValue.SetAsString().Assign(aValue);
+}
 
-BerytusUserAttributeArrayBuffer::BerytusUserAttributeArrayBuffer(
+
+NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(BerytusUserAttributeImpl<ArrayBuffer>, BerytusUserAttribute)
+
+BerytusUserAttributeImpl<ArrayBuffer>::BerytusUserAttributeImpl(
   nsIGlobalObject* aGlobal,
   const nsAString& aId,
   const nsAString& aMimeType,
-  const nsAString& aInfo,
-  const ArrayBuffer& aValue
-) : BerytusUserAttribute(aGlobal, aId, aMimeType, aInfo),  mValue(aValue.Obj())
+  const nsAString& aInfo
+) : BerytusUserAttribute(aGlobal, aId, aMimeType, aInfo)
 {
-  mozilla::HoldJSObjects(this);
 }
 
-BerytusUserAttributeArrayBuffer::~BerytusUserAttributeArrayBuffer() {
-  mozilla::DropJSObjects(this);
-}
+BerytusUserAttributeImpl<ArrayBuffer>::~BerytusUserAttributeImpl() {}
 
-void BerytusUserAttributeArrayBuffer::GetValue(JSContext* aCx,
+
+void BerytusUserAttributeImpl<ArrayBuffer>::GetValue(JSContext* aCx,
                                                ValueType& aRetVal,
                                                ErrorResult& aRv) const {
-  aRetVal.SetAsArrayBuffer().Init(mValue);
+  MOZ_ASSERT(mValue.IsArrayBuffer());
+  aRetVal.SetAsArrayBuffer().Init(mValue.GetAsArrayBuffer().Obj());
 }
 
-void BerytusUserAttributeArrayBuffer::PopulateValueInJSON(JSONValueType& aRetVal,
-                                                          ErrorResult& aErr) const {
+bool BerytusUserAttributeImpl<ArrayBuffer>::SetValueInternal(const ArrayBuffer& aValue) {
+  return !NS_WARN_IF(!mValue.SetAsArrayBuffer().Init(aValue.Obj()));
+}
 
+BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<ArrayBuffer>::ValueEncodingType() const {
+  MOZ_ASSERT(mValue.IsArrayBuffer());
+  return BerytusUserAttributeValueEncodingType::Base64URLString;
+}
+
+void BerytusUserAttributeImpl<ArrayBuffer>::PopulateValueInJSON(JSONValueType& aRetVal,
+                                                          ErrorResult& aErr) const {
+  MOZ_ASSERT(mValue.IsArrayBuffer());
   JS::AutoCheckCannotGC nogc;
   bool isShared;
-  size_t length = JS::GetArrayBufferByteLength(mValue);
-  uint8_t* data = JS::GetArrayBufferData(mValue, &isShared, nogc);
+  JSObject* obj = mValue.GetAsArrayBuffer().Obj();
+  size_t length = JS::GetArrayBufferByteLength(obj);
+  uint8_t* data = JS::GetArrayBufferData(obj, &isShared, nogc);
   nsAutoCString base64Url;
   nsresult res = Base64URLEncode(
       length, data,
@@ -148,25 +260,40 @@ void BerytusUserAttributeArrayBuffer::PopulateValueInJSON(JSONValueType& aRetVal
   aRetVal.SetAsString().Assign(NS_ConvertASCIItoUTF16(base64Url));
 }
 
-BerytusUserAttributeEncryptedPacket::BerytusUserAttributeEncryptedPacket(
-    nsIGlobalObject* aGlobal,
+NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(BerytusUserAttributeImpl<BerytusEncryptedPacket>, BerytusUserAttribute)
+
+BerytusUserAttributeImpl<BerytusEncryptedPacket>::BerytusUserAttributeImpl(
+  nsIGlobalObject* aGlobal,
   const nsAString& aId,
   const nsAString& aMimeType,
-  const nsAString& aInfo,
-  const RefPtr<BerytusEncryptedPacket>& aValue
-) : BerytusUserAttribute(aGlobal, aId, aMimeType, aInfo),  mValue(aValue)
-{}
-
-BerytusUserAttributeEncryptedPacket::~BerytusUserAttributeEncryptedPacket() {}
-void BerytusUserAttributeEncryptedPacket::GetValue(JSContext* aCx,
-                                                   ValueType& aRetVal,
-                                                   ErrorResult& aRv) const {
-  aRetVal.SetAsBerytusEncryptedPacket() = mValue;
+  const nsAString& aInfo
+) : BerytusUserAttribute(aGlobal, aId, aMimeType, aInfo)
+{
 }
 
-void BerytusUserAttributeEncryptedPacket::PopulateValueInJSON(JSONValueType& aRetVal,
+BerytusUserAttributeImpl<BerytusEncryptedPacket>::~BerytusUserAttributeImpl() {}
+
+void BerytusUserAttributeImpl<BerytusEncryptedPacket>::GetValue(JSContext* aCx,
+                                                   ValueType& aRetVal,
+                                                   ErrorResult& aRv) const {
+  MOZ_ASSERT(mValue.IsBerytusEncryptedPacket());
+  aRetVal.SetAsBerytusEncryptedPacket() = mValue.GetAsBerytusEncryptedPacket();
+}
+
+void BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue) {
+  mValue.SetAsBerytusEncryptedPacket() = aValue;
+}
+
+
+BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<BerytusEncryptedPacket>::ValueEncodingType() const {
+  MOZ_ASSERT(mValue.IsBerytusEncryptedPacket());
+  return BerytusUserAttributeValueEncodingType::EncryptedPacketJSON;
+}
+
+void BerytusUserAttributeImpl<BerytusEncryptedPacket>::PopulateValueInJSON(JSONValueType& aRetVal,
                                                           ErrorResult& aErr) const {
-  mValue->ToJSON(aRetVal.SetAsBerytusEncryptedPacketJSON(), aErr);
+  MOZ_ASSERT(mValue.IsBerytusEncryptedPacket());
+  mValue.GetAsBerytusEncryptedPacket()->ToJSON(aRetVal.SetAsBerytusEncryptedPacketJSON(), aErr);
 }
 
 } // namespace mozilla::dom

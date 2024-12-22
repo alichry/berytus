@@ -30,8 +30,8 @@ public:
   BerytusAnonymousWebAppActor(nsIGlobalObject *aGlobal);
   BerytusAnonymousWebAppActor(const BerytusAnonymousWebAppActor& rhs);
   BerytusWebAppActorType Type() const override;
-  nsIURI* GetOriginalURI() const;
-  nsIURI* GetCurrentURI() const;
+  nsIURI* GetOriginalURI(nsresult& aRv) const;
+  nsIURI* GetCurrentURI(nsresult& aRv) const;
 
 protected:
   ~BerytusAnonymousWebAppActor();

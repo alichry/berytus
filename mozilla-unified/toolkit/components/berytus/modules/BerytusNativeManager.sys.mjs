@@ -12,7 +12,11 @@ class ManagerRequestHandler {
 }
 class LoginRequestHandler {
     approveOperation(context, args) {
-        throw new Error('Method not implemented.');
+        if (args.operation.intent !== "PendingDeclaration") {
+            context.response.resolve("Register");
+            return;
+        }
+        context.response.resolve(args.operation.intent);
     }
     closeOpeation(context) {
         throw new Error('Method not implemented.');
@@ -40,13 +44,76 @@ class AccountCreationRequestHandler {
         throw new Error('Method not implemented.');
     }
     getUserAttributes(context) {
-        throw new Error('Method not implemented.');
+        context.response.resolve([
+            { id: "name", value: "Ali", mimeType: "text/plain" },
+            { id: "familyName", value: "Cherry", mimeType: "text/plain" }
+        ]);
+    }
+    updateUserAttributes(context, args) {
+        context.response.resolve();
     }
     addField(context, args) {
-        throw new Error('Method not implemented.');
+        switch (args.field.type) {
+            case "Identity":
+                context.response.resolve("testUsername");
+                break;
+            case "ForeignIdentity":
+                context.response.resolve("test@example.tld");
+                break;
+            case "Password":
+                context.response.resolve("password1234");
+                break;
+            case "SecurePassword":
+                context.response.resolve({
+                    salt: new Uint8Array([1, 2, 3]).buffer,
+                    verifier: new Uint8Array([4, 5, 6]).buffer
+                });
+                break;
+            case "Key":
+                context.response.resolve({
+                    publicKey: new Uint8Array([1, 2, 3]).buffer
+                });
+                break;
+            case "SharedKey":
+                context.response.resolve({
+                    privateKey: new Uint8Array([1, 2, 3]).buffer
+                });
+                break;
+            default:
+                throw new Error("Unrecognised field type");
+        }
     }
     rejectFieldValue(context, args) {
-        throw new Error('Method not implemented.');
+        const fieldType = "Identity"; // TODO(berytus): provide fields in op metadata
+        switch (fieldType) {
+            case "Identity":
+                context.response.resolve("revisedTestUsername");
+                break;
+            case "ForeignIdentity":
+                context.response.resolve("revised.test@example.tld");
+                break;
+            case "Password":
+                context.response.resolve("revisedPassword1234");
+                break;
+            case "SecurePassword":
+                context.response.resolve({
+                    salt: new Uint8Array([10, 20, 30]).buffer,
+                    verifier: new Uint8Array([40, 50, 60]).buffer
+                });
+                break;
+            case "Key":
+                context.response.resolve({
+                    publicKey: new Uint8Array([10, 20, 30]).buffer
+                });
+                break;
+            case "SharedKey":
+                context.response.resolve({
+                    privateKey: new Uint8Array([10, 20, 30]).buffer
+                });
+                break;
+            default:
+                throw new Error("Unrecognised field type");
+        }
     }
 }
 class AccountAuthenticationRequestHandler {

@@ -32,7 +32,6 @@ public:
   //NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusSecurePasswordFieldValue, BerytusFieldValueDictionary)
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(BerytusSecurePasswordFieldValue, BerytusFieldValueDictionary)
-
 public:
   BerytusSecurePasswordFieldValue(
     nsIGlobalObject* aGlobal,
@@ -66,7 +65,7 @@ public:
 
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JS::Value> aRetVal,
-              ErrorResult& aRv);
+              ErrorResult& aRv) override;
 };
 
 } // namespace mozilla::dom

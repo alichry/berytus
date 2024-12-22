@@ -5,8 +5,8 @@
 
 import { resolve } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
-import { InterfaceDeclaration, SourceFile, Project as TSProject } from 'ts-morph';
-import { ParsedType, parseType } from '../request-handler/type-parser.js';
+import { InterfaceDeclaration, Type as tsType, SourceFile, Project as TSProject } from 'ts-morph';
+import { ParsedType, ParseOptions, parseType } from '../request-handler/type-parser.js';
 
 const project = new TSProject({
     tsConfigFilePath: resolve('./tsconfig.json'),
@@ -14,10 +14,7 @@ const project = new TSProject({
 
 const dtsFile = resolve("./src/generated/berytus.web.d.ts");
 
-const replaceUndefinedWithNull = (str: string) => {
-    return str.replace("null", "undefined")
-        .replace("undefined", "null");
-}
+const fieldValueTypes = new Set<string>();
 
 const listFields = (typesFile: SourceFile) => {
     const baseFieldName = "BerytusField";
@@ -27,6 +24,69 @@ const listFields = (typesFile: SourceFile) => {
         }
         return intf;
     }).filter(d => !!d);
+}
+
+const interfaceEnsureUnionsAreAliasd = (
+    typesFile: SourceFile,
+    unionAliasGenerator: ParseOptions['unionAliasGenerator'],
+    int: InterfaceDeclaration,
+    updater: (oldIntText: string, newIntText: string) => void
+) => {
+    const shouldSkipType = (type: tsType) => {
+        const name = type.getAliasSymbol()?.getName()
+            || type.getSymbol()?.getName();
+        return name === 'ArrayBuffer' ||
+            name === 'ArrayBufferView';
+    }
+
+    const oldText = int.getText();
+    int.getProperties().forEach((propSig) => {
+        const propType = propSig.getType();
+        if (propType.isInterface() && !shouldSkipType(propType)) {
+            interfaceEnsureUnionsAreAliasd(
+                typesFile,
+                unionAliasGenerator,
+                typesFile.getInterfaceOrThrow(
+                    propType.getAliasSymbol()?.getName()
+                    || propType.getSymbol()?.getName()!
+                ),
+                updater
+            );
+        }
+        if (propType.isIntersection()) {
+            throw new Error("Intersection types are not allowed.");
+        }
+        if (! propType.isUnion()) {
+            return;
+        }
+        propType.getUnionTypes().forEach(ut => {
+            if (!ut.isInterface() || shouldSkipType(ut)) {
+                return;
+            }
+            interfaceEnsureUnionsAreAliasd(
+                typesFile,
+                unionAliasGenerator,
+                typesFile.getInterfaceOrThrow(
+                    ut.getAliasSymbol()?.getName()
+                    || ut.getSymbol()?.getName()!
+                ),
+                updater
+            );
+        });
+        const parsedType = parseType(propType, { unionAliasGenerator });
+        if (!("alias" in parsedType)) {
+            // alias is not needed, skip this prop.
+            return;
+        }
+        const propTypeText = propSig.getType().getText();
+        propSig.set({
+            name: propSig.getName(),
+            type: propTypeText !== parsedType.alias
+                ? parsedType.alias : propTypeText
+        });
+    });
+    const newText = int.getText();
+    updater(oldText, newText);
 }
 
 const ensureUnionsAreAliases = async () => {
@@ -65,38 +125,18 @@ const ensureUnionsAreAliases = async () => {
     }
     let dts = await readFile(dtsFile, { encoding: "utf8" });
 
-    const fixInterface = (int: InterfaceDeclaration) => {
-        const origIntfText = int.getText();
-        int.getProperties().forEach((propSig) => {
-            const propType = propSig.getType();
-            if (propType.isInterface()) {
-                fixInterface(
-                    typesFile.getInterfaceOrThrow(
-                        propType.getAliasSymbol()?.getName()
-                        || propType.getSymbol()?.getName()!
-                    )
-                );
+    [
+        ...listFields(typesFile),
+        typesFile.getInterfaceOrThrow("BerytusUserAttributeDefinition")
+    ].forEach(int => {
+        interfaceEnsureUnionsAreAliasd(
+            typesFile,
+            unionAliasGenerator,
+            int,
+            (oldText, newText) => {
+                dts =  dts.replace(oldText, newText);
             }
-            if (! propType.isUnionOrIntersection()) {
-                return;
-            }
-            const parsedType = parseType(propType, { unionAliasGenerator });
-            if (!("alias" in parsedType)) {
-                // alias is not needed, skip this prop.
-                return;
-            }
-            const propTypeText = propSig.getType().getText()
-            propSig.set({
-                name: propSig.getName(),
-                type: propTypeText !== parsedType.alias
-                    ? parsedType.alias : propTypeText
-            });
-        });
-        dts = dts.replace(origIntfText, int.getText());
-    }
-
-    listFields(typesFile).forEach(int => {
-        fixInterface(int);
+        );
     });
 
     await writeFile(
@@ -141,11 +181,20 @@ const generateFieldUnion = async () => {
     const dts: string = await readFile(dtsFile, { encoding: "utf8" });
     await writeFile(
         dtsFile,
-        dts + `export type BerytusFieldUnion = ${fieldNames.join("\n\t| ")};`
+        dts + `export type BerytusFieldUnion = ${fieldNames.join("\n\t| ")};\n`
+    );
+}
+
+const generateFieldValueUnion = async () => {
+    const dts: string = await readFile(dtsFile, { encoding: "utf8" });
+    await writeFile(
+        dtsFile,
+        dts + `export type BerytusFieldValueUnion = ${Array.from(fieldValueTypes).join("\n\t| ")};\n`
     );
 }
 
 const generateFieldProperties = async () => {
+    fieldValueTypes.clear();
     const typesFile = project.getSourceFileOrThrow(
         dtsFile
     );
@@ -166,8 +215,22 @@ const generateFieldProperties = async () => {
             // but we infer its vallue type.
             valueTypeText = `${fieldName}Value`;
         } else {
-            valueTypeText = replaceUndefinedWithNull(value.getType().getText());
+            const valueType = value.getType();
+            if (! valueType.isUnion()) {
+                valueTypeText = value.getType().getText();
+            } else {
+                valueTypeText = valueType.getUnionTypes().map(t => {
+                    if (t.isUndefined()) {
+                        // remove undefined, we want to extract field value
+                        // type, not whether it's optional or not.
+                        // @ts-ignore
+                        return;
+                    }
+                    return t.getText();
+                }).filter(d => !!d).join(" | ");
+            }
         }
+        fieldValueTypes.add(valueTypeText);
 
         intf.set({
             properties: [
@@ -181,7 +244,7 @@ const generateFieldProperties = async () => {
                 },
                 {
                     name: "value",
-                    type: valueTypeText
+                    type: valueTypeText + " | null"
                 }
             ]
         });
@@ -237,6 +300,7 @@ const generate = async () => {
     await correctPacketParametersAttribute();
     await deleteFunctions();
     await generateFieldUnion();
+    await generateFieldValueUnion();
 
 }
 

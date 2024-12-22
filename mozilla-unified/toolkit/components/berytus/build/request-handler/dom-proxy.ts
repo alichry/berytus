@@ -376,8 +376,11 @@ class StringEnumType extends BasicType implements IType {
         return `struct ${this.symbol} {
   uint8_t mVal;
   ${this.symbol}() : mVal(0) {}
-  ${this.symbol}(uint8_t aVal) : mVal(aVal) {};
+  ${this.symbol}(uint8_t aVal) : mVal(aVal) {}
+  ${this.symbol}(${this.symbol}&& aOther) : mVal(std::move(aOther.mVal)) {}
   ${this.labeledCreatorsFunctions().map(a => a.functionDef).join("\n  ")}
+  ${this.labeledCheckersFunctions().map(a => a.functionDef).join("\n  ")}
+  ${this.labeledSettersFunctions().map(a => a.functionDef).join("\n  ")}
   ${this.toStringFunction().functionDef}
   ${this.fromStringFunction().functionDef}
   ${this.isJsValValidFunction().functionDef}
@@ -390,6 +393,8 @@ class StringEnumType extends BasicType implements IType {
     get implementation(): string {
         return `${this.toStringFunction().functionImpl}
 ${this.labeledCreatorsFunctions().map(a => a.functionImpl).join("\n")}
+${this.labeledCheckersFunctions().map(a => a.functionImpl).join("\n")}
+${this.labeledSettersFunctions().map(a => a.functionImpl).join("\n")}
 ${this.fromStringFunction().functionImpl}
 ${this.isJsValValidFunction().functionImpl}
 ${this.importFromJsValFunction().functionImpl}
@@ -404,6 +409,32 @@ ${this.exportToJsValFunction().functionImpl}`;
                 functionDef: `static ${this.symbol} ${functionName}();`,
                 functionImpl: `${this.symbol} ${this.symbol}::${functionName}() {
   return ${this.symbol}(uint8_t(${i}));
+}`
+            }
+        })
+    }
+
+    labeledCheckersFunctions(): GeneratedFunction[] {
+        return this.members.map((m, i) => {
+            const functionName = 'Is' + m.name;
+            return {
+                functionName: `${this.symbol}::${functionName}`,
+                functionDef: `bool ${functionName}() const;`,
+                functionImpl: `bool ${this.symbol}::${functionName}() const {
+  return mVal == uint8_t(${i});
+}`
+            }
+        })
+    }
+
+    labeledSettersFunctions(): GeneratedFunction[] {
+        return this.members.map((m, i) => {
+            const functionName = 'SetAs' + m.name;
+            return {
+                functionName: `${this.symbol}::${functionName}`,
+                functionDef: `void ${functionName}();`,
+                functionImpl: `void ${this.symbol}::${functionName}() {
+  mVal = uint8_t(${i});
 }`
             }
         })
@@ -682,17 +713,15 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 }
 
-class NullType extends TypeSymbol implements IType {
+class NullType extends BasicType implements IType {
     constructor() {
-        super('Nothing');
-    }
-
-    get id() {
-        return "JSNull";
+        super('JSNull');
     }
 
     get definition() {
-        return `${this.isJsValValidFunction().functionDef}
+        return `
+struct JSNull {};
+${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
 ${this.exportToJsValFunction().functionDef}`;
     }
@@ -701,19 +730,6 @@ ${this.exportToJsValFunction().functionDef}`;
         return `${this.isJsValValidFunction().functionImpl}
 ${this.importFromJsValFunction().functionImpl}
 ${this.exportToJsValFunction().functionImpl}`;
-    }
-
-    atArgument(): string {
-        return `Nothing&`;
-    }
-    atReturn(): string {
-        return `Nothing`;
-    }
-    atStruct(): string {
-        return `Nothing`;
-    }
-    atDefinition(): string {
-        return `Nothing`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
@@ -731,7 +747,7 @@ ${this.exportToJsValFunction().functionImpl}`;
 
     importFromJsValFunction(): GeneratedFunction {
         const functionName = 'NullFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv)`;
+        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -747,7 +763,7 @@ ${this.exportToJsValFunction().functionImpl}`;
 
     exportToJsValFunction(): GeneratedFunction {
         const functionName = 'NullToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -759,91 +775,14 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 }
 
-class UndefinedType extends TypeSymbol implements IType {
-    constructor() {
-        super('Nothing');
-    }
-
-    get id() {
-        return "JSUndefined";
-    }
-
-    get definition() {
-        return `${this.isJsValValidFunction().functionDef}
-${this.importFromJsValFunction().functionDef}
-${this.exportToJsValFunction().functionDef}`;
-    }
-
-    get implementation() {
-        return `${this.isJsValValidFunction().functionImpl}
-${this.importFromJsValFunction().functionImpl}
-${this.exportToJsValFunction().functionImpl}`;
-    }
-
-    atArgument(): string {
-        return `Nothing&`;
-    }
-    atReturn(): string {
-        return `Nothing`;
-    }
-    atStruct(): string {
-        return `Nothing`;
-    }
-    atDefinition(): string {
-        return `Nothing`;
-    }
-
-    isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsUndefined';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
-        return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
-  aRv = aValue.isUndefined();
-  return true;
-}`
-        }
-    }
-
-    importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'UndefinedFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv)`;
-        return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
-  if (NS_WARN_IF(!aValue.isUndefined())) {
-    return false;
-  }
-  // Nothing to do...
-  return true;
-}`
-        }
-    }
-
-    exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'UndefinedToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv)`;
-        return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
-  aRv.setUndefinedd();
-  return true;
-}`
-        }
-    }
-}
-
 class MaybeType extends TypeSymbol implements IType {
     subType: IType;
 
     constructor(subType: IType) {
-        if (subType instanceof VariantType) {
+        if (subType instanceof SafeVariantType) {
             throw new Error(
-                "Maybe<T> should not wrap Variant<U>. "
-                + "Add NothingType to the Variant subtype instead."
+                "Maybe<T> should not wrap SafeVariant<U>. "
+                + "Add NothingType to the SafeVariant subtype instead."
             );
         }
         super(`Maybe<${subType.symbol}>`);
@@ -913,19 +852,10 @@ ${this.exportToJsValFunction().functionImpl}`;
     aRv.reset();
     return true;
   }
-  ${this.subType instanceof VariantType
-    ? `
-  ${this.subType.symbol}* subRv;
-  if (NS_WARN_IF(!${this.subType.importFromJsValFunction().functionName}(aCx, aValue, &subRv))) {
+  aRv.emplace();
+  if (NS_WARN_IF(!(${this.subType.importFromJsValFunction().functionName}(aCx, aValue, *aRv)))) {
     return false;
   }
-  aRv.emplace(*subRv);`
-    : `
-  aRv.emplace();
-  if (NS_WARN_IF(!${this.subType.importFromJsValFunction().functionName}(aCx, aValue, *aRv))) {
-    return false;
-  }`
-}
   return true;
 }`
         }
@@ -1026,22 +956,62 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 }
 
-class VariantType extends TypeSymbol implements IType {
+class SafeVariantType extends TypeSymbol implements IType {
     subTypes: Array<IType>;
 
     constructor(subTypes: Array<IType>) {
-        super("Variant<" + subTypes.map(p => p.symbol).join(', ') + ">");
-        this.subTypes = subTypes;
+        const flattenedSubTypes = subTypes.reduce((prev, curr) => {
+            const isUnique = (s: IType) =>
+                !prev.some(p => p.id === s.id);
+            if (curr instanceof SafeVariantType) {
+                return [
+                    ...prev,
+                    ...curr.subTypes.filter(s => isUnique(s))
+                ];
+            }
+            if (!isUnique(curr)) {
+                return prev;
+            }
+            return [...prev, curr];
+        }, [] as Array<IType>);
+        super("SafeVariant<" + flattenedSubTypes.map(p => p.symbol).join(', ') + ">");
+        this.subTypes = flattenedSubTypes;
     }
 
     get id() {
         return this.symbol;
     }
 
+    get subTypesSymbols() {
+        return this.subTypes.map(p => p.symbol).join(', ');
+    }
+
     get definition() {
-        return `${this.isJsValValidFunction().functionDef}
-${this.importFromJsValFunction().functionDef}
-${this.exportToJsValFunction().functionDef}`;
+        return `template<>
+class ${this.symbol} : IJSWord<SafeVariant<${this.subTypesSymbols}>> {
+public:
+  SafeVariant() : mVariant(nullptr) {};
+  SafeVariant(${this.symbol}&& aOther) : mVariant(std::move(aOther.mVariant)) {
+    aOther.mVariant = nullptr;
+  };
+  ~SafeVariant() {
+    delete mVariant;
+  };
+  template <typename... Args>
+  void Init(Args&&... aTs) {
+    MOZ_ASSERT(!mVariant);
+    mVariant = new Variant<${this.subTypesSymbols}>(std::forward<Args>(aTs)...);
+  }
+  bool Inited() const {
+    return mVariant;
+  }
+  mozilla::Variant<${this.subTypesSymbols}> const* InternalValue() const { return mVariant; }
+  ${this.isJsValValidFunction().functionDef}
+  ${this.importFromJsValFunction().functionDef}
+  ${this.exportToJsValFunction().functionDef}
+protected:
+  mozilla::Variant<${this.subTypesSymbols}>* mVariant;
+};`;
     }
 
     get implementation() {
@@ -1057,28 +1027,30 @@ ${this.exportToJsValFunction().functionImpl}`;
         return `${this.symbol}`;
     }
     atDefinition(): string {
-        return `${this.symbol}*`;
+        return `${this.symbol}`;
     }
     atStruct(): string {
-        return `${this.symbol}*`;
+        return `${this.symbol}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIs' + this.symbol.replace(/<|>|,| /g, '_');
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `IsJSValueValid`;
+        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
         return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
-  bool isValid = false;
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
   ${this.subTypes.map(st => `
-  if (NS_WARN_IF(!${st.isJsValValidFunction().functionName}(aCx, aValue, isValid))) {
-    return false;
-  }
-  if (isValid) {
-    aRv = true;
-    return true;
-  }
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(${st.isJsValValidFunction().functionName}(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
 `).join("\n")}
   aRv = false;
   return true;
@@ -1087,57 +1059,59 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol.replace(/<|>|,| /g, '_') + `FromJSVal`;
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}** aRv)`;
+        const functionName = `FromJSVal`;
+        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv`
         return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `${funcDef} {
-  bool isValid = false;
-  ${this.subTypes.map(st =>
-  `if (NS_WARN_IF(!${st.isJsValValidFunction().functionName}(aCx, aValue, isValid))) {
-    return false;
-  }
-  if (isValid) {
-    ${st instanceof ArrayBufferType ?
-    `*aRv = new ${this.symbol}(ArrayBuffer());
-    if (NS_WARN_IF(!${st.importFromJsValFunction().functionName}(aCx, aValue, (*aRv)->as<ArrayBuffer>()))) {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  ${this.subTypes.map((st, i) => `do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(${st.isJsValValidFunction().functionName}(aCx, aValue, isValid)))) {
       return false;
     }
-    return true;
-    ` :
-    `${st.atDefinition()} nv;
-    if (NS_WARN_IF(!${st.importFromJsValFunction().functionName}(aCx, aValue, nv))) {
-      return false;
+    if (isValid) {
+      ${st instanceof ArrayBufferType ?
+      `aRv.Init(VariantIndex<${i}>(), ArrayBuffer());
+      if (NS_WARN_IF(!(${st.importFromJsValFunction().functionName}(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+        return false;
+      }
+      return true;
+      ` :
+      `${st.atDefinition()} nv;
+      if (NS_WARN_IF(!(${st.importFromJsValFunction().functionName}(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<${i}>(), std::move(nv));
+      return true;`}
     }
-    *aRv = new ${this.symbol}(nv);
-    return true;`}
-  }`).join("\n")}
+  } while (false);
+  `).join("\n")}
 
-  NS_WARN_IF(true);
+  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }`
         }
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol.replace(/<|>|,| /g, '_') + `ToJSVal`;
-        const matcherName = `${functionName}Matcher`;
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal`;
+        const matcherName = `Matcher`;
+        const params = `JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv`;
         return {
-            functionName,
-            functionDef: `${funcDef};`,
-            functionImpl: `struct ${matcherName} {
-  JSContext* mCx;
-  JS::MutableHandle<JS::Value> mRv;
-  ${matcherName}(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
-${this.subTypes.map(st => `
-  bool operator()(const ${st.atArgument()} aVal) {
-    return ${st.exportToJsValFunction().functionName}(mCx, aVal, mRv);
-  }`).join("\n")}
-};
-${funcDef} {
-  return aValue.match(${matcherName}(aCx, aRv));
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+  struct ${matcherName} {
+    JSContext* mCx;
+    JS::MutableHandle<JS::Value> mRv;
+    ${matcherName}(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
+    ${this.subTypes.map(st => `
+    bool operator()(const ${st.atArgument()} aVal) {
+      return ${st.exportToJsValFunction().functionName}(mCx, aVal, mRv);
+    }`).join("\n")}
+  };
+  return aValue.InternalValue()->match(${matcherName}(aCx, aRv));
 }`
         }
     }
@@ -1228,10 +1202,10 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     ${this.subType.symbol} item;
-    if (NS_WARN_IF(!${this.subType.importFromJsValFunction().functionName}(aCx, value, item))) {
+    if (NS_WARN_IF(!(${this.subType.importFromJsValFunction().functionName}(aCx, value, item)))) {
       return false;
     }
-    aRv.AppendElement(item);
+    aRv.AppendElement(std::move(item));
   }
   return true;
 }`
@@ -1251,7 +1225,7 @@ ${this.exportToJsValFunction().functionImpl}`;
     const ${this.subType.symbol}& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!${this.subType.exportToJsValFunction().functionName}(aCx, item, &value))) {
+    if (NS_WARN_IF(!(${this.subType.exportToJsValFunction().functionName}(aCx, item, &value)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -1499,20 +1473,14 @@ class StructType extends TypeSymbol implements IType {
     }
 
     get definition() {
-        const variantMembers = this.members.filter(({ type }) => type instanceof VariantType);
-        const otherMembers = this.members.filter(({ type }) => !(type instanceof VariantType));
         return `struct ${this.symbol} : IJSWord<${this.symbol}> {
-  ${otherMembers.map(m => m.toString() + ';').join("\n  ")}
-  ${variantMembers.map(m => m.toString() + ' = nullptr;').join("\n  ")}
+  ${this.members.map(m => m.toString() + `;`).join("\n  ")}
   ${this.symbol}() = default;
   ${this.members.length > 0 ? `\
 ${this.symbol}(${this.members.map(({ member, type }) => `${type.atStruct()}&& ${member.atArgument()}`).join(", ")}) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(${member.atArgument()}))`).join(", ")} {}
-  ${this.symbol}(${this.symbol}&& aOther) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(aOther.${member.atStruct()}))`).join(", ")} {}
+  ${this.symbol}(${this.symbol}&& aOther) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(aOther.${member.atStruct()}))`).join(", ")}  {}
   ` : ""}
-  ${variantMembers.length > 0 ? `
-  ~${this.symbol}() {
-    ${variantMembers.map(({ member }) => `delete ${member.atStruct()};`).join("\n")}
-  }` : ''}
+  ~${this.symbol}() {}
   ${this.isJsValValidFunction().functionDef}
   ${this.importFromJsValFunction().functionDef}
   ${this.exportToJsValFunction().functionDef}
@@ -1541,6 +1509,7 @@ ${this.exportToJsValFunction().functionImpl}`;
     isJsValValidFunction(): GeneratedFunction {
         const functionName = 'IsJSValueValid';
         const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        const hasMembers = this.members.length > 0;
         return {
             functionName: `${this.symbol}::${functionName}`,
             functionDef: `static bool ${functionName}(${params});`,
@@ -1549,14 +1518,15 @@ ${this.exportToJsValFunction().functionImpl}`;
     aRv = false;
     return true;
   }
+${hasMembers ? `\
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   bool isValid = false;
   JS::Rooted<JS::Value> propVal(aCx);
   ${this.members.map(({ type, member }) => `
-  if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "${member.baseName}", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "${member.baseName}", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!${type.isJsValValidFunction().functionName}(aCx, propVal, isValid))) {
+  if (NS_WARN_IF(!(${type.isJsValValidFunction().functionName}(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1566,6 +1536,11 @@ ${this.exportToJsValFunction().functionImpl}`;
   ` ).join("\n")}
   aRv = true;
   return true;
+` : `\
+  aRv = true;
+  return true;
+`}
+
 }`
         }
     }
@@ -1583,10 +1558,10 @@ ${this.exportToJsValFunction().functionImpl}`;
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   JS::Rooted<JS::Value> propVal(aCx);
   ${this.members.map(({ type, member }) => `
-  if(NS_WARN_IF(!JS_GetProperty(aCx, obj, "${member.baseName}", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "${member.baseName}", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!${type.importFromJsValFunction().functionName}(aCx, propVal, ${type instanceof VariantType ? '&' : ''}aRv.${member.atStruct()}))) {
+  if (NS_WARN_IF(!(${type.importFromJsValFunction().functionName}(aCx, propVal, aRv.${member.atStruct()})))) {
     return false;
   }
   `).join("\n")}
@@ -1607,10 +1582,10 @@ ${this.exportToJsValFunction().functionImpl}`;
 
   ${this.members.map(({ type, member }, i) => `
   JS::Rooted<JS::Value> memberVal${i}(aCx);
-  ${type instanceof VariantType ? `if (NS_WARN_IF(!aValue.${member.atStruct()})) {
+  ${type instanceof SafeVariantType ? `if (NS_WARN_IF(!aValue.${member.atStruct()}.Inited())) {
     return false;
   }` : ``}
-  if (NS_WARN_IF(!${type.exportToJsValFunction().functionName}(aCx, ${type instanceof VariantType ? '*' : ''}aValue.${member.atStruct()}, &memberVal${i}))) {
+  if (NS_WARN_IF(!(${type.exportToJsValFunction().functionName}(aCx, aValue.${member.atStruct()}, &memberVal${i})))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "${member.baseName}", memberVal${i}))) {
@@ -1692,35 +1667,6 @@ class MozPromiseType extends TypeSymbol implements IType {
     }
     exportToJsValFunction(): GeneratedFunction {
         throw new Error("MozPromise should not be wrapped by a JS Value.");
-    }
-}
-
-class NsresultType extends BasicType implements IType {
-
-    constructor() {
-        super('nsresult');
-    }
-
-    get id() {
-        return this.symbol;
-    }
-
-    get definition(): string {
-        return '';
-    }
-
-    get implementation() {
-        return undefined;
-    }
-
-    isJsValValidFunction(): GeneratedFunction {
-        throw new Error("TODO(berytus): Consider a pathway for error handling.");
-    }
-    importFromJsValFunction(): GeneratedFunction {
-        throw new Error("TODO(berytus): Consider a pathway for error handling.");
-    }
-    exportToJsValFunction(): GeneratedFunction {
-        throw new Error("TODO(berytus): Consider a pathway for error handling.");
     }
 }
 
@@ -1859,7 +1805,6 @@ class RequestHandlerMethod extends MethodDef implements IDef {
         }
         return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) const {
   RefPtr<${this.returnType.symbol}::Private> outPromise = new ${this.returnType.symbol}::Private(__func__);
-  nsresult res;
   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
     outPromise->Reject(Failure(), __func__);
@@ -1892,8 +1837,8 @@ class RequestHandlerMethod extends MethodDef implements IDef {
     ${this.returnType.resolveType instanceof VoidType ? `\
 void* out = nullptr;
     outPromise->Resolve(out, __func__);` : `\
-${this.returnType.resolveType.symbol} ${this.returnType.resolveType instanceof VariantType ? '*' : ''}out;
-    if (NS_WARN_IF(!${this.returnType.resolveType.importFromJsValFunction().functionName}(aCx, aValue, ${this.returnType.resolveType instanceof VariantType ? '&' : ''}out))) {
+${this.returnType.resolveType.symbol} out;
+    if (NS_WARN_IF(!(${this.returnType.resolveType.importFromJsValFunction().functionName}(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -2161,7 +2106,7 @@ class AgentProxyGenerator {
         if (parsedType.optional) {
             throw new Error("Undefined types cannot be optional");
         }
-        const undefinedType = new UndefinedType();
+        const undefinedType = new NothingType();
         this.defs.push(undefinedType);
         return undefinedType;
     }
@@ -2172,6 +2117,7 @@ class AgentProxyGenerator {
                 "Wrong type passed to defineUnion"
             );
         }
+        // TODO(berytus): Group all string literals into one StringEnum
         const subTypes = parsedType.options.map(pt => this.defineType(pt));
         if (parsedType.optional) {
             const nothingType = new NothingType();
@@ -2190,7 +2136,16 @@ class AgentProxyGenerator {
             pre[curr.symbol] = curr;
             return pre;
         }, {} as Record<string, IType>));
-        const variantType = new VariantType(filteredSubTypes);
+        if (filteredSubTypes.length === 1) {
+            this.defs.push(filteredSubTypes[0]);
+            return filteredSubTypes[0];
+        }
+        if (filteredSubTypes.length === 2 && filteredSubTypes.some(s => (s instanceof NothingType))) {
+            const type = filteredSubTypes.find(s => !(s instanceof NothingType))!;
+            this.defs.push(type);
+            return type;
+        }
+        const variantType = new SafeVariantType(filteredSubTypes);
         this.defs.push(
             variantType
         );
@@ -2274,6 +2229,8 @@ class AgentProxyGenerator {
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/Promise-inl.h"
 
+static mozilla::LazyLogModule sLogger("berytus_agent");
+
 namespace mozilla::berytus {
 
 NS_IMPL_CYCLE_COLLECTION(${AgentProxyGenerator.className}, mGlobal)
@@ -2303,6 +2260,7 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
                                                          const W1& aReqCx,
                                                          const W2* aReqArgs,
                                                          ErrorResult& aRv) const {
+  MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
   MOZ_ASSERT(!aRv.Failed());
   if (mDisabled) {
     aRv.ThrowInvalidStateError("Agent is disabled");
@@ -2438,6 +2396,9 @@ ${this.defs.filter(d => d instanceof MethodDef).map((m) => `${m.implementation}`
 #include "mozilla/dom/TypedArray.h" // ArrayBuffer
 #include "mozilla/Variant.h"
 #include "mozilla/dom/DOMException.h" // for Failure's Exception
+#include "mozilla/Logging.h"
+
+using mozilla::LogLevel;
 
 namespace mozilla::berytus {
 
@@ -2454,6 +2415,13 @@ public:
 
 using ArrayBuffer = mozilla::dom::ArrayBuffer;
 using ArrayBufferView = mozilla::dom::ArrayBufferView;
+
+template <typename... T>
+class SafeVariant {
+public:
+  SafeVariant() = delete;
+};
+
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(def => def.definition).join("\n")}
 
 class ${AgentProxyGenerator.className} final : public nsISupports {

@@ -7,23 +7,31 @@
 #include "mozilla/dom/BerytusChannel.h"
 #include "BerytusCryptoWebAppActor.h"
 #include "BerytusSecretManagerActor.h"
+#include "js/PropertyAndElement.h"
+#include "js/Realm.h"
 #include "js/Value.h"
 #include "mozIBerytusPromptService.h"
 #include "mozilla/Components.h"
+#include "mozilla/ErrorResult.h"
+#include "mozilla/HoldDropJSObjects.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusChannelBinding.h"
+#include "mozilla/dom/BerytusLoginOperation.h"
+#include "mozilla/dom/BerytusWebAppActor.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/Promise-inl.h" /* Needed for AddCallbacksWithCycleCollectedArgs */
 #include "mozilla/dom/RootedDictionary.h"
 #include "nsHashPropertyBag.h"
 #include "mozilla/berytus/AgentProxyUtils.h"
+#include "mozilla/dom/BerytusAccountAuthenticationOperation.h"
+#include "mozilla/dom/BerytusAccountCreationOperation.h"
 
 namespace mozilla::dom {
 
 
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusChannel, (mGlobal), (mCachedConstraints))
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusChannel, (mGlobal, mWebAppActor, mSecretManagerActor, mKeyAgreementParams, mAgent), (mCachedConstraints))
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusChannel)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusChannel)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusChannel)
@@ -33,24 +41,28 @@ NS_INTERFACE_MAP_END
 
 BerytusChannel::BerytusChannel(
   nsIGlobalObject* aGlobal,
-  JSObject* aConstraints,
+  BerytusChannelConstraints&& aConstraints,
   const RefPtr<BerytusWebAppActor>& aWebAppActor,
   const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
   const RefPtr<BerytusKeyAgreementParameters>& aKeyAgreementParams,
   const RefPtr<mozilla::berytus::AgentProxy>& aAgent
 ) : mGlobal(aGlobal),
-    mCachedConstraints(aConstraints),
+    mCachedConstraints(nullptr),
+    // mConstraints(RootingCx()),
+    mConstraints(std::move(aConstraints)),
     mWebAppActor(aWebAppActor),
     mSecretManagerActor(aSecretManagerActor),
     mKeyAgreementParams(aKeyAgreementParams),
     mAgent(aAgent)
 {
-    // Add |MOZ_COUNT_CTOR(BerytusChannel);| for a non-refcounted object.
+  nsIDToCString uuidString(nsID::GenerateUUID());
+  mId.Assign(NS_ConvertUTF8toUTF16(uuidString.get()));
+  mozilla::HoldJSObjects(this);
 }
 
 BerytusChannel::~BerytusChannel()
 {
-    // Add |MOZ_COUNT_DTOR(BerytusChannel);| for a non-refcounted object.
+  mozilla::DropJSObjects(this);
 }
 
 JSObject*
@@ -66,18 +78,40 @@ bool BerytusChannel::Active() const
   return mActive;
 }
 
-void BerytusChannel::GetConstraints(JSContext* aCx, JS::MutableHandle<JSObject*> aRetVal) {
+void BerytusChannel::GetConstraints(
+    JSContext* aCx,
+    JS::MutableHandle<JSObject*> aRetVal,
+    ErrorResult& aRv) {
   if (!mCachedConstraints) {
-    // TODO(berytus): set Null?
-    return;
+    {
+      JSAutoRealm ar(aCx, mGlobal->GetGlobalJSObject());
+      JS::Rooted<JS::Value> ctValJs(aCx);
+      if (NS_WARN_IF(!mConstraints.ToObjectInternal(aCx, &ctValJs))) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return;
+      }
+      mCachedConstraints = ctValJs.toObjectOrNull();
+    }
+    MOZ_ASSERT(mCachedConstraints);
   }
   aRetVal.set(mCachedConstraints);
 }
 
+const BerytusChannelConstraints& BerytusChannel::Constraints() const {
+  return mConstraints;
+}
+
+
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
 already_AddRefed<BerytusWebAppActor> BerytusChannel::WebApp() const
 {
+  MOZ_ASSERT(mWebAppActor);
   return do_AddRef(mWebAppActor);
+}
+
+BerytusWebAppActor* BerytusChannel::GetWebAppActor() const {
+  MOZ_ASSERT(mWebAppActor);
+  return mWebAppActor;
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
@@ -99,10 +133,15 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusChannel::GetKeyAgreementP
 }
 
 const berytus::AgentProxy& BerytusChannel::Agent() const {
+  MOZ_ASSERT(mAgent);
   return *mAgent;
 }
 
-already_AddRefed<Promise> BerytusChannel::Create(const GlobalObject& aGlobal, const BerytusChannelOptions& aOptions, ErrorResult& aRv) {
+already_AddRefed<Promise> BerytusChannel::Create(
+    const GlobalObject& aGlobal,
+    JSContext* aCx,
+    const BerytusChannelOptions& aOptions,
+    ErrorResult& aRv) {
   nsresult rv;
   nsCOMPtr<nsIGlobalObject> nsGlobal =
       do_QueryInterface(aGlobal.GetAsSupports());
@@ -171,23 +210,20 @@ already_AddRefed<Promise> BerytusChannel::Create(const GlobalObject& aGlobal, co
     return nullptr;
   }
 
-  Maybe<BerytusChannelConstraints> constraints;
-  JSContext* cx = aGlobal.Context();
-  JS::Rooted<JS::Value> constraintsJs(cx);
+  JS::PersistentRooted<JS::Value> constraintsJs(aCx);
   constraintsJs.setNull();
   if (aOptions.mConstraints.WasPassed()
-      && NS_WARN_IF(!aOptions.mConstraints.Value().ToObjectInternal(cx, &constraintsJs))) {
+      && NS_WARN_IF(!aOptions.mConstraints.Value().ToObjectInternal(aCx, &constraintsJs))) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-  JS::Heap<JSObject*> ctJs(constraintsJs.toObjectOrNull());
-
   auto onResolve = [outPromise,
                               webAppActor = RefPtr<BerytusWebAppActor>(aOptions.mWebApp),
-                              ctJs](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                              constraintsJs](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
-                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal)  {
     nsString selectedId;
+    nsresult rv;
     if (NS_WARN_IF(!mozilla::berytus::StringFromJSVal(aCx, aValue, selectedId))) {
       outPromise->MaybeReject(NS_ERROR_FAILURE);
       return;
@@ -199,16 +235,28 @@ already_AddRefed<Promise> BerytusChannel::Create(const GlobalObject& aGlobal, co
       return;
     }
     berytus::GetSigningKeyArgs reqArgs;
-    reqArgs.mWebAppActor = berytus::Utils_WebAppActorToVariant(webAppActor);
+    rv = berytus::Utils_WebAppActorToVariant(webAppActor, reqArgs.mWebAppActor);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      outPromise->MaybeReject(rv);
+      return;
+    }
     RefPtr<berytus::ManagerGetSigningKeyResult> prom =
       proxy->Manager_GetSigningKey(reqCx, reqArgs);
     prom->Then(
       //aGlobal->SerialEventTarget(),
       GetCurrentSerialEventTarget(), __func__,
-      [outPromise, aGlobal, webAppActor, proxy, ctJs](const nsString& scmEd25519Key) {
+      [outPromise, aGlobal, aCx, webAppActor, proxy, constraintsJs](const nsString& scmEd25519Key) {
+        RootedDictionary<BerytusChannelConstraints> ct(aCx); // RootingCx()
+        {
+          JSAutoRealm ar(aCx, aGlobal->GetGlobalJSObject());
+          if (NS_WARN_IF(!ct.Init(aCx, constraintsJs))) {
+            outPromise->MaybeReject(NS_ERROR_FAILURE);
+            return;
+          }
+        }
         RefPtr<BerytusChannel> ch = new BerytusChannel(
           aGlobal,
-          ctJs,
+          std::move(ct),
           webAppActor,
           new BerytusSecretManagerActor(aGlobal, scmEd25519Key),
           nullptr,
@@ -224,14 +272,7 @@ already_AddRefed<Promise> BerytusChannel::Create(const GlobalObject& aGlobal, co
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     berytus::Failure fr;
     berytus::Failure::FromJSVal(aCx, aValue, fr);
-    ErrorResult err = fr.ToErrorResult();
-    RefPtr<Promise> rejProm = Promise::CreateRejectedWithErrorResult(outPromise->GetGlobalObject(), err);
-    if (NS_WARN_IF(err.Failed())) {
-      // rejPromise was not created successfully.
-      outPromise->MaybeReject(err.StealNSResult());
-      return;
-    }
-    outPromise->MaybeResolve(rejProm);
+    outPromise->MaybeReject(fr.ToErrorResult());
   };
   selectPromise->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsGlobal);
   return outPromise.forget();
@@ -239,21 +280,44 @@ already_AddRefed<Promise> BerytusChannel::Create(const GlobalObject& aGlobal, co
 
 already_AddRefed<Promise> BerytusChannel::Close(ErrorResult& aRv)
 {
-  NS_WARN_IF(true);
+  MOZ_ASSERT(false, "BerytusChannel::Close() not impld");
+  aRv.Throw(NS_ERROR_FAILURE);
   return nullptr;
+}
+
+already_AddRefed<Promise> BerytusChannel::Login(JSContext* aCx, const BerytusOnboardingOptions& aOptions, ErrorResult& aRv) {
+  RefPtr<Promise> outPromise = Promise::Create(mGlobal, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  RefPtr<BerytusChannel> ch = this;
+  BerytusLoginOperation::Create(aCx, mGlobal, ch, aOptions)
+      ->Then(
+        GetCurrentSerialEventTarget(), __func__,
+        [outPromise](const RefPtr<BerytusLoginOperation>& aOperation) {
+          outPromise->MaybeResolve(aOperation);
+        },
+        [outPromise](const berytus::Failure& aFr) {
+          outPromise->MaybeReject(aFr.ToErrorResult());
+        }
+      );
+  return outPromise.forget();
 }
 
 already_AddRefed<Promise> BerytusChannel::PrepareKeyAgreementParameters(const nsAString& webAppX25519PublicKey, ErrorResult& aRv)
 {
-  NS_WARN_IF(true);
+  MOZ_ASSERT(false, "BerytusChannel::PrepareKeyAgreementParameters");
   return nullptr;
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
 already_AddRefed<Promise> BerytusChannel::EnableEndToEndEncryption(const ArrayBuffer& keyAgreementSignature, ErrorResult& aRv)
 {
-  NS_WARN_IF(true);
+  MOZ_ASSERT(false, "BerytusChannel::EnableEndToEndEncryption");
   return nullptr;
+}
+void BerytusChannel::GetID(nsString& aRv) const {
+  aRv.Assign(mId);
 }
 
 } // namespace mozilla::dom

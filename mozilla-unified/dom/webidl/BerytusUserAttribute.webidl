@@ -39,7 +39,7 @@ dictionary BerytusUserAttributeDefinition {
     DOMString info;
     /**
      * The mime type for the contents of this user attribute.
-     * Defaults to text/plain. Note, if
+     * Defaults to text/plain.
      */
     DOMString mimeType;
     /**
@@ -48,17 +48,17 @@ dictionary BerytusUserAttributeDefinition {
     required (DOMString or BufferSource or BerytusEncryptedPacket) value;
 };
 
+enum BerytusUserAttributeValueEncodingType {
+    "None",
+    "Base64URLString",
+    "EncryptedPacketJSON"
+};
+
 dictionary BerytusUserAttributeJSON {
     required BerytusUserAttributeKey id;
     DOMString info;
     DOMString mimeType;
-    /**
-     * If not set, no encoding is applied; e.g., string/plaintext
-     * One of:
-     *  "Base64URLString",
-     *  "EncryptedPacketJSON"
-     */
-    DOMString encodingType;
+    required BerytusUserAttributeValueEncodingType encoding;
     required (DOMString /*or Base64URLString*/ or BerytusEncryptedPacketJSON) value;
 };
 

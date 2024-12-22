@@ -39,6 +39,7 @@ var EChallengeStatus;
 })(EChallengeStatus || (EChallengeStatus = {}));
 ;
 ;
+;
 var EFieldType;
 (function (EFieldType) {
     EFieldType["Identity"] = "Identity";
@@ -62,4 +63,5 @@ var EMetadataStatus;
     EMetadataStatus["Created"] = "Created";
     EMetadataStatus["Retired"] = "Retired";
 })(EMetadataStatus || (EMetadataStatus = {}));
+;
 ;

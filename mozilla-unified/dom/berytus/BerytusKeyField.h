@@ -9,13 +9,9 @@
 
 #include "BerytusKeyFieldValue.h"
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
-#include "mozilla/dom/BindingDeclarations.h"
-#include "nsCycleCollectionParticipant.h"
-#include "nsWrapperCache.h"
-#include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusField.h"
+#include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusFieldOptionsBinding.h" // BerytusKeyFieldOptions
 
 namespace mozilla::dom {
@@ -23,40 +19,31 @@ namespace mozilla::dom {
 class BerytusKeyField final : public BerytusField
 {
 public:
-  NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusKeyField, BerytusField)
+  using BerytusField::ValueUnion;
 
 public:
-    using BerytusField::BerytusField;
-    using BerytusField::ValueType;
+  NS_DECL_ISUPPORTS_INHERITED
+  BerytusKeyField(
+    nsIGlobalObject* aGlobal,
+    const nsAString& aFieldId,
+    BerytusKeyFieldOptions&& aFieldOptions
+  );
 
-  bool HasValue() const override;
-
-  void GetValue(JSContext* aCx,
-                Nullable<ValueType>& aRetVal,
-                ErrorResult& aRv) const override;
 protected:
   BerytusKeyField(
     nsIGlobalObject* aGlobal,
     const nsAString& aFieldId,
-    const BerytusFieldType& aFieldType,
-    JS::Handle<JSObject*> aOptions
+    BerytusKeyFieldOptions&& aFieldOptions,
+    Nullable<ValueUnion>&& aFieldValue
   );
   ~BerytusKeyField();
-  RefPtr<BerytusKeyFieldValue> mValue;
+  BerytusKeyFieldOptions mOptions;
 
-  void AddValueToJSON(JSContext* aCx,
-                      JS::Handle<JSObject*> aObj,
-                      ErrorResult& aRv) override;
-  void SetValueImpl(JSContext* aCx,
-                    const Nullable<ValueType>& aValue,
-                    ErrorResult& aRv) override;
+  bool IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const override;
+
+  void CacheOptions(JSContext* aCx, ErrorResult& aRv) override;
 public:
-  // This should return something that eventually allows finding a
-  // path to the global this object is associated with.  Most simply,
-  // returning an actual global works.
   nsIGlobalObject* GetParentObject() const;
-
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   static already_AddRefed<BerytusKeyField> Constructor(

@@ -11,14 +11,18 @@
 #include "js/Value.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/HoldDropJSObjects.h"
+#include "mozilla/berytus/AgentProxy.h"
+#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
+#include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
+#include "mozilla/dom/RootedDictionary.h"
+#include "mozilla/dom/BerytusFieldValueDictionary.h"
 
 namespace mozilla::dom {
 
 
 // Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusField, (mGlobal), (mOptions, mCachedJson))
-//NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusField, (mGlobal, mValue)
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusField, (mGlobal, mFieldValue), (mCachedOptions, mCachedJson))
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusField)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusField)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusField)
@@ -30,14 +34,13 @@ BerytusField::BerytusField(
   nsIGlobalObject* aGlobal,
   const nsAString& aFieldId,
   const BerytusFieldType& aFieldType,
-  JS::Handle<JSObject*> aOptions
-  // const BerytusAccountFieldDefinition& aOptions
+  Nullable<ValueUnion>&& aFieldValue
 ) : mGlobal(aGlobal),
   mFieldId(aFieldId),
   mFieldType(aFieldType),
-  mOptions(aOptions.get()),
+  mFieldValue(std::move(aFieldValue)),
+  mCachedOptions(nullptr),
   mCachedJson(nullptr) {
-  MOZ_ASSERT(mOptions);
   mozilla::HoldJSObjects(this);
   // Add |MOZ_COUNT_CTOR(BerytusField);| for a non-refcounted object.
 }
@@ -49,12 +52,6 @@ BerytusField::~BerytusField() {
 
 nsIGlobalObject* BerytusField::GetParentObject() const { return mGlobal; }
 
-// JSObject*
-// BerytusField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
-// {
-//   return BerytusField_Binding::Wrap(aCx, this, aGivenProto);
-// }
-
 void BerytusField::GetId(nsString& aRetVal) const
 {
   aRetVal.Assign(mFieldId);
@@ -65,9 +62,42 @@ BerytusFieldType BerytusField::Type() const
   return mFieldType;
 }
 
-void BerytusField::GetOptions(JSContext* cx, JS::MutableHandle<JSObject*> aRetVal) const
-{
-  aRetVal.set(mOptions.get());
+void BerytusField::GetValue(JSContext* aCx,
+                            Nullable<ValueUnion>& aRetVal,
+                            ErrorResult& aRv) const {
+  if (mFieldValue.IsNull()) {
+    aRetVal.SetNull();
+    return;
+  }
+  const ValueUnion& val = mFieldValue.Value();
+  ValueUnion outVal;
+  if (val.IsBerytusEncryptedPacket()) {
+    outVal.SetAsBerytusEncryptedPacket() =
+      OwningNonNull<BerytusEncryptedPacket>(
+        val.GetAsBerytusEncryptedPacket());
+  } else if (val.IsString()) {
+    outVal.SetAsString().Assign(val.GetAsString());
+  } else if (val.IsBerytusFieldValueDictionary()) {
+    outVal.SetAsBerytusFieldValueDictionary() =
+      OwningNonNull<BerytusFieldValueDictionary>(
+        val.GetAsBerytusFieldValueDictionary());
+  } else {
+    MOZ_ASSERT(false, "Unrecognised field value union member");
+    aRv.Throw(NS_ERROR_DOM_INVALID_STATE_ERR);
+    return;
+  }
+  aRetVal.SetValue(std::move(outVal));
+}
+
+void BerytusField::GetOptions(JSContext* aCx,
+                              JS::MutableHandle<JSObject*> aRetVal,
+                              ErrorResult& aRv) {
+  CacheOptions(aCx, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return;
+  }
+  MOZ_ASSERT(mCachedOptions);
+  aRetVal.set(mCachedOptions);
 }
 
 void BerytusField::ToJSON(JSContext* aCx,
@@ -128,18 +158,90 @@ void BerytusField::AddFieldMetadataToCachedJSON(JSContext* aCx, ErrorResult& aRv
     aRv.Throw(NS_ERROR_FAILURE);
     return;
   }
-  JS::Rooted<JS::Value> options(aCx, JS::ObjectValue(*mOptions.get()));
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", options))) {
+  JS::Rooted<JSObject*> options(aCx);
+  GetOptions(aCx, &options, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return;
+  }
+  JS::Rooted<JS::Value> optionsVal(aCx, JS::ObjectValue(*options));
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", optionsVal))) {
     aRv.Throw(NS_ERROR_FAILURE);
     return;
   }
 }
 
+void BerytusField::AddValueToJSON(JSContext* aCx,
+                                  JS::Handle<JSObject*> aObj,
+                                  ErrorResult& aRv) {
+  if (mFieldValue.IsNull()) {
+    return;
+  }
+  JS::Rooted<JS::Value> value(aCx);
+  const auto& intVal = mFieldValue.Value();
+  if (intVal.IsBerytusEncryptedPacket()) {
+    BerytusEncryptedPacketJSON packetJson;
+    intVal.GetAsBerytusEncryptedPacket()->ToJSON(packetJson, aRv);
+    if (NS_WARN_IF(aRv.Failed())) {
+      return;
+    }
+    if (NS_WARN_IF(!packetJson.ToObjectInternal(aCx, &value))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return;
+    }
+  } else if (intVal.IsString()) {
+    JSString* str = JS_NewUCStringCopyN(aCx, intVal.GetAsString().get(), intVal.GetAsString().Length());
+    if (NS_WARN_IF(!str)) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return;
+    }
+    value.setString(str);
+  } else if (intVal.IsBerytusFieldValueDictionary()) {
+    intVal.GetAsBerytusFieldValueDictionary()->ToJSON(aCx, &value, aRv);
+    if (NS_WARN_IF(aRv.Failed())) {
+      return;
+    }
+  } else {
+    MOZ_ASSERT(false, "Unrecognised field value union member");
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, aObj, "value" ,value))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+  }
+}
+
 void BerytusField::SetValue(JSContext* aCx,
-                            const Nullable<ValueType>& aValue,
+                            const Nullable<ValueUnion>& aValue,
                             ErrorResult& aRv) {
   mCachedJson = nullptr;
   SetValueImpl(aCx, aValue, aRv);
+}
+
+void BerytusField::SetValueImpl(JSContext* aCx,
+                            const Nullable<ValueUnion>& aValue,
+                            ErrorResult& aRv) {
+  if (NS_WARN_IF(!IsValueValid(aCx, aValue))) {
+    aRv.Throw(NS_ERROR_INVALID_ARG);
+    return;
+  }
+  if (aValue.IsNull()) {
+    mFieldValue.SetNull();
+    return;
+  }
+  if (aValue.Value().IsString()) {
+    mFieldValue.SetValue().SetAsString().Assign(aValue.Value().GetAsString());
+    return;
+  }
+  if (aValue.Value().IsBerytusEncryptedPacket()) {
+    mFieldValue.SetValue().SetAsBerytusEncryptedPacket() = aValue.Value().GetAsBerytusEncryptedPacket();
+    return;
+  }
+  if (aValue.Value().IsBerytusFieldValueDictionary()) {
+    mFieldValue.SetValue().SetAsBerytusFieldValueDictionary() = aValue.Value().GetAsBerytusFieldValueDictionary();
+    return;
+  }
+  MOZ_ASSERT(false, "Unrecognised field value union member");
+  aRv.Throw(NS_ERROR_FAILURE);
 }
 
 } // namespace mozilla::dom

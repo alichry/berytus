@@ -11,19 +11,21 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BerytusChannelBinding.h"
+#include "mozilla/dom/BerytusLoginOperation.h"
 #include "mozilla/dom/BindingDeclarations.h"
+#include "mozilla/dom/RootedDictionary.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/TypedArray.h" // ArrayBuffer
 #include "mozilla/berytus/AgentProxy.h" // AgentProxy
+#include "mozilla/dom/BerytusKeyAgreementParameters.h"
+#include "mozilla/dom/BerytusSecretManagerActor.h"
 
 namespace mozilla {
 namespace dom {
 
 struct BerytusChannelOptions;
-class BerytusKeyAgreementParameters;
-class BerytusSecretManagerActor;
 class BerytusWebAppActor;
 class GlobalObject;
 class Promise;
@@ -40,18 +42,21 @@ public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(BerytusChannel)
 
+  using LoginPromise = MozPromise<RefPtr<BerytusLoginOperation>, berytus::Failure, true>;
 protected:
   BerytusChannel(
     nsIGlobalObject* aGlobal,
-    JSObject* aConstraints,
+    BerytusChannelConstraints&& aConstraints,
     const RefPtr<BerytusWebAppActor>& aWebAppActor,
     const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
     const RefPtr<BerytusKeyAgreementParameters>& aKeyAgreementParams, // can be a nullptr
     const RefPtr<mozilla::berytus::AgentProxy>& aAgent
   );
   ~BerytusChannel();
+  nsString mId;
   nsCOMPtr<nsIGlobalObject> mGlobal;
   JS::Heap<JSObject*> mCachedConstraints;
+  BerytusChannelConstraints mConstraints;
   RefPtr<BerytusWebAppActor> mWebAppActor;
   RefPtr<BerytusSecretManagerActor> mSecretManagerActor;
   RefPtr<BerytusKeyAgreementParameters> mKeyAgreementParams; // can be a nullptr
@@ -70,7 +75,16 @@ public:
 
   const berytus::AgentProxy& Agent() const;
 
-  void GetConstraints(JSContext* aCx, JS::MutableHandle<JSObject*> aRetVal);
+  BerytusWebAppActor* GetWebAppActor() const;
+
+  const BerytusChannelConstraints& Constraints() const;
+
+  void GetConstraints(
+    JSContext* aCx,
+    JS::MutableHandle<JSObject*> aRetVal,
+    ErrorResult& aRv);
+
+  void GetID(nsString& aRv) const;
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<BerytusWebAppActor> WebApp() const;
@@ -82,10 +96,12 @@ public:
   already_AddRefed<BerytusKeyAgreementParameters> GetKeyAgreementParams() const;
 
   static // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
-  already_AddRefed<Promise> Create(const GlobalObject& global, const BerytusChannelOptions& options, ErrorResult& aRv);
+  already_AddRefed<Promise> Create(const GlobalObject& global, JSContext* aCx, const BerytusChannelOptions& options, ErrorResult& aRv);
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<Promise> Close(ErrorResult& aRv);
+
+  already_AddRefed<Promise> Login(JSContext* aCx, const BerytusOnboardingOptions& aOptions, ErrorResult& aRv);
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<Promise> PrepareKeyAgreementParameters(const nsAString& webAppX25519PublicKey, ErrorResult& aRv);

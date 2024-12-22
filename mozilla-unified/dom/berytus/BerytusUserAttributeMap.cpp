@@ -48,10 +48,43 @@ void BerytusUserAttributeMap::AddAttribute(
   if (aRv.Failed()) {
     return;
   }
-  // let's add the aField to an internal array to initial a RefPtr and increasing the
-  // refcount... Just in case it's not ref'd anywhere else...
   RefPtr<BerytusUserAttribute> attrPr = aAttribute;
   mAttributes.AppendElement(attrPr);
+}
+
+bool BerytusUserAttributeMap::HasAttribute(const nsString& aId) {
+  for (const auto& attr : mAttributes) {
+    nsString currentId;
+    attr->GetId(currentId);
+    if (currentId.Equals(aId)) {
+      return true;
+    }
+  }
+  return false;
+}
+RefPtr<BerytusUserAttribute> BerytusUserAttributeMap::GetAttribute(const nsString& aId) {
+for (const auto& attr : mAttributes) {
+    nsString currentId;
+    attr->GetId(currentId);
+    if (currentId.Equals(aId)) {
+      return attr;
+    }
+  }
+  return nullptr;
+}
+
+void BerytusUserAttributeMap::RemoveAttribute(const nsString& aId, ErrorResult& aRv) {
+  for (size_t i = 0; i < mAttributes.Length(); i++) {
+    const auto& attr = mAttributes.ElementAt(i);
+    nsString currentId;
+    attr->GetId(currentId);
+    if (!currentId.Equals(aId)) {
+      continue;
+    }
+    mAttributes.RemoveElementAt(i);
+    mozilla::dom::BerytusUserAttributeMap_Binding::MaplikeHelpers::Delete(this, aId, aRv);
+    return;
+  }
 }
 
 nsIGlobalObject* BerytusUserAttributeMap::GetParentObject() const { return mGlobal; }

@@ -7,9 +7,6 @@
 #ifndef DOM_BERYTUSFIELDVALUEDICTIONARY_H_
 #define DOM_BERYTUSFIELDVALUEDICTIONARY_H_
 
-#include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
@@ -31,10 +28,14 @@ public:
   virtual BerytusFieldType Type() = 0;
   bool IsForField(const BerytusFieldType& aType);
 
+  virtual void ToJSON(JSContext* aCx,
+                      JS::MutableHandle<JS::Value> aRetVal,
+                      ErrorResult& aRv) = 0;
+
 protected:
   virtual ~BerytusFieldValueDictionary();
   nsCOMPtr<nsIGlobalObject> mGlobal;
-
+  
 public:
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

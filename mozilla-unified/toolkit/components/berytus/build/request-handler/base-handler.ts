@@ -44,7 +44,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                 if (!("alias" in p.type) || p.type.alias === undefined) {
                     throw new Error(
                         "Expecting argument type to have an alias"
-                        + ", got otherwise."
+                        + ", got otherwise. Parameter:" + JSON.stringify(p)
                     );
                 }
                 typesToImport[p.type.alias] = true;

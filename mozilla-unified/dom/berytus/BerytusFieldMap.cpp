@@ -5,10 +5,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusFieldMap.h"
+#include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/BerytusFieldMapBinding.h"
+#include "mozilla/dom/BerytusIdentityField.h"
+#include "mozilla/dom/BerytusForeignIdentityField.h"
+#include "mozilla/dom/BerytusPasswordField.h"
+#include "mozilla/dom/BerytusSecurePasswordField.h"
+#include "mozilla/dom/BerytusKeyField.h"
+#include "mozilla/dom/BerytusSharedKeyField.h"
+#include "nsCOMPtr.h"
 
 namespace mozilla::dom {
-
 
 // Only needed for refcounted objects.
 NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusFieldMap, mGlobal, mFields)
@@ -20,8 +27,7 @@ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusFieldMap)
 NS_INTERFACE_MAP_END
 
 BerytusFieldMap::BerytusFieldMap(nsIGlobalObject* aGlobal)
-  : mGlobal(aGlobal),
-  mFields()
+  : mGlobal(aGlobal)
 {
     // Add |MOZ_COUNT_CTOR(BerytusFieldMap);| for a non-refcounted object.
 }
@@ -40,6 +46,10 @@ BerytusFieldMap::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
   return BerytusFieldMap_Binding::Wrap(aCx, this, aGivenProto);
 }
 
+const nsTArray<RefPtr<BerytusField>>& BerytusFieldMap::List() const {
+  return mFields;
+}
+
 void BerytusFieldMap::AddField(BerytusField* aField, ErrorResult& aRv)
 {
   nsString fieldId;
@@ -54,10 +64,8 @@ void BerytusFieldMap::AddField(BerytusField* aField, ErrorResult& aRv)
   if (aRv.Failed()) {
     return;
   }
-  // let's add the aField to an internal array to initial a RefPtr and increasing the
-  // refcount... Just in case it's not ref'd anywhere else...
-  RefPtr<BerytusField> fieldPtr = aField;
-  mFields.AppendElement(fieldPtr);
+  RefPtr<BerytusField> field = aField;
+  mFields.AppendElement(field);
 }
 
 bool BerytusFieldMap::HasField(const nsAString& aFieldId, ErrorResult& aRv)

@@ -7,9 +7,6 @@
 #ifndef DOM_BERYTUSWEBAPPACTOR_H_
 #define DOM_BERYTUSWEBAPPACTOR_H_
 
-#include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsWrapperCache.h"

@@ -1,0 +1,23 @@
+--- dom/bindings/Bindings.conf.orig	2024-10-31 21:28:22
++++ dom/bindings/Bindings.conf	2024-12-15 21:49:23
+@@ -79,8 +79,20 @@
+ 'BatteryManager': {
+     'nativeType': 'mozilla::dom::battery::BatteryManager',
+     'headerFile': 'BatteryManager.h'
++},
++
++'BerytusChannel': {
++    'implicitJSContext': [ 'create', 'login' ],
++},
++
++'BerytusAccountCreationOperation': {
++    'implicitJSContext': [ 'addFields', 'rejectAndReviseFields', 'setUserAttributes' ],
+ },
+ 
++'BerytusField': {
++    'implicitJSContext': [ 'value' ],
++},
++
+ 'Blob': {
+     'implicitJSContext': [ 'stream' ],
+ },

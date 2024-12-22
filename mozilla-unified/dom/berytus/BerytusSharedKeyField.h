@@ -7,66 +7,55 @@
 #ifndef DOM_BERYTUSSHAREDKEYFIELD_H_
 #define DOM_BERYTUSSHAREDKEYFIELD_H_
 
-#include "mozilla/dom/BerytusSharedKeyFieldValue.h"
+#include "BerytusSharedKeyFieldValue.h"
 #include "js/TypeDecls.h"
 #include "mozilla/ErrorResult.h"
-#include "mozilla/dom/BindingDeclarations.h"
-#include "nsCycleCollectionParticipant.h"
-#include "nsWrapperCache.h"
-#include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusField.h"
-#include "mozilla/dom/BerytusFieldOptionsBinding.h" // BerytusKeyFieldOptions
+#include "nsIGlobalObject.h"
+#include "mozilla/dom/BerytusFieldOptionsBinding.h" // BerytusSharedKeyFieldOptions
 
 namespace mozilla::dom {
 
 class BerytusSharedKeyField final : public BerytusField
 {
 public:
-  NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusSharedKeyField, BerytusField)
+  using BerytusField::ValueUnion;
 
 public:
-    using BerytusField::BerytusField;
-    using BerytusField::ValueType;
+  NS_DECL_ISUPPORTS_INHERITED
+  BerytusSharedKeyField(
+    nsIGlobalObject* aGlobal,
+    const nsAString& aFieldId,
+    BerytusSharedKeyFieldOptions&& aFieldOptions
+  );
 
-  bool HasValue() const override;
-
-  void GetValue(JSContext* aCx,
-                Nullable<ValueType>& aRetVal,
-                ErrorResult& aRv) const override;
 protected:
   BerytusSharedKeyField(
     nsIGlobalObject* aGlobal,
     const nsAString& aFieldId,
-    JS::Handle<JSObject*> aOptions,
-    const RefPtr<BerytusSharedKeyFieldValue>& aValue
+    BerytusSharedKeyFieldOptions&& aFieldOptions,
+    Nullable<ValueUnion>&& aFieldValue
   );
   ~BerytusSharedKeyField();
-  RefPtr<BerytusSharedKeyFieldValue> mValue;
+  BerytusSharedKeyFieldOptions mOptions;
 
-  void AddValueToJSON(JSContext* aCx,
-                      JS::Handle<JSObject*> aObj,
-                      ErrorResult& aRv) override;
-  void SetValueImpl(JSContext* aCx,
-                    const Nullable<ValueType>& aValue,
-                    ErrorResult& aRv) override;
+  bool IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const override;
+
+  void CacheOptions(JSContext* aCx, ErrorResult& aRv) override;
 public:
-  // This should return something that eventually allows finding a
-  // path to the global this object is associated with.  Most simply,
-  // returning an actual global works.
   nsIGlobalObject* GetParentObject() const;
-
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   static already_AddRefed<BerytusSharedKeyField> Constructor(
     const GlobalObject& aGlobal,
     const nsAString& aId,
-    const BerytusKeyFieldOptions& aOptions,
-    const Optional<NonNull<BerytusSharedKeyFieldValue>>& aPrivateKeyValue,
+    const BerytusSharedKeyFieldOptions& aOptions,
+    const Optional<NonNull<BerytusSharedKeyFieldValue>>& aDesiredValue,
     ErrorResult& aRv
   );
 };
 
 } // namespace mozilla::dom
+
 
 #endif // DOM_BERYTUSSHAREDKEYFIELD_H_

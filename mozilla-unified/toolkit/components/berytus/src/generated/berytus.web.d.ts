@@ -138,7 +138,7 @@ interface BerytusEncryptedPacket {
 type BerytusFieldType = "Identity" | "ForeignIdentity" | "Password" | "SecurePassword" | "ConsumablePassword" | "Key" | "SharedKey" | "Custom";
 type BerytusFieldRejectionReasonCode = string;
 type BerytusFieldId = string;
-type BerytusFieldValue = BerytusDataType | BerytusFieldValueDictionary;
+type BerytusFieldValue = string | BerytusEncryptedPacket | BerytusFieldValueDictionary;
 interface BerytusField {
     readonly id: BerytusFieldId;
     readonly type: BerytusFieldType;
@@ -209,7 +209,7 @@ interface BerytusKeyFieldValue extends BerytusFieldValueDictionary {
 interface BerytusKeyField extends BerytusField {
     type: EBerytusFieldType.Key;
     options: BerytusKeyFieldOptions;
-    value: BerytusKeyFieldValue;
+    value: nullOrBerytusKeyFieldValue;
 }
 interface BerytusPasswordField extends BerytusField {
     type: EBerytusFieldType.Password;
@@ -223,7 +223,7 @@ interface BerytusSecurePasswordFieldValue extends BerytusFieldValueDictionary {
 interface BerytusSecurePasswordField extends BerytusField {
     type: EBerytusFieldType.SecurePassword;
     options: BerytusSecurePasswordFieldOptions;
-    value: BerytusSecurePasswordFieldValue;
+    value: nullOrBerytusSecurePasswordFieldValue;
 }
 interface BerytusSharedKeyFieldValue extends BerytusFieldValueDictionary {
     readonly privateKey: ArrayBufferOrBerytusEncryptedPacket;
@@ -231,20 +231,21 @@ interface BerytusSharedKeyFieldValue extends BerytusFieldValueDictionary {
 interface BerytusSharedKeyField extends BerytusField {
     type: EBerytusFieldType.SharedKey;
     options: BerytusSharedKeyFieldOptions;
-    value: BerytusSharedKeyFieldValue;
+    value: nullOrBerytusSharedKeyFieldValue;
 }
 type BerytusUserAttributeKey = string;
 interface BerytusUserAttributeDefinition {
     id: BerytusUserAttributeKey;
     info?: string;
     mimeType?: string;
-    value: string | BufferSource | BerytusEncryptedPacket;
+    value: stringOrBufferSourceOrBerytusEncryptedPacket;
 }
+type BerytusUserAttributeValueEncodingType = "None" | "Base64URLString" | "EncryptedPacketJSON";
 interface BerytusUserAttributeJSON {
     id: BerytusUserAttributeKey;
     info?: string;
     mimeType?: string;
-    encodingType?: string;
+    encoding: BerytusUserAttributeValueEncodingType;
     value: string | BerytusEncryptedPacketJSON;
 }
 interface BerytusUserAttribute {
@@ -269,9 +270,26 @@ export type nullOrstringOrBerytusEncryptedPacket = null |
 
 export type ArrayBufferOrBerytusEncryptedPacket = ArrayBuffer |
 	BerytusEncryptedPacket;
+
+export type nullOrBerytusKeyFieldValue = null |
+	BerytusKeyFieldValue;
+
+export type nullOrBerytusSecurePasswordFieldValue = null |
+	BerytusSecurePasswordFieldValue;
+
+export type nullOrBerytusSharedKeyFieldValue = null |
+	BerytusSharedKeyFieldValue;
+
+export type stringOrBufferSourceOrBerytusEncryptedPacket = string |
+	BufferSource |
+	BerytusEncryptedPacket;
 export type BerytusFieldUnion = BerytusForeignIdentityField
 	| BerytusIdentityField
 	| BerytusKeyField
 	| BerytusPasswordField
 	| BerytusSecurePasswordField
 	| BerytusSharedKeyField;
+export type BerytusFieldValueUnion = string | BerytusEncryptedPacket
+	| BerytusKeyFieldValue
+	| BerytusSecurePasswordFieldValue
+	| BerytusSharedKeyFieldValue;

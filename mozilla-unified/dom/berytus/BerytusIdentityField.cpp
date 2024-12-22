@@ -5,92 +5,72 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusIdentityField.h"
-#include "BerytusEncryptedPacket.h"
 #include "js/PropertyAndElement.h"
 #include "js/String.h"
-#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
+#include "mozilla/OwningNonNull.h"
 #include "mozilla/dom/BerytusField.h"
 #include "js/Value.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/BerytusIdentityFieldBinding.h"
+#include "mozilla/dom/RootedDictionary.h"
+#include "mozilla/dom/UnionTypes.h" // StringOrBerytusEncryptedPacket
 #include "nsCycleCollectionParticipant.h"
 
 namespace mozilla::dom {
 
-
-// Only needed for refcounted objects.
-// # error "If you don't have members that need cycle collection,
-// # then remove all the cycle collection bits from this
-// # implementation and the corresponding header.  If you do, you
-// # want NS_IMPL_CYCLE_COLLECTION_INHERITED(BerytusIdentityField,
-// # BerytusField, your, members, here)"
-/*
-//NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS
-NS_IMPL_CYCLE_COLLECTION_INHERITED(BerytusIdentityField, BerytusField, mAsEncrypted)
 NS_IMPL_ADDREF_INHERITED(BerytusIdentityField, BerytusField)
 NS_IMPL_RELEASE_INHERITED(BerytusIdentityField, BerytusField)
 NS_INTERFACE_MAP_BEGIN(BerytusIdentityField)
 NS_INTERFACE_MAP_END_INHERITING(BerytusField)
-*/
-
-NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(BerytusIdentityField, BerytusField, (mAsEncrypted), ())
-// --
-//NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(BerytusIdentityField, BerytusField)
-// --: the above is equivalent to:
-NS_IMPL_ADDREF_INHERITED(BerytusIdentityField, BerytusField)
-NS_IMPL_RELEASE_INHERITED(BerytusIdentityField, BerytusField)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusIdentityField)
-NS_INTERFACE_MAP_END_INHERITING(BerytusField)
 
 BerytusIdentityField::BerytusIdentityField(
   nsIGlobalObject* aGlobal,
   const nsAString& aFieldId,
-  JS::Handle<JSObject*> aOptions,
-  BerytusEncryptedPacket* aValue
-) : BerytusIdentityField(aGlobal,
-                         aFieldId,
-                         BerytusFieldType::Identity,
-                         aOptions,
-                         aValue,
-                         nsString()) {}
-
-BerytusIdentityField::BerytusIdentityField(
-  nsIGlobalObject* aGlobal,
-  const nsAString& aFieldId,
-  JS::Handle<JSObject*> aOptions,
-  const nsAString& aValue
-) : BerytusIdentityField(aGlobal,
-                         aFieldId,
-                         BerytusFieldType::Identity,
-                         aOptions,
-                         nullptr,
-                         aValue) {}
-
-BerytusIdentityField::BerytusIdentityField(
-  nsIGlobalObject* aGlobal,
-  const nsAString& aFieldId,
-  const BerytusFieldType& aFieldType,
-  JS::Handle<JSObject*> aOptions,
-  BerytusEncryptedPacket* aAsEncrypted,
-  const nsAString& aAsString
+  BerytusIdentityFieldOptions&& aFieldOptions
 ) : BerytusField(aGlobal,
                  aFieldId,
-                 aFieldType,
-                 aOptions),
-    mAsEncrypted(aAsEncrypted),
-    mAsString(aAsString) { };
+                 BerytusFieldType::Identity,
+                 Nullable<ValueUnion>()),
+    mOptions(std::move(aFieldOptions)) {}
+
+BerytusIdentityField::BerytusIdentityField(
+  nsIGlobalObject* aGlobal,
+  const nsAString& aFieldId,
+  BerytusIdentityFieldOptions&& aFieldOptions,
+  Nullable<ValueUnion>&& aFieldValue
+) : BerytusField(aGlobal,
+                 aFieldId,
+                 BerytusFieldType::Identity,
+                 std::move(aFieldValue)),
+    mOptions(std::move(aFieldOptions)) {}
 
 
 BerytusIdentityField::~BerytusIdentityField() = default;
-
-nsIGlobalObject* BerytusIdentityField::GetParentObject() const {
-  return mGlobal;
-}
 
 JSObject*
 BerytusIdentityField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
 {
   return BerytusIdentityField_Binding::Wrap(aCx, this, aGivenProto);
+}
+
+nsIGlobalObject* BerytusIdentityField::GetParentObject() const { return mGlobal; }
+
+void BerytusIdentityField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
+  if (mCachedOptions) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mOptions.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedOptions = options.toObjectOrNull();
+}
+
+bool BerytusIdentityField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+  return aValue.IsNull() ||
+    aValue.Value().IsBerytusEncryptedPacket() ||
+    aValue.Value().IsString();
 }
 
 already_AddRefed<BerytusIdentityField> BerytusIdentityField::Constructor(
@@ -105,133 +85,36 @@ already_AddRefed<BerytusIdentityField> BerytusIdentityField::Constructor(
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-
-  JS::Rooted<JS::Value> optionsV(aGlobal.Context());
-  aOptions.ToObjectInternal(aGlobal.Context(), &optionsV);
-  JS::Rooted<JSObject*> options(
-    aGlobal.Context(),
-    &optionsV.toObject()
-  );
-
-  RefPtr<BerytusIdentityField> attr;
-  if (!aDesiredValue.WasPassed()) {
-    attr = new BerytusIdentityField(
-      global,
-      aId,
-      options,
-      nullptr
-    );
-    return attr.forget();
-  }
-  if (aDesiredValue.Value().IsBerytusEncryptedPacket()) {
-    attr = new BerytusIdentityField(
-      global,
-      aId,
-      options,
-      // TODO(berytus): check if creating a pointer
-      // from a reference given by NonNull<T> is a good idea.
-      OwningNonNull(aDesiredValue.Value().GetAsBerytusEncryptedPacket())
-    );
-    return attr.forget();
-  }
-
-  const nsAString& value = aDesiredValue.Value().GetAsString();
-  if (value.Length() > aOptions.mMaxLength) {
-    aRv.ThrowTypeError("Passed identity value exceeds maxLength");
+  JS::Rooted<JS::Value> jsOptions(aGlobal.Context());
+  if (NS_WARN_IF(!aOptions.ToObjectInternal(aGlobal.Context(), &jsOptions))) {
+    aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-
-  if (aOptions.mAllowedCharacters.WasPassed()) {
-    const auto& allowedChars = aOptions.mAllowedCharacters.Value();
-    for (size_t i = 0; i < value.Length(); i++) {
-      const char16_t c = value.CharAt(i);
-      bool found = false;
-      for (size_t j = 0; j < allowedChars.Length(); j++) {
-        const char16_t a = allowedChars.CharAt(j);
-        if (a == c) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        aRv.ThrowTypeError("Passed identity value contains characters that are not in defined in allowedCharacters");
-        return nullptr;
-      }
-    }
+  RootedDictionary<BerytusIdentityFieldOptions> copiedOptions(aGlobal.Context());
+  if (NS_WARN_IF(!copiedOptions.Init(aGlobal.Context(), jsOptions))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return nullptr;
   }
-
-  attr = new BerytusIdentityField(
+  Nullable<ValueUnion> value;
+  if (!aDesiredValue.WasPassed()) {
+    value.SetNull();
+  } else if (aDesiredValue.Value().IsString()) {
+    value.SetValue().SetAsString().Assign(aDesiredValue.Value().GetAsString());
+  } else {
+    MOZ_ASSERT(aDesiredValue.Value().IsBerytusEncryptedPacket());
+    value.SetValue().SetAsBerytusEncryptedPacket() =
+      // TODO(berytus): check if creating a pointer
+      // from a reference given by const NonNull<T> is a good idea.
+      OwningNonNull(aDesiredValue.Value().GetAsBerytusEncryptedPacket());
+  }
+  RefPtr<BerytusIdentityField> field = new BerytusIdentityField(
     global,
     aId,
-    options,
-    value
+    std::move(copiedOptions),
+    std::move(value)
   );
-  return attr.forget();
+  return field.forget();
 }
 
-bool BerytusIdentityField::HasValue() const {
-  return mAsEncrypted != nullptr || mAsString.Length() > 0;
-}
-
-void BerytusIdentityField::GetValue(JSContext* aCx,
-                                    Nullable<ValueType>& aRetVal,
-                                    ErrorResult& aRv) const {
-  ValueType val;
-  if (mAsEncrypted) {
-    val.SetAsBerytusEncryptedPacket() = mAsEncrypted;
-  } else if (mAsString.Length() > 0) {
-    val.SetAsString().Assign(mAsString);
-  } else {
-    aRetVal.SetNull();
-    return;
-  }
-  aRetVal.SetValue(std::move(val));
-}
-
-void BerytusIdentityField::AddValueToJSON(JSContext* aCx,
-                                  JS::Handle<JSObject*> aObj,
-                                  ErrorResult& aRv) {
-  JS::Rooted<JS::Value> value(aCx);
-  if (mAsEncrypted) {
-    BerytusEncryptedPacketJSON packetJson;
-    mAsEncrypted->ToJSON(packetJson, aRv);
-    if (NS_WARN_IF(aRv.Failed())) {
-      return;
-    }
-    packetJson.ToObjectInternal(aCx, &value);
-  } else if (mAsString.Length() > 0) {
-    JSString* str = JS_NewUCStringCopyN(aCx, mAsString.get(), mAsString.Length());
-    if (NS_WARN_IF(!str)) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return;
-    }
-    value.setString(str);
-  } else {
-    return;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, aObj, "value" ,value))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-  }
-}
-
-void BerytusIdentityField::SetValueImpl(JSContext* aCx,
-                                        const Nullable<ValueType>& aValue,
-                                        ErrorResult& aRv) {
-  if (aValue.IsNull()) {
-    mAsEncrypted = nullptr;
-    mAsString.Truncate();
-    return;
-  }
-  if (aValue.Value().IsString()) {
-    mAsString.Assign(aValue.Value().GetAsString());
-    return;
-  }
-  if (aValue.Value().IsBerytusEncryptedPacket()) {
-    mAsEncrypted = aValue.Value().GetAsBerytusEncryptedPacket();
-    return;
-  }
-  MOZ_ASSERT(false, "Invalid Value for BerytusIdentityField");
-  aRv.Throw(NS_ERROR_FAILURE);
-}
 
 } // namespace mozilla::dom

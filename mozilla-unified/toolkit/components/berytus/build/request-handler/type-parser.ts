@@ -52,7 +52,7 @@ export type ParsedType = {
     resolveType: ParsedType
 };
 
-interface ParseOptions {
+export interface ParseOptions {
     unionAliasGenerator?(options: ParsedType[]): string;
 }
 
@@ -157,7 +157,7 @@ export const parseType = (int: Type, opts: ParseOptions = {}): ParsedType => {
         const properties: Record<string, ParsedType> = {};
         int.getProperties().forEach(prop => {
             properties[prop.getName()] =
-                parseType(prop.getValueDeclarationOrThrow().getType(), opts);
+                parseType(prop.getValueDeclarationOrThrow().getType()!, opts);
         })
         return {
             type: 'object',
@@ -244,6 +244,7 @@ export const parseType = (int: Type, opts: ParseOptions = {}): ParsedType => {
             if (! opts.unionAliasGenerator) {
                 throw new Error(
                     'Missing alias for union! Ensure every union type is defined using an alias.'
+                    + 'Type:' + int.getText()
                 );
             }
             alias = opts.unionAliasGenerator(options);

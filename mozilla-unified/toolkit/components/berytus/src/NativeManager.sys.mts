@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { IUnderlyingRequestHandler, AbortChallengeArgs, AddFieldArgs, ApproveChallengeRequestArgs, ApproveOperationArgs, ELoginUserIntent, ApproveTransitionToAuthOpArgs, ChallengeMessageResponse, CloseChallengeArgs, CredentialsMetadata, EnableEndToEndEncryptionArgs, FieldValue, GenerateKeyExchangeParametersArgs, GetCredentialsMetadataArgs, GetSigningKeyArgs, PartialKeyExchangeParametersFromScm, PreliminaryRequestContext, RecordMetadata, RejectFieldValueArgs, RequestContext, RequestContextWithOperation, RequestHandler, RespondToChallengeMessageArgs, UpdateMetadataArgs, ResponseContext } from './types';
+import type { IUnderlyingRequestHandler, AbortChallengeArgs, AddFieldArgs, ApproveChallengeRequestArgs, ApproveOperationArgs, ELoginUserIntent, ApproveTransitionToAuthOpArgs, ChallengeMessageResponse, CloseChallengeArgs, CredentialsMetadata, EnableEndToEndEncryptionArgs, GenerateKeyExchangeParametersArgs, GetCredentialsMetadataArgs, GetSigningKeyArgs, PartialKeyExchangeParametersFromScm, PreliminaryRequestContext, RecordMetadata, RejectFieldValueArgs, RequestContext, RequestContextWithOperation, RequestHandler, RespondToChallengeMessageArgs, UpdateMetadataArgs, ResponseContext, UpdateUserAttributesArgs } from './types';
 
 type ManagerRequests = IUnderlyingRequestHandler['manager'];
 type LoginRequests = IUnderlyingRequestHandler['login'];
@@ -24,7 +24,11 @@ class ManagerRequestHandler implements ManagerRequests {
 
 class LoginRequestHandler implements LoginRequests {
     approveOperation(context: RequestContext & ResponseContext<'login', 'approveOperation'>, args: ApproveOperationArgs): void {
-        throw new Error('Method not implemented.');
+        if (args.operation.intent !== "PendingDeclaration") {
+            context.response.resolve("Register" as ELoginUserIntent);
+            return;
+        }
+        context.response.resolve(args.operation.intent);
     }
     closeOpeation(context: RequestContextWithOperation & ResponseContext<'login', 'closeOpeation'>): void {
         throw new Error('Method not implemented.');
@@ -54,13 +58,82 @@ class AccountCreationRequestHandler implements AccountCreationRequests {
         throw new Error('Method not implemented.');
     }
     getUserAttributes(context: RequestContextWithOperation & ResponseContext<'accountCreation', 'getUserAttributes'>): void {
-        throw new Error('Method not implemented.');
+        context.response.resolve([
+            { id: "name", value: "Ali", mimeType: "text/plain" },
+            { id: "familyName", value: "Cherry", mimeType: "text/plain" }
+        ]);
+    }
+    updateUserAttributes(context: RequestContextWithOperation & ResponseContext<'accountCreation', 'updateUserAttributes'>, args: UpdateUserAttributesArgs): void {
+        context.response.resolve();
     }
     addField(context: RequestContextWithOperation & ResponseContext<'accountCreation', 'addField'>, args: AddFieldArgs): void {
-        throw new Error('Method not implemented.');
+        switch (args.field.type) {
+            case "Identity":
+                context.response.resolve("testUsername");
+                break;
+            case "ForeignIdentity":
+                context.response.resolve("test@example.tld");
+                break;
+            case "Password":
+                context.response.resolve("password1234");
+                break;
+            case "SecurePassword":
+                context.response.resolve({
+                    salt: new Uint8Array([1,2,3]).buffer,
+                    verifier: new Uint8Array([4,5,6]).buffer
+                });
+                break;
+            case "Key":
+                context.response.resolve({
+                    publicKey: new Uint8Array([1,2,3]).buffer
+                });
+                break;
+            case "SharedKey":
+                context.response.resolve({
+                    privateKey: new Uint8Array([1,2,3]).buffer
+                });
+                break;
+            default:
+                throw new Error("Unrecognised field type");
+        }
     }
     rejectFieldValue(context: RequestContextWithOperation & ResponseContext<'accountCreation', 'rejectFieldValue'>, args: RejectFieldValueArgs): void {
-        throw new Error('Method not implemented.');
+        const fieldType = "Identity"; // TODO(berytus): provide fields in op metadata
+        switch (fieldType as any) {
+            case "Identity":
+                context.response.resolve(
+                    "revisedTestUsername"
+                );
+                break;
+            case "ForeignIdentity":
+                context.response.resolve(
+                    "revised.test@example.tld"
+                );
+                break;
+            case "Password":
+                context.response.resolve(
+                    "revisedPassword1234"
+                );
+                break;
+            case "SecurePassword":
+                context.response.resolve({
+                    salt: new Uint8Array([10,20,30]).buffer,
+                    verifier: new Uint8Array([40,50,60]).buffer
+                });
+                break;
+            case "Key":
+                context.response.resolve({
+                    publicKey: new Uint8Array([10,20,30]).buffer
+                });
+                break;
+            case "SharedKey":
+                context.response.resolve({
+                    privateKey: new Uint8Array([10,20,30]).buffer
+                });
+                break;
+            default:
+                throw new Error("Unrecognised field type");
+        }
     }
 }
 

@@ -10,6 +10,8 @@
 #include "js/TypeDecls.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/berytus/AgentProxy.h"
+#include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
@@ -24,33 +26,18 @@ class BerytusKeyFieldValue final : public BerytusFieldValueDictionary
 {
 public:
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(BerytusKeyFieldValue, BerytusFieldValueDictionary)
+  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(BerytusKeyFieldValue, BerytusFieldValueDictionary)
 
   BerytusKeyFieldValue(
     nsIGlobalObject* aGlobal,
-    const RefPtr<BerytusEncryptedPacket>& aAsEncrypted
-  );
-  BerytusKeyFieldValue(
-    nsIGlobalObject* aGlobal,
-    const ArrayBuffer& aAsArrayBuffer
+    const RefPtr<BerytusBuffer>& aBuffer
   );
 protected:
   ~BerytusKeyFieldValue();
 
-  RefPtr<BerytusEncryptedPacket> mAsEncrypted;
-  JS::Heap<JSObject*> mAsArrayBuffer;
+  RefPtr<BerytusBuffer> mBuffer;
 
 public:
-  static already_AddRefed<BerytusKeyFieldValue> Create(
-    nsIGlobalObject* aGlobal,
-    const RefPtr<BerytusEncryptedPacket>& aPublicKeyAsEncryptedPacket,
-    nsresult* aOutRes
-  );
-  static already_AddRefed<BerytusKeyFieldValue> Create(
-    nsIGlobalObject* aGlobal,
-    const ArrayBuffer& aPublicKeyAsArrayBuffer,
-    nsresult* aOutRes
-  );
   BerytusFieldType Type() override;
 
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
@@ -63,7 +50,7 @@ public:
 
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JS::Value> aRetVal,
-              ErrorResult& aRv);
+              ErrorResult& aRv) override;
 };
 
 } // namespace mozilla::dom

@@ -491,6 +491,49 @@ export class IsolatedRequestHandler {
                     return;
                 }
             },
+            async updateUserAttributes(context, args) {
+                try {
+                    await self.preCall("accountCreation", "updateUserAttributes", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
+                const wrappedResponseCtx = {
+                    response: {
+                        async resolve(val) {
+                            try {
+                                await self.preResolve("accountCreation", "updateUserAttributes", { context, args }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw new Error(e.reason || "ResolutionFailure");
+                            }
+                            context.response.resolve(val);
+                        },
+                        async reject(val) {
+                            try {
+                                await self.preReject("accountCreation", "updateUserAttributes", { context, args }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
+                            context.response.reject(val);
+                        }
+                    }
+                };
+                try {
+                    await self.#impl.accountCreation.updateUserAttributes({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("accountCreation", "updateUserAttributes", context.response, e);
+                    return;
+                }
+            },
             async addField(context, args) {
                 try {
                     await self.preCall("accountCreation", "addField", { context, args });
@@ -771,6 +814,9 @@ const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
     Schemas: "resource://gre/modules/Schemas.sys.mjs"
 });
+const requestIs = (requestType, d) => {
+    return d.context.request.type === requestType;
+};
 /**
  * Implementation copied from Schemas.sys.mjs's Context
  */
@@ -859,7 +905,7 @@ class ValidationContext {
 class ResolutionError extends Error {
     reason;
     constructor(msg, reason) {
-        super(msg);
+        super(msg + " Reason: " + reason);
         this.reason = reason;
     }
     get name() {
@@ -886,27 +932,24 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
                 + 'contain parameters for ${group}:${method}.`);
         }
         const message = `Malformed input passed to the request handler's `
-            + `${group}:${method} method. Reason:`;
+            + `${group}:${method} method.`;
         this.#validateValue(parameters[0].type, input.context, message);
         if (parameters[1]) {
             this.#validateValue(parameters[1].type, input.args, message);
         }
         await super.preCall(group, method, input);
     }
-    async preResolve(group, method, input, value) {
+    async preResolve(group, method, input, output) {
         const resultType = await this.#getMethodResultTypeEntry(group, method);
         const errorPrefix = `Malformed output passed from the request handler's `
-            + `${group}:${method} method. Reason:`;
-        this.#validateValue(resultType, value, errorPrefix);
-        // Additional validation for accountCreation.addField
-        // TODO(berytus): Test this.
-        if ("$ref" in resultType &&
-            resultType.$ref === "BerytusFieldUnion" &&
-            // @ts-ignore: TODO(berytus) change to any perhaps, and rename value to output.
-            value.value === null) {
-            throw new ResolutionError(errorPrefix, "property \"value\" must not be null");
+            + `${group}:${method} method.`;
+        this.#validateValue(resultType, output, errorPrefix);
+        const data = { ...input, output };
+        if (requestIs("AccountCreation_AddField", data)) {
+            const fieldTypeEntry = await this.#getFieldTypeEntry(data.args.field.type);
+            this.#validateValue(fieldTypeEntry.properties.value.type, output, errorPrefix);
         }
-        await super.preResolve(group, method, input, value);
+        await super.preResolve(group, method, input, output);
     }
     async preReject(group, method, input, value) {
         // TODO(berytus): validate error value
@@ -943,6 +986,15 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         }
         const methodType = groupHandlerType.properties[method].type;
         return methodType;
+    }
+    async #getFieldTypeEntry(fieldType) {
+        const schema = await this.#getSchema();
+        const id = `Berytus${fieldType}Field`;
+        const fieldTypeEntry = schema.get(id);
+        if (!fieldTypeEntry) {
+            throw new Error(`Berytus Schema did not contain a "${id}" type.`);
+        }
+        return fieldTypeEntry;
     }
     async #getSchema() {
         if (this.#schema) {
@@ -1282,6 +1334,31 @@ export class PublicRequestHandler {
                         ...responseCtx,
                         ...requestCtx
                     });
+                });
+            },
+            updateUserAttributes(context, args) {
+                return new Promise((_resolve, _reject) => {
+                    const responseCtx = {
+                        response: {
+                            resolve(val) {
+                                _resolve(val);
+                            },
+                            reject(val) {
+                                _reject(val);
+                            }
+                        }
+                    };
+                    const requestCtx = {
+                        request: {
+                            id: uuid(),
+                            type: "AccountCreation_UpdateUserAttributes"
+                        }
+                    };
+                    self.#impl.accountCreation.updateUserAttributes({
+                        ...context,
+                        ...responseCtx,
+                        ...requestCtx
+                    }, args);
                 });
             },
             addField(context, args) {

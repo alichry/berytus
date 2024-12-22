@@ -4,18 +4,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "BerytusEncryptedPacket.h"
 #include "ErrorList.h"
-#include "mozilla/Base64.h"
-#include "mozilla/dom/BerytusEncryptedPacket.h"
-#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
+#include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/dom/BerytusSharedKeyFieldBinding.h"
 #include "mozilla/dom/BerytusSharedKeyFieldValue.h"
 
 namespace mozilla::dom {
 
-// Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(BerytusSharedKeyFieldValue, BerytusFieldValueDictionary, (mAsEncrypted), (mCachedBuffer))
+NS_IMPL_CYCLE_COLLECTION_INHERITED(BerytusSharedKeyFieldValue, BerytusFieldValueDictionary, mBuffer)
 NS_IMPL_ADDREF_INHERITED(BerytusSharedKeyFieldValue, BerytusFieldValueDictionary)
 NS_IMPL_RELEASE_INHERITED(BerytusSharedKeyFieldValue, BerytusFieldValueDictionary)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusSharedKeyFieldValue)
@@ -23,21 +19,9 @@ NS_INTERFACE_MAP_END_INHERITING(BerytusFieldValueDictionary)
 
 BerytusSharedKeyFieldValue::BerytusSharedKeyFieldValue(
   nsIGlobalObject* aGlobal,
-  const RefPtr<BerytusEncryptedPacket>& aAsEncrypted
+  RefPtr<BerytusBuffer>& aBuffer
 ) : BerytusFieldValueDictionary(aGlobal),
-    mAsEncrypted(aAsEncrypted),
-    mAsBuffer(CryptoBuffer()) {
-  MOZ_ASSERT(mAsEncrypted);
-  mozilla::HoldJSObjects(this);
-}
-
-BerytusSharedKeyFieldValue::BerytusSharedKeyFieldValue(
-  nsIGlobalObject* aGlobal,
-  CryptoBuffer&& aAsBuffer
-) : BerytusFieldValueDictionary(aGlobal),
-    mAsEncrypted(nullptr),
-    mAsBuffer(std::move(aAsBuffer)) {
-  mozilla::HoldJSObjects(this);
+    mBuffer(aBuffer) {
 }
 
 
@@ -63,47 +47,11 @@ void BerytusSharedKeyFieldValue::GetPrivateKey(
   OwningArrayBufferOrBerytusEncryptedPacket& aRetVal,
   ErrorResult& aRv
 ) {
-  if (mAsEncrypted) {
-    aRetVal.SetAsBerytusEncryptedPacket() = mAsEncrypted;
-    return;
-  }
-  if (!mCachedBuffer) {
-    mCachedBuffer = mAsBuffer.ToArrayBuffer(aCx, aRv);
-    if (aRv.Failed()) {
-      return;
-    }
-  }
-  if (NS_WARN_IF(!aRetVal.SetAsArrayBuffer().Init(mCachedBuffer))) {
-    aRv.ThrowInvalidStateError("Unable to init ArrayBuffer");
-    return;
-  }
+  mBuffer->Get(aCx,aRetVal, aRv);
 }
 
 void BerytusSharedKeyFieldValue::ToJSON(JSContext* aCx, JS::MutableHandle<JS::Value> aRetVal, ErrorResult& aRv) {
-  if (mAsEncrypted) {
-    BerytusEncryptedPacketJSON packetJson;
-    mAsEncrypted->ToJSON(packetJson, aRv);
-    if (NS_WARN_IF(aRv.Failed())) {
-      return;
-    }
-    packetJson.ToObjectInternal(aCx, aRetVal);
-    return;
-  }
-  nsAutoCString publicKeyBase64Url;
-  nsresult res;
-  res = Base64URLEncode(
-      mAsBuffer.Length(), mAsBuffer.Elements(),
-      Base64URLEncodePaddingPolicy::Omit, publicKeyBase64Url);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    aRv.Throw(res);
-    return;
-  }
-  JSString* str = JS_NewStringCopyN(aCx, publicKeyBase64Url.Data(), publicKeyBase64Url.Length());
-  if (NS_WARN_IF(!str)) {
-    aRv.Throw(nsresult::NS_ERROR_OUT_OF_MEMORY);
-    return;
-  }
-  aRetVal.setString(str);
+  mBuffer->ToJSON(aCx, aRetVal, aRv);
 }
 
 already_AddRefed<BerytusSharedKeyFieldValue> BerytusSharedKeyFieldValue::Constructor(
@@ -111,62 +59,49 @@ already_AddRefed<BerytusSharedKeyFieldValue> BerytusSharedKeyFieldValue::Constru
   const mozilla::dom::ArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket& aPrivateKeyValue,
   ErrorResult& aRv
 ) {
+  nsresult res;
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
   if (!global) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
+  RefPtr<BerytusBuffer> buffer;
   if (aPrivateKeyValue.IsBerytusEncryptedPacket()) {
-    // nsresult rv;
-    // RefPtr<BerytusEncryptedPacket> copiedPacket = aPrivateKeyValue.GetAsBerytusEncryptedPacket().Clone(&rv);
-    RefPtr<BerytusSharedKeyFieldValue> value = new BerytusSharedKeyFieldValue(
-      global,
-      //copiedPacket
+    buffer = new BerytusBuffer(
       // TODO(berytus): check if creating a pointer
       // from a reference given by NonNull<T> is a good idea.
       OwningNonNull(aPrivateKeyValue.GetAsBerytusEncryptedPacket())
     );
-    return value.forget();
-  }
-  CryptoBuffer buffer;
-  bool assigned;
-  if (aPrivateKeyValue.IsArrayBuffer()) {
-    assigned = buffer.Assign(aPrivateKeyValue.GetAsArrayBuffer());
+  } else if (aPrivateKeyValue.IsArrayBuffer()) {
+    buffer = BerytusBuffer::FromArrayBuffer(aPrivateKeyValue.GetAsArrayBuffer(), res);
+    if (NS_WARN_IF(NS_FAILED(res))) {
+      aRv.Throw(res);
+      return nullptr;
+    }
   } else {
-    assigned = buffer.Assign(aPrivateKeyValue.GetAsArrayBufferView());
+    buffer = BerytusBuffer::FromArrayBufferView(aPrivateKeyValue.GetAsArrayBufferView(), res);
+    if (NS_WARN_IF(NS_FAILED(res))) {
+      aRv.Throw(res);
+      return nullptr;
+    }
   }
-  if (NS_WARN_IF(!assigned)) {
-    aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
   RefPtr<BerytusSharedKeyFieldValue> value = new BerytusSharedKeyFieldValue(
     global,
-    std::move(buffer)
+    buffer
   );
   return value.forget();
 }
 
 already_AddRefed<BerytusSharedKeyFieldValue> BerytusSharedKeyFieldValue::Clone(nsresult* aRv) {
-  if (mAsEncrypted) {
-    RefPtr<BerytusSharedKeyFieldValue> v = new BerytusSharedKeyFieldValue(
-      mGlobal,
-      mAsEncrypted
-    );
-    return v.forget();
-  }
-  CryptoBuffer buffer;
-  if (NS_WARN_IF(!buffer.Assign(mAsBuffer))) {
-    *aRv = NS_ERROR_OUT_OF_MEMORY;
+  RefPtr<BerytusBuffer> newBuffer = mBuffer->Clone(aRv);
+  if (NS_WARN_IF(NS_FAILED(*aRv))) {
     return nullptr;
   }
-  RefPtr<BerytusSharedKeyFieldValue> v = new BerytusSharedKeyFieldValue(
+  RefPtr<BerytusSharedKeyFieldValue> newFieldValue = new BerytusSharedKeyFieldValue(
     mGlobal,
-    std::move(buffer)
+    newBuffer
   );
-  *aRv = NS_OK;
-  return v.forget();
+  return newFieldValue.forget();
 }
-
 
 } // namespace mozilla::dom

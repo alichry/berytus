@@ -5,17 +5,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "BerytusFieldValueDictionary.h"
+#include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/dom/BerytusSecurePasswordFieldBinding.h"
 #include "mozilla/dom/BerytusSecurePasswordFieldValue.h"
 
 namespace mozilla::dom {
 
-// Only needed for refcounted objects.
-// # error "If you don't have members that need cycle collection,
-// # then remove all the cycle collection bits from this
-// # implementation and the corresponding header.  If you do, you
-// # want NS_IMPL_CYCLE_COLLECTION_INHERITED(BerytusSecurePasswordFieldValue,
-// # BerytusFieldValueDictionary, your, members, here)"
 NS_IMPL_CYCLE_COLLECTION_INHERITED(BerytusSecurePasswordFieldValue, BerytusFieldValueDictionary, mSalt, mVerifier)
 NS_IMPL_ADDREF_INHERITED(BerytusSecurePasswordFieldValue, BerytusFieldValueDictionary)
 NS_IMPL_RELEASE_INHERITED(BerytusSecurePasswordFieldValue, BerytusFieldValueDictionary)
@@ -46,8 +41,6 @@ nsIGlobalObject* BerytusSecurePasswordFieldValue::GetParentObject() const { retu
 BerytusFieldType BerytusSecurePasswordFieldValue::Type() {
   return BerytusFieldType::SecurePassword;
 }
-
-
 
 void BerytusSecurePasswordFieldValue::GetSalt(
   JSContext* aCx,
@@ -88,4 +81,5 @@ void BerytusSecurePasswordFieldValue::ToJSON(
     return;
   }
 }
+
 } // namespace mozilla::dom

@@ -8,7 +8,6 @@
 #define DOM_BERYTUSUSERATTRIBUTEMAP_H_
 
 #include "js/TypeDecls.h"
-#include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BerytusUserAttribute.h"
 #include "mozilla/dom/BindingDeclarations.h"
@@ -34,9 +33,10 @@ protected:
   nsTArray<RefPtr<BerytusUserAttribute>> mAttributes; // keep track of the attributes in an array as well. I am doing this to ensure the attribute is still referenced...
 
 public:
-  // TODO(berytus): Perhaps add a `FromUserAttributesJS` method?
-  
   void AddAttribute(BerytusUserAttribute* aAttribute, ErrorResult& aRv);
+  void RemoveAttribute(const nsString& aId, ErrorResult& aRv);
+  bool HasAttribute(const nsString& aId);
+  RefPtr<BerytusUserAttribute> GetAttribute(const nsString& aId);
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,
   // returning an actual global works.
