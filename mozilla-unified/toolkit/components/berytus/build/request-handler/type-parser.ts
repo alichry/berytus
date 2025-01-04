@@ -36,7 +36,8 @@ export type ParsedType = {
     type: "record";
     optional?: true;
     keyType: "string" | "number";
-    keyChoices?: string[] | number[]
+    valueType: ParsedType;
+    //keyChoices?: string[] | number[]
 } | {
     type: "literal";
     // TODO(beytus): I don't think optional is appropriate here.
@@ -143,11 +144,47 @@ export const parseType = (int: Type, opts: ParseOptions = {}): ParsedType => {
             regexp: /^custom:[-_a-zA-Z0-9]+$/
         }
     }
+
     if (int.isObject() || int.isInterface()) {
+        // Record<K, V> are supported. Interfaces with
+        // an index are not supported as they may contain,
+        // in addition to the index, literal properties.
+        if (int.getAliasSymbol()?.getName() === 'Record') {
+            const idtl = typeChecker.compilerObject.getIndexInfosOfType(
+                int.compilerType
+            );
+            if (idtl.length > 1) {
+                throw new Error("Expecting Record types to contain one index definition, got " + idtl.length);
+            }
+            const idt = idtl[0];
+            const parsedKT = parseType(
+                // @ts-ignore Type constructor:
+                // https://github.com/dsherret/ts-morph/blob/5e208c51877b14aa05bea3ae04a4b283cf0ace60/packages/ts-morph/src/compiler/types/Type.ts#L27
+                // TODO(berytus): find a better way of wrapping the native type
+                new Type(project._context, idt.keyType),
+                opts
+            );
+            if (parsedKT.type !== "string" && parsedKT.type !== "number") {
+                throw new Error('Unsupported Record key type: ' + parsedKT.type);
+            }
+            return {
+                type: "record",
+                keyType: parsedKT.type,
+                valueType: parseType(
+                    // @ts-ignore Type constructor:
+                    // https://github.com/dsherret/ts-morph/blob/5e208c51877b14aa05bea3ae04a4b283cf0ace60/packages/ts-morph/src/compiler/types/Type.ts#L27
+                    // TODO(berytus): find a better way of wrapping the native type
+                    // Note: int.getTypeArguments() returned an empty array.
+                    // int.compilerType.aliasTypeArguments is a workaround.
+                    new Type(project._context, int.compilerType.aliasTypeArguments![1]),
+                    opts
+                )
+            }
+        }
         if (typeChecker.compilerObject.getIndexInfosOfType(int.compilerType).length > 0) {
             throw new Error(
                 'Object types with an index are not supporetd. '
-                + `Caught in "${int.getAliasSymbol()?.getName() || int.getText()}"`
+                + `Caught in "${int.getText()}"`
             );
         }
         const alias = int.getAliasSymbol()?.getName() || int.getSymbol()?.getName()

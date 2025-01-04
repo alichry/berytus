@@ -1261,46 +1261,463 @@
         "type": "any"
       },
       {
-        "id": "ChallengePayload",
-        "type": "object",
-        "properties": {}
-      },
-      {
-        "id": "ChallengeMessage",
+        "id": "BerytusIdentificationChallengeInfo",
         "type": "object",
         "properties": {
-          "name": {
+          "id": {
             "type": "string"
           },
-          "payload": {
-            "$ref": "ChallengePayload"
+          "type": {
+            "type": "string",
+            "enum": [
+              "Identification"
+            ]
+          },
+          "parameters": {
+            "type": "null"
           }
         }
       },
       {
-        "id": "RespondToChallengeMessageArgs",
+        "id": "BerytusSendGetIdentityFieldsMessage",
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "ChallengeMetadata"
+            "$ref": "BerytusIdentificationChallengeInfo"
           },
-          "challengeMessage": {
-            "$ref": "ChallengeMessage"
+          "name": {
+            "type": "string",
+            "enum": [
+              "GetIdentityFields"
+            ]
+          },
+          "payload": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
       {
-        "id": "ChallengeMessageResponse",
+        "id": "BerytusPasswordChallengeInfo",
         "type": "object",
         "properties": {
-          "payload": {
-            "$ref": "ChallengePayload"
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Password"
+            ]
+          },
+          "parameters": {
+            "type": "null"
           }
         }
+      },
+      {
+        "id": "BerytusSendGetPasswordFieldsMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusPasswordChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "GetPasswordFields"
+            ]
+          },
+          "payload": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "id": "BerytusDigitalSignatureChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "DigitalSignature"
+            ]
+          },
+          "parameters": {
+            "type": "null"
+          }
+        }
+      },
+      {
+        "id": "BerytusSendSelectKeyMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusDigitalSignatureChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "SelectKey"
+            ]
+          },
+          "payload": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "ArrayBufferOrArrayBufferView",
+        "choices": [
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBufferView"
+          }
+        ]
+      },
+      {
+        "id": "BerytusSendSignNonceMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusDigitalSignatureChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "SignNonce"
+            ]
+          },
+          "payload": {
+            "$ref": "ArrayBufferOrArrayBufferView"
+          }
+        }
+      },
+      {
+        "id": "BerytusSecureRemotePasswordChallengeEncodingType",
+        "choices": [
+          {
+            "type": "string",
+            "enum": [
+              "None"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "Hex"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "BerytusSecureRemotePasswordChallengeParameters",
+        "type": "object",
+        "properties": {
+          "encoding": {
+            "$ref": "BerytusSecureRemotePasswordChallengeEncodingType",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusSecureRemotePasswordChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SecureRemotePassword"
+            ]
+          },
+          "parameters": {
+            "$ref": "BerytusSecureRemotePasswordChallengeParameters"
+          }
+        }
+      },
+      {
+        "id": "BerytusSendSelectSecurePasswordMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusSecureRemotePasswordChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "SelectSecurePassword"
+            ]
+          },
+          "payload": {
+            "type": "string"
+          }
+        }
+      },
+      {
+        "id": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBufferView"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
+        "id": "BerytusSendExchangePublicKeysMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusSecureRemotePasswordChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "ExchangePublicKeys"
+            ]
+          },
+          "payload": {
+            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusSendComputeClientProofMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusSecureRemotePasswordChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "ComputeClientProof"
+            ]
+          },
+          "payload": {
+            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusSendVerifyServerProofMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusSecureRemotePasswordChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "VerifyServerProof"
+            ]
+          },
+          "payload": {
+            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusSendMessageUnion",
+        "choices": [
+          {
+            "$ref": "BerytusSendGetIdentityFieldsMessage"
+          },
+          {
+            "$ref": "BerytusSendGetPasswordFieldsMessage"
+          },
+          {
+            "$ref": "BerytusSendSelectKeyMessage"
+          },
+          {
+            "$ref": "BerytusSendSignNonceMessage"
+          },
+          {
+            "$ref": "BerytusSendSelectSecurePasswordMessage"
+          },
+          {
+            "$ref": "BerytusSendExchangePublicKeysMessage"
+          },
+          {
+            "$ref": "BerytusSendComputeClientProofMessage"
+          },
+          {
+            "$ref": "BerytusSendVerifyServerProofMessage"
+          }
+        ]
+      },
+      {
+        "id": "Record_string_stringOrRecord_string_BerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "BerytusEncryptedPacket"
+            }
+          }
+        ]
+      },
+      {
+        "id": "BerytusChallengeGetIdentityFieldsMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "Record_string_stringOrRecord_string_BerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusChallengeGetPasswordFieldsMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "Record_string_stringOrRecord_string_BerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusChallengeSelectKeyMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "BerytusKeyFieldValue"
+          }
+        }
+      },
+      {
+        "id": "BerytusChallengeSignNonceMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          }
+        }
+      },
+      {
+        "id": "stringOrBerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
+        "id": "BerytusChallengeSelectSecurePasswordMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "stringOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "stringOrArrayBufferOrBerytusEncryptedPacket",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
+        "id": "BerytusChallengeExchangePublicKeysMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "stringOrArrayBufferOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusChallengeComputeClientProofMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "stringOrArrayBufferOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
+        "id": "BerytusChallengeVerifyServerProofMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "any"
+          }
+        }
+      },
+      {
+        "id": "BerytusReceiveMessageUnion",
+        "choices": [
+          {
+            "$ref": "BerytusChallengeGetIdentityFieldsMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeGetPasswordFieldsMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeSelectKeyMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeSignNonceMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeSelectSecurePasswordMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeExchangePublicKeysMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeComputeClientProofMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeVerifyServerProofMessageResponse"
+          }
+        ]
       },
       {
         "id": "AccountAuthenticationRespondToChallengeMessageResult",
-        "$ref": "ChallengeMessageResponse"
+        "$ref": "BerytusReceiveMessageUnion"
       },
       {
         "id": "Response",
@@ -1591,7 +2008,7 @@
               },
               {
                 "name": "args",
-                "$ref": "RespondToChallengeMessageArgs"
+                "$ref": "BerytusSendMessageUnion"
               }
             ]
           }

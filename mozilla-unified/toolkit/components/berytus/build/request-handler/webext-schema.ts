@@ -229,6 +229,7 @@ export interface ObjectSchemaEntry {
     properties?: Record<string, SchemaDef>;
     isInstanceOf?: string;
     description?: string;
+    additionalProperties?: SchemaDef;
 }
 
 export interface EnumSchemaEntry extends TypeSchemaEntry {
@@ -510,6 +511,9 @@ class WebExtsApiSchemaGenerator {
         ) {
             return this.getPrimitiveEntry(parsedType);
         }
+        if (parsedType.type === "record") {
+            return this.getRecordEntry(parsedType);
+        }
         throw new Error('Unsupported type ' + parsedType.type);
     }
 
@@ -686,6 +690,18 @@ class WebExtsApiSchemaGenerator {
             default:
                 throw new Error("Wrong type passed to getPrimitiveEntry");
         }
+    }
+
+    getRecordEntry(parsedType: ParsedType): ObjectSchemaEntry {
+        if (parsedType.type !== "record") {
+            throw new Error(
+                "Wrong type passed to getRecordEntry"
+            );
+        }
+        return WebExtsApiSchemaGenerator.#maybeIncludeOptional<ObjectSchemaEntry>({
+            type: "object",
+            additionalProperties: this.defineType(parsedType.valueType),
+        }, parsedType.optional);
     }
 
     getNullEntry(parsedType: ParsedType): TypeSchemaEntry {

@@ -23,6 +23,8 @@ cat ../../../dom/webidl/SubtleCrypto.webidl \
     ../../../dom/webidl/BerytusSecurePasswordField.webidl \
     ../../../dom/webidl/BerytusSharedKeyField.webidl \
     ../../../dom/webidl/BerytusUserAttribute.webidl \
+    ../../../dom/webidl/BerytusChallengeMessage.webidl \
+    ../../../dom/webidl/BerytusChallenge.webidl \
     > "$file"
 
 ### TODO(berytus): open an issue in webidl-dts-gen to report

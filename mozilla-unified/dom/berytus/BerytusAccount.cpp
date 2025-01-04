@@ -408,8 +408,8 @@ RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccount::PopulateUserAt
   return res->Then(
     GetCurrentSerialEventTarget(), __func__,
     [this, aCx](const nsTArray<mozilla::berytus::UserAttribute>& attrs) -> RefPtr<MozPromise<void*, berytus::Failure, true>> {
-      // populate user attributes.
       auto *map = UserAttributeMap();
+      JSAutoRealm ar(aCx, GetParentObject()->GetGlobalJSObject());
       for (const auto& attr: attrs) {
         nsresult res;
         BerytusUserAttribute::SourceValueType value;

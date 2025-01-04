@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { BerytusFieldUnion, BerytusFieldValueUnion, BerytusUserAttributeDefinition, EBerytusFieldType } from "./generated/berytus.web";
+import { BerytusFieldUnion, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusFieldType } from "./generated/berytus.web";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -303,10 +303,14 @@ export type AbortChallengeArgs = {
 export type CloseChallengeArgs = {
     challenge: ChallengeMetadata,
 }
-export type RespondToChallengeMessageArgs = {
-    challenge: ChallengeMetadata,
-    challengeMessage: ChallengeMessage
-}
+// export type RespondToChallengeMessageArgs = {
+//     challenge: ChallengeMetadata,
+//     challengeMessage: ChallengeMessage
+// }
+export type RespondToChallengeMessageArgs = BerytusSendMessageUnion;
+export type { BerytusSendMessageUnion };
+export type RespondToChallengeMessageResult = BerytusReceiveMessageUnion;
+export type { BerytusReceiveMessageUnion };
 /* Request Arguments */
 
 export interface RequestHandler {
@@ -389,7 +393,7 @@ export interface RequestHandler {
         respondToChallengeMessage(
             context: RequestContextWithOperation,
             args: RespondToChallengeMessageArgs
-        ): ChallengeMessageResponse;
+        ): RespondToChallengeMessageResult;
     }
 }
 

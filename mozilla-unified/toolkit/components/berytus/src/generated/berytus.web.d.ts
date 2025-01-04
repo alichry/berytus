@@ -254,6 +254,63 @@ interface BerytusUserAttribute {
     readonly info: string | null;
     readonly value: string | ArrayBuffer | BerytusEncryptedPacket;
 }
+interface BerytusChallengeMessageRequestDefinition {
+    name: string;
+    request: any;
+}
+interface BerytusChallengeMessageResponseDefinition {
+    response: any;
+}
+interface BerytusChallengeMessage {
+    readonly name: string;
+    readonly request: any;
+    readonly response: any;
+}
+type BerytusChallengeType = "Identification" | "DigitalSignature" | "Password" | "SecureRemotePassword" | "ForeignIdentityOtp";
+type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "InvalidSignature";
+type BerytusChallengeId = string;
+interface BerytusChallenge {
+    readonly id: BerytusChallengeId;
+    readonly type: BerytusChallengeType;
+    readonly parameters: any | null;
+    readonly active: boolean;
+}
+interface BerytusChallengeGetIdentityFieldsMessageResponse {
+    response: Record_string_stringOrRecord_string_BerytusEncryptedPacket;
+}
+interface BerytusIdentificationChallenge extends BerytusChallenge {
+}
+interface BerytusChallengeGetPasswordFieldsMessageResponse {
+    response: Record_string_stringOrRecord_string_BerytusEncryptedPacket;
+}
+interface BerytusPasswordChallenge extends BerytusChallenge {
+}
+interface BerytusChallengeSelectKeyMessageResponse {
+    response: BerytusKeyFieldValue;
+}
+interface BerytusChallengeSignNonceMessageResponse {
+    response: ArrayBuffer;
+}
+interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
+}
+interface BerytusChallengeSelectSecurePasswordMessageResponse {
+    response: stringOrBerytusEncryptedPacket;
+}
+interface BerytusChallengeExchangePublicKeysMessageResponse {
+    response: stringOrArrayBufferOrBerytusEncryptedPacket;
+}
+type BerytusSecureRemotePasswordChallengeEncodingType = "None" | "Hex";
+interface BerytusSecureRemotePasswordChallengeParameters {
+    encoding?: BerytusSecureRemotePasswordChallengeEncodingType;
+}
+interface BerytusChallengeComputeClientProofMessageResponse {
+    response: stringOrArrayBufferOrBerytusEncryptedPacket;
+}
+interface BerytusChallengeVerifyServerProofMessageResponse {
+    response?: undefined;
+}
+interface BerytusSecureRemotePasswordChallenge extends BerytusChallenge {
+}
 export enum EBerytusFieldType {
 	Identity = "Identity",
 	ForeignIdentity = "ForeignIdentity",
@@ -279,10 +336,117 @@ export type nullOrBerytusSecurePasswordFieldValue = null |
 
 export type nullOrBerytusSharedKeyFieldValue = null |
 	BerytusSharedKeyFieldValue;
-
 export type stringOrBufferSourceOrBerytusEncryptedPacket = string |
 	BufferSource |
 	BerytusEncryptedPacket;
+export enum EBerytusChallengeType {
+	Identification = "Identification",
+	DigitalSignature = "DigitalSignature",
+	Password = "Password",
+	SecureRemotePassword = "SecureRemotePassword",
+	ForeignIdentityOtp = "ForeignIdentityOtp"
+}
+
+interface BerytusIdentificationChallengeInfo {
+    id: string;
+    type: EBerytusChallengeType.Identification;
+    parameters: null;
+}
+interface BerytusChallengeGetIdentityFieldsMessageRequest {
+    payload: string[]
+}
+interface BerytusSendGetIdentityFieldsMessage extends BerytusChallengeGetIdentityFieldsMessageRequest {
+    challenge: BerytusIdentificationChallengeInfo;
+    name: "GetIdentityFields";
+}
+
+interface BerytusPasswordChallengeInfo {
+    id: string;
+    type: EBerytusChallengeType.Password;
+    parameters: null;
+}
+interface BerytusChallengeGetPasswordFieldsMessageRequest {
+    payload: string[]
+}
+interface BerytusSendGetPasswordFieldsMessage extends BerytusChallengeGetPasswordFieldsMessageRequest {
+    challenge: BerytusPasswordChallengeInfo;
+    name: "GetPasswordFields";
+}
+
+interface BerytusDigitalSignatureChallengeInfo {
+    id: string;
+    type: EBerytusChallengeType.DigitalSignature;
+    parameters: null;
+}
+interface BerytusChallengeSelectKeyMessageRequest {
+    payload: string
+}
+interface BerytusSendSelectKeyMessage extends BerytusChallengeSelectKeyMessageRequest {
+    challenge: BerytusDigitalSignatureChallengeInfo;
+    name: "SelectKey";
+}
+
+interface BerytusChallengeSignNonceMessageRequest {
+    payload: ArrayBufferOrArrayBufferView
+}
+interface BerytusSendSignNonceMessage extends BerytusChallengeSignNonceMessageRequest {
+    challenge: BerytusDigitalSignatureChallengeInfo;
+    name: "SignNonce";
+}
+
+interface BerytusSecureRemotePasswordChallengeInfo {
+    id: string;
+    type: EBerytusChallengeType.SecureRemotePassword;
+    parameters: BerytusSecureRemotePasswordChallengeParameters;
+}
+interface BerytusChallengeSelectSecurePasswordMessageRequest {
+    payload: string
+}
+interface BerytusSendSelectSecurePasswordMessage extends BerytusChallengeSelectSecurePasswordMessageRequest {
+    challenge: BerytusSecureRemotePasswordChallengeInfo;
+    name: "SelectSecurePassword";
+}
+
+interface BerytusChallengeExchangePublicKeysMessageRequest {
+    payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
+}
+interface BerytusSendExchangePublicKeysMessage extends BerytusChallengeExchangePublicKeysMessageRequest {
+    challenge: BerytusSecureRemotePasswordChallengeInfo;
+    name: "ExchangePublicKeys";
+}
+
+interface BerytusChallengeComputeClientProofMessageRequest {
+    payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
+}
+interface BerytusSendComputeClientProofMessage extends BerytusChallengeComputeClientProofMessageRequest {
+    challenge: BerytusSecureRemotePasswordChallengeInfo;
+    name: "ComputeClientProof";
+}
+
+interface BerytusChallengeVerifyServerProofMessageRequest {
+    payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
+}
+interface BerytusSendVerifyServerProofMessage extends BerytusChallengeVerifyServerProofMessageRequest {
+    challenge: BerytusSecureRemotePasswordChallengeInfo;
+    name: "VerifyServerProof";
+}
+
+export type BerytusSendMessageUnion = BerytusSendGetIdentityFieldsMessage
+	| BerytusSendGetPasswordFieldsMessage
+	| BerytusSendSelectKeyMessage
+	| BerytusSendSignNonceMessage
+	| BerytusSendSelectSecurePasswordMessage
+	| BerytusSendExchangePublicKeysMessage
+	| BerytusSendComputeClientProofMessage
+	| BerytusSendVerifyServerProofMessage;
+export type BerytusReceiveMessageUnion = BerytusChallengeGetIdentityFieldsMessageResponse
+	| BerytusChallengeGetPasswordFieldsMessageResponse
+	| BerytusChallengeSelectKeyMessageResponse
+	| BerytusChallengeSignNonceMessageResponse
+	| BerytusChallengeSelectSecurePasswordMessageResponse
+	| BerytusChallengeExchangePublicKeysMessageResponse
+	| BerytusChallengeComputeClientProofMessageResponse
+	| BerytusChallengeVerifyServerProofMessageResponse;
 export type BerytusFieldUnion = BerytusForeignIdentityField
 	| BerytusIdentityField
 	| BerytusKeyField
@@ -293,3 +457,20 @@ export type BerytusFieldValueUnion = string | BerytusEncryptedPacket
 	| BerytusKeyFieldValue
 	| BerytusSecurePasswordFieldValue
 	| BerytusSharedKeyFieldValue;
+export type Record_string_stringOrRecord_string_BerytusEncryptedPacket = Record<string, string> |
+	Record<string, BerytusEncryptedPacket>;
+
+export type stringOrBerytusEncryptedPacket = string |
+	BerytusEncryptedPacket;
+
+export type stringOrArrayBufferOrBerytusEncryptedPacket = string |
+	ArrayBuffer |
+	BerytusEncryptedPacket;
+
+export type ArrayBufferOrArrayBufferView = ArrayBuffer |
+	ArrayBufferView;
+
+export type stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket = string |
+	ArrayBuffer |
+	ArrayBufferView |
+	BerytusEncryptedPacket;

@@ -1600,6 +1600,190 @@ ${hasMembers ? `\
     }
 }
 
+class RecordType extends BasicType implements IType {
+    readonly keyType: IType;
+    readonly valueType: IType;
+
+    constructor(keyType: IType, valueType: IType) {
+        super(`RecordWord<${keyType.symbol}, ${valueType.symbol}>`);
+        this.keyType = keyType;
+        this.valueType = valueType;
+    }
+
+    get id() {
+        return 'RecordWord';
+    }
+
+    get definition() {
+        return `\
+template <typename K, typename V,
+          typename = std::enable_if_t<std::is_base_of<IJSWord<K>, K>::value>,
+          typename = std::enable_if_t<std::is_base_of<IJSWord<V>, V>::value>>
+class RecordWord : public dom::Record<K, V>,
+               public IJSWord<RecordWord<K, V>> {
+  RecordWord() = default;
+  RecordWord(RecordWord<K, V>&& aOther) : dom::Record<K, V>(std::move(aOther)) {}
+  ~RecordWord() {}
+
+  ${this.isJsValValidFunction().functionDef}
+  ${this.importFromJsValFunction().functionDef}
+  ${this.exportToJsValFunction().functionDef}
+};`;
+    }
+    get implementation() {
+        return `${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`;
+    }
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = 'IsJSValueValid';
+        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `template <typename K, typename V, typename Q, typename T>
+bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  if (aValue.isNull()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, aValue.toObject());
+  JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
+  if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
+    aRv = false;
+    return false;
+  }
+  JS::Rooted<JS::PropertyKey> prop(aCx);
+  JS::Rooted<JS::Value> val(aCx);
+  for (size_t i = 0, n = ids.length(); i < n; i++) {
+    prop = ids[i];
+    if constexpr (std::is_same_v<K, nsString>) {
+      if (!prop.isString()) {
+        aRv = false;
+        return true;
+      }
+    } else {
+      if (!prop.isInt()) {
+        aRv = false;
+        return true;
+      }
+    }
+
+    if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, prop, &val))) {
+      aRv = false;
+      return false;
+    }
+    bool isValid;
+    if (NS_WARN_IF(!V::IsJSValueValid(aCx, val, isValid))) {
+      aRv = false;
+      return false;
+    }
+    if (!isValid) {
+      aRv = false;
+      return true;
+    }
+  }
+  aRv = true;
+  return true;
+}`
+        }
+    }
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = 'FromJSVal';
+        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, RecordWord<K, V>& aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `template <typename K, typename V, typename Q, typename T>
+bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  if (NS_WARN_IF(aValue.isNull())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, aValue.toObject());
+  JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
+  if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
+    return false;
+  }
+  JS::Rooted<JS::PropertyKey> prop(aCx);
+  JS::Rooted<JS::Value> val(aCx);
+  for (size_t i = 0, n = ids.length(); i < n; i++) {
+    prop = ids[i];
+    typename dom::Record<K, V>::EntryType entry;
+    if constexpr (std::is_same_v<K, nsString>) {
+      if (NS_WARN_IF(!prop.isString())) {
+        return false;
+      }
+      // TODO(berytus): change to String not CString.
+      nsAutoJSCString propName;
+      if (NS_WARN_IF(!propName.init(aCx, prop))) {
+        return false;
+      }
+      entry.mKey.Assign(propName);
+    } else {
+      if (NS_WARN_IF(!prop.isInt())) {
+        return false;
+      }
+      entry.mKey = prop.toInt();
+    }
+
+    if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, prop, &val))) {
+      return false;
+    }
+    V nativeValue;
+    if (NS_WARN_IF(!V::FromJSVal(aCx, val, nativeValue))) {
+      return false;
+    }
+    entry.mValue = std::move(nativeValue);
+    aRv.Entries().AppendElement(std::move(entry))
+  }
+  return true;
+};`
+        }
+    }
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = 'ToJSVal';
+        const params = `JSContext* aCx, const RecordWord<K, V>& aValue, JS::MutableHandle<JS::Value> aRv`;
+        return {
+            functionName: `${this.symbol}::${functionName}`,
+            functionDef: `static bool ${functionName}(${params});`,
+            functionImpl: `template <typename K, typename V, typename Q, typename T>
+bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+  JS::Rooted<JS::PropertyKey> prop(aCx);
+  for (const auto& entry : aValue.Entries()) {
+    if constexpr (std::is_same_v<K, nsString>) {
+      JS::Rooted<JS::Value> propName(aCx);
+      if (NS_WARN_IF(!StringToJSVal(aCx, entry.mKey, propName))) {
+        return false;
+      }
+      prop.set(JS::PropertyKey::fromPinnedString(propName.toString()));
+    } else {
+      prop.set(JS::PropertyKey::Int(entry.mKey));
+    }
+    JS::Rooted<JS::Value> val(aCx);
+    if (NS_WARN_IF(!V::ToJSVal(aCx, entry.mValue, &val))) {
+      return false;
+    }
+    if (NS_WARN_IF(!JS_SetPropertyById(aCx, obj, prop, val))) {
+      return false;
+    }
+  }
+  aRv.setObjectOrNull(obj);
+  return true;
+}`
+        };
+    }
+
+}
+
 abstract class MethodDef implements IDef {
     name: string;
     parameters: Array<ArgumentMember>;
@@ -1964,6 +2148,9 @@ class AgentProxyGenerator {
         ) {
             return this.defineString(parsedType);
         }
+        if (parsedType.type === "record") {
+            return this.defineRecord(parsedType);
+        }
         throw new Error('Unsupported type ' + parsedType.type);
     }
 
@@ -2213,6 +2400,29 @@ class AgentProxyGenerator {
             return maybeType;
         }
         return structType;
+    }
+
+    defineRecord(parsedType: ParsedType): IType {
+        if (parsedType.type !== "record") {
+            throw new Error(
+                "Wrong type passed to defineRecord"
+            );
+        }
+        const keyType = this.defineType({
+            type: parsedType.keyType
+        });
+        const valueType = this.defineType(parsedType.valueType);
+        const recordType = new RecordType(
+            keyType,
+            valueType
+        );
+        this.defs.push(recordType);
+        if (parsedType.optional) {
+            const maybeType = new MaybeType(recordType);
+            this.defs.push(maybeType);
+            return maybeType;
+        }
+        return recordType;
     }
 
     generateImpl() {

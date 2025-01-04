@@ -8,15 +8,19 @@ import { readFile, writeFile } from "node:fs/promises";
 import { InterfaceDeclaration, Type as tsType, SourceFile, Project as TSProject } from 'ts-morph';
 import { ParsedType, ParseOptions, parseType } from '../request-handler/type-parser.js';
 
-const project = new TSProject({
-    tsConfigFilePath: resolve('./tsconfig.json'),
+const createProject = () => new TSProject({
+    tsConfigFilePath: resolve('./tsconfig.json')
 });
+
+const project = createProject();
 
 const dtsFile = resolve("./src/generated/berytus.web.d.ts");
 
 const fieldValueTypes = new Set<string>();
 
-const listFields = (typesFile: SourceFile) => {
+const listFields = (
+    typesFile: SourceFile = project.getSourceFileOrThrow(dtsFile)
+) => {
     const baseFieldName = "BerytusField";
     return typesFile.getInterfaces().map(intf => {
         if (! intf.getExtends().some(f => f.getText() === baseFieldName)) {
@@ -89,13 +93,13 @@ const interfaceEnsureUnionsAreAliasd = (
     updater(oldText, newText);
 }
 
-const ensureUnionsAreAliases = async () => {
-    const typesFile = project.getSourceFileOrThrow(
+const ensureUnionsAreAliases = async (list: Array<InterfaceDeclaration | string | RegExp>) => {
+    const typesFile = createProject().getSourceFileOrThrow(
         dtsFile
     );
     const unionAliases: Array<{ alias: string, def: string }> = [];
     const unionAliasGenerator = (options: ParsedType[]): string => {
-        const aliasesAndDefs = options.map(opt => {
+        const getAliasAndDef = (opt: ParsedType) => {
             let optAlias: string;
             let optDef: string;
             if ("alias" in opt) {
@@ -107,11 +111,19 @@ const ensureUnionsAreAliases = async () => {
             } else if (opt.type === "pattern") {
                 optAlias = `Pattern`;
                 optDef = "string";
+            } else if (opt.type === "record") {
+                const valueOpt = getAliasAndDef(opt.valueType);
+                optAlias = `Record_${opt.keyType}_${valueOpt.optAlias}`;
+                optDef = `Record<${opt.keyType}, ${valueOpt.optDef}>`;
             } else {
                 optAlias = opt.type;
                 optDef = opt.type;
             }
             return { optAlias, optDef };
+        }
+
+        const aliasesAndDefs = options.map(opt => {
+            return getAliasAndDef(opt);
         });
         const alias = aliasesAndDefs.map(a => a.optAlias).join("Or");
         const def = `export type ${alias} = ` + aliasesAndDefs.map(d => d.optDef).join(" |\n\t") + ";\n";
@@ -125,10 +137,22 @@ const ensureUnionsAreAliases = async () => {
     }
     let dts = await readFile(dtsFile, { encoding: "utf8" });
 
-    [
-        ...listFields(typesFile),
-        typesFile.getInterfaceOrThrow("BerytusUserAttributeDefinition")
-    ].forEach(int => {
+
+    const intfList: Array<InterfaceDeclaration> = [];
+    list.forEach(f => {
+        if (typeof f === "string") {
+            intfList.push(typesFile.getInterfaceOrThrow(f));
+            return;
+        }
+        if (f instanceof RegExp) {
+            typesFile.getInterfaces().filter(intf => {
+                return f.test(intf.getName());
+            }).forEach(intf => intfList.push(intf));
+            return;
+        }
+        intfList.push(f);
+    });
+    intfList.forEach(int => {
         interfaceEnsureUnionsAreAliasd(
             typesFile,
             unionAliasGenerator,
@@ -145,30 +169,34 @@ const ensureUnionsAreAliases = async () => {
     );
 }
 
-const generateFieldTypeEnum = async () => {
-    const typesFile = project.getSourceFileOrThrow(
+const generateEnumFromLiteralUnion = async (typeName: string) => {
+    const typesFile = createProject().getSourceFileOrThrow(
         dtsFile
     );
-    const fieldType = typesFile.getTypeAlias("BerytusFieldType");
-    if (! fieldType) {
-        throw new Error("Missing BerytusFieldType enum in WebIDL");
+    const unionType = typesFile.getTypeAlias(typeName);
+    if (! unionType) {
+        throw new Error(`Missing ${typeName} enum in WebIDL`);
     }
-    const parsedFieldType = parseType(fieldType.getType());
-    if (!("options" in parsedFieldType)) {
-        throw new Error("Missing BerytusFieldType enum in WebIDL");
+    const parsedUnionType = parseType(unionType.getType());
+    if (!("options" in parsedUnionType)) {
+        throw new Error(`Expeccted ${typeName} to contain literal options`);
     }
-    const enumName = 'EBerytusFieldType'
-    const fieldTypeEnum: string = `export enum ${enumName} {
-${parsedFieldType.options.map(o => {
+    const enumName = 'E' + typeName;
+    const typeEnum: string = `export enum ${enumName} {
+${parsedUnionType.options.map(o => {
     if (!("value" in o)) {
         throw new Error("Option should be a literal value");
     }
     return `\t${o.value} = ${JSON.stringify(o.value)}`
 }).join(",\n")}
-}\n`
+}\n`;
     const dts: string = await readFile(dtsFile, { encoding: "utf8" });
-    await writeFile(dtsFile, dts + fieldTypeEnum);
+    await writeFile(dtsFile, dts + typeEnum);
     return enumName;
+}
+
+const generateFieldTypeEnum = async () => {
+    await generateEnumFromLiteralUnion("BerytusFieldType");
 }
 
 const generateFieldUnion = async () => {
@@ -254,7 +282,7 @@ const generateFieldProperties = async () => {
 }
 
 const deleteFunctions = async () => {
-    const typesFile = project.getSourceFileOrThrow(
+    const typesFile = createProject().getSourceFileOrThrow(
         dtsFile
     );
     let dts: string = await readFile(dtsFile, { encoding: "utf8" });
@@ -293,15 +321,86 @@ const correctPacketParametersAttribute = async () => {
     );
 }
 
+const generateChallengeTypeEnum = async () => {
+    await generateEnumFromLiteralUnion("BerytusChallengeType");
+}
+
+const generateChallengeMessagingTypes = async () => {
+    const typesFile = project.getSourceFileOrThrow(
+        dtsFile
+    );
+    let dts: string = await readFile(dtsFile, { encoding: "utf8" });
+    const newIntfs: Array<string> = [];
+    const patt = /^Berytus(.*)Challenge$/;
+    const sendMessageArgsUnionMembers: Array<string> = [];
+    const receiveMessageUnionMembers: Array<string> = [];
+    typesFile.getInterfaces()
+        .filter(f => patt.test(f.getName()))
+        .filter(f => f.getName() !== 'BerytusChallenge') // base interface
+        .forEach(intf => {
+            const [_, chName] = intf.getName().match(patt)!;
+            const paramsIntf = typesFile.getInterface(`Berytus${chName}ChallengeParameters`);
+            newIntfs.push(
+                `\
+interface Berytus${chName}ChallengeInfo {
+    id: string;
+    type: EBerytusChallengeType.${chName};
+    parameters${paramsIntf ? `: ${paramsIntf.getName()}` : `: null`};
+}`
+            );
+            const messagesMethods = intf.getMethods()
+                .filter(m => !m.getName().startsWith("abort"));
+            messagesMethods.forEach(m => {
+                const returnType = m.getReturnType();
+                const messageName = m.getName().charAt(0).toUpperCase() + m.getName().substring(1);
+                const returnTypeName = returnType.getSymbol()?.getName()
+                if (returnTypeName !== 'Promise') {
+                    throw new Error(`Message method ${m.getName()} defined in ${chName} must have a return type of a 'Promise' type. Got ${returnTypeName}`);
+                }
+                const [_, innerReturnTypeName] = returnType.getText().match(/^Promise<(.*)>$/)!;
+                if ( innerReturnTypeName !== `BerytusChallenge${messageName}MessageResponse`) {
+                    throw new Error(`Message method ${m.getName()} defined in ${chName} must have a return type of a Promise-resolve type of a dictionary whose name must be equal to  BerytusChallenge${messageName}MessageResponse. Got ${innerReturnTypeName}`);
+                }
+                const arg = m.getParameters()[0];
+                newIntfs.push(
+                    `\
+interface BerytusChallenge${messageName}MessageRequest {
+    payload: ${arg.getType().getText()}
+}`
+                );
+                newIntfs.push(
+                    `\
+interface BerytusSend${messageName}Message extends BerytusChallenge${messageName}MessageRequest {
+    challenge: Berytus${chName}ChallengeInfo;
+    name: ${JSON.stringify(messageName)};
+}
+`
+                );
+                receiveMessageUnionMembers.push(innerReturnTypeName);
+                sendMessageArgsUnionMembers.push(`BerytusSend${messageName}Message`);
+            });
+
+        });
+    await writeFile(
+        dtsFile,
+        dts + "\n" + newIntfs.join("\n") + "\n" +
+        `export type BerytusSendMessageUnion = ${sendMessageArgsUnionMembers.join("\n\t| ")};` + "\n" +
+        `export type BerytusReceiveMessageUnion = ${receiveMessageUnionMembers.join("\n\t| ")};` + "\n"
+    );
+};
+
 const generate = async () => {
     await generateFieldTypeEnum();
     await generateFieldProperties();
-    await ensureUnionsAreAliases();
+    await ensureUnionsAreAliases(listFields());
+    await ensureUnionsAreAliases(["BerytusUserAttributeDefinition"]);
     await correctPacketParametersAttribute();
+    await generateChallengeTypeEnum();
+    await generateChallengeMessagingTypes();
     await deleteFunctions();
     await generateFieldUnion();
     await generateFieldValueUnion();
-
+    await ensureUnionsAreAliases([/^Berytus.*?Challenge/]);
 }
 
 generate();
