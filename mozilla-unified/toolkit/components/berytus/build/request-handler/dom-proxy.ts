@@ -24,6 +24,8 @@ abstract class TypeSymbol {
         this.symbol = symbol;
     }
 
+    abstract movableThroughAssignment: boolean;
+
     /**
      * E.g., nsTArray<uint32_t>&
      */
@@ -83,7 +85,8 @@ interface IDef {
     implementation: string | undefined;
 }
 
-interface IType extends InstanceType<typeof TypeSymbol>, IWrappableJSValType, IDef {}
+interface IType extends InstanceType<typeof TypeSymbol>, IWrappableJSValType, IDef {
+}
 
 abstract class BasicType extends TypeSymbol {
     get id() {
@@ -112,6 +115,8 @@ class Int32Type extends BasicType implements IType {
         super('int32_t');
     }
 
+    movableThroughAssignment = true;
+
     get definition(): string {
         return `${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
@@ -125,8 +130,9 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsInt32';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -138,8 +144,9 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'Int32FromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, int32_t& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, int32_t& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -154,8 +161,9 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'Int32ToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const int32_t& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const int32_t& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -173,6 +181,8 @@ class NumberType extends BasicType implements IType {
         super('double');
     }
 
+    movableThroughAssignment = true;
+
     get definition(): string {
         return `${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
@@ -186,8 +196,9 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsNumber';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -199,8 +210,9 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'NumberFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -219,8 +231,9 @@ ${this.exportToJsValFunction().functionImpl}`
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'NumberToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -236,6 +249,8 @@ class VoidType extends TypeSymbol implements IType {
     constructor() {
         super('void');
     }
+
+    movableThroughAssignment = false;
 
     get id() {
         return 'void';
@@ -292,6 +307,8 @@ class UintEnumType extends BasicType implements IType {
         this.members = members;
     }
 
+    movableThroughAssignment = true;
+
     get definition(): string {
         return `enum ${this.symbol} {
   ${this.members.map(m => `${this.symbol}_${m.name} = ${m.value}`).join(",\n    ")},
@@ -309,8 +326,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIs' + this.symbol;
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -327,8 +345,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = `${this.symbol}FromJSVal`;
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -346,8 +365,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = `${this.symbol}ToJSVal`;
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -372,21 +392,27 @@ class StringEnumType extends BasicType implements IType {
         this.members = members;
     }
 
+    movableThroughAssignment = true;
+
     get definition(): string {
         return `struct ${this.symbol} {
   uint8_t mVal;
   ${this.symbol}() : mVal(0) {}
   ${this.symbol}(uint8_t aVal) : mVal(aVal) {}
   ${this.symbol}(${this.symbol}&& aOther) : mVal(std::move(aOther.mVal)) {}
+  ${this.symbol}& operator=(${this.symbol}&& aOther) {
+    mVal = std::move(aOther.mVal);
+    return *this;
+  }
   ${this.labeledCreatorsFunctions().map(a => a.functionDef).join("\n  ")}
   ${this.labeledCheckersFunctions().map(a => a.functionDef).join("\n  ")}
   ${this.labeledSettersFunctions().map(a => a.functionDef).join("\n  ")}
   ${this.toStringFunction().functionDef}
   ${this.fromStringFunction().functionDef}
-  ${this.isJsValValidFunction().functionDef}
-  ${this.importFromJsValFunction().functionDef}
-  ${this.exportToJsValFunction().functionDef}
 };
+${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}
 `
     }
 
@@ -472,17 +498,18 @@ ${this.members.map((m, i) => `  if (mVal == ${i}) {
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'IsJSValueValid';
-        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   ${this.symbol} e;
@@ -493,17 +520,19 @@ ${this.members.map((m, i) => `  if (mVal == ${i}) {
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = `FromJSVal`;
-        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)
+`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!${this.symbol}::${this.fromStringFunction().functionName}(strVal, aRv))) {
@@ -515,15 +544,16 @@ ${this.members.map((m, i) => `  if (mVal == ${i}) {
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = `ToJSVal`;
-        const params = `JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
@@ -539,6 +569,8 @@ class CallbackType extends TypeSymbol implements IType {
         super(`std::function<void(${parameters.map(p => p.atArgument()).join(', ')})>`);
         this.parameters = parameters;
     }
+
+    movableThroughAssignment = false;
 
     get id() {
         return this.symbol;
@@ -583,6 +615,8 @@ class StringType extends BasicType implements IType {
         super('nsString');
     }
 
+    movableThroughAssignment = true;
+
     get definition() {
         return `${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
@@ -596,8 +630,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsString';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -609,8 +644,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'StringFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -638,8 +674,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'StringToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -658,6 +695,8 @@ class BoolType extends BasicType implements IType {
         super('bool');
     }
 
+    movableThroughAssignment = true;
+
     get definition() {
         return `${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
@@ -671,8 +710,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsBool';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -684,8 +724,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'BoolFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -700,8 +741,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'BoolToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const bool& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const bool& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -718,6 +760,8 @@ class NullType extends BasicType implements IType {
         super('JSNull');
     }
 
+    movableThroughAssignment = true;
+
     get definition() {
         return `
 struct JSNull {};
@@ -733,8 +777,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsNull';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -746,8 +791,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'NullFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -762,8 +808,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'NullToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -788,6 +835,8 @@ class MaybeType extends TypeSymbol implements IType {
         super(`Maybe<${subType.symbol}>`);
         this.subType = subType;
     }
+
+    movableThroughAssignment = true;
 
     static wrapIf(subType: IType, cond: boolean | undefined): IType {
         if (! cond) {
@@ -826,8 +875,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIs' + this.symbol.replace(/<|>|,| /g, '_');
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -842,8 +892,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol.replace(/<|>|,| /g, '_') + 'FromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -862,8 +913,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol.replace(/<|>|,| /g, '_')  + 'ToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -883,6 +935,8 @@ class NothingType extends TypeSymbol implements IType {
     constructor() {
         super('Nothing');
     }
+
+    movableThroughAssignment = true;
 
     get id() {
         return this.symbol;;
@@ -914,8 +968,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsNothing';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -927,8 +982,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'NothingFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -943,8 +999,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'NothingToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -978,6 +1035,8 @@ class SafeVariantType extends TypeSymbol implements IType {
         this.subTypes = flattenedSubTypes;
     }
 
+    movableThroughAssignment = true;
+
     get id() {
         return this.symbol;
     }
@@ -988,12 +1047,17 @@ class SafeVariantType extends TypeSymbol implements IType {
 
     get definition() {
         return `template<>
-class ${this.symbol} : IJSWord<SafeVariant<${this.subTypesSymbols}>> {
+class ${this.symbol} {
 public:
-  SafeVariant() : mVariant(nullptr) {};
+  SafeVariant() : mVariant(nullptr) {}
   SafeVariant(${this.symbol}&& aOther) : mVariant(std::move(aOther.mVariant)) {
     aOther.mVariant = nullptr;
-  };
+  }
+  SafeVariant& operator=(SafeVariant&& aOther) {
+    mVariant = std::move(aOther.mVariant);
+    aOther.mVariant = nullptr;
+    return *this;
+  }
   ~SafeVariant() {
     delete mVariant;
   };
@@ -1006,12 +1070,13 @@ public:
     return mVariant;
   }
   mozilla::Variant<${this.subTypesSymbols}> const* InternalValue() const { return mVariant; }
-  ${this.isJsValValidFunction().functionDef}
-  ${this.importFromJsValFunction().functionDef}
-  ${this.exportToJsValFunction().functionDef}
+  mozilla::Variant<${this.subTypesSymbols}>* InternalValue() { return mVariant; }
 protected:
   mozilla::Variant<${this.subTypesSymbols}>* mVariant;
-};`;
+};
+${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`;
     }
 
     get implementation() {
@@ -1034,12 +1099,13 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = `IsJSValueValid`;
-        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName: `${functionName}`,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   ${this.subTypes.map(st => `
   do {
     bool isValid = false;
@@ -1059,12 +1125,13 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = `FromJSVal`;
-        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv`
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   ${this.subTypes.map((st, i) => `do {
     bool isValid = false;
     if (NS_WARN_IF(!(${st.isJsValValidFunction().functionName}(aCx, aValue, isValid)))) {
@@ -1073,7 +1140,7 @@ ${this.exportToJsValFunction().functionImpl}`;
     if (isValid) {
       ${st instanceof ArrayBufferType ?
       `aRv.Init(VariantIndex<${i}>(), ArrayBuffer());
-      if (NS_WARN_IF(!(${st.importFromJsValFunction().functionName}(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+      if (NS_WARN_IF(!(${st.importFromJsValFunction().functionName}(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
@@ -1095,13 +1162,14 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = `ToJSVal`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
         const matcherName = `Matcher`;
-        const params = `JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   struct ${matcherName} {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
@@ -1129,6 +1197,8 @@ class ArrayType extends TypeSymbol implements IType {
         return this.symbol
     }
 
+    movableThroughAssignment = true;
+
     get definition() {
         return `${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
@@ -1155,8 +1225,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIs' + this.symbol.replace(/<|>|,| /g, '_');
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1167,14 +1238,16 @@ ${this.exportToJsValFunction().functionImpl}`;
   if (NS_WARN_IF(!JS::IsArrayObject(aCx, aValue, &aRv))) {
     return false;
   }
+  // TODO(berytus): What about the values inside the array?
   return true;
 }`
         }
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol.replace(/<|>|,| /g, '_') + 'FromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1213,8 +1286,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = this.symbol.replace(/<|>|,| /g, '_') + 'ToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1249,6 +1323,8 @@ class ArrayBufferType extends TypeSymbol implements IType {
         return this.symbol;
     }
 
+    movableThroughAssignment = false;
+
     get definition() {
         return `${this.isJsValValidFunction().functionDef}
 ${this.importFromJsValFunction().functionDef}
@@ -1275,8 +1351,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsArrayBuffer';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1292,8 +1369,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'ArrayBufferFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1324,8 +1402,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'ArrayBufferToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1347,6 +1426,8 @@ class ArrayBufferViewType extends TypeSymbol implements IType {
     get id() {
         return this.symbol;
     }
+
+    movableThroughAssignment = false;
 
     get definition() {
         return `${this.isJsValValidFunction().functionDef}
@@ -1374,8 +1455,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'JSValIsArrayBufferView';
-        const funcDef = `bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1391,8 +1473,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'ArrayBufferViewFromJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1422,8 +1505,9 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'ArrayBufferViewToJSVal';
-        const funcDef = `bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        const functionName = `ToJSVal<${this.symbol}>`
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
             functionName,
             functionDef: `${funcDef};`,
@@ -1468,23 +1552,38 @@ class StructType extends TypeSymbol implements IType {
         this.members = members;
     }
 
+    get movableThroughAssignment() {
+        for (let i = 0; i < this.members.length; i++) {
+            if (! this.members[i].type.movableThroughAssignment) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     get id() {
         return this.symbol;
     }
 
     get definition() {
-        return `struct ${this.symbol} : IJSWord<${this.symbol}> {
+        return `struct ${this.symbol} {
   ${this.members.map(m => m.toString() + `;`).join("\n  ")}
   ${this.symbol}() = default;
   ${this.members.length > 0 ? `\
 ${this.symbol}(${this.members.map(({ member, type }) => `${type.atStruct()}&& ${member.atArgument()}`).join(", ")}) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(${member.atArgument()}))`).join(", ")} {}
   ${this.symbol}(${this.symbol}&& aOther) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(aOther.${member.atStruct()}))`).join(", ")}  {}
+  ${this.movableThroughAssignment
+      ? `\
+${this.symbol}& operator=(${this.symbol}&& aOther) {
+    ${this.members.map(({ member }) => `${member.atStruct()} = std::move(aOther.${member.atStruct()});`).join("\n  ")}
+    return *this;
+  }` : ""}
   ` : ""}
   ~${this.symbol}() {}
-  ${this.isJsValValidFunction().functionDef}
-  ${this.importFromJsValFunction().functionDef}
-  ${this.exportToJsValFunction().functionDef}
-};`;
+};
+${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`;
     }
 
     get implementation() {
@@ -1507,13 +1606,14 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'IsJSValueValid';
-        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         const hasMembers = this.members.length > 0;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1546,12 +1646,13 @@ ${hasMembers ? `\
     }
 
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'FromJSVal';
-        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1572,12 +1673,13 @@ ${hasMembers ? `\
     }
 
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'ToJSVal';
-        const params = `JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   ${this.members.map(({ type, member }, i) => `
@@ -1605,30 +1707,21 @@ class RecordType extends BasicType implements IType {
     readonly valueType: IType;
 
     constructor(keyType: IType, valueType: IType) {
-        super(`RecordWord<${keyType.symbol}, ${valueType.symbol}>`);
+        super(`Record<${keyType.symbol}, ${valueType.symbol}>`);
         this.keyType = keyType;
         this.valueType = valueType;
+        if (!(keyType instanceof StringType) && !(keyType instanceof Int32Type)) {
+            throw new Error("Record type only supports key type that is either a StringType or an Int32Type");
+        }
     }
 
-    get id() {
-        return 'RecordWord';
-    }
+    movableThroughAssignment = false;
 
     get definition() {
         return `\
-template <typename K, typename V,
-          typename = std::enable_if_t<std::is_base_of<IJSWord<K>, K>::value>,
-          typename = std::enable_if_t<std::is_base_of<IJSWord<V>, V>::value>>
-class RecordWord : public dom::Record<K, V>,
-               public IJSWord<RecordWord<K, V>> {
-  RecordWord() = default;
-  RecordWord(RecordWord<K, V>&& aOther) : dom::Record<K, V>(std::move(aOther)) {}
-  ~RecordWord() {}
-
-  ${this.isJsValValidFunction().functionDef}
-  ${this.importFromJsValFunction().functionDef}
-  ${this.exportToJsValFunction().functionDef}
-};`;
+${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}`;
     }
     get implementation() {
         return `${this.isJsValValidFunction().functionImpl}
@@ -1637,13 +1730,13 @@ ${this.exportToJsValFunction().functionImpl}`;
     }
 
     isJsValValidFunction(): GeneratedFunction {
-        const functionName = 'IsJSValueValid';
-        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv`;
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `template <typename K, typename V, typename Q, typename T>
-bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1652,7 +1745,7 @@ bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
     aRv = false;
     return true;
   }
-  JS::Rooted<JSObject*> obj(aCx, aValue.toObject());
+  JS::Rooted<JSObject*> obj(aCx, aValue.toObjectOrNull());
   JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
   if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
     aRv = false;
@@ -1662,24 +1755,22 @@ bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
   JS::Rooted<JS::Value> val(aCx);
   for (size_t i = 0, n = ids.length(); i < n; i++) {
     prop = ids[i];
-    if constexpr (std::is_same_v<K, nsString>) {
-      if (!prop.isString()) {
-        aRv = false;
-        return true;
-      }
-    } else {
-      if (!prop.isInt()) {
-        aRv = false;
-        return true;
-      }
-    }
+${this.keyType instanceof StringType ? `\
+    if (!prop.isString()) {
+      aRv = false;
+      return true;
+    }` : `\
+    if (!prop.isInt()) {
+      aRv = false;
+      return true;
+    }` }
 
     if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, prop, &val))) {
       aRv = false;
       return false;
     }
     bool isValid;
-    if (NS_WARN_IF(!V::IsJSValueValid(aCx, val, isValid))) {
+    if (NS_WARN_IF((!${this.valueType.isJsValValidFunction().functionName}(aCx, val, isValid)))) {
       aRv = false;
       return false;
     }
@@ -1694,20 +1785,20 @@ bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
         }
     }
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'FromJSVal';
-        const params = `JSContext *aCx, const JS::Handle<JS::Value> aValue, RecordWord<K, V>& aRv`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, ${this.atArgument()} aRv)`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `template <typename K, typename V, typename Q, typename T>
-bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
   if (NS_WARN_IF(aValue.isNull())) {
     return false;
   }
-  JS::Rooted<JSObject*> obj(aCx, aValue.toObject());
+  JS::Rooted<JSObject*> obj(aCx, aValue.toObjectOrNull());
   JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
   if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
     return false;
@@ -1716,60 +1807,53 @@ bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
   JS::Rooted<JS::Value> val(aCx);
   for (size_t i = 0, n = ids.length(); i < n; i++) {
     prop = ids[i];
-    typename dom::Record<K, V>::EntryType entry;
-    if constexpr (std::is_same_v<K, nsString>) {
-      if (NS_WARN_IF(!prop.isString())) {
-        return false;
-      }
-      // TODO(berytus): change to String not CString.
-      nsAutoJSCString propName;
-      if (NS_WARN_IF(!propName.init(aCx, prop))) {
-        return false;
-      }
-      entry.mKey.Assign(propName);
-    } else {
-      if (NS_WARN_IF(!prop.isInt())) {
-        return false;
-      }
-      entry.mKey = prop.toInt();
+    ${this.symbol}::EntryType entry;
+${this.keyType instanceof StringType ? `\
+    if (NS_WARN_IF(!prop.isString())) {
+      return false;
     }
+    nsAutoJSString propName;
+    if (NS_WARN_IF(!propName.init(aCx, prop))) {
+      return false;
+    }
+    entry.mKey.Assign(propName);` : `\
+    if (NS_WARN_IF(!prop.isInt())) {
+      return false;
+    }
+    entry.mKey = prop.toInt();` }
 
     if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, prop, &val))) {
       return false;
     }
-    V nativeValue;
-    if (NS_WARN_IF(!V::FromJSVal(aCx, val, nativeValue))) {
+    if (NS_WARN_IF((!${this.valueType.importFromJsValFunction().functionName}(aCx, val, entry.mValue)))) {
       return false;
     }
-    entry.mValue = std::move(nativeValue);
-    aRv.Entries().AppendElement(std::move(entry))
+    aRv.Entries().AppendElement(std::move(entry));
   }
   return true;
 };`
         }
     }
     exportToJsValFunction(): GeneratedFunction {
-        const functionName = 'ToJSVal';
-        const params = `JSContext* aCx, const RecordWord<K, V>& aValue, JS::MutableHandle<JS::Value> aRv`;
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::MutableHandle<JS::Value> aRv)`;
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `template <typename K, typename V, typename Q, typename T>
-bool RecordWord<K, V, Q, T>::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
   JS::Rooted<JS::PropertyKey> prop(aCx);
   for (const auto& entry : aValue.Entries()) {
-    if constexpr (std::is_same_v<K, nsString>) {
-      JS::Rooted<JS::Value> propName(aCx);
-      if (NS_WARN_IF(!StringToJSVal(aCx, entry.mKey, propName))) {
-        return false;
-      }
-      prop.set(JS::PropertyKey::fromPinnedString(propName.toString()));
-    } else {
-      prop.set(JS::PropertyKey::Int(entry.mKey));
+${this.keyType instanceof StringType ? `\
+    JS::Rooted<JS::Value> propName(aCx);
+    if (NS_WARN_IF(!ToJSVal(aCx, entry.mKey, &propName))) {
+      return false;
     }
+    prop.set(JS::PropertyKey::fromPinnedString(propName.toString()));` : `\
+    prop.set(JS::PropertyKey::Int(entry.mKey));` }
     JS::Rooted<JS::Value> val(aCx);
-    if (NS_WARN_IF(!V::ToJSVal(aCx, entry.mValue, &val))) {
+    if (NS_WARN_IF((!${this.valueType.exportToJsValFunction().functionName}(aCx, entry.mValue, &val)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_SetPropertyById(aCx, obj, prop, val))) {
@@ -1818,6 +1902,8 @@ class MozPromiseType extends TypeSymbol implements IType {
         this.isExclusive = isExclusive;
     }
 
+    movableThroughAssignment = false;
+
     get id() {
         return this.symbol;
     }
@@ -1858,6 +1944,9 @@ class FailureType extends BasicType implements IType {
     constructor() {
         super('Failure');
     }
+
+    movableThroughAssignment = true;
+
     get definition(): string {
         return `\
 #define BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE nsCString("An error has occurred"_ns)
@@ -1869,8 +1958,8 @@ struct ${this.symbol} {
   ${this.symbol}(nsresult res) : mException(new mozilla::dom::Exception(BERYTUS_AGENT_DEFAULT_EXCEPTION_MESSAGE, NS_ERROR_FAILURE, BERYTUS_AGENT_DEFAULT_EXCEPTION_NAME)) {}
 
   ${this.toErrorResultFunction().functionDef}
-  ${this.importFromJsValFunction().functionDef}
-};`
+};
+${this.importFromJsValFunction().functionDef}`
     }
 
     get implementation() {
@@ -1914,12 +2003,13 @@ ${this.importFromJsValFunction().functionImpl}`;
         throw new Error("FailureType should not provide a IsJSValValid fnc");
     }
     importFromJsValFunction(): GeneratedFunction {
-        const functionName = 'FromJSVal';
-        const params = `JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv`;
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`
         return {
-            functionName: `${this.symbol}::${functionName}`,
-            functionDef: `static bool ${functionName}(${params});`,
-            functionImpl: `bool ${this.symbol}::${functionName}(${params}) {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
   nsresult result = NS_ERROR_FAILURE;
   nsIStackFrame* stackFrame = nullptr;
   nsISupports* data = nullptr;
@@ -1943,7 +2033,7 @@ ${this.importFromJsValFunction().functionImpl}`;
   }
   if (JS_GetProperty(aCx, errorObj, "message", &messageVal)) {
     nsString twoByteMsg;
-    if (NS_WARN_IF(!StringFromJSVal(aCx, messageVal, twoByteMsg))) {
+    if (NS_WARN_IF(!FromJSVal(aCx, messageVal, twoByteMsg))) {
       return false;
     }
     // additional copy... TODO(berytus): possibly optimise this.
@@ -2034,7 +2124,7 @@ ${this.returnType.resolveType.symbol} out;
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -2463,7 +2553,7 @@ bool ${AgentProxyGenerator.className}::IsDisabled() const {
   return mDisabled;
 }
 
-template <typename W1, typename W2, typename, typename>
+template <typename W1, typename W2>
 already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(JSContext *aCx,
                                                          const nsAString & aGroup,
                                                          const nsAString &aMethod,
@@ -2548,7 +2638,7 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
   }
 
   JS::Rooted<JS::Value> reqCxJS(aCx);
-  if (NS_WARN_IF(!aReqCx.ToJSVal(aCx, aReqCx, &reqCxJS))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, aReqCx, &reqCxJS))) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
@@ -2558,7 +2648,7 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
   }
   if (aReqArgs) {
     JS::Rooted<JS::Value> reqArgsJS(aCx);
-    if (NS_WARN_IF(!aReqArgs->ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+    if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
       aRv.Throw(NS_ERROR_FAILURE);
       return nullptr;
     }
@@ -2607,30 +2697,40 @@ ${this.defs.filter(d => d instanceof MethodDef).map((m) => `${m.implementation}`
 #include "mozilla/Variant.h"
 #include "mozilla/dom/DOMException.h" // for Failure's Exception
 #include "mozilla/Logging.h"
+#include "mozilla/dom/Record.h"
 
 using mozilla::LogLevel;
 
 namespace mozilla::berytus {
 
-template <typename RV>
-class IJSWord {
-public:
-  static bool ToJSVal(JSContext* aCx,
-                      const RV& aValue,
-                      JS::MutableHandle<JS::Value> aRv);
-  static bool FromJSVal(JSContext* aCx,
-                        JS::Handle<JS::Value> aValue,
-                        RV& aRv);
-};
-
 using ArrayBuffer = mozilla::dom::ArrayBuffer;
 using ArrayBufferView = mozilla::dom::ArrayBufferView;
+template <typename K, typename V>
+using Record = mozilla::dom::Record<K, V>;
 
 template <typename... T>
 class SafeVariant {
 public:
   SafeVariant() = delete;
 };
+
+template <typename T>
+bool JSValIs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  static_assert(false, "No JSValIs specialisation was found!");
+  return false;
+}
+
+template <typename T>
+bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, T& aRv) {
+  static_assert(false, "No FromJSVal specialisation was found!");
+  return false;
+}
+
+template <typename T>
+bool ToJSVal(JSContext* aCx, const T& aValue, JS::MutableHandle<JS::Value> aRv) {
+  static_assert(false, "No ToJSVal specialisation was found!");
+  return false;
+}
 
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(def => def.definition).join("\n")}
 
@@ -2649,9 +2749,7 @@ protected:
   nsString mManagerId;
   bool mDisabled;
 
-  template <typename W1, typename W2,
-            typename = std::enable_if_t<std::is_base_of<IJSWord<W1>, W1>::value>,
-            typename = std::enable_if_t<std::is_base_of<IJSWord<W2>, W2>::value>>
+  template <typename W1, typename W2>
   already_AddRefed<dom::Promise> CallSendQuery(JSContext *aCx,
                                                const nsAString & aGroup,
                                                const nsAString &aMethod,

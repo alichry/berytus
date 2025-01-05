@@ -59,6 +59,33 @@ export interface ParseOptions {
 
 const typeChecker = project.getTypeChecker();
 
+export const retrieveRecordArgumentTypes = (recordType: Type) => {
+    if (! recordType.isObject()) {
+        throw new Error("Expected passed Record type to be an Object type. Got otherwise.");
+    }
+    if (recordType.getAliasSymbol()?.getName() !== 'Record') {
+        throw new Error("Expected passed Record type to be a type with an aliais symbol of 'Record'. Got: " + recordType.getAliasSymbol()?.getName());
+    }
+    const idtl = typeChecker.compilerObject.getIndexInfosOfType(
+        recordType.compilerType
+    );
+    if (idtl.length > 1) {
+        throw new Error("Expecting Record type to contain one index definition, got " + idtl.length);
+    }
+    const idt = idtl[0];
+    // @ts-ignore Type constructor:
+    // https://github.com/dsherret/ts-morph/blob/5e208c51877b14aa05bea3ae04a4b283cf0ace60/packages/ts-morph/src/compiler/types/Type.ts#L27
+    // TODO(berytus): find a better way of wrapping the native type
+    const keyType = new Type(project._context, idt.keyType) as Type;
+    // @ts-ignore Type constructor:
+    // https://github.com/dsherret/ts-morph/blob/5e208c51877b14aa05bea3ae04a4b283cf0ace60/packages/ts-morph/src/compiler/types/Type.ts#L27
+    // TODO(berytus): find a better way of wrapping the native type
+    // Note: recordType.getTypeArguments() returned an empty array.
+    // recordType.compilerType.aliasTypeArguments is a workaround.
+    const valueType = new Type(project._context, recordType.compilerType.aliasTypeArguments![1]) as Type;
+    return { keyType, valueType };
+}
+
 /**
  * A simple TypeScript type parser. This is primarily
  * used to parse the RequestHandler methods and
@@ -150,18 +177,9 @@ export const parseType = (int: Type, opts: ParseOptions = {}): ParsedType => {
         // an index are not supported as they may contain,
         // in addition to the index, literal properties.
         if (int.getAliasSymbol()?.getName() === 'Record') {
-            const idtl = typeChecker.compilerObject.getIndexInfosOfType(
-                int.compilerType
-            );
-            if (idtl.length > 1) {
-                throw new Error("Expecting Record types to contain one index definition, got " + idtl.length);
-            }
-            const idt = idtl[0];
+            const { keyType, valueType } = retrieveRecordArgumentTypes(int);
             const parsedKT = parseType(
-                // @ts-ignore Type constructor:
-                // https://github.com/dsherret/ts-morph/blob/5e208c51877b14aa05bea3ae04a4b283cf0ace60/packages/ts-morph/src/compiler/types/Type.ts#L27
-                // TODO(berytus): find a better way of wrapping the native type
-                new Type(project._context, idt.keyType),
+                keyType,
                 opts
             );
             if (parsedKT.type !== "string" && parsedKT.type !== "number") {
@@ -171,12 +189,7 @@ export const parseType = (int: Type, opts: ParseOptions = {}): ParsedType => {
                 type: "record",
                 keyType: parsedKT.type,
                 valueType: parseType(
-                    // @ts-ignore Type constructor:
-                    // https://github.com/dsherret/ts-morph/blob/5e208c51877b14aa05bea3ae04a4b283cf0ace60/packages/ts-morph/src/compiler/types/Type.ts#L27
-                    // TODO(berytus): find a better way of wrapping the native type
-                    // Note: int.getTypeArguments() returned an empty array.
-                    // int.compilerType.aliasTypeArguments is a workaround.
-                    new Type(project._context, int.compilerType.aliasTypeArguments![1]),
+                    valueType,
                     opts
                 )
             }

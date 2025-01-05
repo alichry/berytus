@@ -6,7 +6,7 @@
 import { resolve } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { InterfaceDeclaration, Type as tsType, SourceFile, Project as TSProject } from 'ts-morph';
-import { ParsedType, ParseOptions, parseType } from '../request-handler/type-parser.js';
+import { ParsedType, ParseOptions, parseType, retrieveRecordArgumentTypes } from '../request-handler/type-parser.js';
 
 const createProject = () => new TSProject({
     tsConfigFilePath: resolve('./tsconfig.json')
@@ -60,6 +60,37 @@ const interfaceEnsureUnionsAreAliasd = (
         if (propType.isIntersection()) {
             throw new Error("Intersection types are not allowed.");
         }
+        if (propType.isObject() && propType.getAliasSymbol()?.getName() === 'Record') {
+            const { keyType, valueType } = retrieveRecordArgumentTypes(propType);
+            [keyType, valueType].forEach(tt => {
+                if (tt.isInterface() && !shouldSkipType(tt)) {
+                    interfaceEnsureUnionsAreAliasd(
+                        typesFile,
+                        unionAliasGenerator,
+                        typesFile.getInterfaceOrThrow(
+                            tt.getAliasSymbol()?.getName()
+                            || tt.getSymbol()?.getName()!
+                        ),
+                        updater
+                    );
+                }
+            });
+            const parsedKeyType = parseType(keyType, { unionAliasGenerator });
+            let keyTypeText = keyType.getText();
+            if ("alias" in parsedKeyType) {
+                keyTypeText = parsedKeyType.alias;
+            }
+            const parsedValueType = parseType(valueType, { unionAliasGenerator });
+            let valueTypeText = valueType.getText();
+            if ("alias" in parsedValueType) {
+                valueTypeText = parsedValueType.alias;
+            }
+            propSig.set({
+                name: propSig.getName(),
+                type: `Record<${keyTypeText}, ${valueTypeText}>`
+            });
+            return;
+        }
         if (! propType.isUnion()) {
             return;
         }
@@ -83,10 +114,13 @@ const interfaceEnsureUnionsAreAliasd = (
             return;
         }
         const propTypeText = propSig.getType().getText();
+        if (propTypeText === parsedType.alias) {
+            // no change needed.
+            return;
+        }
         propSig.set({
             name: propSig.getName(),
-            type: propTypeText !== parsedType.alias
-                ? parsedType.alias : propTypeText
+            type: parsedType.alias
         });
     });
     const newText = int.getText();

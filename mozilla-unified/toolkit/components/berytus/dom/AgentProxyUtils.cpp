@@ -435,7 +435,7 @@ already_AddRefed<dom::BerytusIdentityField> FromProxy::BerytusIdentityField(
   nsString id;
   id.Assign(aProxy.mId);
   JS::Rooted<JS::Value> optionsV(aCx);
-  if (NS_WARN_IF(!mozilla::berytus::BerytusIdentityFieldOptions::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
+  if (NS_WARN_IF(!mozilla::berytus::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
     aRv.ThrowTypeError("Unable to deserialise field options");
     return nullptr;
   }
@@ -461,7 +461,7 @@ already_AddRefed<dom::BerytusForeignIdentityField> FromProxy::BerytusForeignIden
   nsString id;
   id.Assign(aProxy.mId);
   JS::Rooted<JS::Value> optionsV(aCx);
-  if (NS_WARN_IF(!mozilla::berytus::BerytusForeignIdentityFieldOptions::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
+  if (NS_WARN_IF(!mozilla::berytus::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
     aRv.ThrowTypeError("Unable to deserialise field options");
     return nullptr;
   }
@@ -487,7 +487,7 @@ already_AddRefed<dom::BerytusPasswordField> FromProxy::BerytusPasswordField(
   nsString id;
   id.Assign(aProxy.mId);
   JS::Rooted<JS::Value> optionsV(aCx);
-  if (NS_WARN_IF(!mozilla::berytus::BerytusPasswordFieldOptions::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
+  if (NS_WARN_IF(!mozilla::berytus::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
     aRv.ThrowTypeError("Unable to deserialise field options");
     return nullptr;
   }
@@ -512,7 +512,7 @@ already_AddRefed<dom::BerytusSecurePasswordField> FromProxy::BerytusSecurePasswo
   nsString id;
   id.Assign(aProxy.mId);
   JS::Rooted<JS::Value> optionsV(aCx);
-  if (NS_WARN_IF(!mozilla::berytus::BerytusSecurePasswordFieldOptions::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
+  if (NS_WARN_IF(!mozilla::berytus::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
     aRv.ThrowTypeError("Unable to deserialise field options");
     return nullptr;
   }
@@ -559,7 +559,7 @@ already_AddRefed<dom::BerytusKeyField> FromProxy::BerytusKeyField(
   nsString id;
   id.Assign(aProxy.mId);
   JS::Rooted<JS::Value> optionsV(aCx);
-  if (NS_WARN_IF(!mozilla::berytus::BerytusKeyFieldOptions::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
+  if (NS_WARN_IF(!mozilla::berytus::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
     aRv.ThrowTypeError("Unable to deserialise field options");
     return nullptr;
   }
@@ -605,7 +605,7 @@ already_AddRefed<dom::BerytusSharedKeyField> FromProxy::BerytusSharedKeyField(
   nsString id;
   id.Assign(aProxy.mId);
   JS::Rooted<JS::Value> optionsV(aCx);
-  if (NS_WARN_IF(!mozilla::berytus::BerytusSharedKeyFieldOptions::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
+  if (NS_WARN_IF(!mozilla::berytus::ToJSVal(aCx, aProxy.mOptions, &optionsV))) {
     aRv.ThrowTypeError("Unable to deserialise field options");
     return nullptr;
   }
@@ -877,7 +877,7 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Identity) {
     berytus::BerytusIdentityField proxyField;
-    if (NS_WARN_IF(!berytus::BerytusIdentityField::FromJSVal(aCx, jsField, proxyField))) {
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
       return false;
     }
     aRetVal.Init(VariantType<berytus::BerytusIdentityField>{}, std::move(proxyField));
@@ -885,7 +885,7 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::ForeignIdentity) {
     berytus::BerytusForeignIdentityField proxyField;
-    if (NS_WARN_IF(!berytus::BerytusForeignIdentityField::FromJSVal(aCx, jsField, proxyField))) {
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -893,7 +893,7 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Password) {
     berytus::BerytusPasswordField proxyField;
-    if (NS_WARN_IF(!berytus::BerytusPasswordField::FromJSVal(aCx, jsField, proxyField))) {
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -901,7 +901,7 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::SecurePassword) {
     berytus::BerytusSecurePasswordField proxyField;
-    if (NS_WARN_IF(!berytus::BerytusSecurePasswordField::FromJSVal(aCx, jsField, proxyField))) {
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -909,7 +909,7 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Key) {
     berytus::BerytusKeyField proxyField;
-    if (NS_WARN_IF(!berytus::BerytusKeyField::FromJSVal(aCx, jsField, proxyField))) {
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -917,7 +917,7 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::SharedKey) {
     berytus::BerytusSharedKeyField proxyField;
-    if (NS_WARN_IF(!berytus::BerytusSharedKeyField::FromJSVal(aCx, jsField, proxyField))) {
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -934,7 +934,7 @@ bool ToProxy::BerytusEncryptedPacket(JSContext* aCx,
   if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, aPacket, &jsPacket))) {
     return false;
   }
-  if (NS_WARN_IF(!EncryptedPacketProxy::FromJSVal(aCx, jsPacket, aRetVal))) {
+  if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsPacket, aRetVal))) {
     return false;
   }
   return true;
@@ -957,7 +957,7 @@ bool ToProxy::BerytusOptionalFieldValueUnion(JSContext* aCx,
     switch (dict->Type()) {
       case dom::BerytusFieldType::SecurePassword: {
         BerytusSecurePasswordFieldValue fvProxy;
-        if (NS_WARN_IF(!BerytusSecurePasswordFieldValue::FromJSVal(aCx, jsDict, fvProxy))) {
+        if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsDict, fvProxy))) {
           return false;
         }
         aRetVal.Init(std::move(fvProxy));
@@ -965,7 +965,7 @@ bool ToProxy::BerytusOptionalFieldValueUnion(JSContext* aCx,
       }
       case dom::BerytusFieldType::Key: {
         BerytusKeyFieldValue fvProxy;
-        if (NS_WARN_IF(!BerytusKeyFieldValue::FromJSVal(aCx, jsDict, fvProxy))) {
+        if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsDict, fvProxy))) {
           return false;
         }
         aRetVal.Init(std::move(fvProxy));
@@ -973,7 +973,7 @@ bool ToProxy::BerytusOptionalFieldValueUnion(JSContext* aCx,
       }
       case dom::BerytusFieldType::SharedKey: {
         BerytusSharedKeyFieldValue fvProxy;
-        if (NS_WARN_IF(!BerytusSharedKeyFieldValue::FromJSVal(aCx, jsDict, fvProxy))) {
+        if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsDict, fvProxy))) {
           return false;
         }
         aRetVal.Init(std::move(fvProxy));

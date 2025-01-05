@@ -1571,19 +1571,13 @@
         ]
       },
       {
-        "id": "Record_string_stringOrRecord_string_BerytusEncryptedPacket",
+        "id": "stringOrBerytusEncryptedPacket",
         "choices": [
           {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
+            "type": "string"
           },
           {
-            "type": "object",
-            "additionalProperties": {
-              "$ref": "BerytusEncryptedPacket"
-            }
+            "$ref": "BerytusEncryptedPacket"
           }
         ]
       },
@@ -1592,7 +1586,10 @@
         "type": "object",
         "properties": {
           "response": {
-            "$ref": "Record_string_stringOrRecord_string_BerytusEncryptedPacket"
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "stringOrBerytusEncryptedPacket"
+            }
           }
         }
       },
@@ -1601,7 +1598,10 @@
         "type": "object",
         "properties": {
           "response": {
-            "$ref": "Record_string_stringOrRecord_string_BerytusEncryptedPacket"
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "stringOrBerytusEncryptedPacket"
+            }
           }
         }
       },
@@ -1623,17 +1623,6 @@
             "isInstanceOf": "ArrayBuffer"
           }
         }
-      },
-      {
-        "id": "stringOrBerytusEncryptedPacket",
-        "choices": [
-          {
-            "type": "string"
-          },
-          {
-            "$ref": "BerytusEncryptedPacket"
-          }
-        ]
       },
       {
         "id": "BerytusChallengeSelectSecurePasswordMessageResponse",
@@ -1680,11 +1669,7 @@
       {
         "id": "BerytusChallengeVerifyServerProofMessageResponse",
         "type": "object",
-        "properties": {
-          "response": {
-            "type": "any"
-          }
-        }
+        "properties": {}
       },
       {
         "id": "BerytusReceiveMessageUnion",

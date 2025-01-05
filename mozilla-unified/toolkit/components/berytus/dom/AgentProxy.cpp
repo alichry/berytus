@@ -38,7 +38,7 @@ bool AgentProxy::IsDisabled() const {
   return mDisabled;
 }
 
-template <typename W1, typename W2, typename, typename>
+template <typename W1, typename W2>
 already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
                                                          const nsAString & aGroup,
                                                          const nsAString &aMethod,
@@ -123,7 +123,7 @@ already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
   }
 
   JS::Rooted<JS::Value> reqCxJS(aCx);
-  if (NS_WARN_IF(!aReqCx.ToJSVal(aCx, aReqCx, &reqCxJS))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, aReqCx, &reqCxJS))) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
@@ -133,7 +133,7 @@ already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
   }
   if (aReqArgs) {
     JS::Rooted<JS::Value> reqArgsJS(aCx);
-    if (NS_WARN_IF(!aReqArgs->ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+    if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
       aRv.Throw(NS_ERROR_FAILURE);
       return nullptr;
     }
@@ -163,11 +163,13 @@ already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
   return promise.forget();
 }
 
-bool JSValIsNumber(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<double>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   aRv = aValue.isNumber() || aValue.isNumber();
   return true;
 }
-bool NumberFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv) {
+template<>
+bool FromJSVal<double>(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv) {
   if (aValue.isInt32()) {
     aRv = static_cast<double>(aValue.toInt32());
     return true;
@@ -178,11 +180,13 @@ bool NumberFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv) 
   aRv = aValue.toNumber();
   return true;
 }
-bool NumberToJSVal(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<double>(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv) {
   aRv.setNumber(aValue);
   return true;
 }
-bool DocumentMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<DocumentMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -194,7 +198,7 @@ bool DocumentMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -207,7 +211,8 @@ bool DocumentMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value
 
 
 }
-bool DocumentMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv) {
+template<>
+bool FromJSVal<DocumentMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -217,20 +222,21 @@ bool DocumentMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, D
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool DocumentMetadata::ToJSVal(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<DocumentMetadata>(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -241,7 +247,8 @@ bool DocumentMetadata::ToJSVal(JSContext* aCx, const DocumentMetadata& aValue, J
   return true;
 }
 
-bool PreliminaryRequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<PreliminaryRequestContext>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -253,7 +260,7 @@ bool PreliminaryRequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -266,7 +273,8 @@ bool PreliminaryRequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<
 
 
 }
-bool PreliminaryRequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv) {
+template<>
+bool FromJSVal<PreliminaryRequestContext>(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -276,20 +284,21 @@ bool PreliminaryRequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument)))) {
+  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
     return false;
   }
   
   return true;
 }
             
-bool PreliminaryRequestContext::ToJSVal(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<PreliminaryRequestContext>(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal0))) {
@@ -300,11 +309,13 @@ bool PreliminaryRequestContext::ToJSVal(JSContext* aCx, const PreliminaryRequest
   return true;
 }
 
-bool JSValIsString(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<nsString>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   aRv = aValue.isString();
   return true;
 }
-bool StringFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv) {
+template<>
+bool FromJSVal<nsString>(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
@@ -324,12 +335,14 @@ bool StringFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv
   CopyASCIItoUTF16(Span(reinterpret_cast<const char*>(buf), len), aRv);
   return true;
 }
-bool StringToJSVal(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<nsString>(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSString*> rStr(aCx, JS_NewUCStringCopyN(aCx, aValue.get(), aValue.Length()));
   aRv.setString(rStr);
   return true;
 }
-bool CryptoActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<CryptoActor>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -341,7 +354,7 @@ bool CryptoActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ed25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -354,7 +367,8 @@ bool CryptoActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aVa
 
 
 }
-bool CryptoActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv) {
+template<>
+bool FromJSVal<CryptoActor>(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -364,20 +378,21 @@ bool CryptoActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Crypto
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ed25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mEd25519Key)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mEd25519Key)))) {
     return false;
   }
   
   return true;
 }
             
-bool CryptoActor::ToJSVal(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<CryptoActor>(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mEd25519Key, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mEd25519Key, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "ed25519Key", memberVal0))) {
@@ -388,7 +403,8 @@ bool CryptoActor::ToJSVal(JSContext* aCx, const CryptoActor& aValue, JS::Mutable
   return true;
 }
 
-bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<UriParams>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -400,7 +416,7 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "uri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -412,7 +428,7 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scheme", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -424,7 +440,7 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hostname", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -436,7 +452,7 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "port", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -448,7 +464,7 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "path", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -461,7 +477,8 @@ bool UriParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
 
 
 }
-bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv) {
+template<>
+bool FromJSVal<UriParams>(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -471,7 +488,7 @@ bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParam
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "uri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mUri)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mUri)))) {
     return false;
   }
   
@@ -479,7 +496,7 @@ bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParam
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scheme", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mScheme)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mScheme)))) {
     return false;
   }
   
@@ -487,7 +504,7 @@ bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParam
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hostname", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mHostname)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mHostname)))) {
     return false;
   }
   
@@ -495,7 +512,7 @@ bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParam
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "port", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mPort)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mPort)))) {
     return false;
   }
   
@@ -503,20 +520,21 @@ bool UriParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParam
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "path", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mPath)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mPath)))) {
     return false;
   }
   
   return true;
 }
             
-bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<UriParams>(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mUri, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mUri, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "uri", memberVal0))) {
@@ -526,7 +544,7 @@ bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHand
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mScheme, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mScheme, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scheme", memberVal1))) {
@@ -536,7 +554,7 @@ bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHand
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mHostname, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mHostname, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hostname", memberVal2))) {
@@ -546,7 +564,7 @@ bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHand
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mPort, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mPort, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "port", memberVal3))) {
@@ -556,7 +574,7 @@ bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHand
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mPath, &memberVal4)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mPath, &memberVal4)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "path", memberVal4))) {
@@ -567,7 +585,8 @@ bool UriParams::ToJSVal(JSContext* aCx, const UriParams& aValue, JS::MutableHand
   return true;
 }
 
-bool OriginActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<OriginActor>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -579,7 +598,7 @@ bool OriginActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "originalUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(UriParams::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<UriParams>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -591,7 +610,7 @@ bool OriginActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "currentUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(UriParams::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<UriParams>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -604,7 +623,8 @@ bool OriginActor::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aVa
 
 
 }
-bool OriginActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OriginActor& aRv) {
+template<>
+bool FromJSVal<OriginActor>(JSContext* aCx, JS::Handle<JS::Value> aValue, OriginActor& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -614,7 +634,7 @@ bool OriginActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Origin
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "originalUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(UriParams::FromJSVal(aCx, propVal, aRv.mOriginalUri)))) {
+  if (NS_WARN_IF(!(FromJSVal<UriParams>(aCx, propVal, aRv.mOriginalUri)))) {
     return false;
   }
   
@@ -622,20 +642,21 @@ bool OriginActor::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Origin
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "currentUri", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(UriParams::FromJSVal(aCx, propVal, aRv.mCurrentUri)))) {
+  if (NS_WARN_IF(!(FromJSVal<UriParams>(aCx, propVal, aRv.mCurrentUri)))) {
     return false;
   }
   
   return true;
 }
             
-bool OriginActor::ToJSVal(JSContext* aCx, const OriginActor& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<OriginActor>(JSContext* aCx, const OriginActor& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(UriParams::ToJSVal(aCx, aValue.mOriginalUri, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<UriParams>(aCx, aValue.mOriginalUri, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "originalUri", memberVal0))) {
@@ -645,7 +666,7 @@ bool OriginActor::ToJSVal(JSContext* aCx, const OriginActor& aValue, JS::Mutable
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(UriParams::ToJSVal(aCx, aValue.mCurrentUri, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<UriParams>(aCx, aValue.mCurrentUri, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "currentUri", memberVal1))) {
@@ -656,11 +677,12 @@ bool OriginActor::ToJSVal(JSContext* aCx, const OriginActor& aValue, JS::Mutable
   return true;
 }
 
-bool SafeVariant<CryptoActor, OriginActor>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<CryptoActor, OriginActor>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(CryptoActor::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<CryptoActor>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -672,7 +694,7 @@ bool SafeVariant<CryptoActor, OriginActor>::IsJSValueValid(JSContext *aCx, const
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(OriginActor::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<OriginActor>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -684,15 +706,16 @@ bool SafeVariant<CryptoActor, OriginActor>::IsJSValueValid(JSContext *aCx, const
   aRv = false;
   return true;
 }
-bool SafeVariant<CryptoActor, OriginActor>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<CryptoActor, OriginActor>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<CryptoActor, OriginActor>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<CryptoActor, OriginActor>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(CryptoActor::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<CryptoActor>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       CryptoActor nv;
-      if (NS_WARN_IF(!(CryptoActor::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<CryptoActor>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -702,12 +725,12 @@ bool SafeVariant<CryptoActor, OriginActor>::FromJSVal(JSContext* aCx, JS::Handle
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(OriginActor::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<OriginActor>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       OriginActor nv;
-      if (NS_WARN_IF(!(OriginActor::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<OriginActor>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -719,23 +742,25 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<CryptoActor, OriginActor>::ToJSVal(JSContext* aCx, const SafeVariant<CryptoActor, OriginActor>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<CryptoActor, OriginActor>>(JSContext* aCx, const SafeVariant<CryptoActor, OriginActor>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const CryptoActor& aVal) {
-      return CryptoActor::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<CryptoActor>(mCx, aVal, mRv);
     }
 
     bool operator()(const OriginActor& aVal) {
-      return OriginActor::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<OriginActor>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool GetSigningKeyArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<GetSigningKeyArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -747,7 +772,7 @@ bool GetSigningKeyArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<CryptoActor, OriginActor>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -760,7 +785,8 @@ bool GetSigningKeyArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
 
 
 }
-bool GetSigningKeyArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetSigningKeyArgs& aRv) {
+template<>
+bool FromJSVal<GetSigningKeyArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, GetSigningKeyArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -770,14 +796,15 @@ bool GetSigningKeyArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::FromJSVal(aCx, propVal, aRv.mWebAppActor)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<CryptoActor, OriginActor>>(aCx, propVal, aRv.mWebAppActor)))) {
     return false;
   }
   
   return true;
 }
             
-bool GetSigningKeyArgs::ToJSVal(JSContext* aCx, const GetSigningKeyArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<GetSigningKeyArgs>(JSContext* aCx, const GetSigningKeyArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -785,7 +812,7 @@ bool GetSigningKeyArgs::ToJSVal(JSContext* aCx, const GetSigningKeyArgs& aValue,
   if (NS_WARN_IF(!aValue.mWebAppActor.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::ToJSVal(aCx, aValue.mWebAppActor, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<CryptoActor, OriginActor>>(aCx, aValue.mWebAppActor, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppActor", memberVal0))) {
@@ -816,7 +843,8 @@ ErrorResult Failure::ToErrorResult() const {
   }
   return rv;
 }
-bool Failure::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Failure& aRv) {
+template<>
+bool FromJSVal<Failure>(JSContext* aCx, JS::Handle<JS::Value> aValue, Failure& aRv) {
   nsresult result = NS_ERROR_FAILURE;
   nsIStackFrame* stackFrame = nullptr;
   nsISupports* data = nullptr;
@@ -840,7 +868,7 @@ bool Failure::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Failure& a
   }
   if (JS_GetProperty(aCx, errorObj, "message", &messageVal)) {
     nsString twoByteMsg;
-    if (NS_WARN_IF(!StringFromJSVal(aCx, messageVal, twoByteMsg))) {
+    if (NS_WARN_IF(!FromJSVal(aCx, messageVal, twoByteMsg))) {
       return false;
     }
     // additional copy... TODO(berytus): possibly optimise this.
@@ -855,16 +883,19 @@ bool Failure::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Failure& a
   return true;
 }
 
-bool JSValIsnsTArray_nsString_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<nsTArray<nsString>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
   if (NS_WARN_IF(!JS::IsArrayObject(aCx, aValue, &aRv))) {
     return false;
   }
+  // TODO(berytus): What about the values inside the array?
   return true;
 }
-bool nsTArray_nsString_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<nsString>& aRv) {
+template<>
+bool FromJSVal<nsTArray<nsString>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<nsString>& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -888,21 +919,22 @@ bool nsTArray_nsString_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aVa
     }
 
     nsString item;
-    if (NS_WARN_IF(!(StringFromJSVal(aCx, value, item)))) {
+    if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, value, item)))) {
       return false;
     }
     aRv.AppendElement(std::move(item));
   }
   return true;
 }
-bool nsTArray_nsString_ToJSVal(JSContext* aCx, const nsTArray<nsString>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<nsTArray<nsString>>(JSContext* aCx, const nsTArray<nsString>& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> array(aCx, JS::NewArrayObject(aCx, 0));
 
   for (uint32_t i = 0; i < aValue.Length(); i++) {
     const nsString& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!(StringToJSVal(aCx, item, &value)))) {
+    if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, item, &value)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -912,100 +944,113 @@ bool nsTArray_nsString_ToJSVal(JSContext* aCx, const nsTArray<nsString>& aValue,
   aRv.setObject(*array);
   return true;
 }
-bool JSValIsMaybe_nsTArray_nsString__(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Maybe<nsTArray<nsString>>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return JSValIsnsTArray_nsString_(aCx, aValue, aRv);
+  return JSValIs<nsTArray<nsString>>(aCx, aValue, aRv);
 }
-bool Maybe_nsTArray_nsString__FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsTArray<nsString>>& aRv) {
+template<>
+bool FromJSVal<Maybe<nsTArray<nsString>>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsTArray<nsString>>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   aRv.emplace();
-  if (NS_WARN_IF(!(nsTArray_nsString_FromJSVal(aCx, aValue, *aRv)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<nsString>>(aCx, aValue, *aRv)))) {
     return false;
   }
   return true;
 }
-bool Maybe_nsTArray_nsString__ToJSVal(JSContext* aCx, const Maybe<nsTArray<nsString>>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Maybe<nsTArray<nsString>>>(JSContext* aCx, const Maybe<nsTArray<nsString>>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return nsTArray_nsString_ToJSVal(aCx, aValue.ref(), aRv);
+  return ToJSVal<nsTArray<nsString>>(aCx, aValue.ref(), aRv);
 }
-bool JSValIsBool(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<bool>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   aRv = aValue.isBoolean();
   return true;
 }
-bool BoolFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool FromJSVal<bool>(JSContext* aCx, JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isBoolean())) {
     return false;
   }
   aRv = aValue.toBoolean();
   return true;
 }
-bool BoolToJSVal(JSContext* aCx, const bool& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<bool>(JSContext* aCx, const bool& aValue, JS::MutableHandle<JS::Value> aRv) {
   aRv.setBoolean(aValue);
   return true;
 }
-bool JSValIsMaybe_nsString_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Maybe<nsString>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return JSValIsString(aCx, aValue, aRv);
+  return JSValIs<nsString>(aCx, aValue, aRv);
 }
-bool Maybe_nsString_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsString>& aRv) {
+template<>
+bool FromJSVal<Maybe<nsString>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsString>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   aRv.emplace();
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, *aRv)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, *aRv)))) {
     return false;
   }
   return true;
 }
-bool Maybe_nsString_ToJSVal(JSContext* aCx, const Maybe<nsString>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Maybe<nsString>>(JSContext* aCx, const Maybe<nsString>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return StringToJSVal(aCx, aValue.ref(), aRv);
+  return ToJSVal<nsString>(aCx, aValue.ref(), aRv);
 }
-bool JSValIsMaybe_double_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Maybe<double>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return JSValIsNumber(aCx, aValue, aRv);
+  return JSValIs<double>(aCx, aValue, aRv);
 }
-bool Maybe_double_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<double>& aRv) {
+template<>
+bool FromJSVal<Maybe<double>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<double>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   aRv.emplace();
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, aValue, *aRv)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, aValue, *aRv)))) {
     return false;
   }
   return true;
 }
-bool Maybe_double_ToJSVal(JSContext* aCx, const Maybe<double>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Maybe<double>>(JSContext* aCx, const Maybe<double>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return NumberToJSVal(aCx, aValue.ref(), aRv);
+  return ToJSVal<double>(aCx, aValue.ref(), aRv);
 }
-bool PartialAccountIdentity::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<PartialAccountIdentity>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1017,7 +1062,7 @@ bool PartialAccountIdentity::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1029,7 +1074,7 @@ bool PartialAccountIdentity::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldValue", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1042,7 +1087,8 @@ bool PartialAccountIdentity::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
 
 
 }
-bool PartialAccountIdentity::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialAccountIdentity& aRv) {
+template<>
+bool FromJSVal<PartialAccountIdentity>(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialAccountIdentity& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1052,7 +1098,7 @@ bool PartialAccountIdentity::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mFieldId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mFieldId)))) {
     return false;
   }
   
@@ -1060,20 +1106,21 @@ bool PartialAccountIdentity::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldValue", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mFieldValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mFieldValue)))) {
     return false;
   }
   
   return true;
 }
             
-bool PartialAccountIdentity::ToJSVal(JSContext* aCx, const PartialAccountIdentity& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<PartialAccountIdentity>(JSContext* aCx, const PartialAccountIdentity& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mFieldId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mFieldId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "fieldId", memberVal0))) {
@@ -1083,7 +1130,7 @@ bool PartialAccountIdentity::ToJSVal(JSContext* aCx, const PartialAccountIdentit
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mFieldValue, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mFieldValue, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "fieldValue", memberVal1))) {
@@ -1094,16 +1141,19 @@ bool PartialAccountIdentity::ToJSVal(JSContext* aCx, const PartialAccountIdentit
   return true;
 }
 
-bool JSValIsnsTArray_PartialAccountIdentity_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<nsTArray<PartialAccountIdentity>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
   if (NS_WARN_IF(!JS::IsArrayObject(aCx, aValue, &aRv))) {
     return false;
   }
+  // TODO(berytus): What about the values inside the array?
   return true;
 }
-bool nsTArray_PartialAccountIdentity_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<PartialAccountIdentity>& aRv) {
+template<>
+bool FromJSVal<nsTArray<PartialAccountIdentity>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<PartialAccountIdentity>& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1127,21 +1177,22 @@ bool nsTArray_PartialAccountIdentity_FromJSVal(JSContext* aCx, const JS::Handle<
     }
 
     PartialAccountIdentity item;
-    if (NS_WARN_IF(!(PartialAccountIdentity::FromJSVal(aCx, value, item)))) {
+    if (NS_WARN_IF(!(FromJSVal<PartialAccountIdentity>(aCx, value, item)))) {
       return false;
     }
     aRv.AppendElement(std::move(item));
   }
   return true;
 }
-bool nsTArray_PartialAccountIdentity_ToJSVal(JSContext* aCx, const nsTArray<PartialAccountIdentity>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<nsTArray<PartialAccountIdentity>>(JSContext* aCx, const nsTArray<PartialAccountIdentity>& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> array(aCx, JS::NewArrayObject(aCx, 0));
 
   for (uint32_t i = 0; i < aValue.Length(); i++) {
     const PartialAccountIdentity& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!(PartialAccountIdentity::ToJSVal(aCx, item, &value)))) {
+    if (NS_WARN_IF(!(ToJSVal<PartialAccountIdentity>(aCx, item, &value)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -1151,33 +1202,37 @@ bool nsTArray_PartialAccountIdentity_ToJSVal(JSContext* aCx, const nsTArray<Part
   aRv.setObject(*array);
   return true;
 }
-bool JSValIsMaybe_nsTArray_PartialAccountIdentity__(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Maybe<nsTArray<PartialAccountIdentity>>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return JSValIsnsTArray_PartialAccountIdentity_(aCx, aValue, aRv);
+  return JSValIs<nsTArray<PartialAccountIdentity>>(aCx, aValue, aRv);
 }
-bool Maybe_nsTArray_PartialAccountIdentity__FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsTArray<PartialAccountIdentity>>& aRv) {
+template<>
+bool FromJSVal<Maybe<nsTArray<PartialAccountIdentity>>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<nsTArray<PartialAccountIdentity>>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   aRv.emplace();
-  if (NS_WARN_IF(!(nsTArray_PartialAccountIdentity_FromJSVal(aCx, aValue, *aRv)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<PartialAccountIdentity>>(aCx, aValue, *aRv)))) {
     return false;
   }
   return true;
 }
-bool Maybe_nsTArray_PartialAccountIdentity__ToJSVal(JSContext* aCx, const Maybe<nsTArray<PartialAccountIdentity>>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Maybe<nsTArray<PartialAccountIdentity>>>(JSContext* aCx, const Maybe<nsTArray<PartialAccountIdentity>>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return nsTArray_PartialAccountIdentity_ToJSVal(aCx, aValue.ref(), aRv);
+  return ToJSVal<nsTArray<PartialAccountIdentity>>(aCx, aValue.ref(), aRv);
 }
-bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<AccountConstraints>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1189,7 +1244,7 @@ bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1201,7 +1256,7 @@ bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "schemaVersion", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_double_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<double>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1213,7 +1268,7 @@ bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "identity", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsTArray_PartialAccountIdentity__(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsTArray<PartialAccountIdentity>>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1226,7 +1281,8 @@ bool AccountConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
 
 
 }
-bool AccountConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AccountConstraints& aRv) {
+template<>
+bool FromJSVal<AccountConstraints>(JSContext* aCx, JS::Handle<JS::Value> aValue, AccountConstraints& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1236,7 +1292,7 @@ bool AccountConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsString_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsString>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
@@ -1244,7 +1300,7 @@ bool AccountConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "schemaVersion", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_double_FromJSVal(aCx, propVal, aRv.mSchemaVersion)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<double>>(aCx, propVal, aRv.mSchemaVersion)))) {
     return false;
   }
   
@@ -1252,20 +1308,21 @@ bool AccountConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "identity", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsTArray_PartialAccountIdentity__FromJSVal(aCx, propVal, aRv.mIdentity)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsTArray<PartialAccountIdentity>>>(aCx, propVal, aRv.mIdentity)))) {
     return false;
   }
   
   return true;
 }
             
-bool AccountConstraints::ToJSVal(JSContext* aCx, const AccountConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<AccountConstraints>(JSContext* aCx, const AccountConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsString_ToJSVal(aCx, aValue.mCategory, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsString>>(aCx, aValue.mCategory, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal0))) {
@@ -1275,7 +1332,7 @@ bool AccountConstraints::ToJSVal(JSContext* aCx, const AccountConstraints& aValu
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_double_ToJSVal(aCx, aValue.mSchemaVersion, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<double>>(aCx, aValue.mSchemaVersion, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "schemaVersion", memberVal1))) {
@@ -1285,7 +1342,7 @@ bool AccountConstraints::ToJSVal(JSContext* aCx, const AccountConstraints& aValu
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsTArray_PartialAccountIdentity__ToJSVal(aCx, aValue.mIdentity, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsTArray<PartialAccountIdentity>>>(aCx, aValue.mIdentity, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "identity", memberVal2))) {
@@ -1296,33 +1353,37 @@ bool AccountConstraints::ToJSVal(JSContext* aCx, const AccountConstraints& aValu
   return true;
 }
 
-bool JSValIsMaybe_AccountConstraints_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Maybe<AccountConstraints>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return AccountConstraints::IsJSValueValid(aCx, aValue, aRv);
+  return JSValIs<AccountConstraints>(aCx, aValue, aRv);
 }
-bool Maybe_AccountConstraints_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<AccountConstraints>& aRv) {
+template<>
+bool FromJSVal<Maybe<AccountConstraints>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<AccountConstraints>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   aRv.emplace();
-  if (NS_WARN_IF(!(AccountConstraints::FromJSVal(aCx, aValue, *aRv)))) {
+  if (NS_WARN_IF(!(FromJSVal<AccountConstraints>(aCx, aValue, *aRv)))) {
     return false;
   }
   return true;
 }
-bool Maybe_AccountConstraints_ToJSVal(JSContext* aCx, const Maybe<AccountConstraints>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Maybe<AccountConstraints>>(JSContext* aCx, const Maybe<AccountConstraints>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return AccountConstraints::ToJSVal(aCx, aValue.ref(), aRv);
+  return ToJSVal<AccountConstraints>(aCx, aValue.ref(), aRv);
 }
-bool ChannelConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ChannelConstraints>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1334,7 +1395,7 @@ bool ChannelConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "secretManagerPublicKey", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsTArray_nsString__(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsTArray<nsString>>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1346,7 +1407,7 @@ bool ChannelConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "enableEndToEndEncryption", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsBool(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<bool>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1358,7 +1419,7 @@ bool ChannelConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "account", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_AccountConstraints_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<AccountConstraints>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1371,7 +1432,8 @@ bool ChannelConstraints::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
 
 
 }
-bool ChannelConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelConstraints& aRv) {
+template<>
+bool FromJSVal<ChannelConstraints>(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelConstraints& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1381,7 +1443,7 @@ bool ChannelConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "secretManagerPublicKey", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsTArray_nsString__FromJSVal(aCx, propVal, aRv.mSecretManagerPublicKey)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsTArray<nsString>>>(aCx, propVal, aRv.mSecretManagerPublicKey)))) {
     return false;
   }
   
@@ -1389,7 +1451,7 @@ bool ChannelConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "enableEndToEndEncryption", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BoolFromJSVal(aCx, propVal, aRv.mEnableEndToEndEncryption)))) {
+  if (NS_WARN_IF(!(FromJSVal<bool>(aCx, propVal, aRv.mEnableEndToEndEncryption)))) {
     return false;
   }
   
@@ -1397,20 +1459,21 @@ bool ChannelConstraints::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "account", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_AccountConstraints_FromJSVal(aCx, propVal, aRv.mAccount)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<AccountConstraints>>(aCx, propVal, aRv.mAccount)))) {
     return false;
   }
   
   return true;
 }
             
-bool ChannelConstraints::ToJSVal(JSContext* aCx, const ChannelConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ChannelConstraints>(JSContext* aCx, const ChannelConstraints& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsTArray_nsString__ToJSVal(aCx, aValue.mSecretManagerPublicKey, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsTArray<nsString>>>(aCx, aValue.mSecretManagerPublicKey, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "secretManagerPublicKey", memberVal0))) {
@@ -1420,7 +1483,7 @@ bool ChannelConstraints::ToJSVal(JSContext* aCx, const ChannelConstraints& aValu
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BoolToJSVal(aCx, aValue.mEnableEndToEndEncryption, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<bool>(aCx, aValue.mEnableEndToEndEncryption, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "enableEndToEndEncryption", memberVal1))) {
@@ -1430,7 +1493,7 @@ bool ChannelConstraints::ToJSVal(JSContext* aCx, const ChannelConstraints& aValu
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(Maybe_AccountConstraints_ToJSVal(aCx, aValue.mAccount, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<AccountConstraints>>(aCx, aValue.mAccount, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "account", memberVal2))) {
@@ -1441,7 +1504,8 @@ bool ChannelConstraints::ToJSVal(JSContext* aCx, const ChannelConstraints& aValu
   return true;
 }
 
-bool GetCredentialsMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<GetCredentialsMetadataArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1453,7 +1517,7 @@ bool GetCredentialsMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<CryptoActor, OriginActor>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1465,7 +1529,7 @@ bool GetCredentialsMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelConstraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelConstraints::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChannelConstraints>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1477,7 +1541,7 @@ bool GetCredentialsMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "accountConstraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(AccountConstraints::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<AccountConstraints>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1490,7 +1554,8 @@ bool GetCredentialsMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle
 
 
 }
-bool GetCredentialsMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GetCredentialsMetadataArgs& aRv) {
+template<>
+bool FromJSVal<GetCredentialsMetadataArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, GetCredentialsMetadataArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1500,7 +1565,7 @@ bool GetCredentialsMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::FromJSVal(aCx, propVal, aRv.mWebAppActor)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<CryptoActor, OriginActor>>(aCx, propVal, aRv.mWebAppActor)))) {
     return false;
   }
   
@@ -1508,7 +1573,7 @@ bool GetCredentialsMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelConstraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelConstraints::FromJSVal(aCx, propVal, aRv.mChannelConstraints)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChannelConstraints>(aCx, propVal, aRv.mChannelConstraints)))) {
     return false;
   }
   
@@ -1516,14 +1581,15 @@ bool GetCredentialsMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "accountConstraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(AccountConstraints::FromJSVal(aCx, propVal, aRv.mAccountConstraints)))) {
+  if (NS_WARN_IF(!(FromJSVal<AccountConstraints>(aCx, propVal, aRv.mAccountConstraints)))) {
     return false;
   }
   
   return true;
 }
             
-bool GetCredentialsMetadataArgs::ToJSVal(JSContext* aCx, const GetCredentialsMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<GetCredentialsMetadataArgs>(JSContext* aCx, const GetCredentialsMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -1531,7 +1597,7 @@ bool GetCredentialsMetadataArgs::ToJSVal(JSContext* aCx, const GetCredentialsMet
   if (NS_WARN_IF(!aValue.mWebAppActor.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::ToJSVal(aCx, aValue.mWebAppActor, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<CryptoActor, OriginActor>>(aCx, aValue.mWebAppActor, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppActor", memberVal0))) {
@@ -1541,7 +1607,7 @@ bool GetCredentialsMetadataArgs::ToJSVal(JSContext* aCx, const GetCredentialsMet
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ChannelConstraints::ToJSVal(aCx, aValue.mChannelConstraints, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChannelConstraints>(aCx, aValue.mChannelConstraints, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channelConstraints", memberVal1))) {
@@ -1551,7 +1617,7 @@ bool GetCredentialsMetadataArgs::ToJSVal(JSContext* aCx, const GetCredentialsMet
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(AccountConstraints::ToJSVal(aCx, aValue.mAccountConstraints, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<AccountConstraints>(aCx, aValue.mAccountConstraints, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "accountConstraints", memberVal2))) {
@@ -1563,7 +1629,8 @@ bool GetCredentialsMetadataArgs::ToJSVal(JSContext* aCx, const GetCredentialsMet
 }
 
 
-bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ChannelMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1575,7 +1642,7 @@ bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1587,7 +1654,7 @@ bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "constraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelConstraints::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChannelConstraints>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1599,7 +1666,7 @@ bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<CryptoActor, OriginActor>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1611,7 +1678,7 @@ bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(CryptoActor::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<CryptoActor>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1624,7 +1691,8 @@ bool ChannelMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
 
 
 }
-bool ChannelMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelMetadata& aRv) {
+template<>
+bool FromJSVal<ChannelMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1634,7 +1702,7 @@ bool ChannelMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -1642,7 +1710,7 @@ bool ChannelMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "constraints", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelConstraints::FromJSVal(aCx, propVal, aRv.mConstraints)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChannelConstraints>(aCx, propVal, aRv.mConstraints)))) {
     return false;
   }
   
@@ -1650,7 +1718,7 @@ bool ChannelMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::FromJSVal(aCx, propVal, aRv.mWebAppActor)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<CryptoActor, OriginActor>>(aCx, propVal, aRv.mWebAppActor)))) {
     return false;
   }
   
@@ -1658,20 +1726,21 @@ bool ChannelMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmActor", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(CryptoActor::FromJSVal(aCx, propVal, aRv.mScmActor)))) {
+  if (NS_WARN_IF(!(FromJSVal<CryptoActor>(aCx, propVal, aRv.mScmActor)))) {
     return false;
   }
   
   return true;
 }
             
-bool ChannelMetadata::ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ChannelMetadata>(JSContext* aCx, const ChannelMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -1681,7 +1750,7 @@ bool ChannelMetadata::ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS:
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ChannelConstraints::ToJSVal(aCx, aValue.mConstraints, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChannelConstraints>(aCx, aValue.mConstraints, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "constraints", memberVal1))) {
@@ -1693,7 +1762,7 @@ bool ChannelMetadata::ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS:
   if (NS_WARN_IF(!aValue.mWebAppActor.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<CryptoActor, OriginActor>::ToJSVal(aCx, aValue.mWebAppActor, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<CryptoActor, OriginActor>>(aCx, aValue.mWebAppActor, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppActor", memberVal2))) {
@@ -1703,7 +1772,7 @@ bool ChannelMetadata::ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS:
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(CryptoActor::ToJSVal(aCx, aValue.mScmActor, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<CryptoActor>(aCx, aValue.mScmActor, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmActor", memberVal3))) {
@@ -1714,7 +1783,8 @@ bool ChannelMetadata::ToJSVal(JSContext* aCx, const ChannelMetadata& aValue, JS:
   return true;
 }
 
-bool RequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<RequestContext>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1726,7 +1796,7 @@ bool RequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChannelMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1738,7 +1808,7 @@ bool RequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1751,7 +1821,8 @@ bool RequestContext::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
 
 
 }
-bool RequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContext& aRv) {
+template<>
+bool FromJSVal<RequestContext>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContext& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1761,7 +1832,7 @@ bool RequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Req
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelMetadata::FromJSVal(aCx, propVal, aRv.mChannel)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChannelMetadata>(aCx, propVal, aRv.mChannel)))) {
     return false;
   }
   
@@ -1769,20 +1840,21 @@ bool RequestContext::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Req
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument)))) {
+  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
     return false;
   }
   
   return true;
 }
             
-bool RequestContext::ToJSVal(JSContext* aCx, const RequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<RequestContext>(JSContext* aCx, const RequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ChannelMetadata::ToJSVal(aCx, aValue.mChannel, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChannelMetadata>(aCx, aValue.mChannel, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal0))) {
@@ -1792,7 +1864,7 @@ bool RequestContext::ToJSVal(JSContext* aCx, const RequestContext& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal1))) {
@@ -1803,7 +1875,8 @@ bool RequestContext::ToJSVal(JSContext* aCx, const RequestContext& aValue, JS::M
   return true;
 }
 
-bool InitialKeyExchangeParametersDraft::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<InitialKeyExchangeParametersDraft>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1815,7 +1888,7 @@ bool InitialKeyExchangeParametersDraft::IsJSValueValid(JSContext *aCx, const JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1827,7 +1900,7 @@ bool InitialKeyExchangeParametersDraft::IsJSValueValid(JSContext *aCx, const JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1840,7 +1913,8 @@ bool InitialKeyExchangeParametersDraft::IsJSValueValid(JSContext *aCx, const JS:
 
 
 }
-bool InitialKeyExchangeParametersDraft::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv) {
+template<>
+bool FromJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1850,7 +1924,7 @@ bool InitialKeyExchangeParametersDraft::FromJSVal(JSContext* aCx, JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mChannelId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mChannelId)))) {
     return false;
   }
   
@@ -1858,20 +1932,21 @@ bool InitialKeyExchangeParametersDraft::FromJSVal(JSContext* aCx, JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mWebAppX25519Key)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mWebAppX25519Key)))) {
     return false;
   }
   
   return true;
 }
             
-bool InitialKeyExchangeParametersDraft::ToJSVal(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mChannelId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mChannelId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channelId", memberVal0))) {
@@ -1881,7 +1956,7 @@ bool InitialKeyExchangeParametersDraft::ToJSVal(JSContext* aCx, const InitialKey
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mWebAppX25519Key, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mWebAppX25519Key, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppX25519Key", memberVal1))) {
@@ -1892,7 +1967,8 @@ bool InitialKeyExchangeParametersDraft::ToJSVal(JSContext* aCx, const InitialKey
   return true;
 }
 
-bool GenerateKeyExchangeParametersArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<GenerateKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1904,7 +1980,7 @@ bool GenerateKeyExchangeParametersArgs::IsJSValueValid(JSContext *aCx, const JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "paramsDraft", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(InitialKeyExchangeParametersDraft::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<InitialKeyExchangeParametersDraft>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -1917,7 +1993,8 @@ bool GenerateKeyExchangeParametersArgs::IsJSValueValid(JSContext *aCx, const JS:
 
 
 }
-bool GenerateKeyExchangeParametersArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateKeyExchangeParametersArgs& aRv) {
+template<>
+bool FromJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateKeyExchangeParametersArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1927,20 +2004,21 @@ bool GenerateKeyExchangeParametersArgs::FromJSVal(JSContext* aCx, JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "paramsDraft", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(InitialKeyExchangeParametersDraft::FromJSVal(aCx, propVal, aRv.mParamsDraft)))) {
+  if (NS_WARN_IF(!(FromJSVal<InitialKeyExchangeParametersDraft>(aCx, propVal, aRv.mParamsDraft)))) {
     return false;
   }
   
   return true;
 }
             
-bool GenerateKeyExchangeParametersArgs::ToJSVal(JSContext* aCx, const GenerateKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, const GenerateKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(InitialKeyExchangeParametersDraft::ToJSVal(aCx, aValue.mParamsDraft, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<InitialKeyExchangeParametersDraft>(aCx, aValue.mParamsDraft, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "paramsDraft", memberVal0))) {
@@ -1951,7 +2029,8 @@ bool GenerateKeyExchangeParametersArgs::ToJSVal(JSContext* aCx, const GenerateKe
   return true;
 }
 
-bool JSValIsArrayBuffer(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ArrayBuffer>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
@@ -1959,7 +2038,8 @@ bool JSValIsArrayBuffer(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool
   aRv = JS::IsArrayBufferObject(obj);
   return true;
 }
-bool ArrayBufferFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBuffer& aRv) {
+template<>
+bool FromJSVal<ArrayBuffer>(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBuffer& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -1982,12 +2062,14 @@ bool ArrayBufferFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBuf
   }
   return true;
 }
-bool ArrayBufferToJSVal(JSContext* aCx, const ArrayBuffer& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ArrayBuffer>(JSContext* aCx, const ArrayBuffer& aValue, JS::MutableHandle<JS::Value> aRv) {
   MOZ_ASSERT(aValue.Obj()); // TODO(berytus): Remove or keep this.
   aRv.setObject(*aValue.Obj());
   return true;
 }
-bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<PartialKeyExchangeParametersFromScm>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1999,7 +2081,7 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2011,7 +2093,7 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2023,7 +2105,7 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2035,7 +2117,7 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2047,7 +2129,7 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2060,7 +2142,8 @@ bool PartialKeyExchangeParametersFromScm::IsJSValueValid(JSContext *aCx, const J
 
 
 }
-bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv) {
+template<>
+bool FromJSVal<PartialKeyExchangeParametersFromScm>(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2070,7 +2153,7 @@ bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mScmX25519Key)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mScmX25519Key)))) {
     return false;
   }
   
@@ -2078,7 +2161,7 @@ bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mHkdfHash)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mHkdfHash)))) {
     return false;
   }
   
@@ -2086,7 +2169,7 @@ bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mHkdfSalt)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfSalt)))) {
     return false;
   }
   
@@ -2094,7 +2177,7 @@ bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mHkdfInfo)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfInfo)))) {
     return false;
   }
   
@@ -2102,20 +2185,21 @@ bool PartialKeyExchangeParametersFromScm::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mAesKeyLength)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mAesKeyLength)))) {
     return false;
   }
   
   return true;
 }
             
-bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<PartialKeyExchangeParametersFromScm>(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mScmX25519Key, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mScmX25519Key, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmX25519Key", memberVal0))) {
@@ -2125,7 +2209,7 @@ bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialK
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mHkdfHash, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mHkdfHash, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfHash", memberVal1))) {
@@ -2135,7 +2219,7 @@ bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialK
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mHkdfSalt, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfSalt, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfSalt", memberVal2))) {
@@ -2145,7 +2229,7 @@ bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialK
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mHkdfInfo, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfInfo, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfInfo", memberVal3))) {
@@ -2155,7 +2239,7 @@ bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialK
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mAesKeyLength, &memberVal4)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mAesKeyLength, &memberVal4)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "aesKeyLength", memberVal4))) {
@@ -2167,7 +2251,8 @@ bool PartialKeyExchangeParametersFromScm::ToJSVal(JSContext* aCx, const PartialK
 }
 
 
-bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<KeyExchangeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2179,7 +2264,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "packet", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2191,7 +2276,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2203,7 +2288,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2215,7 +2300,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2227,7 +2312,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2239,7 +2324,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2251,7 +2336,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2263,7 +2348,7 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2276,7 +2361,8 @@ bool KeyExchangeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
 
 
 }
-bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv) {
+template<>
+bool FromJSVal<KeyExchangeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2286,7 +2372,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "packet", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mPacket)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mPacket)))) {
     return false;
   }
   
@@ -2294,7 +2380,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mChannelId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mChannelId)))) {
     return false;
   }
   
@@ -2302,7 +2388,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mWebAppX25519Key)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mWebAppX25519Key)))) {
     return false;
   }
   
@@ -2310,7 +2396,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mScmX25519Key)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mScmX25519Key)))) {
     return false;
   }
   
@@ -2318,7 +2404,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mHkdfHash)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mHkdfHash)))) {
     return false;
   }
   
@@ -2326,7 +2412,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mHkdfSalt)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfSalt)))) {
     return false;
   }
   
@@ -2334,7 +2420,7 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mHkdfInfo)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfInfo)))) {
     return false;
   }
   
@@ -2342,20 +2428,21 @@ bool KeyExchangeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mAesKeyLength)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mAesKeyLength)))) {
     return false;
   }
   
   return true;
 }
             
-bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<KeyExchangeParameters>(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mPacket, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mPacket, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "packet", memberVal0))) {
@@ -2365,7 +2452,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mChannelId, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mChannelId, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channelId", memberVal1))) {
@@ -2375,7 +2462,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mWebAppX25519Key, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mWebAppX25519Key, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppX25519Key", memberVal2))) {
@@ -2385,7 +2472,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mScmX25519Key, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mScmX25519Key, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmX25519Key", memberVal3))) {
@@ -2395,7 +2482,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mHkdfHash, &memberVal4)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mHkdfHash, &memberVal4)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfHash", memberVal4))) {
@@ -2405,7 +2492,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal5(aCx);
   
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mHkdfSalt, &memberVal5)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfSalt, &memberVal5)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfSalt", memberVal5))) {
@@ -2415,7 +2502,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal6(aCx);
   
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mHkdfInfo, &memberVal6)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfInfo, &memberVal6)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfInfo", memberVal6))) {
@@ -2425,7 +2512,7 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
 
   JS::Rooted<JS::Value> memberVal7(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mAesKeyLength, &memberVal7)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mAesKeyLength, &memberVal7)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "aesKeyLength", memberVal7))) {
@@ -2436,7 +2523,8 @@ bool KeyExchangeParameters::ToJSVal(JSContext* aCx, const KeyExchangeParameters&
   return true;
 }
 
-bool EnableEndToEndEncryptionArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EnableEndToEndEncryptionArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2448,7 +2536,7 @@ bool EnableEndToEndEncryptionArgs::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "params", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(KeyExchangeParameters::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<KeyExchangeParameters>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2460,7 +2548,7 @@ bool EnableEndToEndEncryptionArgs::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppPacketSignature", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2473,7 +2561,8 @@ bool EnableEndToEndEncryptionArgs::IsJSValueValid(JSContext *aCx, const JS::Hand
 
 
 }
-bool EnableEndToEndEncryptionArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv) {
+template<>
+bool FromJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2483,7 +2572,7 @@ bool EnableEndToEndEncryptionArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "params", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(KeyExchangeParameters::FromJSVal(aCx, propVal, aRv.mParams)))) {
+  if (NS_WARN_IF(!(FromJSVal<KeyExchangeParameters>(aCx, propVal, aRv.mParams)))) {
     return false;
   }
   
@@ -2491,20 +2580,21 @@ bool EnableEndToEndEncryptionArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppPacketSignature", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mWebAppPacketSignature)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mWebAppPacketSignature)))) {
     return false;
   }
   
   return true;
 }
             
-bool EnableEndToEndEncryptionArgs::ToJSVal(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(KeyExchangeParameters::ToJSVal(aCx, aValue.mParams, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<KeyExchangeParameters>(aCx, aValue.mParams, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "params", memberVal0))) {
@@ -2514,7 +2604,7 @@ bool EnableEndToEndEncryptionArgs::ToJSVal(JSContext* aCx, const EnableEndToEndE
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mWebAppPacketSignature, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mWebAppPacketSignature, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppPacketSignature", memberVal1))) {
@@ -2583,24 +2673,27 @@ if (aVal.Equals(u"Register"_ns)) {
   }
   return false;
 }
-bool ELoginUserIntent::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ELoginUserIntent>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   ELoginUserIntent e;
   aRv = ELoginUserIntent::FromString(strVal, e);
   return true;
 }
-bool ELoginUserIntent::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ELoginUserIntent& aRv) {
+template<>
+bool FromJSVal<ELoginUserIntent>(JSContext* aCx, JS::Handle<JS::Value> aValue, ELoginUserIntent& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!ELoginUserIntent::ELoginUserIntent::FromString(strVal, aRv))) {
@@ -2608,15 +2701,17 @@ bool ELoginUserIntent::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, E
   }
   return true;
 }
-bool ELoginUserIntent::ToJSVal(JSContext* aCx, const ELoginUserIntent& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ELoginUserIntent>(JSContext* aCx, const ELoginUserIntent& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool RequestedUserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<RequestedUserAttribute>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2628,7 +2723,7 @@ bool RequestedUserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2640,7 +2735,7 @@ bool RequestedUserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "required", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsBool(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<bool>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2653,7 +2748,8 @@ bool RequestedUserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
 
 
 }
-bool RequestedUserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestedUserAttribute& aRv) {
+template<>
+bool FromJSVal<RequestedUserAttribute>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestedUserAttribute& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2663,7 +2759,7 @@ bool RequestedUserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -2671,20 +2767,21 @@ bool RequestedUserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "required", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BoolFromJSVal(aCx, propVal, aRv.mRequired)))) {
+  if (NS_WARN_IF(!(FromJSVal<bool>(aCx, propVal, aRv.mRequired)))) {
     return false;
   }
   
   return true;
 }
             
-bool RequestedUserAttribute::ToJSVal(JSContext* aCx, const RequestedUserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<RequestedUserAttribute>(JSContext* aCx, const RequestedUserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -2694,7 +2791,7 @@ bool RequestedUserAttribute::ToJSVal(JSContext* aCx, const RequestedUserAttribut
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BoolToJSVal(aCx, aValue.mRequired, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<bool>(aCx, aValue.mRequired, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "required", memberVal1))) {
@@ -2705,16 +2802,19 @@ bool RequestedUserAttribute::ToJSVal(JSContext* aCx, const RequestedUserAttribut
   return true;
 }
 
-bool JSValIsnsTArray_RequestedUserAttribute_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<nsTArray<RequestedUserAttribute>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
   if (NS_WARN_IF(!JS::IsArrayObject(aCx, aValue, &aRv))) {
     return false;
   }
+  // TODO(berytus): What about the values inside the array?
   return true;
 }
-bool nsTArray_RequestedUserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<RequestedUserAttribute>& aRv) {
+template<>
+bool FromJSVal<nsTArray<RequestedUserAttribute>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<RequestedUserAttribute>& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2738,21 +2838,22 @@ bool nsTArray_RequestedUserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<
     }
 
     RequestedUserAttribute item;
-    if (NS_WARN_IF(!(RequestedUserAttribute::FromJSVal(aCx, value, item)))) {
+    if (NS_WARN_IF(!(FromJSVal<RequestedUserAttribute>(aCx, value, item)))) {
       return false;
     }
     aRv.AppendElement(std::move(item));
   }
   return true;
 }
-bool nsTArray_RequestedUserAttribute_ToJSVal(JSContext* aCx, const nsTArray<RequestedUserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<nsTArray<RequestedUserAttribute>>(JSContext* aCx, const nsTArray<RequestedUserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> array(aCx, JS::NewArrayObject(aCx, 0));
 
   for (uint32_t i = 0; i < aValue.Length(); i++) {
     const RequestedUserAttribute& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!(RequestedUserAttribute::ToJSVal(aCx, item, &value)))) {
+    if (NS_WARN_IF(!(ToJSVal<RequestedUserAttribute>(aCx, item, &value)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -2903,24 +3004,27 @@ if (aVal.Equals(u"Custom"_ns)) {
   }
   return false;
 }
-bool EBerytusFieldType::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EBerytusFieldType>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   EBerytusFieldType e;
   aRv = EBerytusFieldType::FromString(strVal, e);
   return true;
 }
-bool EBerytusFieldType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EBerytusFieldType& aRv) {
+template<>
+bool FromJSVal<EBerytusFieldType>(JSContext* aCx, JS::Handle<JS::Value> aValue, EBerytusFieldType& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!EBerytusFieldType::EBerytusFieldType::FromString(strVal, aRv))) {
@@ -2928,15 +3032,17 @@ bool EBerytusFieldType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   }
   return true;
 }
-bool EBerytusFieldType::ToJSVal(JSContext* aCx, const EBerytusFieldType& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EBerytusFieldType>(JSContext* aCx, const EBerytusFieldType& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool FieldInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<FieldInfo>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2948,7 +3054,7 @@ bool FieldInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2960,7 +3066,7 @@ bool FieldInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EBerytusFieldType::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EBerytusFieldType>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2973,7 +3079,8 @@ bool FieldInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValu
 
 
 }
-bool FieldInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldInfo& aRv) {
+template<>
+bool FromJSVal<FieldInfo>(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldInfo& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -2983,7 +3090,7 @@ bool FieldInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldInf
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -2991,20 +3098,21 @@ bool FieldInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldInf
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EBerytusFieldType::FromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<EBerytusFieldType>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
   return true;
 }
             
-bool FieldInfo::ToJSVal(JSContext* aCx, const FieldInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<FieldInfo>(JSContext* aCx, const FieldInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -3014,7 +3122,7 @@ bool FieldInfo::ToJSVal(JSContext* aCx, const FieldInfo& aValue, JS::MutableHand
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(EBerytusFieldType::ToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<EBerytusFieldType>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -3025,16 +3133,19 @@ bool FieldInfo::ToJSVal(JSContext* aCx, const FieldInfo& aValue, JS::MutableHand
   return true;
 }
 
-bool JSValIsnsTArray_FieldInfo_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<nsTArray<FieldInfo>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
   if (NS_WARN_IF(!JS::IsArrayObject(aCx, aValue, &aRv))) {
     return false;
   }
+  // TODO(berytus): What about the values inside the array?
   return true;
 }
-bool nsTArray_FieldInfo_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<FieldInfo>& aRv) {
+template<>
+bool FromJSVal<nsTArray<FieldInfo>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<FieldInfo>& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3058,21 +3169,22 @@ bool nsTArray_FieldInfo_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aV
     }
 
     FieldInfo item;
-    if (NS_WARN_IF(!(FieldInfo::FromJSVal(aCx, value, item)))) {
+    if (NS_WARN_IF(!(FromJSVal<FieldInfo>(aCx, value, item)))) {
       return false;
     }
     aRv.AppendElement(std::move(item));
   }
   return true;
 }
-bool nsTArray_FieldInfo_ToJSVal(JSContext* aCx, const nsTArray<FieldInfo>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<nsTArray<FieldInfo>>(JSContext* aCx, const nsTArray<FieldInfo>& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> array(aCx, JS::NewArrayObject(aCx, 0));
 
   for (uint32_t i = 0; i < aValue.Length(); i++) {
     const FieldInfo& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!(FieldInfo::ToJSVal(aCx, item, &value)))) {
+    if (NS_WARN_IF(!(ToJSVal<FieldInfo>(aCx, item, &value)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -3138,24 +3250,27 @@ if (aVal.Equals(u"Authentication"_ns)) {
   }
   return false;
 }
-bool EOperationType::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EOperationType>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   EOperationType e;
   aRv = EOperationType::FromString(strVal, e);
   return true;
 }
-bool EOperationType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationType& aRv) {
+template<>
+bool FromJSVal<EOperationType>(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationType& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!EOperationType::EOperationType::FromString(strVal, aRv))) {
@@ -3163,10 +3278,11 @@ bool EOperationType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOp
   }
   return true;
 }
-bool EOperationType::ToJSVal(JSContext* aCx, const EOperationType& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EOperationType>(JSContext* aCx, const EOperationType& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
@@ -3244,24 +3360,27 @@ if (aVal.Equals(u"Finished"_ns)) {
   }
   return false;
 }
-bool EOperationStatus::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EOperationStatus>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   EOperationStatus e;
   aRv = EOperationStatus::FromString(strVal, e);
   return true;
 }
-bool EOperationStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv) {
+template<>
+bool FromJSVal<EOperationStatus>(JSContext* aCx, JS::Handle<JS::Value> aValue, EOperationStatus& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!EOperationStatus::EOperationStatus::FromString(strVal, aRv))) {
@@ -3269,15 +3388,17 @@ bool EOperationStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, E
   }
   return true;
 }
-bool EOperationStatus::ToJSVal(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EOperationStatus>(JSContext* aCx, const EOperationStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool OperationState::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<OperationState>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3287,7 +3408,8 @@ bool OperationState::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
 
 
 }
-bool OperationState::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationState& aRv) {
+template<>
+bool FromJSVal<OperationState>(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationState& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3297,7 +3419,8 @@ bool OperationState::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Ope
   return true;
 }
             
-bool OperationState::ToJSVal(JSContext* aCx, const OperationState& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<OperationState>(JSContext* aCx, const OperationState& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -3305,7 +3428,8 @@ bool OperationState::ToJSVal(JSContext* aCx, const OperationState& aValue, JS::M
   return true;
 }
 
-bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<LoginOperationMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3317,7 +3441,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "intent", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ELoginUserIntent::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ELoginUserIntent>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3329,7 +3453,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "requestedUserAttributes", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsnsTArray_RequestedUserAttribute_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsTArray<RequestedUserAttribute>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3341,7 +3465,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fields", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsnsTArray_FieldInfo_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsTArray<FieldInfo>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3353,7 +3477,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3365,7 +3489,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationType::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EOperationType>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3377,7 +3501,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationStatus::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EOperationStatus>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3389,7 +3513,7 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(OperationState::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<OperationState>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3402,7 +3526,8 @@ bool LoginOperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
 
 
 }
-bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, LoginOperationMetadata& aRv) {
+template<>
+bool FromJSVal<LoginOperationMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, LoginOperationMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3412,7 +3537,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "intent", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ELoginUserIntent::FromJSVal(aCx, propVal, aRv.mIntent)))) {
+  if (NS_WARN_IF(!(FromJSVal<ELoginUserIntent>(aCx, propVal, aRv.mIntent)))) {
     return false;
   }
   
@@ -3420,7 +3545,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "requestedUserAttributes", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(nsTArray_RequestedUserAttribute_FromJSVal(aCx, propVal, aRv.mRequestedUserAttributes)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<RequestedUserAttribute>>(aCx, propVal, aRv.mRequestedUserAttributes)))) {
     return false;
   }
   
@@ -3428,7 +3553,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fields", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(nsTArray_FieldInfo_FromJSVal(aCx, propVal, aRv.mFields)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<FieldInfo>>(aCx, propVal, aRv.mFields)))) {
     return false;
   }
   
@@ -3436,7 +3561,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -3444,7 +3569,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationType::FromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<EOperationType>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -3452,7 +3577,7 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationStatus::FromJSVal(aCx, propVal, aRv.mStatus)))) {
+  if (NS_WARN_IF(!(FromJSVal<EOperationStatus>(aCx, propVal, aRv.mStatus)))) {
     return false;
   }
   
@@ -3460,20 +3585,21 @@ bool LoginOperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(OperationState::FromJSVal(aCx, propVal, aRv.mState)))) {
+  if (NS_WARN_IF(!(FromJSVal<OperationState>(aCx, propVal, aRv.mState)))) {
     return false;
   }
   
   return true;
 }
             
-bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<LoginOperationMetadata>(JSContext* aCx, const LoginOperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ELoginUserIntent::ToJSVal(aCx, aValue.mIntent, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<ELoginUserIntent>(aCx, aValue.mIntent, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "intent", memberVal0))) {
@@ -3483,7 +3609,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(nsTArray_RequestedUserAttribute_ToJSVal(aCx, aValue.mRequestedUserAttributes, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsTArray<RequestedUserAttribute>>(aCx, aValue.mRequestedUserAttributes, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "requestedUserAttributes", memberVal1))) {
@@ -3493,7 +3619,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(nsTArray_FieldInfo_ToJSVal(aCx, aValue.mFields, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsTArray<FieldInfo>>(aCx, aValue.mFields, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "fields", memberVal2))) {
@@ -3503,7 +3629,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -3513,7 +3639,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!(EOperationType::ToJSVal(aCx, aValue.mType, &memberVal4)))) {
+  if (NS_WARN_IF(!(ToJSVal<EOperationType>(aCx, aValue.mType, &memberVal4)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal4))) {
@@ -3523,7 +3649,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal5(aCx);
   
-  if (NS_WARN_IF(!(EOperationStatus::ToJSVal(aCx, aValue.mStatus, &memberVal5)))) {
+  if (NS_WARN_IF(!(ToJSVal<EOperationStatus>(aCx, aValue.mStatus, &memberVal5)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal5))) {
@@ -3533,7 +3659,7 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
 
   JS::Rooted<JS::Value> memberVal6(aCx);
   
-  if (NS_WARN_IF(!(OperationState::ToJSVal(aCx, aValue.mState, &memberVal6)))) {
+  if (NS_WARN_IF(!(ToJSVal<OperationState>(aCx, aValue.mState, &memberVal6)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "state", memberVal6))) {
@@ -3544,7 +3670,8 @@ bool LoginOperationMetadata::ToJSVal(JSContext* aCx, const LoginOperationMetadat
   return true;
 }
 
-bool ApproveOperationArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ApproveOperationArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3556,7 +3683,7 @@ bool ApproveOperationArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(LoginOperationMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<LoginOperationMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3569,7 +3696,8 @@ bool ApproveOperationArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
 
 
 }
-bool ApproveOperationArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveOperationArgs& aRv) {
+template<>
+bool FromJSVal<ApproveOperationArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveOperationArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3579,20 +3707,21 @@ bool ApproveOperationArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(LoginOperationMetadata::FromJSVal(aCx, propVal, aRv.mOperation)))) {
+  if (NS_WARN_IF(!(FromJSVal<LoginOperationMetadata>(aCx, propVal, aRv.mOperation)))) {
     return false;
   }
   
   return true;
 }
             
-bool ApproveOperationArgs::ToJSVal(JSContext* aCx, const ApproveOperationArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ApproveOperationArgs>(JSContext* aCx, const ApproveOperationArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(LoginOperationMetadata::ToJSVal(aCx, aValue.mOperation, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<LoginOperationMetadata>(aCx, aValue.mOperation, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
@@ -3604,7 +3733,8 @@ bool ApproveOperationArgs::ToJSVal(JSContext* aCx, const ApproveOperationArgs& a
 }
 
 
-bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<OperationMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3616,7 +3746,7 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3628,7 +3758,7 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationType::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EOperationType>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3640,7 +3770,7 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationStatus::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EOperationStatus>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3652,7 +3782,7 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(OperationState::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<OperationState>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3665,7 +3795,8 @@ bool OperationMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
 
 
 }
-bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationMetadata& aRv) {
+template<>
+bool FromJSVal<OperationMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, OperationMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3675,7 +3806,7 @@ bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -3683,7 +3814,7 @@ bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationType::FromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<EOperationType>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -3691,7 +3822,7 @@ bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EOperationStatus::FromJSVal(aCx, propVal, aRv.mStatus)))) {
+  if (NS_WARN_IF(!(FromJSVal<EOperationStatus>(aCx, propVal, aRv.mStatus)))) {
     return false;
   }
   
@@ -3699,20 +3830,21 @@ bool OperationMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "state", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(OperationState::FromJSVal(aCx, propVal, aRv.mState)))) {
+  if (NS_WARN_IF(!(FromJSVal<OperationState>(aCx, propVal, aRv.mState)))) {
     return false;
   }
   
   return true;
 }
             
-bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<OperationMetadata>(JSContext* aCx, const OperationMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -3722,7 +3854,7 @@ bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(EOperationType::ToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<EOperationType>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -3732,7 +3864,7 @@ bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(EOperationStatus::ToJSVal(aCx, aValue.mStatus, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<EOperationStatus>(aCx, aValue.mStatus, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal2))) {
@@ -3742,7 +3874,7 @@ bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(OperationState::ToJSVal(aCx, aValue.mState, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<OperationState>(aCx, aValue.mState, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "state", memberVal3))) {
@@ -3753,7 +3885,8 @@ bool OperationMetadata::ToJSVal(JSContext* aCx, const OperationMetadata& aValue,
   return true;
 }
 
-bool RequestContextWithOperation::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<RequestContextWithOperation>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3765,7 +3898,7 @@ bool RequestContextWithOperation::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(OperationMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<OperationMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3777,7 +3910,7 @@ bool RequestContextWithOperation::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChannelMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3789,7 +3922,7 @@ bool RequestContextWithOperation::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3802,7 +3935,8 @@ bool RequestContextWithOperation::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool RequestContextWithOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithOperation& aRv) {
+template<>
+bool FromJSVal<RequestContextWithOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithOperation& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -3812,7 +3946,7 @@ bool RequestContextWithOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(OperationMetadata::FromJSVal(aCx, propVal, aRv.mOperation)))) {
+  if (NS_WARN_IF(!(FromJSVal<OperationMetadata>(aCx, propVal, aRv.mOperation)))) {
     return false;
   }
   
@@ -3820,7 +3954,7 @@ bool RequestContextWithOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelMetadata::FromJSVal(aCx, propVal, aRv.mChannel)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChannelMetadata>(aCx, propVal, aRv.mChannel)))) {
     return false;
   }
   
@@ -3828,20 +3962,21 @@ bool RequestContextWithOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument)))) {
+  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
     return false;
   }
   
   return true;
 }
             
-bool RequestContextWithOperation::ToJSVal(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<RequestContextWithOperation>(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(OperationMetadata::ToJSVal(aCx, aValue.mOperation, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<OperationMetadata>(aCx, aValue.mOperation, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
@@ -3851,7 +3986,7 @@ bool RequestContextWithOperation::ToJSVal(JSContext* aCx, const RequestContextWi
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ChannelMetadata::ToJSVal(aCx, aValue.mChannel, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChannelMetadata>(aCx, aValue.mChannel, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal1))) {
@@ -3861,7 +3996,7 @@ bool RequestContextWithOperation::ToJSVal(JSContext* aCx, const RequestContextWi
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal2))) {
@@ -3929,24 +4064,27 @@ if (aVal.Equals(u"Retired"_ns)) {
   }
   return false;
 }
-bool EMetadataStatus::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EMetadataStatus>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   EMetadataStatus e;
   aRv = EMetadataStatus::FromString(strVal, e);
   return true;
 }
-bool EMetadataStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv) {
+template<>
+bool FromJSVal<EMetadataStatus>(JSContext* aCx, JS::Handle<JS::Value> aValue, EMetadataStatus& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!EMetadataStatus::EMetadataStatus::FromString(strVal, aRv))) {
@@ -3954,15 +4092,17 @@ bool EMetadataStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EM
   }
   return true;
 }
-bool EMetadataStatus::ToJSVal(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EMetadataStatus>(JSContext* aCx, const EMetadataStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<RecordMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -3974,7 +4114,7 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "version", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3986,7 +4126,7 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EMetadataStatus::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EMetadataStatus>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -3998,7 +4138,7 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4010,7 +4150,7 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "changePassUrl", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4023,7 +4163,8 @@ bool RecordMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> 
 
 
 }
-bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RecordMetadata& aRv) {
+template<>
+bool FromJSVal<RecordMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, RecordMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4033,7 +4174,7 @@ bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Rec
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "version", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mVersion)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mVersion)))) {
     return false;
   }
   
@@ -4041,7 +4182,7 @@ bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Rec
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EMetadataStatus::FromJSVal(aCx, propVal, aRv.mStatus)))) {
+  if (NS_WARN_IF(!(FromJSVal<EMetadataStatus>(aCx, propVal, aRv.mStatus)))) {
     return false;
   }
   
@@ -4049,7 +4190,7 @@ bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Rec
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
@@ -4057,20 +4198,21 @@ bool RecordMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Rec
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "changePassUrl", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mChangePassUrl)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mChangePassUrl)))) {
     return false;
   }
   
   return true;
 }
             
-bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<RecordMetadata>(JSContext* aCx, const RecordMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mVersion, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mVersion, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "version", memberVal0))) {
@@ -4080,7 +4222,7 @@ bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(EMetadataStatus::ToJSVal(aCx, aValue.mStatus, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<EMetadataStatus>(aCx, aValue.mStatus, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal1))) {
@@ -4090,7 +4232,7 @@ bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mCategory, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mCategory, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal2))) {
@@ -4100,7 +4242,7 @@ bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::M
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mChangePassUrl, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mChangePassUrl, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "changePassUrl", memberVal3))) {
@@ -4112,7 +4254,8 @@ bool RecordMetadata::ToJSVal(JSContext* aCx, const RecordMetadata& aValue, JS::M
 }
 
 
-bool UpdateMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<UpdateMetadataArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4124,7 +4267,7 @@ bool UpdateMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "metadata", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(RecordMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<RecordMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4137,7 +4280,8 @@ bool UpdateMetadataArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
 
 
 }
-bool UpdateMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateMetadataArgs& aRv) {
+template<>
+bool FromJSVal<UpdateMetadataArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateMetadataArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4147,20 +4291,21 @@ bool UpdateMetadataArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "metadata", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(RecordMetadata::FromJSVal(aCx, propVal, aRv.mMetadata)))) {
+  if (NS_WARN_IF(!(FromJSVal<RecordMetadata>(aCx, propVal, aRv.mMetadata)))) {
     return false;
   }
   
   return true;
 }
             
-bool UpdateMetadataArgs::ToJSVal(JSContext* aCx, const UpdateMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<UpdateMetadataArgs>(JSContext* aCx, const UpdateMetadataArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(RecordMetadata::ToJSVal(aCx, aValue.mMetadata, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<RecordMetadata>(aCx, aValue.mMetadata, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "metadata", memberVal0))) {
@@ -4172,7 +4317,8 @@ bool UpdateMetadataArgs::ToJSVal(JSContext* aCx, const UpdateMetadataArgs& aValu
 }
 
 
-bool ApproveTransitionToAuthOpArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ApproveTransitionToAuthOpArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4184,7 +4330,7 @@ bool ApproveTransitionToAuthOpArgs::IsJSValueValid(JSContext *aCx, const JS::Han
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "newAuthOp", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(LoginOperationMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<LoginOperationMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4197,7 +4343,8 @@ bool ApproveTransitionToAuthOpArgs::IsJSValueValid(JSContext *aCx, const JS::Han
 
 
 }
-bool ApproveTransitionToAuthOpArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveTransitionToAuthOpArgs& aRv) {
+template<>
+bool FromJSVal<ApproveTransitionToAuthOpArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveTransitionToAuthOpArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4207,20 +4354,21 @@ bool ApproveTransitionToAuthOpArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "newAuthOp", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(LoginOperationMetadata::FromJSVal(aCx, propVal, aRv.mNewAuthOp)))) {
+  if (NS_WARN_IF(!(FromJSVal<LoginOperationMetadata>(aCx, propVal, aRv.mNewAuthOp)))) {
     return false;
   }
   
   return true;
 }
             
-bool ApproveTransitionToAuthOpArgs::ToJSVal(JSContext* aCx, const ApproveTransitionToAuthOpArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ApproveTransitionToAuthOpArgs>(JSContext* aCx, const ApproveTransitionToAuthOpArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(LoginOperationMetadata::ToJSVal(aCx, aValue.mNewAuthOp, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<LoginOperationMetadata>(aCx, aValue.mNewAuthOp, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "newAuthOp", memberVal0))) {
@@ -4232,7 +4380,8 @@ bool ApproveTransitionToAuthOpArgs::ToJSVal(JSContext* aCx, const ApproveTransit
 }
 
 
-bool JSValIsArrayBufferView(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ArrayBufferView>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
@@ -4240,7 +4389,8 @@ bool JSValIsArrayBufferView(JSContext *aCx, const JS::Handle<JS::Value> aValue, 
   aRv = JS_IsArrayBufferViewObject(obj);
   return true;
 }
-bool ArrayBufferViewFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBufferView& aRv) {
+template<>
+bool FromJSVal<ArrayBufferView>(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBufferView& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4262,16 +4412,18 @@ bool ArrayBufferViewFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Arra
   }
   return true;
 }
-bool ArrayBufferViewToJSVal(JSContext* aCx, const ArrayBufferView& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ArrayBufferView>(JSContext* aCx, const ArrayBufferView& aValue, JS::MutableHandle<JS::Value> aRv) {
   MOZ_ASSERT(aValue.Obj()); // TODO(berytus): Remove or keep this.
   aRv.setObject(*aValue.Obj());
   return true;
 }
-bool SafeVariant<ArrayBuffer, ArrayBufferView>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<ArrayBuffer, ArrayBufferView>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4283,7 +4435,7 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView>::IsJSValueValid(JSContext *aCx, c
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBufferView(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBufferView>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4295,15 +4447,16 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView>::IsJSValueValid(JSContext *aCx, c
   aRv = false;
   return true;
 }
-bool SafeVariant<ArrayBuffer, ArrayBufferView>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<ArrayBuffer, ArrayBufferView>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<ArrayBuffer, ArrayBufferView>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<ArrayBuffer, ArrayBufferView>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       aRv.Init(VariantIndex<0>(), ArrayBuffer());
-      if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
@@ -4313,12 +4466,12 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView>::FromJSVal(JSContext* aCx, JS::Ha
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBufferView(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBufferView>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       ArrayBufferView nv;
-      if (NS_WARN_IF(!(ArrayBufferViewFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBufferView>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -4330,42 +4483,47 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<ArrayBuffer, ArrayBufferView>::ToJSVal(JSContext* aCx, const SafeVariant<ArrayBuffer, ArrayBufferView>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<ArrayBuffer, ArrayBufferView>>(JSContext* aCx, const SafeVariant<ArrayBuffer, ArrayBufferView>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const ArrayBuffer& aVal) {
-      return ArrayBufferToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBuffer>(mCx, aVal, mRv);
     }
 
     bool operator()(const ArrayBufferView& aVal) {
-      return ArrayBufferViewToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBufferView>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool JSValIsNothing(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Nothing>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   aRv = aValue.isUndefined();
   return true;
 }
-bool NothingFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv) {
+template<>
+bool FromJSVal<Nothing>(JSContext* aCx, JS::Handle<JS::Value> aValue, Nothing& aRv) {
   if (NS_WARN_IF(!aValue.isUndefined())) {
     return false;
   }
   // Nothing to do...
   return true;
 }
-bool NothingToJSVal(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Nothing>(JSContext* aCx, const Nothing& aValue, JS::MutableHandle<JS::Value> aRv) {
   aRv.setUndefined();
   return true;
 }
-bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4377,7 +4535,7 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::IsJSValueValid(JSContex
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBufferView(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBufferView>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4389,7 +4547,7 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::IsJSValueValid(JSContex
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNothing(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<Nothing>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4401,15 +4559,16 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::IsJSValueValid(JSContex
   aRv = false;
   return true;
 }
-bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       aRv.Init(VariantIndex<0>(), ArrayBuffer());
-      if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
@@ -4419,12 +4578,12 @@ bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::FromJSVal(JSContext* aC
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBufferView(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBufferView>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       ArrayBufferView nv;
-      if (NS_WARN_IF(!(ArrayBufferViewFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBufferView>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -4434,12 +4593,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNothing(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<Nothing>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       Nothing nv;
-      if (NS_WARN_IF(!(NothingFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<Nothing>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -4451,27 +4610,29 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::ToJSVal(JSContext* aCx, const SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>>(JSContext* aCx, const SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const ArrayBuffer& aVal) {
-      return ArrayBufferToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBuffer>(mCx, aVal, mRv);
     }
 
     bool operator()(const ArrayBufferView& aVal) {
-      return ArrayBufferViewToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBufferView>(mCx, aVal, mRv);
     }
 
     bool operator()(const Nothing& aVal) {
-      return NothingToJSVal(mCx, aVal, mRv);
+      return ToJSVal<Nothing>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool AesGcmParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<AesGcmParams>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4483,7 +4644,7 @@ bool AesGcmParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "iv", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, ArrayBufferView>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4495,7 +4656,7 @@ bool AesGcmParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "additionalData", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4507,7 +4668,7 @@ bool AesGcmParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "tagLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_double_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<double>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4519,7 +4680,7 @@ bool AesGcmParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4532,7 +4693,8 @@ bool AesGcmParams::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
 
 
 }
-bool AesGcmParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AesGcmParams& aRv) {
+template<>
+bool FromJSVal<AesGcmParams>(JSContext* aCx, JS::Handle<JS::Value> aValue, AesGcmParams& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4542,7 +4704,7 @@ bool AesGcmParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AesGc
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "iv", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView>::FromJSVal(aCx, propVal, aRv.mIv)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, ArrayBufferView>>(aCx, propVal, aRv.mIv)))) {
     return false;
   }
   
@@ -4550,7 +4712,7 @@ bool AesGcmParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AesGc
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "additionalData", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::FromJSVal(aCx, propVal, aRv.mAdditionalData)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>>(aCx, propVal, aRv.mAdditionalData)))) {
     return false;
   }
   
@@ -4558,7 +4720,7 @@ bool AesGcmParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AesGc
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "tagLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_double_FromJSVal(aCx, propVal, aRv.mTagLength)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<double>>(aCx, propVal, aRv.mTagLength)))) {
     return false;
   }
   
@@ -4566,14 +4728,15 @@ bool AesGcmParams::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AesGc
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
   return true;
 }
             
-bool AesGcmParams::ToJSVal(JSContext* aCx, const AesGcmParams& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<AesGcmParams>(JSContext* aCx, const AesGcmParams& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -4581,7 +4744,7 @@ bool AesGcmParams::ToJSVal(JSContext* aCx, const AesGcmParams& aValue, JS::Mutab
   if (NS_WARN_IF(!aValue.mIv.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView>::ToJSVal(aCx, aValue.mIv, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, ArrayBufferView>>(aCx, aValue.mIv, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "iv", memberVal0))) {
@@ -4593,7 +4756,7 @@ bool AesGcmParams::ToJSVal(JSContext* aCx, const AesGcmParams& aValue, JS::Mutab
   if (NS_WARN_IF(!aValue.mAdditionalData.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>::ToJSVal(aCx, aValue.mAdditionalData, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, ArrayBufferView, Nothing>>(aCx, aValue.mAdditionalData, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "additionalData", memberVal1))) {
@@ -4603,7 +4766,7 @@ bool AesGcmParams::ToJSVal(JSContext* aCx, const AesGcmParams& aValue, JS::Mutab
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(Maybe_double_ToJSVal(aCx, aValue.mTagLength, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<double>>(aCx, aValue.mTagLength, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "tagLength", memberVal2))) {
@@ -4613,7 +4776,7 @@ bool AesGcmParams::ToJSVal(JSContext* aCx, const AesGcmParams& aValue, JS::Mutab
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal3))) {
@@ -4624,7 +4787,8 @@ bool AesGcmParams::ToJSVal(JSContext* aCx, const AesGcmParams& aValue, JS::Mutab
   return true;
 }
 
-bool BerytusEncryptedPacket::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusEncryptedPacket>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4636,7 +4800,7 @@ bool BerytusEncryptedPacket::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(AesGcmParams::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<AesGcmParams>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4648,7 +4812,7 @@ bool BerytusEncryptedPacket::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ciphertext", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4661,7 +4825,8 @@ bool BerytusEncryptedPacket::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
 
 
 }
-bool BerytusEncryptedPacket::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusEncryptedPacket& aRv) {
+template<>
+bool FromJSVal<BerytusEncryptedPacket>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusEncryptedPacket& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4671,7 +4836,7 @@ bool BerytusEncryptedPacket::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(AesGcmParams::FromJSVal(aCx, propVal, aRv.mParameters)))) {
+  if (NS_WARN_IF(!(FromJSVal<AesGcmParams>(aCx, propVal, aRv.mParameters)))) {
     return false;
   }
   
@@ -4679,20 +4844,21 @@ bool BerytusEncryptedPacket::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ciphertext", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mCiphertext)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mCiphertext)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusEncryptedPacket::ToJSVal(JSContext* aCx, const BerytusEncryptedPacket& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusEncryptedPacket>(JSContext* aCx, const BerytusEncryptedPacket& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(AesGcmParams::ToJSVal(aCx, aValue.mParameters, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<AesGcmParams>(aCx, aValue.mParameters, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal0))) {
@@ -4702,7 +4868,7 @@ bool BerytusEncryptedPacket::ToJSVal(JSContext* aCx, const BerytusEncryptedPacke
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mCiphertext, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mCiphertext, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "ciphertext", memberVal1))) {
@@ -4713,11 +4879,12 @@ bool BerytusEncryptedPacket::ToJSVal(JSContext* aCx, const BerytusEncryptedPacke
   return true;
 }
 
-bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4729,7 +4896,7 @@ bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4741,7 +4908,7 @@ bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBufferView(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBufferView>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4753,7 +4920,7 @@ bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -4765,15 +4932,16 @@ bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>
   aRv = false;
   return true;
 }
-bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       nsString nv;
-      if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -4783,12 +4951,12 @@ bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       aRv.Init(VariantIndex<1>(), ArrayBuffer());
-      if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
@@ -4798,12 +4966,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBufferView(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBufferView>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       ArrayBufferView nv;
-      if (NS_WARN_IF(!(ArrayBufferViewFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBufferView>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -4813,12 +4981,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<3>(), std::move(nv));
@@ -4830,31 +4998,33 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::ToJSVal(JSContext* aCx, const SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const nsString& aVal) {
-      return StringToJSVal(mCx, aVal, mRv);
+      return ToJSVal<nsString>(mCx, aVal, mRv);
     }
 
     bool operator()(const ArrayBuffer& aVal) {
-      return ArrayBufferToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBuffer>(mCx, aVal, mRv);
     }
 
     bool operator()(const ArrayBufferView& aVal) {
-      return ArrayBufferViewToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBufferView>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<UserAttribute>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -4866,7 +5036,7 @@ bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> a
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4878,7 +5048,7 @@ bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> a
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "info", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4890,7 +5060,7 @@ bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> a
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "mimeType", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4902,7 +5072,7 @@ bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> a
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -4915,7 +5085,8 @@ bool UserAttribute::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> a
 
 
 }
-bool UserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UserAttribute& aRv) {
+template<>
+bool FromJSVal<UserAttribute>(JSContext* aCx, JS::Handle<JS::Value> aValue, UserAttribute& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -4925,7 +5096,7 @@ bool UserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, User
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -4933,7 +5104,7 @@ bool UserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, User
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "info", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsString_FromJSVal(aCx, propVal, aRv.mInfo)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsString>>(aCx, propVal, aRv.mInfo)))) {
     return false;
   }
   
@@ -4941,7 +5112,7 @@ bool UserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, User
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "mimeType", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsString_FromJSVal(aCx, propVal, aRv.mMimeType)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsString>>(aCx, propVal, aRv.mMimeType)))) {
     return false;
   }
   
@@ -4949,20 +5120,21 @@ bool UserAttribute::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, User
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
   return true;
 }
             
-bool UserAttribute::ToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<UserAttribute>(JSContext* aCx, const UserAttribute& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -4972,7 +5144,7 @@ bool UserAttribute::ToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::Mut
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsString_ToJSVal(aCx, aValue.mInfo, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsString>>(aCx, aValue.mInfo, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "info", memberVal1))) {
@@ -4982,7 +5154,7 @@ bool UserAttribute::ToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::Mut
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsString_ToJSVal(aCx, aValue.mMimeType, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsString>>(aCx, aValue.mMimeType, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "mimeType", memberVal2))) {
@@ -4994,7 +5166,7 @@ bool UserAttribute::ToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::Mut
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mValue, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, aValue.mValue, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal3))) {
@@ -5005,16 +5177,19 @@ bool UserAttribute::ToJSVal(JSContext* aCx, const UserAttribute& aValue, JS::Mut
   return true;
 }
 
-bool JSValIsnsTArray_UserAttribute_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<nsTArray<UserAttribute>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     return false;
   }
   if (NS_WARN_IF(!JS::IsArrayObject(aCx, aValue, &aRv))) {
     return false;
   }
+  // TODO(berytus): What about the values inside the array?
   return true;
 }
-bool nsTArray_UserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<UserAttribute>& aRv) {
+template<>
+bool FromJSVal<nsTArray<UserAttribute>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<UserAttribute>& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5038,21 +5213,22 @@ bool nsTArray_UserAttribute_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value
     }
 
     UserAttribute item;
-    if (NS_WARN_IF(!(UserAttribute::FromJSVal(aCx, value, item)))) {
+    if (NS_WARN_IF(!(FromJSVal<UserAttribute>(aCx, value, item)))) {
       return false;
     }
     aRv.AppendElement(std::move(item));
   }
   return true;
 }
-bool nsTArray_UserAttribute_ToJSVal(JSContext* aCx, const nsTArray<UserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<nsTArray<UserAttribute>>(JSContext* aCx, const nsTArray<UserAttribute>& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> array(aCx, JS::NewArrayObject(aCx, 0));
 
   for (uint32_t i = 0; i < aValue.Length(); i++) {
     const UserAttribute& item = aValue.ElementAt(i);
 
     JS::Rooted<JS::Value> value(aCx);
-    if (NS_WARN_IF(!(UserAttribute::ToJSVal(aCx, item, &value)))) {
+    if (NS_WARN_IF(!(ToJSVal<UserAttribute>(aCx, item, &value)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_DefineElement(aCx, array, i, value, JSPROP_ENUMERATE))) {
@@ -5063,7 +5239,8 @@ bool nsTArray_UserAttribute_ToJSVal(JSContext* aCx, const nsTArray<UserAttribute
   return true;
 }
 
-bool UpdateUserAttributesArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<UpdateUserAttributesArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5075,7 +5252,7 @@ bool UpdateUserAttributesArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "userAttributes", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsnsTArray_UserAttribute_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsTArray<UserAttribute>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5088,7 +5265,8 @@ bool UpdateUserAttributesArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<J
 
 
 }
-bool UpdateUserAttributesArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateUserAttributesArgs& aRv) {
+template<>
+bool FromJSVal<UpdateUserAttributesArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, UpdateUserAttributesArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5098,20 +5276,21 @@ bool UpdateUserAttributesArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> a
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "userAttributes", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(nsTArray_UserAttribute_FromJSVal(aCx, propVal, aRv.mUserAttributes)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<UserAttribute>>(aCx, propVal, aRv.mUserAttributes)))) {
     return false;
   }
   
   return true;
 }
             
-bool UpdateUserAttributesArgs::ToJSVal(JSContext* aCx, const UpdateUserAttributesArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<UpdateUserAttributesArgs>(JSContext* aCx, const UpdateUserAttributesArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(nsTArray_UserAttribute_ToJSVal(aCx, aValue.mUserAttributes, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsTArray<UserAttribute>>(aCx, aValue.mUserAttributes, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "userAttributes", memberVal0))) {
@@ -5123,7 +5302,8 @@ bool UpdateUserAttributesArgs::ToJSVal(JSContext* aCx, const UpdateUserAttribute
 }
 
 
-bool RequestContextWithLoginOperation::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<RequestContextWithLoginOperation>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5135,7 +5315,7 @@ bool RequestContextWithLoginOperation::IsJSValueValid(JSContext *aCx, const JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(LoginOperationMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<LoginOperationMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5147,7 +5327,7 @@ bool RequestContextWithLoginOperation::IsJSValueValid(JSContext *aCx, const JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChannelMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5159,7 +5339,7 @@ bool RequestContextWithLoginOperation::IsJSValueValid(JSContext *aCx, const JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5172,7 +5352,8 @@ bool RequestContextWithLoginOperation::IsJSValueValid(JSContext *aCx, const JS::
 
 
 }
-bool RequestContextWithLoginOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithLoginOperation& aRv) {
+template<>
+bool FromJSVal<RequestContextWithLoginOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithLoginOperation& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5182,7 +5363,7 @@ bool RequestContextWithLoginOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(LoginOperationMetadata::FromJSVal(aCx, propVal, aRv.mOperation)))) {
+  if (NS_WARN_IF(!(FromJSVal<LoginOperationMetadata>(aCx, propVal, aRv.mOperation)))) {
     return false;
   }
   
@@ -5190,7 +5371,7 @@ bool RequestContextWithLoginOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChannelMetadata::FromJSVal(aCx, propVal, aRv.mChannel)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChannelMetadata>(aCx, propVal, aRv.mChannel)))) {
     return false;
   }
   
@@ -5198,20 +5379,21 @@ bool RequestContextWithLoginOperation::FromJSVal(JSContext* aCx, JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(DocumentMetadata::FromJSVal(aCx, propVal, aRv.mDocument)))) {
+  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
     return false;
   }
   
   return true;
 }
             
-bool RequestContextWithLoginOperation::ToJSVal(JSContext* aCx, const RequestContextWithLoginOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<RequestContextWithLoginOperation>(JSContext* aCx, const RequestContextWithLoginOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(LoginOperationMetadata::ToJSVal(aCx, aValue.mOperation, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<LoginOperationMetadata>(aCx, aValue.mOperation, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
@@ -5221,7 +5403,7 @@ bool RequestContextWithLoginOperation::ToJSVal(JSContext* aCx, const RequestCont
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ChannelMetadata::ToJSVal(aCx, aValue.mChannel, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChannelMetadata>(aCx, aValue.mChannel, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal1))) {
@@ -5231,7 +5413,7 @@ bool RequestContextWithLoginOperation::ToJSVal(JSContext* aCx, const RequestCont
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(DocumentMetadata::ToJSVal(aCx, aValue.mDocument, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal2))) {
@@ -5242,7 +5424,8 @@ bool RequestContextWithLoginOperation::ToJSVal(JSContext* aCx, const RequestCont
   return true;
 }
 
-bool BerytusFieldCategoryOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusFieldCategoryOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5254,7 +5437,7 @@ bool BerytusFieldCategoryOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "categoryId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5266,7 +5449,7 @@ bool BerytusFieldCategoryOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "position", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_double_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<double>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5279,7 +5462,8 @@ bool BerytusFieldCategoryOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool BerytusFieldCategoryOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusFieldCategoryOptions& aRv) {
+template<>
+bool FromJSVal<BerytusFieldCategoryOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusFieldCategoryOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5289,7 +5473,7 @@ bool BerytusFieldCategoryOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "categoryId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mCategoryId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mCategoryId)))) {
     return false;
   }
   
@@ -5297,20 +5481,21 @@ bool BerytusFieldCategoryOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "position", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_double_FromJSVal(aCx, propVal, aRv.mPosition)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<double>>(aCx, propVal, aRv.mPosition)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusFieldCategoryOptions::ToJSVal(JSContext* aCx, const BerytusFieldCategoryOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusFieldCategoryOptions>(JSContext* aCx, const BerytusFieldCategoryOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mCategoryId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mCategoryId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "categoryId", memberVal0))) {
@@ -5320,7 +5505,7 @@ bool BerytusFieldCategoryOptions::ToJSVal(JSContext* aCx, const BerytusFieldCate
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_double_ToJSVal(aCx, aValue.mPosition, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<double>>(aCx, aValue.mPosition, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "position", memberVal1))) {
@@ -5331,33 +5516,37 @@ bool BerytusFieldCategoryOptions::ToJSVal(JSContext* aCx, const BerytusFieldCate
   return true;
 }
 
-bool JSValIsMaybe_BerytusFieldCategoryOptions_(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<Maybe<BerytusFieldCategoryOptions>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (aValue.isUndefined()) {
     aRv = true;
     return true;
   }
-  return BerytusFieldCategoryOptions::IsJSValueValid(aCx, aValue, aRv);
+  return JSValIs<BerytusFieldCategoryOptions>(aCx, aValue, aRv);
 }
-bool Maybe_BerytusFieldCategoryOptions_FromJSVal(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<BerytusFieldCategoryOptions>& aRv) {
+template<>
+bool FromJSVal<Maybe<BerytusFieldCategoryOptions>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, Maybe<BerytusFieldCategoryOptions>& aRv) {
   if (aValue.isUndefined()) {
     aRv.reset();
     return true;
   }
   aRv.emplace();
-  if (NS_WARN_IF(!(BerytusFieldCategoryOptions::FromJSVal(aCx, aValue, *aRv)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusFieldCategoryOptions>(aCx, aValue, *aRv)))) {
     return false;
   }
   return true;
 }
-bool Maybe_BerytusFieldCategoryOptions_ToJSVal(JSContext* aCx, const Maybe<BerytusFieldCategoryOptions>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Maybe<BerytusFieldCategoryOptions>>(JSContext* aCx, const Maybe<BerytusFieldCategoryOptions>& aValue, JS::MutableHandle<JS::Value> aRv) {
   if (!aValue) {
     aRv.setUndefined();
     return true;
   }
 
-  return BerytusFieldCategoryOptions::ToJSVal(aCx, aValue.ref(), aRv);
+  return ToJSVal<BerytusFieldCategoryOptions>(aCx, aValue.ref(), aRv);
 }
-bool BerytusForeignIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusForeignIdentityFieldOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5369,7 +5558,7 @@ bool BerytusForeignIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "private", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsBool(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<bool>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5381,7 +5570,7 @@ bool BerytusForeignIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "kind", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5393,7 +5582,7 @@ bool BerytusForeignIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_BerytusFieldCategoryOptions_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5406,7 +5595,8 @@ bool BerytusForeignIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS
 
 
 }
-bool BerytusForeignIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusForeignIdentityFieldOptions& aRv) {
+template<>
+bool FromJSVal<BerytusForeignIdentityFieldOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusForeignIdentityFieldOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5416,7 +5606,7 @@ bool BerytusForeignIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "private", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BoolFromJSVal(aCx, propVal, aRv.mPrivate)))) {
+  if (NS_WARN_IF(!(FromJSVal<bool>(aCx, propVal, aRv.mPrivate)))) {
     return false;
   }
   
@@ -5424,7 +5614,7 @@ bool BerytusForeignIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "kind", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mKind)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mKind)))) {
     return false;
   }
   
@@ -5432,20 +5622,21 @@ bool BerytusForeignIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusForeignIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusForeignIdentityFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusForeignIdentityFieldOptions>(JSContext* aCx, const BerytusForeignIdentityFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BoolToJSVal(aCx, aValue.mPrivate, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<bool>(aCx, aValue.mPrivate, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "private", memberVal0))) {
@@ -5455,7 +5646,7 @@ bool BerytusForeignIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusFo
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mKind, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mKind, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "kind", memberVal1))) {
@@ -5465,7 +5656,7 @@ bool BerytusForeignIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusFo
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_ToJSVal(aCx, aValue.mCategory, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, aValue.mCategory, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal2))) {
@@ -5476,26 +5667,30 @@ bool BerytusForeignIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusFo
   return true;
 }
 
-bool JSValIsNull(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<JSNull>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   aRv = aValue.isNull();
   return true;
 }
-bool NullFromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, JSNull& aRv) {
+template<>
+bool FromJSVal<JSNull>(JSContext* aCx, JS::Handle<JS::Value> aValue, JSNull& aRv) {
   if (NS_WARN_IF(!aValue.isNull())) {
     return false;
   }
   // Nothing to do...
   return true;
 }
-bool NullToJSVal(JSContext* aCx, const JSNull& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<JSNull>(JSContext* aCx, const JSNull& aValue, JS::MutableHandle<JS::Value> aRv) {
   aRv.setNull();
   return true;
 }
-bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -5507,7 +5702,7 @@ bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(JSCon
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -5519,7 +5714,7 @@ bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(JSCon
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -5531,15 +5726,16 @@ bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(JSCon
   aRv = false;
   return true;
 }
-bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, nsString, BerytusEncryptedPacket>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, nsString, BerytusEncryptedPacket>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       JSNull nv;
-      if (NS_WARN_IF(!(NullFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -5549,12 +5745,12 @@ bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::FromJSVal(JSContext*
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       nsString nv;
-      if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -5564,12 +5760,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -5581,27 +5777,29 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::ToJSVal(JSContext* aCx, const SafeVariant<JSNull, nsString, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<JSNull, nsString, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const JSNull& aVal) {
-      return NullToJSVal(mCx, aVal, mRv);
+      return ToJSVal<JSNull>(mCx, aVal, mRv);
     }
 
     bool operator()(const nsString& aVal) {
-      return StringToJSVal(mCx, aVal, mRv);
+      return ToJSVal<nsString>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool BerytusForeignIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusForeignIdentityField>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5613,7 +5811,7 @@ bool BerytusForeignIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5625,7 +5823,7 @@ bool BerytusForeignIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusForeignIdentityFieldOptions::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusForeignIdentityFieldOptions>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5637,7 +5835,7 @@ bool BerytusForeignIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5649,7 +5847,7 @@ bool BerytusForeignIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5662,7 +5860,8 @@ bool BerytusForeignIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool BerytusForeignIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusForeignIdentityField& aRv) {
+template<>
+bool FromJSVal<BerytusForeignIdentityField>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusForeignIdentityField& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5672,7 +5871,7 @@ bool BerytusForeignIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -5680,7 +5879,7 @@ bool BerytusForeignIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusForeignIdentityFieldOptions::FromJSVal(aCx, propVal, aRv.mOptions)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusForeignIdentityFieldOptions>(aCx, propVal, aRv.mOptions)))) {
     return false;
   }
   
@@ -5688,7 +5887,7 @@ bool BerytusForeignIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
@@ -5696,20 +5895,21 @@ bool BerytusForeignIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusForeignIdentityField::ToJSVal(JSContext* aCx, const BerytusForeignIdentityField& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusForeignIdentityField>(JSContext* aCx, const BerytusForeignIdentityField& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal0))) {
@@ -5719,7 +5919,7 @@ bool BerytusForeignIdentityField::ToJSVal(JSContext* aCx, const BerytusForeignId
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BerytusForeignIdentityFieldOptions::ToJSVal(aCx, aValue.mOptions, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusForeignIdentityFieldOptions>(aCx, aValue.mOptions, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", memberVal1))) {
@@ -5731,7 +5931,7 @@ bool BerytusForeignIdentityField::ToJSVal(JSContext* aCx, const BerytusForeignId
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, aValue.mValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal2))) {
@@ -5741,7 +5941,7 @@ bool BerytusForeignIdentityField::ToJSVal(JSContext* aCx, const BerytusForeignId
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -5752,7 +5952,8 @@ bool BerytusForeignIdentityField::ToJSVal(JSContext* aCx, const BerytusForeignId
   return true;
 }
 
-bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusIdentityFieldOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5764,7 +5965,7 @@ bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "humanReadable", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsBool(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<bool>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5776,7 +5977,7 @@ bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "private", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsBool(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<bool>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5788,7 +5989,7 @@ bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "maxLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5800,7 +6001,7 @@ bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "allowedCharacters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5812,7 +6013,7 @@ bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_BerytusFieldCategoryOptions_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5825,7 +6026,8 @@ bool BerytusIdentityFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool BerytusIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentityFieldOptions& aRv) {
+template<>
+bool FromJSVal<BerytusIdentityFieldOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentityFieldOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -5835,7 +6037,7 @@ bool BerytusIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "humanReadable", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BoolFromJSVal(aCx, propVal, aRv.mHumanReadable)))) {
+  if (NS_WARN_IF(!(FromJSVal<bool>(aCx, propVal, aRv.mHumanReadable)))) {
     return false;
   }
   
@@ -5843,7 +6045,7 @@ bool BerytusIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "private", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BoolFromJSVal(aCx, propVal, aRv.mPrivate)))) {
+  if (NS_WARN_IF(!(FromJSVal<bool>(aCx, propVal, aRv.mPrivate)))) {
     return false;
   }
   
@@ -5851,7 +6053,7 @@ bool BerytusIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "maxLength", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mMaxLength)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mMaxLength)))) {
     return false;
   }
   
@@ -5859,7 +6061,7 @@ bool BerytusIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "allowedCharacters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsString_FromJSVal(aCx, propVal, aRv.mAllowedCharacters)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsString>>(aCx, propVal, aRv.mAllowedCharacters)))) {
     return false;
   }
   
@@ -5867,20 +6069,21 @@ bool BerytusIdentityFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusIdentityFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusIdentityFieldOptions>(JSContext* aCx, const BerytusIdentityFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BoolToJSVal(aCx, aValue.mHumanReadable, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<bool>(aCx, aValue.mHumanReadable, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "humanReadable", memberVal0))) {
@@ -5890,7 +6093,7 @@ bool BerytusIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusIdentityF
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BoolToJSVal(aCx, aValue.mPrivate, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<bool>(aCx, aValue.mPrivate, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "private", memberVal1))) {
@@ -5900,7 +6103,7 @@ bool BerytusIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusIdentityF
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mMaxLength, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mMaxLength, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "maxLength", memberVal2))) {
@@ -5910,7 +6113,7 @@ bool BerytusIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusIdentityF
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsString_ToJSVal(aCx, aValue.mAllowedCharacters, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsString>>(aCx, aValue.mAllowedCharacters, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "allowedCharacters", memberVal3))) {
@@ -5920,7 +6123,7 @@ bool BerytusIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusIdentityF
 
   JS::Rooted<JS::Value> memberVal4(aCx);
   
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_ToJSVal(aCx, aValue.mCategory, &memberVal4)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, aValue.mCategory, &memberVal4)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal4))) {
@@ -5931,7 +6134,8 @@ bool BerytusIdentityFieldOptions::ToJSVal(JSContext* aCx, const BerytusIdentityF
   return true;
 }
 
-bool BerytusIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusIdentityField>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -5943,7 +6147,7 @@ bool BerytusIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5955,7 +6159,7 @@ bool BerytusIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusIdentityFieldOptions::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusIdentityFieldOptions>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5967,7 +6171,7 @@ bool BerytusIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5979,7 +6183,7 @@ bool BerytusIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -5992,7 +6196,8 @@ bool BerytusIdentityField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
 
 
 }
-bool BerytusIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentityField& aRv) {
+template<>
+bool FromJSVal<BerytusIdentityField>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentityField& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6002,7 +6207,7 @@ bool BerytusIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -6010,7 +6215,7 @@ bool BerytusIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusIdentityFieldOptions::FromJSVal(aCx, propVal, aRv.mOptions)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusIdentityFieldOptions>(aCx, propVal, aRv.mOptions)))) {
     return false;
   }
   
@@ -6018,7 +6223,7 @@ bool BerytusIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
@@ -6026,20 +6231,21 @@ bool BerytusIdentityField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusIdentityField::ToJSVal(JSContext* aCx, const BerytusIdentityField& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusIdentityField>(JSContext* aCx, const BerytusIdentityField& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal0))) {
@@ -6049,7 +6255,7 @@ bool BerytusIdentityField::ToJSVal(JSContext* aCx, const BerytusIdentityField& a
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BerytusIdentityFieldOptions::ToJSVal(aCx, aValue.mOptions, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusIdentityFieldOptions>(aCx, aValue.mOptions, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", memberVal1))) {
@@ -6061,7 +6267,7 @@ bool BerytusIdentityField::ToJSVal(JSContext* aCx, const BerytusIdentityField& a
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, aValue.mValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal2))) {
@@ -6071,7 +6277,7 @@ bool BerytusIdentityField::ToJSVal(JSContext* aCx, const BerytusIdentityField& a
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -6082,7 +6288,8 @@ bool BerytusIdentityField::ToJSVal(JSContext* aCx, const BerytusIdentityField& a
   return true;
 }
 
-bool BerytusKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusKeyFieldOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6094,7 +6301,7 @@ bool BerytusKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "alg", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6106,7 +6313,7 @@ bool BerytusKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_BerytusFieldCategoryOptions_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6119,7 +6326,8 @@ bool BerytusKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
 
 
 }
-bool BerytusKeyFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusKeyFieldOptions& aRv) {
+template<>
+bool FromJSVal<BerytusKeyFieldOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusKeyFieldOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6129,7 +6337,7 @@ bool BerytusKeyFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "alg", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mAlg)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mAlg)))) {
     return false;
   }
   
@@ -6137,20 +6345,21 @@ bool BerytusKeyFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVa
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusKeyFieldOptions::ToJSVal(JSContext* aCx, const BerytusKeyFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusKeyFieldOptions>(JSContext* aCx, const BerytusKeyFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mAlg, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mAlg, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "alg", memberVal0))) {
@@ -6160,7 +6369,7 @@ bool BerytusKeyFieldOptions::ToJSVal(JSContext* aCx, const BerytusKeyFieldOption
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_ToJSVal(aCx, aValue.mCategory, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, aValue.mCategory, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal1))) {
@@ -6171,11 +6380,12 @@ bool BerytusKeyFieldOptions::ToJSVal(JSContext* aCx, const BerytusKeyFieldOption
   return true;
 }
 
-bool SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -6187,7 +6397,7 @@ bool SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(JSContext 
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -6199,15 +6409,16 @@ bool SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(JSContext 
   aRv = false;
   return true;
 }
-bool SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<ArrayBuffer, BerytusEncryptedPacket>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<ArrayBuffer, BerytusEncryptedPacket>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       aRv.Init(VariantIndex<0>(), ArrayBuffer());
-      if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
@@ -6217,12 +6428,12 @@ bool SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx,
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -6234,23 +6445,25 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(JSContext* aCx, const SafeVariant<ArrayBuffer, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<ArrayBuffer, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const ArrayBuffer& aVal) {
-      return ArrayBufferToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBuffer>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool BerytusKeyFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusKeyFieldValue>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6262,7 +6475,7 @@ bool BerytusKeyFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "publicKey", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6275,7 +6488,8 @@ bool BerytusKeyFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
 
 
 }
-bool BerytusKeyFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusKeyFieldValue& aRv) {
+template<>
+bool FromJSVal<BerytusKeyFieldValue>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusKeyFieldValue& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6285,14 +6499,15 @@ bool BerytusKeyFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "publicKey", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mPublicKey)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mPublicKey)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusKeyFieldValue::ToJSVal(JSContext* aCx, const BerytusKeyFieldValue& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusKeyFieldValue>(JSContext* aCx, const BerytusKeyFieldValue& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -6300,7 +6515,7 @@ bool BerytusKeyFieldValue::ToJSVal(JSContext* aCx, const BerytusKeyFieldValue& a
   if (NS_WARN_IF(!aValue.mPublicKey.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mPublicKey, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mPublicKey, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "publicKey", memberVal0))) {
@@ -6311,11 +6526,12 @@ bool BerytusKeyFieldValue::ToJSVal(JSContext* aCx, const BerytusKeyFieldValue& a
   return true;
 }
 
-bool SafeVariant<JSNull, BerytusKeyFieldValue>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<JSNull, BerytusKeyFieldValue>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -6327,7 +6543,7 @@ bool SafeVariant<JSNull, BerytusKeyFieldValue>::IsJSValueValid(JSContext *aCx, c
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -6339,15 +6555,16 @@ bool SafeVariant<JSNull, BerytusKeyFieldValue>::IsJSValueValid(JSContext *aCx, c
   aRv = false;
   return true;
 }
-bool SafeVariant<JSNull, BerytusKeyFieldValue>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, BerytusKeyFieldValue>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<JSNull, BerytusKeyFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, BerytusKeyFieldValue>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       JSNull nv;
-      if (NS_WARN_IF(!(NullFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -6357,12 +6574,12 @@ bool SafeVariant<JSNull, BerytusKeyFieldValue>::FromJSVal(JSContext* aCx, JS::Ha
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusKeyFieldValue nv;
-      if (NS_WARN_IF(!(BerytusKeyFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusKeyFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -6374,23 +6591,25 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<JSNull, BerytusKeyFieldValue>::ToJSVal(JSContext* aCx, const SafeVariant<JSNull, BerytusKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<JSNull, BerytusKeyFieldValue>>(JSContext* aCx, const SafeVariant<JSNull, BerytusKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const JSNull& aVal) {
-      return NullToJSVal(mCx, aVal, mRv);
+      return ToJSVal<JSNull>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusKeyFieldValue& aVal) {
-      return BerytusKeyFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusKeyFieldValue>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool BerytusKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusKeyField>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6402,7 +6621,7 @@ bool BerytusKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6414,7 +6633,7 @@ bool BerytusKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusKeyFieldOptions::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldOptions>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6426,7 +6645,7 @@ bool BerytusKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusKeyFieldValue>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<JSNull, BerytusKeyFieldValue>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6438,7 +6657,7 @@ bool BerytusKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6451,7 +6670,8 @@ bool BerytusKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value>
 
 
 }
-bool BerytusKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusKeyField& aRv) {
+template<>
+bool FromJSVal<BerytusKeyField>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusKeyField& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6461,7 +6681,7 @@ bool BerytusKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Be
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -6469,7 +6689,7 @@ bool BerytusKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Be
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusKeyFieldOptions::FromJSVal(aCx, propVal, aRv.mOptions)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusKeyFieldOptions>(aCx, propVal, aRv.mOptions)))) {
     return false;
   }
   
@@ -6477,7 +6697,7 @@ bool BerytusKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Be
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusKeyFieldValue>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, BerytusKeyFieldValue>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
@@ -6485,20 +6705,21 @@ bool BerytusKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, Be
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusKeyField::ToJSVal(JSContext* aCx, const BerytusKeyField& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusKeyField>(JSContext* aCx, const BerytusKeyField& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal0))) {
@@ -6508,7 +6729,7 @@ bool BerytusKeyField::ToJSVal(JSContext* aCx, const BerytusKeyField& aValue, JS:
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BerytusKeyFieldOptions::ToJSVal(aCx, aValue.mOptions, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusKeyFieldOptions>(aCx, aValue.mOptions, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", memberVal1))) {
@@ -6520,7 +6741,7 @@ bool BerytusKeyField::ToJSVal(JSContext* aCx, const BerytusKeyField& aValue, JS:
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusKeyFieldValue>::ToJSVal(aCx, aValue.mValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<JSNull, BerytusKeyFieldValue>>(aCx, aValue.mValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal2))) {
@@ -6530,7 +6751,7 @@ bool BerytusKeyField::ToJSVal(JSContext* aCx, const BerytusKeyField& aValue, JS:
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -6541,7 +6762,8 @@ bool BerytusKeyField::ToJSVal(JSContext* aCx, const BerytusKeyField& aValue, JS:
   return true;
 }
 
-bool BerytusPasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusPasswordFieldOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6553,7 +6775,7 @@ bool BerytusPasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "passwordRules", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6565,7 +6787,7 @@ bool BerytusPasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_BerytusFieldCategoryOptions_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6578,7 +6800,8 @@ bool BerytusPasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool BerytusPasswordFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordFieldOptions& aRv) {
+template<>
+bool FromJSVal<BerytusPasswordFieldOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordFieldOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6588,7 +6811,7 @@ bool BerytusPasswordFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "passwordRules", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_nsString_FromJSVal(aCx, propVal, aRv.mPasswordRules)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<nsString>>(aCx, propVal, aRv.mPasswordRules)))) {
     return false;
   }
   
@@ -6596,20 +6819,21 @@ bool BerytusPasswordFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusPasswordFieldOptions::ToJSVal(JSContext* aCx, const BerytusPasswordFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusPasswordFieldOptions>(JSContext* aCx, const BerytusPasswordFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(Maybe_nsString_ToJSVal(aCx, aValue.mPasswordRules, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<nsString>>(aCx, aValue.mPasswordRules, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "passwordRules", memberVal0))) {
@@ -6619,7 +6843,7 @@ bool BerytusPasswordFieldOptions::ToJSVal(JSContext* aCx, const BerytusPasswordF
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_ToJSVal(aCx, aValue.mCategory, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, aValue.mCategory, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal1))) {
@@ -6630,7 +6854,8 @@ bool BerytusPasswordFieldOptions::ToJSVal(JSContext* aCx, const BerytusPasswordF
   return true;
 }
 
-bool BerytusPasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusPasswordField>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6642,7 +6867,7 @@ bool BerytusPasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6654,7 +6879,7 @@ bool BerytusPasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusPasswordFieldOptions::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusPasswordFieldOptions>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6666,7 +6891,7 @@ bool BerytusPasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6678,7 +6903,7 @@ bool BerytusPasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6691,7 +6916,8 @@ bool BerytusPasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
 
 
 }
-bool BerytusPasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordField& aRv) {
+template<>
+bool FromJSVal<BerytusPasswordField>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordField& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6701,7 +6927,7 @@ bool BerytusPasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -6709,7 +6935,7 @@ bool BerytusPasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusPasswordFieldOptions::FromJSVal(aCx, propVal, aRv.mOptions)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusPasswordFieldOptions>(aCx, propVal, aRv.mOptions)))) {
     return false;
   }
   
@@ -6717,7 +6943,7 @@ bool BerytusPasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
@@ -6725,20 +6951,21 @@ bool BerytusPasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusPasswordField::ToJSVal(JSContext* aCx, const BerytusPasswordField& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusPasswordField>(JSContext* aCx, const BerytusPasswordField& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal0))) {
@@ -6748,7 +6975,7 @@ bool BerytusPasswordField::ToJSVal(JSContext* aCx, const BerytusPasswordField& a
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BerytusPasswordFieldOptions::ToJSVal(aCx, aValue.mOptions, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusPasswordFieldOptions>(aCx, aValue.mOptions, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", memberVal1))) {
@@ -6760,7 +6987,7 @@ bool BerytusPasswordField::ToJSVal(JSContext* aCx, const BerytusPasswordField& a
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, nsString, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket>>(aCx, aValue.mValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal2))) {
@@ -6770,7 +6997,7 @@ bool BerytusPasswordField::ToJSVal(JSContext* aCx, const BerytusPasswordField& a
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -6781,7 +7008,8 @@ bool BerytusPasswordField::ToJSVal(JSContext* aCx, const BerytusPasswordField& a
   return true;
 }
 
-bool BerytusSecurePasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSecurePasswordFieldOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6793,7 +7021,7 @@ bool BerytusSecurePasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "identityFieldId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6805,7 +7033,7 @@ bool BerytusSecurePasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_BerytusFieldCategoryOptions_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6818,7 +7046,8 @@ bool BerytusSecurePasswordFieldOptions::IsJSValueValid(JSContext *aCx, const JS:
 
 
 }
-bool BerytusSecurePasswordFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecurePasswordFieldOptions& aRv) {
+template<>
+bool FromJSVal<BerytusSecurePasswordFieldOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecurePasswordFieldOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6828,7 +7057,7 @@ bool BerytusSecurePasswordFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "identityFieldId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mIdentityFieldId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mIdentityFieldId)))) {
     return false;
   }
   
@@ -6836,20 +7065,21 @@ bool BerytusSecurePasswordFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSecurePasswordFieldOptions::ToJSVal(JSContext* aCx, const BerytusSecurePasswordFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSecurePasswordFieldOptions>(JSContext* aCx, const BerytusSecurePasswordFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mIdentityFieldId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mIdentityFieldId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "identityFieldId", memberVal0))) {
@@ -6859,7 +7089,7 @@ bool BerytusSecurePasswordFieldOptions::ToJSVal(JSContext* aCx, const BerytusSec
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_ToJSVal(aCx, aValue.mCategory, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, aValue.mCategory, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal1))) {
@@ -6870,7 +7100,8 @@ bool BerytusSecurePasswordFieldOptions::ToJSVal(JSContext* aCx, const BerytusSec
   return true;
 }
 
-bool BerytusSecurePasswordFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSecurePasswordFieldValue>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -6882,7 +7113,7 @@ bool BerytusSecurePasswordFieldValue::IsJSValueValid(JSContext *aCx, const JS::H
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "salt", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6894,7 +7125,7 @@ bool BerytusSecurePasswordFieldValue::IsJSValueValid(JSContext *aCx, const JS::H
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "verifier", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -6907,7 +7138,8 @@ bool BerytusSecurePasswordFieldValue::IsJSValueValid(JSContext *aCx, const JS::H
 
 
 }
-bool BerytusSecurePasswordFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecurePasswordFieldValue& aRv) {
+template<>
+bool FromJSVal<BerytusSecurePasswordFieldValue>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecurePasswordFieldValue& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -6917,7 +7149,7 @@ bool BerytusSecurePasswordFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "salt", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mSalt)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mSalt)))) {
     return false;
   }
   
@@ -6925,14 +7157,15 @@ bool BerytusSecurePasswordFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "verifier", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mVerifier)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mVerifier)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSecurePasswordFieldValue::ToJSVal(JSContext* aCx, const BerytusSecurePasswordFieldValue& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSecurePasswordFieldValue>(JSContext* aCx, const BerytusSecurePasswordFieldValue& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -6940,7 +7173,7 @@ bool BerytusSecurePasswordFieldValue::ToJSVal(JSContext* aCx, const BerytusSecur
   if (NS_WARN_IF(!aValue.mSalt.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mSalt, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mSalt, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "salt", memberVal0))) {
@@ -6952,7 +7185,7 @@ bool BerytusSecurePasswordFieldValue::ToJSVal(JSContext* aCx, const BerytusSecur
   if (NS_WARN_IF(!aValue.mVerifier.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mVerifier, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mVerifier, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "verifier", memberVal1))) {
@@ -6963,11 +7196,12 @@ bool BerytusSecurePasswordFieldValue::ToJSVal(JSContext* aCx, const BerytusSecur
   return true;
 }
 
-bool SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<JSNull, BerytusSecurePasswordFieldValue>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -6979,7 +7213,7 @@ bool SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::IsJSValueValid(JSCont
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -6991,15 +7225,16 @@ bool SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::IsJSValueValid(JSCont
   aRv = false;
   return true;
 }
-bool SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, BerytusSecurePasswordFieldValue>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<JSNull, BerytusSecurePasswordFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, BerytusSecurePasswordFieldValue>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       JSNull nv;
-      if (NS_WARN_IF(!(NullFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -7009,12 +7244,12 @@ bool SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::FromJSVal(JSContext* 
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSecurePasswordFieldValue nv;
-      if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSecurePasswordFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -7026,23 +7261,25 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::ToJSVal(JSContext* aCx, const SafeVariant<JSNull, BerytusSecurePasswordFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<JSNull, BerytusSecurePasswordFieldValue>>(JSContext* aCx, const SafeVariant<JSNull, BerytusSecurePasswordFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const JSNull& aVal) {
-      return NullToJSVal(mCx, aVal, mRv);
+      return ToJSVal<JSNull>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSecurePasswordFieldValue& aVal) {
-      return BerytusSecurePasswordFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSecurePasswordFieldValue>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool BerytusSecurePasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSecurePasswordField>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -7054,7 +7291,7 @@ bool BerytusSecurePasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7066,7 +7303,7 @@ bool BerytusSecurePasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecurePasswordFieldOptions::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldOptions>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7078,7 +7315,7 @@ bool BerytusSecurePasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<JSNull, BerytusSecurePasswordFieldValue>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7090,7 +7327,7 @@ bool BerytusSecurePasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7103,7 +7340,8 @@ bool BerytusSecurePasswordField::IsJSValueValid(JSContext *aCx, const JS::Handle
 
 
 }
-bool BerytusSecurePasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecurePasswordField& aRv) {
+template<>
+bool FromJSVal<BerytusSecurePasswordField>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecurePasswordField& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -7113,7 +7351,7 @@ bool BerytusSecurePasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -7121,7 +7359,7 @@ bool BerytusSecurePasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecurePasswordFieldOptions::FromJSVal(aCx, propVal, aRv.mOptions)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusSecurePasswordFieldOptions>(aCx, propVal, aRv.mOptions)))) {
     return false;
   }
   
@@ -7129,7 +7367,7 @@ bool BerytusSecurePasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, BerytusSecurePasswordFieldValue>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
@@ -7137,20 +7375,21 @@ bool BerytusSecurePasswordField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSecurePasswordField::ToJSVal(JSContext* aCx, const BerytusSecurePasswordField& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSecurePasswordField>(JSContext* aCx, const BerytusSecurePasswordField& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal0))) {
@@ -7160,7 +7399,7 @@ bool BerytusSecurePasswordField::ToJSVal(JSContext* aCx, const BerytusSecurePass
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BerytusSecurePasswordFieldOptions::ToJSVal(aCx, aValue.mOptions, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusSecurePasswordFieldOptions>(aCx, aValue.mOptions, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", memberVal1))) {
@@ -7172,7 +7411,7 @@ bool BerytusSecurePasswordField::ToJSVal(JSContext* aCx, const BerytusSecurePass
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusSecurePasswordFieldValue>::ToJSVal(aCx, aValue.mValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<JSNull, BerytusSecurePasswordFieldValue>>(aCx, aValue.mValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal2))) {
@@ -7182,7 +7421,7 @@ bool BerytusSecurePasswordField::ToJSVal(JSContext* aCx, const BerytusSecurePass
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -7193,7 +7432,8 @@ bool BerytusSecurePasswordField::ToJSVal(JSContext* aCx, const BerytusSecurePass
   return true;
 }
 
-bool BerytusSharedKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSharedKeyFieldOptions>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -7205,7 +7445,7 @@ bool BerytusSharedKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "alg", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNumber(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7217,7 +7457,7 @@ bool BerytusSharedKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsMaybe_BerytusFieldCategoryOptions_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7230,7 +7470,8 @@ bool BerytusSharedKeyFieldOptions::IsJSValueValid(JSContext *aCx, const JS::Hand
 
 
 }
-bool BerytusSharedKeyFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSharedKeyFieldOptions& aRv) {
+template<>
+bool FromJSVal<BerytusSharedKeyFieldOptions>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSharedKeyFieldOptions& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -7240,7 +7481,7 @@ bool BerytusSharedKeyFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "alg", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NumberFromJSVal(aCx, propVal, aRv.mAlg)))) {
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mAlg)))) {
     return false;
   }
   
@@ -7248,20 +7489,21 @@ bool BerytusSharedKeyFieldOptions::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "category", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_FromJSVal(aCx, propVal, aRv.mCategory)))) {
+  if (NS_WARN_IF(!(FromJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, propVal, aRv.mCategory)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSharedKeyFieldOptions::ToJSVal(JSContext* aCx, const BerytusSharedKeyFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSharedKeyFieldOptions>(JSContext* aCx, const BerytusSharedKeyFieldOptions& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(NumberToJSVal(aCx, aValue.mAlg, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mAlg, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "alg", memberVal0))) {
@@ -7271,7 +7513,7 @@ bool BerytusSharedKeyFieldOptions::ToJSVal(JSContext* aCx, const BerytusSharedKe
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(Maybe_BerytusFieldCategoryOptions_ToJSVal(aCx, aValue.mCategory, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<Maybe<BerytusFieldCategoryOptions>>(aCx, aValue.mCategory, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "category", memberVal1))) {
@@ -7282,7 +7524,8 @@ bool BerytusSharedKeyFieldOptions::ToJSVal(JSContext* aCx, const BerytusSharedKe
   return true;
 }
 
-bool BerytusSharedKeyFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSharedKeyFieldValue>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -7294,7 +7537,7 @@ bool BerytusSharedKeyFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "privateKey", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7307,7 +7550,8 @@ bool BerytusSharedKeyFieldValue::IsJSValueValid(JSContext *aCx, const JS::Handle
 
 
 }
-bool BerytusSharedKeyFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSharedKeyFieldValue& aRv) {
+template<>
+bool FromJSVal<BerytusSharedKeyFieldValue>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSharedKeyFieldValue& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -7317,14 +7561,15 @@ bool BerytusSharedKeyFieldValue::FromJSVal(JSContext* aCx, JS::Handle<JS::Value>
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "privateKey", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mPrivateKey)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mPrivateKey)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSharedKeyFieldValue::ToJSVal(JSContext* aCx, const BerytusSharedKeyFieldValue& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSharedKeyFieldValue>(JSContext* aCx, const BerytusSharedKeyFieldValue& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -7332,7 +7577,7 @@ bool BerytusSharedKeyFieldValue::ToJSVal(JSContext* aCx, const BerytusSharedKeyF
   if (NS_WARN_IF(!aValue.mPrivateKey.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mPrivateKey, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mPrivateKey, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "privateKey", memberVal0))) {
@@ -7343,11 +7588,12 @@ bool BerytusSharedKeyFieldValue::ToJSVal(JSContext* aCx, const BerytusSharedKeyF
   return true;
 }
 
-bool SafeVariant<JSNull, BerytusSharedKeyFieldValue>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<JSNull, BerytusSharedKeyFieldValue>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7359,7 +7605,7 @@ bool SafeVariant<JSNull, BerytusSharedKeyFieldValue>::IsJSValueValid(JSContext *
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7371,15 +7617,16 @@ bool SafeVariant<JSNull, BerytusSharedKeyFieldValue>::IsJSValueValid(JSContext *
   aRv = false;
   return true;
 }
-bool SafeVariant<JSNull, BerytusSharedKeyFieldValue>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, BerytusSharedKeyFieldValue>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<JSNull, BerytusSharedKeyFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, BerytusSharedKeyFieldValue>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNull(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       JSNull nv;
-      if (NS_WARN_IF(!(NullFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -7389,12 +7636,12 @@ bool SafeVariant<JSNull, BerytusSharedKeyFieldValue>::FromJSVal(JSContext* aCx, 
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSharedKeyFieldValue nv;
-      if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSharedKeyFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -7406,23 +7653,25 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<JSNull, BerytusSharedKeyFieldValue>::ToJSVal(JSContext* aCx, const SafeVariant<JSNull, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<JSNull, BerytusSharedKeyFieldValue>>(JSContext* aCx, const SafeVariant<JSNull, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const JSNull& aVal) {
-      return NullToJSVal(mCx, aVal, mRv);
+      return ToJSVal<JSNull>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSharedKeyFieldValue& aVal) {
-      return BerytusSharedKeyFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSharedKeyFieldValue>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool BerytusSharedKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSharedKeyField>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -7434,7 +7683,7 @@ bool BerytusSharedKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7446,7 +7695,7 @@ bool BerytusSharedKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSharedKeyFieldOptions::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldOptions>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7458,7 +7707,7 @@ bool BerytusSharedKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusSharedKeyFieldValue>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<JSNull, BerytusSharedKeyFieldValue>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7470,7 +7719,7 @@ bool BerytusSharedKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7483,7 +7732,8 @@ bool BerytusSharedKeyField::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::
 
 
 }
-bool BerytusSharedKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSharedKeyField& aRv) {
+template<>
+bool FromJSVal<BerytusSharedKeyField>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSharedKeyField& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -7493,7 +7743,7 @@ bool BerytusSharedKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -7501,7 +7751,7 @@ bool BerytusSharedKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "options", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSharedKeyFieldOptions::FromJSVal(aCx, propVal, aRv.mOptions)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusSharedKeyFieldOptions>(aCx, propVal, aRv.mOptions)))) {
     return false;
   }
   
@@ -7509,7 +7759,7 @@ bool BerytusSharedKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "value", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusSharedKeyFieldValue>::FromJSVal(aCx, propVal, aRv.mValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, BerytusSharedKeyFieldValue>>(aCx, propVal, aRv.mValue)))) {
     return false;
   }
   
@@ -7517,20 +7767,21 @@ bool BerytusSharedKeyField::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aVal
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSharedKeyField::ToJSVal(JSContext* aCx, const BerytusSharedKeyField& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSharedKeyField>(JSContext* aCx, const BerytusSharedKeyField& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal0))) {
@@ -7540,7 +7791,7 @@ bool BerytusSharedKeyField::ToJSVal(JSContext* aCx, const BerytusSharedKeyField&
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(BerytusSharedKeyFieldOptions::ToJSVal(aCx, aValue.mOptions, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusSharedKeyFieldOptions>(aCx, aValue.mOptions, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "options", memberVal1))) {
@@ -7552,7 +7803,7 @@ bool BerytusSharedKeyField::ToJSVal(JSContext* aCx, const BerytusSharedKeyField&
   if (NS_WARN_IF(!aValue.mValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<JSNull, BerytusSharedKeyFieldValue>::ToJSVal(aCx, aValue.mValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<JSNull, BerytusSharedKeyFieldValue>>(aCx, aValue.mValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "value", memberVal2))) {
@@ -7562,7 +7813,7 @@ bool BerytusSharedKeyField::ToJSVal(JSContext* aCx, const BerytusSharedKeyField&
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal3))) {
@@ -7573,11 +7824,12 @@ bool BerytusSharedKeyField::ToJSVal(JSContext* aCx, const BerytusSharedKeyField&
   return true;
 }
 
-bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusForeignIdentityField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusForeignIdentityField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7589,7 +7841,7 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusIdentityField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusIdentityField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7601,7 +7853,7 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7613,7 +7865,7 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusPasswordField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusPasswordField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7625,7 +7877,7 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7637,7 +7889,7 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7649,15 +7901,16 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
   aRv = false;
   return true;
 }
-bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusForeignIdentityField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusForeignIdentityField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusForeignIdentityField nv;
-      if (NS_WARN_IF(!(BerytusForeignIdentityField::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusForeignIdentityField>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -7667,12 +7920,12 @@ bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyFi
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusIdentityField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusIdentityField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusIdentityField nv;
-      if (NS_WARN_IF(!(BerytusIdentityField::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusIdentityField>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -7682,12 +7935,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusKeyField nv;
-      if (NS_WARN_IF(!(BerytusKeyField::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusKeyField>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -7697,12 +7950,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusPasswordField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusPasswordField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusPasswordField nv;
-      if (NS_WARN_IF(!(BerytusPasswordField::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusPasswordField>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<3>(), std::move(nv));
@@ -7712,12 +7965,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSecurePasswordField nv;
-      if (NS_WARN_IF(!(BerytusSecurePasswordField::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSecurePasswordField>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<4>(), std::move(nv));
@@ -7727,12 +7980,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyField::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyField>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSharedKeyField nv;
-      if (NS_WARN_IF(!(BerytusSharedKeyField::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSharedKeyField>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<5>(), std::move(nv));
@@ -7744,39 +7997,41 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>::ToJSVal(JSContext* aCx, const SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>>(JSContext* aCx, const SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const BerytusForeignIdentityField& aVal) {
-      return BerytusForeignIdentityField::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusForeignIdentityField>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusIdentityField& aVal) {
-      return BerytusIdentityField::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusIdentityField>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusKeyField& aVal) {
-      return BerytusKeyField::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusKeyField>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusPasswordField& aVal) {
-      return BerytusPasswordField::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusPasswordField>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSecurePasswordField& aVal) {
-      return BerytusSecurePasswordField::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSecurePasswordField>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSharedKeyField& aVal) {
-      return BerytusSharedKeyField::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSharedKeyField>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool AddFieldArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<AddFieldArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -7788,7 +8043,7 @@ bool AddFieldArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "field", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -7801,7 +8056,8 @@ bool AddFieldArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aV
 
 
 }
-bool AddFieldArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFieldArgs& aRv) {
+template<>
+bool FromJSVal<AddFieldArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFieldArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -7811,14 +8067,15 @@ bool AddFieldArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AddFi
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "field", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>::FromJSVal(aCx, propVal, aRv.mField)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>>(aCx, propVal, aRv.mField)))) {
     return false;
   }
   
   return true;
 }
             
-bool AddFieldArgs::ToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<AddFieldArgs>(JSContext* aCx, const AddFieldArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -7826,7 +8083,7 @@ bool AddFieldArgs::ToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::Mutab
   if (NS_WARN_IF(!aValue.mField.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>::ToJSVal(aCx, aValue.mField, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<BerytusForeignIdentityField, BerytusIdentityField, BerytusKeyField, BerytusPasswordField, BerytusSecurePasswordField, BerytusSharedKeyField>>(aCx, aValue.mField, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "field", memberVal0))) {
@@ -7837,11 +8094,12 @@ bool AddFieldArgs::ToJSVal(JSContext* aCx, const AddFieldArgs& aValue, JS::Mutab
   return true;
 }
 
-bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7853,7 +8111,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7865,7 +8123,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7877,7 +8135,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7889,7 +8147,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -7901,15 +8159,16 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
   aRv = false;
   return true;
 }
-bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       nsString nv;
-      if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -7919,12 +8178,12 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -7934,12 +8193,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusKeyFieldValue nv;
-      if (NS_WARN_IF(!(BerytusKeyFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusKeyFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -7949,12 +8208,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSecurePasswordFieldValue nv;
-      if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSecurePasswordFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<3>(), std::move(nv));
@@ -7964,12 +8223,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSharedKeyFieldValue nv;
-      if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSharedKeyFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<4>(), std::move(nv));
@@ -7981,36 +8240,38 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>::ToJSVal(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const nsString& aVal) {
-      return StringToJSVal(mCx, aVal, mRv);
+      return ToJSVal<nsString>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusKeyFieldValue& aVal) {
-      return BerytusKeyFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusKeyFieldValue>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSecurePasswordFieldValue& aVal) {
-      return BerytusSecurePasswordFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSecurePasswordFieldValue>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSharedKeyFieldValue& aVal) {
-      return BerytusSharedKeyFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSharedKeyFieldValue>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
 
-bool FieldValueRejectionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<FieldValueRejectionReason>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8022,7 +8283,7 @@ bool FieldValueRejectionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "code", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8035,7 +8296,8 @@ bool FieldValueRejectionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<
 
 
 }
-bool FieldValueRejectionReason::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldValueRejectionReason& aRv) {
+template<>
+bool FromJSVal<FieldValueRejectionReason>(JSContext* aCx, JS::Handle<JS::Value> aValue, FieldValueRejectionReason& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8045,20 +8307,21 @@ bool FieldValueRejectionReason::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "code", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mCode)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mCode)))) {
     return false;
   }
   
   return true;
 }
             
-bool FieldValueRejectionReason::ToJSVal(JSContext* aCx, const FieldValueRejectionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<FieldValueRejectionReason>(JSContext* aCx, const FieldValueRejectionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mCode, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mCode, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "code", memberVal0))) {
@@ -8069,11 +8332,12 @@ bool FieldValueRejectionReason::ToJSVal(JSContext* aCx, const FieldValueRejectio
   return true;
 }
 
-bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -8085,7 +8349,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -8097,7 +8361,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -8109,7 +8373,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -8121,7 +8385,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -8133,7 +8397,7 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNothing(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<Nothing>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -8145,15 +8409,16 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
   aRv = false;
   return true;
 }
-bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       nsString nv;
-      if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -8163,12 +8428,12 @@ bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, Berytus
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -8178,12 +8443,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusKeyFieldValue nv;
-      if (NS_WARN_IF(!(BerytusKeyFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusKeyFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -8193,12 +8458,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSecurePasswordFieldValue nv;
-      if (NS_WARN_IF(!(BerytusSecurePasswordFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSecurePasswordFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<3>(), std::move(nv));
@@ -8208,12 +8473,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSharedKeyFieldValue nv;
-      if (NS_WARN_IF(!(BerytusSharedKeyFieldValue::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSharedKeyFieldValue>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<4>(), std::move(nv));
@@ -8223,12 +8488,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsNothing(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<Nothing>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       Nothing nv;
-      if (NS_WARN_IF(!(NothingFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<Nothing>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<5>(), std::move(nv));
@@ -8240,39 +8505,41 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>::ToJSVal(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>>(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const nsString& aVal) {
-      return StringToJSVal(mCx, aVal, mRv);
+      return ToJSVal<nsString>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusKeyFieldValue& aVal) {
-      return BerytusKeyFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusKeyFieldValue>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSecurePasswordFieldValue& aVal) {
-      return BerytusSecurePasswordFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSecurePasswordFieldValue>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSharedKeyFieldValue& aVal) {
-      return BerytusSharedKeyFieldValue::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSharedKeyFieldValue>(mCx, aVal, mRv);
     }
 
     bool operator()(const Nothing& aVal) {
-      return NothingToJSVal(mCx, aVal, mRv);
+      return ToJSVal<Nothing>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool RejectFieldValueArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<RejectFieldValueArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8284,7 +8551,7 @@ bool RejectFieldValueArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8296,7 +8563,7 @@ bool RejectFieldValueArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(FieldValueRejectionReason::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<FieldValueRejectionReason>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8308,7 +8575,7 @@ bool RejectFieldValueArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "optionalNewValue", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8321,7 +8588,8 @@ bool RejectFieldValueArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::V
 
 
 }
-bool RejectFieldValueArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, RejectFieldValueArgs& aRv) {
+template<>
+bool FromJSVal<RejectFieldValueArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, RejectFieldValueArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8331,7 +8599,7 @@ bool RejectFieldValueArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "fieldId", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mFieldId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mFieldId)))) {
     return false;
   }
   
@@ -8339,7 +8607,7 @@ bool RejectFieldValueArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(FieldValueRejectionReason::FromJSVal(aCx, propVal, aRv.mReason)))) {
+  if (NS_WARN_IF(!(FromJSVal<FieldValueRejectionReason>(aCx, propVal, aRv.mReason)))) {
     return false;
   }
   
@@ -8347,20 +8615,21 @@ bool RejectFieldValueArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "optionalNewValue", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>::FromJSVal(aCx, propVal, aRv.mOptionalNewValue)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>>(aCx, propVal, aRv.mOptionalNewValue)))) {
     return false;
   }
   
   return true;
 }
             
-bool RejectFieldValueArgs::ToJSVal(JSContext* aCx, const RejectFieldValueArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<RejectFieldValueArgs>(JSContext* aCx, const RejectFieldValueArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mFieldId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mFieldId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "fieldId", memberVal0))) {
@@ -8370,7 +8639,7 @@ bool RejectFieldValueArgs::ToJSVal(JSContext* aCx, const RejectFieldValueArgs& a
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(FieldValueRejectionReason::ToJSVal(aCx, aValue.mReason, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<FieldValueRejectionReason>(aCx, aValue.mReason, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "reason", memberVal1))) {
@@ -8382,7 +8651,7 @@ bool RejectFieldValueArgs::ToJSVal(JSContext* aCx, const RejectFieldValueArgs& a
   if (NS_WARN_IF(!aValue.mOptionalNewValue.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>::ToJSVal(aCx, aValue.mOptionalNewValue, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue, Nothing>>(aCx, aValue.mOptionalNewValue, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "optionalNewValue", memberVal2))) {
@@ -8484,24 +8753,27 @@ if (aVal.Equals(u"ForeignIdentityOtp"_ns)) {
   }
   return false;
 }
-bool EChallengeType::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EChallengeType>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   EChallengeType e;
   aRv = EChallengeType::FromString(strVal, e);
   return true;
 }
-bool EChallengeType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv) {
+template<>
+bool FromJSVal<EChallengeType>(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeType& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!EChallengeType::EChallengeType::FromString(strVal, aRv))) {
@@ -8509,15 +8781,17 @@ bool EChallengeType::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ECh
   }
   return true;
 }
-bool EChallengeType::ToJSVal(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EChallengeType>(JSContext* aCx, const EChallengeType& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool ChallengeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ChallengeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8527,7 +8801,8 @@ bool ChallengeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Va
 
 
 }
-bool ChallengeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeParameters& aRv) {
+template<>
+bool FromJSVal<ChallengeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeParameters& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8537,7 +8812,8 @@ bool ChallengeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue
   return true;
 }
             
-bool ChallengeParameters::ToJSVal(JSContext* aCx, const ChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ChallengeParameters>(JSContext* aCx, const ChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -8635,24 +8911,27 @@ if (aVal.Equals(u"Sealed"_ns)) {
   }
   return false;
 }
-bool EChallengeStatus::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<EChallengeStatus>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   EChallengeStatus e;
   aRv = EChallengeStatus::FromString(strVal, e);
   return true;
 }
-bool EChallengeStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv) {
+template<>
+bool FromJSVal<EChallengeStatus>(JSContext* aCx, JS::Handle<JS::Value> aValue, EChallengeStatus& aRv)
+ {
   if (NS_WARN_IF(!aValue.isString())) {
     return false;
   }
   nsString strVal;
-  if (NS_WARN_IF(!StringFromJSVal(aCx, aValue, strVal))) {
+  if (NS_WARN_IF(!FromJSVal(aCx, aValue, strVal))) {
     return false;
   }
   if (NS_WARN_IF(!EChallengeStatus::EChallengeStatus::FromString(strVal, aRv))) {
@@ -8660,15 +8939,17 @@ bool EChallengeStatus::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, E
   }
   return true;
 }
-bool EChallengeStatus::ToJSVal(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<EChallengeStatus>(JSContext* aCx, const EChallengeStatus& aValue, JS::MutableHandle<JS::Value> aRv) {
   nsString strVal;
   aValue.ToString(strVal);
-  if (NS_WARN_IF(!StringToJSVal(aCx, strVal, aRv))) {
+  if (NS_WARN_IF(!ToJSVal(aCx, strVal, aRv))) {
     return false;
   }
   return true;
 }
-bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ChallengeMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8680,7 +8961,7 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8692,7 +8973,7 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EChallengeType::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EChallengeType>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8704,7 +8985,7 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeParameters::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChallengeParameters>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8716,7 +8997,7 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EChallengeStatus::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<EChallengeStatus>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8729,7 +9010,8 @@ bool ChallengeMetadata::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Valu
 
 
 }
-bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMetadata& aRv) {
+template<>
+bool FromJSVal<ChallengeMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeMetadata& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8739,7 +9021,7 @@ bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -8747,7 +9029,7 @@ bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EChallengeType::FromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<EChallengeType>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -8755,7 +9037,7 @@ bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeParameters::FromJSVal(aCx, propVal, aRv.mParameters)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChallengeParameters>(aCx, propVal, aRv.mParameters)))) {
     return false;
   }
   
@@ -8763,20 +9045,21 @@ bool ChallengeMetadata::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "status", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(EChallengeStatus::FromJSVal(aCx, propVal, aRv.mStatus)))) {
+  if (NS_WARN_IF(!(FromJSVal<EChallengeStatus>(aCx, propVal, aRv.mStatus)))) {
     return false;
   }
   
   return true;
 }
             
-bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ChallengeMetadata>(JSContext* aCx, const ChallengeMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -8786,7 +9069,7 @@ bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(EChallengeType::ToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<EChallengeType>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -8796,7 +9079,7 @@ bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(ChallengeParameters::ToJSVal(aCx, aValue.mParameters, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChallengeParameters>(aCx, aValue.mParameters, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal2))) {
@@ -8806,7 +9089,7 @@ bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue,
 
   JS::Rooted<JS::Value> memberVal3(aCx);
   
-  if (NS_WARN_IF(!(EChallengeStatus::ToJSVal(aCx, aValue.mStatus, &memberVal3)))) {
+  if (NS_WARN_IF(!(ToJSVal<EChallengeStatus>(aCx, aValue.mStatus, &memberVal3)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "status", memberVal3))) {
@@ -8817,7 +9100,8 @@ bool ChallengeMetadata::ToJSVal(JSContext* aCx, const ChallengeMetadata& aValue,
   return true;
 }
 
-bool ApproveChallengeRequestArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ApproveChallengeRequestArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8829,7 +9113,7 @@ bool ApproveChallengeRequestArgs::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChallengeMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8842,7 +9126,8 @@ bool ApproveChallengeRequestArgs::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool ApproveChallengeRequestArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveChallengeRequestArgs& aRv) {
+template<>
+bool FromJSVal<ApproveChallengeRequestArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, ApproveChallengeRequestArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8852,20 +9137,21 @@ bool ApproveChallengeRequestArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChallengeMetadata>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
   return true;
 }
             
-bool ApproveChallengeRequestArgs::ToJSVal(JSContext* aCx, const ApproveChallengeRequestArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ApproveChallengeRequestArgs>(JSContext* aCx, const ApproveChallengeRequestArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChallengeMetadata>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -8877,7 +9163,8 @@ bool ApproveChallengeRequestArgs::ToJSVal(JSContext* aCx, const ApproveChallenge
 }
 
 
-bool ChallengeAbortionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<ChallengeAbortionReason>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8889,7 +9176,7 @@ bool ChallengeAbortionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "code", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8902,7 +9189,8 @@ bool ChallengeAbortionReason::IsJSValueValid(JSContext *aCx, const JS::Handle<JS
 
 
 }
-bool ChallengeAbortionReason::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeAbortionReason& aRv) {
+template<>
+bool FromJSVal<ChallengeAbortionReason>(JSContext* aCx, JS::Handle<JS::Value> aValue, ChallengeAbortionReason& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8912,20 +9200,21 @@ bool ChallengeAbortionReason::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aV
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "code", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mCode)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mCode)))) {
     return false;
   }
   
   return true;
 }
             
-bool ChallengeAbortionReason::ToJSVal(JSContext* aCx, const ChallengeAbortionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<ChallengeAbortionReason>(JSContext* aCx, const ChallengeAbortionReason& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mCode, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mCode, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "code", memberVal0))) {
@@ -8936,7 +9225,8 @@ bool ChallengeAbortionReason::ToJSVal(JSContext* aCx, const ChallengeAbortionRea
   return true;
 }
 
-bool AbortChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<AbortChallengeArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -8948,7 +9238,7 @@ bool AbortChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChallengeMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8960,7 +9250,7 @@ bool AbortChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeAbortionReason::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChallengeAbortionReason>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -8973,7 +9263,8 @@ bool AbortChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
 
 
 }
-bool AbortChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, AbortChallengeArgs& aRv) {
+template<>
+bool FromJSVal<AbortChallengeArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, AbortChallengeArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -8983,7 +9274,7 @@ bool AbortChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChallengeMetadata>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -8991,20 +9282,21 @@ bool AbortChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "reason", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeAbortionReason::FromJSVal(aCx, propVal, aRv.mReason)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChallengeAbortionReason>(aCx, propVal, aRv.mReason)))) {
     return false;
   }
   
   return true;
 }
             
-bool AbortChallengeArgs::ToJSVal(JSContext* aCx, const AbortChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<AbortChallengeArgs>(JSContext* aCx, const AbortChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChallengeMetadata>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -9014,7 +9306,7 @@ bool AbortChallengeArgs::ToJSVal(JSContext* aCx, const AbortChallengeArgs& aValu
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(ChallengeAbortionReason::ToJSVal(aCx, aValue.mReason, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChallengeAbortionReason>(aCx, aValue.mReason, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "reason", memberVal1))) {
@@ -9026,7 +9318,8 @@ bool AbortChallengeArgs::ToJSVal(JSContext* aCx, const AbortChallengeArgs& aValu
 }
 
 
-bool CloseChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<CloseChallengeArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9038,7 +9331,7 @@ bool CloseChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeMetadata::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<ChallengeMetadata>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9051,7 +9344,8 @@ bool CloseChallengeArgs::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Val
 
 
 }
-bool CloseChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, CloseChallengeArgs& aRv) {
+template<>
+bool FromJSVal<CloseChallengeArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, CloseChallengeArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9061,20 +9355,21 @@ bool CloseChallengeArgs::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue,
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(ChallengeMetadata::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<ChallengeMetadata>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
   return true;
 }
             
-bool CloseChallengeArgs::ToJSVal(JSContext* aCx, const CloseChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<CloseChallengeArgs>(JSContext* aCx, const CloseChallengeArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ChallengeMetadata::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<ChallengeMetadata>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -9086,7 +9381,8 @@ bool CloseChallengeArgs::ToJSVal(JSContext* aCx, const CloseChallengeArgs& aValu
 }
 
 
-bool BerytusIdentificationChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusIdentificationChallengeInfo>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9098,7 +9394,7 @@ bool BerytusIdentificationChallengeInfo::IsJSValueValid(JSContext *aCx, const JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9110,7 +9406,7 @@ bool BerytusIdentificationChallengeInfo::IsJSValueValid(JSContext *aCx, const JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9122,7 +9418,7 @@ bool BerytusIdentificationChallengeInfo::IsJSValueValid(JSContext *aCx, const JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNull(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9135,7 +9431,8 @@ bool BerytusIdentificationChallengeInfo::IsJSValueValid(JSContext *aCx, const JS
 
 
 }
-bool BerytusIdentificationChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentificationChallengeInfo& aRv) {
+template<>
+bool FromJSVal<BerytusIdentificationChallengeInfo>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentificationChallengeInfo& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9145,7 +9442,7 @@ bool BerytusIdentificationChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -9153,7 +9450,7 @@ bool BerytusIdentificationChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -9161,20 +9458,21 @@ bool BerytusIdentificationChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NullFromJSVal(aCx, propVal, aRv.mParameters)))) {
+  if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, propVal, aRv.mParameters)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusIdentificationChallengeInfo::ToJSVal(JSContext* aCx, const BerytusIdentificationChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusIdentificationChallengeInfo>(JSContext* aCx, const BerytusIdentificationChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -9184,7 +9482,7 @@ bool BerytusIdentificationChallengeInfo::ToJSVal(JSContext* aCx, const BerytusId
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -9194,7 +9492,7 @@ bool BerytusIdentificationChallengeInfo::ToJSVal(JSContext* aCx, const BerytusId
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(NullToJSVal(aCx, aValue.mParameters, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<JSNull>(aCx, aValue.mParameters, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal2))) {
@@ -9205,7 +9503,8 @@ bool BerytusIdentificationChallengeInfo::ToJSVal(JSContext* aCx, const BerytusId
   return true;
 }
 
-bool BerytusSendGetIdentityFieldsMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendGetIdentityFieldsMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9217,7 +9516,7 @@ bool BerytusSendGetIdentityFieldsMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusIdentificationChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusIdentificationChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9229,7 +9528,7 @@ bool BerytusSendGetIdentityFieldsMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9241,7 +9540,7 @@ bool BerytusSendGetIdentityFieldsMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsnsTArray_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsTArray<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9254,7 +9553,8 @@ bool BerytusSendGetIdentityFieldsMessage::IsJSValueValid(JSContext *aCx, const J
 
 
 }
-bool BerytusSendGetIdentityFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendGetIdentityFieldsMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendGetIdentityFieldsMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendGetIdentityFieldsMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9264,7 +9564,7 @@ bool BerytusSendGetIdentityFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusIdentificationChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusIdentificationChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -9272,7 +9572,7 @@ bool BerytusSendGetIdentityFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -9280,20 +9580,21 @@ bool BerytusSendGetIdentityFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(nsTArray_nsString_FromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<nsString>>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendGetIdentityFieldsMessage::ToJSVal(JSContext* aCx, const BerytusSendGetIdentityFieldsMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendGetIdentityFieldsMessage>(JSContext* aCx, const BerytusSendGetIdentityFieldsMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusIdentificationChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusIdentificationChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -9303,7 +9604,7 @@ bool BerytusSendGetIdentityFieldsMessage::ToJSVal(JSContext* aCx, const BerytusS
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -9313,7 +9614,7 @@ bool BerytusSendGetIdentityFieldsMessage::ToJSVal(JSContext* aCx, const BerytusS
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(nsTArray_nsString_ToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsTArray<nsString>>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -9324,7 +9625,8 @@ bool BerytusSendGetIdentityFieldsMessage::ToJSVal(JSContext* aCx, const BerytusS
   return true;
 }
 
-bool BerytusPasswordChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusPasswordChallengeInfo>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9336,7 +9638,7 @@ bool BerytusPasswordChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9348,7 +9650,7 @@ bool BerytusPasswordChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9360,7 +9662,7 @@ bool BerytusPasswordChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Hand
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNull(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9373,7 +9675,8 @@ bool BerytusPasswordChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Hand
 
 
 }
-bool BerytusPasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordChallengeInfo& aRv) {
+template<>
+bool FromJSVal<BerytusPasswordChallengeInfo>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordChallengeInfo& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9383,7 +9686,7 @@ bool BerytusPasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -9391,7 +9694,7 @@ bool BerytusPasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -9399,20 +9702,21 @@ bool BerytusPasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Valu
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NullFromJSVal(aCx, propVal, aRv.mParameters)))) {
+  if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, propVal, aRv.mParameters)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusPasswordChallengeInfo::ToJSVal(JSContext* aCx, const BerytusPasswordChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusPasswordChallengeInfo>(JSContext* aCx, const BerytusPasswordChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -9422,7 +9726,7 @@ bool BerytusPasswordChallengeInfo::ToJSVal(JSContext* aCx, const BerytusPassword
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -9432,7 +9736,7 @@ bool BerytusPasswordChallengeInfo::ToJSVal(JSContext* aCx, const BerytusPassword
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(NullToJSVal(aCx, aValue.mParameters, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<JSNull>(aCx, aValue.mParameters, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal2))) {
@@ -9443,7 +9747,8 @@ bool BerytusPasswordChallengeInfo::ToJSVal(JSContext* aCx, const BerytusPassword
   return true;
 }
 
-bool BerytusSendGetPasswordFieldsMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendGetPasswordFieldsMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9455,7 +9760,7 @@ bool BerytusSendGetPasswordFieldsMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusPasswordChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusPasswordChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9467,7 +9772,7 @@ bool BerytusSendGetPasswordFieldsMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9479,7 +9784,7 @@ bool BerytusSendGetPasswordFieldsMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsnsTArray_nsString_(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsTArray<nsString>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9492,7 +9797,8 @@ bool BerytusSendGetPasswordFieldsMessage::IsJSValueValid(JSContext *aCx, const J
 
 
 }
-bool BerytusSendGetPasswordFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendGetPasswordFieldsMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendGetPasswordFieldsMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendGetPasswordFieldsMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9502,7 +9808,7 @@ bool BerytusSendGetPasswordFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusPasswordChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusPasswordChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -9510,7 +9816,7 @@ bool BerytusSendGetPasswordFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -9518,20 +9824,21 @@ bool BerytusSendGetPasswordFieldsMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(nsTArray_nsString_FromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsTArray<nsString>>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendGetPasswordFieldsMessage::ToJSVal(JSContext* aCx, const BerytusSendGetPasswordFieldsMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendGetPasswordFieldsMessage>(JSContext* aCx, const BerytusSendGetPasswordFieldsMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusPasswordChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusPasswordChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -9541,7 +9848,7 @@ bool BerytusSendGetPasswordFieldsMessage::ToJSVal(JSContext* aCx, const BerytusS
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -9551,7 +9858,7 @@ bool BerytusSendGetPasswordFieldsMessage::ToJSVal(JSContext* aCx, const BerytusS
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(nsTArray_nsString_ToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsTArray<nsString>>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -9562,7 +9869,8 @@ bool BerytusSendGetPasswordFieldsMessage::ToJSVal(JSContext* aCx, const BerytusS
   return true;
 }
 
-bool BerytusDigitalSignatureChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusDigitalSignatureChallengeInfo>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9574,7 +9882,7 @@ bool BerytusDigitalSignatureChallengeInfo::IsJSValueValid(JSContext *aCx, const 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9586,7 +9894,7 @@ bool BerytusDigitalSignatureChallengeInfo::IsJSValueValid(JSContext *aCx, const 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9598,7 +9906,7 @@ bool BerytusDigitalSignatureChallengeInfo::IsJSValueValid(JSContext *aCx, const 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsNull(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9611,7 +9919,8 @@ bool BerytusDigitalSignatureChallengeInfo::IsJSValueValid(JSContext *aCx, const 
 
 
 }
-bool BerytusDigitalSignatureChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusDigitalSignatureChallengeInfo& aRv) {
+template<>
+bool FromJSVal<BerytusDigitalSignatureChallengeInfo>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusDigitalSignatureChallengeInfo& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9621,7 +9930,7 @@ bool BerytusDigitalSignatureChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -9629,7 +9938,7 @@ bool BerytusDigitalSignatureChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -9637,20 +9946,21 @@ bool BerytusDigitalSignatureChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(NullFromJSVal(aCx, propVal, aRv.mParameters)))) {
+  if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, propVal, aRv.mParameters)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusDigitalSignatureChallengeInfo::ToJSVal(JSContext* aCx, const BerytusDigitalSignatureChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusDigitalSignatureChallengeInfo>(JSContext* aCx, const BerytusDigitalSignatureChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -9660,7 +9970,7 @@ bool BerytusDigitalSignatureChallengeInfo::ToJSVal(JSContext* aCx, const Berytus
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -9670,7 +9980,7 @@ bool BerytusDigitalSignatureChallengeInfo::ToJSVal(JSContext* aCx, const Berytus
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(NullToJSVal(aCx, aValue.mParameters, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<JSNull>(aCx, aValue.mParameters, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal2))) {
@@ -9681,7 +9991,8 @@ bool BerytusDigitalSignatureChallengeInfo::ToJSVal(JSContext* aCx, const Berytus
   return true;
 }
 
-bool BerytusSendSelectKeyMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendSelectKeyMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9693,7 +10004,7 @@ bool BerytusSendSelectKeyMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusDigitalSignatureChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusDigitalSignatureChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9705,7 +10016,7 @@ bool BerytusSendSelectKeyMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9717,7 +10028,7 @@ bool BerytusSendSelectKeyMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9730,7 +10041,8 @@ bool BerytusSendSelectKeyMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool BerytusSendSelectKeyMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendSelectKeyMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendSelectKeyMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendSelectKeyMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9740,7 +10052,7 @@ bool BerytusSendSelectKeyMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusDigitalSignatureChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusDigitalSignatureChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -9748,7 +10060,7 @@ bool BerytusSendSelectKeyMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -9756,20 +10068,21 @@ bool BerytusSendSelectKeyMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendSelectKeyMessage::ToJSVal(JSContext* aCx, const BerytusSendSelectKeyMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendSelectKeyMessage>(JSContext* aCx, const BerytusSendSelectKeyMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusDigitalSignatureChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusDigitalSignatureChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -9779,7 +10092,7 @@ bool BerytusSendSelectKeyMessage::ToJSVal(JSContext* aCx, const BerytusSendSelec
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -9789,7 +10102,7 @@ bool BerytusSendSelectKeyMessage::ToJSVal(JSContext* aCx, const BerytusSendSelec
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -9800,7 +10113,8 @@ bool BerytusSendSelectKeyMessage::ToJSVal(JSContext* aCx, const BerytusSendSelec
   return true;
 }
 
-bool BerytusSendSignNonceMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendSignNonceMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9812,7 +10126,7 @@ bool BerytusSendSignNonceMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusDigitalSignatureChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusDigitalSignatureChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9824,7 +10138,7 @@ bool BerytusSendSignNonceMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9836,7 +10150,7 @@ bool BerytusSendSignNonceMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, ArrayBufferView>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9849,7 +10163,8 @@ bool BerytusSendSignNonceMessage::IsJSValueValid(JSContext *aCx, const JS::Handl
 
 
 }
-bool BerytusSendSignNonceMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendSignNonceMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendSignNonceMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendSignNonceMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9859,7 +10174,7 @@ bool BerytusSendSignNonceMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusDigitalSignatureChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusDigitalSignatureChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -9867,7 +10182,7 @@ bool BerytusSendSignNonceMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -9875,20 +10190,21 @@ bool BerytusSendSignNonceMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView>::FromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, ArrayBufferView>>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendSignNonceMessage::ToJSVal(JSContext* aCx, const BerytusSendSignNonceMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendSignNonceMessage>(JSContext* aCx, const BerytusSendSignNonceMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusDigitalSignatureChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusDigitalSignatureChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -9898,7 +10214,7 @@ bool BerytusSendSignNonceMessage::ToJSVal(JSContext* aCx, const BerytusSendSignN
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -9910,7 +10226,7 @@ bool BerytusSendSignNonceMessage::ToJSVal(JSContext* aCx, const BerytusSendSignN
   if (NS_WARN_IF(!aValue.mPayload.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<ArrayBuffer, ArrayBufferView>::ToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, ArrayBufferView>>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -9921,7 +10237,8 @@ bool BerytusSendSignNonceMessage::ToJSVal(JSContext* aCx, const BerytusSendSignN
   return true;
 }
 
-bool BerytusSecureRemotePasswordChallengeParameters::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSecureRemotePasswordChallengeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9933,7 +10250,7 @@ bool BerytusSecureRemotePasswordChallengeParameters::IsJSValueValid(JSContext *a
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "encoding", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -9946,7 +10263,8 @@ bool BerytusSecureRemotePasswordChallengeParameters::IsJSValueValid(JSContext *a
 
 
 }
-bool BerytusSecureRemotePasswordChallengeParameters::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecureRemotePasswordChallengeParameters& aRv) {
+template<>
+bool FromJSVal<BerytusSecureRemotePasswordChallengeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecureRemotePasswordChallengeParameters& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -9956,20 +10274,21 @@ bool BerytusSecureRemotePasswordChallengeParameters::FromJSVal(JSContext* aCx, J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "encoding", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mEncoding)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mEncoding)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSecureRemotePasswordChallengeParameters::ToJSVal(JSContext* aCx, const BerytusSecureRemotePasswordChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSecureRemotePasswordChallengeParameters>(JSContext* aCx, const BerytusSecureRemotePasswordChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mEncoding, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mEncoding, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "encoding", memberVal0))) {
@@ -9980,7 +10299,8 @@ bool BerytusSecureRemotePasswordChallengeParameters::ToJSVal(JSContext* aCx, con
   return true;
 }
 
-bool BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSecureRemotePasswordChallengeInfo>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -9992,7 +10312,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(JSContext *aCx, co
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10004,7 +10324,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(JSContext *aCx, co
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10016,7 +10336,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(JSContext *aCx, co
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeParameters::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusSecureRemotePasswordChallengeParameters>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10029,7 +10349,8 @@ bool BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(JSContext *aCx, co
 
 
 }
-bool BerytusSecureRemotePasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecureRemotePasswordChallengeInfo& aRv) {
+template<>
+bool FromJSVal<BerytusSecureRemotePasswordChallengeInfo>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSecureRemotePasswordChallengeInfo& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -10039,7 +10360,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Han
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mId)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mId)))) {
     return false;
   }
   
@@ -10047,7 +10368,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Han
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "type", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mType)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mType)))) {
     return false;
   }
   
@@ -10055,20 +10376,21 @@ bool BerytusSecureRemotePasswordChallengeInfo::FromJSVal(JSContext* aCx, JS::Han
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "parameters", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeParameters::FromJSVal(aCx, propVal, aRv.mParameters)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusSecureRemotePasswordChallengeParameters>(aCx, propVal, aRv.mParameters)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSecureRemotePasswordChallengeInfo::ToJSVal(JSContext* aCx, const BerytusSecureRemotePasswordChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSecureRemotePasswordChallengeInfo>(JSContext* aCx, const BerytusSecureRemotePasswordChallengeInfo& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mId, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
@@ -10078,7 +10400,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::ToJSVal(JSContext* aCx, const Ber
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mType, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mType, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "type", memberVal1))) {
@@ -10088,7 +10410,7 @@ bool BerytusSecureRemotePasswordChallengeInfo::ToJSVal(JSContext* aCx, const Ber
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeParameters::ToJSVal(aCx, aValue.mParameters, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusSecureRemotePasswordChallengeParameters>(aCx, aValue.mParameters, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "parameters", memberVal2))) {
@@ -10099,7 +10421,8 @@ bool BerytusSecureRemotePasswordChallengeInfo::ToJSVal(JSContext* aCx, const Ber
   return true;
 }
 
-bool BerytusSendSelectSecurePasswordMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendSelectSecurePasswordMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -10111,7 +10434,7 @@ bool BerytusSendSelectSecurePasswordMessage::IsJSValueValid(JSContext *aCx, cons
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10123,7 +10446,7 @@ bool BerytusSendSelectSecurePasswordMessage::IsJSValueValid(JSContext *aCx, cons
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10135,7 +10458,7 @@ bool BerytusSendSelectSecurePasswordMessage::IsJSValueValid(JSContext *aCx, cons
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10148,7 +10471,8 @@ bool BerytusSendSelectSecurePasswordMessage::IsJSValueValid(JSContext *aCx, cons
 
 
 }
-bool BerytusSendSelectSecurePasswordMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendSelectSecurePasswordMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendSelectSecurePasswordMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendSelectSecurePasswordMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -10158,7 +10482,7 @@ bool BerytusSendSelectSecurePasswordMessage::FromJSVal(JSContext* aCx, JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -10166,7 +10490,7 @@ bool BerytusSendSelectSecurePasswordMessage::FromJSVal(JSContext* aCx, JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -10174,20 +10498,21 @@ bool BerytusSendSelectSecurePasswordMessage::FromJSVal(JSContext* aCx, JS::Handl
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendSelectSecurePasswordMessage::ToJSVal(JSContext* aCx, const BerytusSendSelectSecurePasswordMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendSelectSecurePasswordMessage>(JSContext* aCx, const BerytusSendSelectSecurePasswordMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -10197,7 +10522,7 @@ bool BerytusSendSelectSecurePasswordMessage::ToJSVal(JSContext* aCx, const Beryt
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -10207,7 +10532,7 @@ bool BerytusSendSelectSecurePasswordMessage::ToJSVal(JSContext* aCx, const Beryt
 
   JS::Rooted<JS::Value> memberVal2(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -10218,7 +10543,8 @@ bool BerytusSendSelectSecurePasswordMessage::ToJSVal(JSContext* aCx, const Beryt
   return true;
 }
 
-bool BerytusSendExchangePublicKeysMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendExchangePublicKeysMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -10230,7 +10556,7 @@ bool BerytusSendExchangePublicKeysMessage::IsJSValueValid(JSContext *aCx, const 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10242,7 +10568,7 @@ bool BerytusSendExchangePublicKeysMessage::IsJSValueValid(JSContext *aCx, const 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10254,7 +10580,7 @@ bool BerytusSendExchangePublicKeysMessage::IsJSValueValid(JSContext *aCx, const 
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10267,7 +10593,8 @@ bool BerytusSendExchangePublicKeysMessage::IsJSValueValid(JSContext *aCx, const 
 
 
 }
-bool BerytusSendExchangePublicKeysMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendExchangePublicKeysMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendExchangePublicKeysMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendExchangePublicKeysMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -10277,7 +10604,7 @@ bool BerytusSendExchangePublicKeysMessage::FromJSVal(JSContext* aCx, JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -10285,7 +10612,7 @@ bool BerytusSendExchangePublicKeysMessage::FromJSVal(JSContext* aCx, JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -10293,20 +10620,21 @@ bool BerytusSendExchangePublicKeysMessage::FromJSVal(JSContext* aCx, JS::Handle<
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendExchangePublicKeysMessage::ToJSVal(JSContext* aCx, const BerytusSendExchangePublicKeysMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendExchangePublicKeysMessage>(JSContext* aCx, const BerytusSendExchangePublicKeysMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -10316,128 +10644,7 @@ bool BerytusSendExchangePublicKeysMessage::ToJSVal(JSContext* aCx, const Berytus
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal2(aCx);
-  if (NS_WARN_IF(!aValue.mPayload.Inited())) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-bool BerytusSendComputeClientProofMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-bool BerytusSendComputeClientProofMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendComputeClientProofMessage& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mPayload)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-bool BerytusSendComputeClientProofMessage::ToJSVal(JSContext* aCx, const BerytusSendComputeClientProofMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal1(aCx);
-  
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -10449,7 +10656,7 @@ bool BerytusSendComputeClientProofMessage::ToJSVal(JSContext* aCx, const Berytus
   if (NS_WARN_IF(!aValue.mPayload.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -10460,7 +10667,8 @@ bool BerytusSendComputeClientProofMessage::ToJSVal(JSContext* aCx, const Berytus
   return true;
 }
 
-bool BerytusSendVerifyServerProofMessage::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendComputeClientProofMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -10472,7 +10680,7 @@ bool BerytusSendVerifyServerProofMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10484,7 +10692,7 @@ bool BerytusSendVerifyServerProofMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIsString(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10496,7 +10704,7 @@ bool BerytusSendVerifyServerProofMessage::IsJSValueValid(JSContext *aCx, const J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -10509,7 +10717,8 @@ bool BerytusSendVerifyServerProofMessage::IsJSValueValid(JSContext *aCx, const J
 
 
 }
-bool BerytusSendVerifyServerProofMessage::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendVerifyServerProofMessage& aRv) {
+template<>
+bool FromJSVal<BerytusSendComputeClientProofMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendComputeClientProofMessage& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -10519,7 +10728,7 @@ bool BerytusSendVerifyServerProofMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::FromJSVal(aCx, propVal, aRv.mChallenge)))) {
+  if (NS_WARN_IF(!(FromJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
     return false;
   }
   
@@ -10527,7 +10736,7 @@ bool BerytusSendVerifyServerProofMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(StringFromJSVal(aCx, propVal, aRv.mName)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
     return false;
   }
   
@@ -10535,20 +10744,21 @@ bool BerytusSendVerifyServerProofMessage::FromJSVal(JSContext* aCx, JS::Handle<J
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mPayload)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, aRv.mPayload)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusSendVerifyServerProofMessage::ToJSVal(JSContext* aCx, const BerytusSendVerifyServerProofMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusSendComputeClientProofMessage>(JSContext* aCx, const BerytusSendComputeClientProofMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(BerytusSecureRemotePasswordChallengeInfo::ToJSVal(aCx, aValue.mChallenge, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
@@ -10558,7 +10768,7 @@ bool BerytusSendVerifyServerProofMessage::ToJSVal(JSContext* aCx, const BerytusS
 
   JS::Rooted<JS::Value> memberVal1(aCx);
   
-  if (NS_WARN_IF(!(StringToJSVal(aCx, aValue.mName, &memberVal1)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
@@ -10570,7 +10780,7 @@ bool BerytusSendVerifyServerProofMessage::ToJSVal(JSContext* aCx, const BerytusS
   if (NS_WARN_IF(!aValue.mPayload.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mPayload, &memberVal2)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, aValue.mPayload, &memberVal2)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
@@ -10581,11 +10791,136 @@ bool BerytusSendVerifyServerProofMessage::ToJSVal(JSContext* aCx, const BerytusS
   return true;
 }
 
-bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusSendVerifyServerProofMessage>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<BerytusSendVerifyServerProofMessage>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusSendVerifyServerProofMessage& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "challenge", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, propVal, aRv.mChallenge)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "name", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mName)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "payload", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, propVal, aRv.mPayload)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<BerytusSendVerifyServerProofMessage>(JSContext* aCx, const BerytusSendVerifyServerProofMessage& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<BerytusSecureRemotePasswordChallengeInfo>(aCx, aValue.mChallenge, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "challenge", memberVal0))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal1(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mName, &memberVal1)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", memberVal1))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal2(aCx);
+  if (NS_WARN_IF(!aValue.mPayload.Inited())) {
+    return false;
+  }
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, ArrayBuffer, ArrayBufferView, BerytusEncryptedPacket>>(aCx, aValue.mPayload, &memberVal2)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "payload", memberVal2))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendGetIdentityFieldsMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendGetIdentityFieldsMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10597,7 +10932,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendGetPasswordFieldsMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendGetPasswordFieldsMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10609,7 +10944,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendSelectKeyMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendSelectKeyMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10621,7 +10956,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendSignNonceMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendSignNonceMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10633,7 +10968,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendSelectSecurePasswordMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendSelectSecurePasswordMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10645,7 +10980,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendExchangePublicKeysMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendExchangePublicKeysMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10657,7 +10992,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendComputeClientProofMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendComputeClientProofMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10669,7 +11004,7 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendVerifyServerProofMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendVerifyServerProofMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10681,15 +11016,16 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
   aRv = false;
   return true;
 }
-bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendGetIdentityFieldsMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendGetIdentityFieldsMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendGetIdentityFieldsMessage nv;
-      if (NS_WARN_IF(!(BerytusSendGetIdentityFieldsMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendGetIdentityFieldsMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -10699,12 +11035,12 @@ bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFiel
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendGetPasswordFieldsMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendGetPasswordFieldsMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendGetPasswordFieldsMessage nv;
-      if (NS_WARN_IF(!(BerytusSendGetPasswordFieldsMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendGetPasswordFieldsMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -10714,12 +11050,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendSelectKeyMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendSelectKeyMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendSelectKeyMessage nv;
-      if (NS_WARN_IF(!(BerytusSendSelectKeyMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendSelectKeyMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -10729,12 +11065,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendSignNonceMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendSignNonceMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendSignNonceMessage nv;
-      if (NS_WARN_IF(!(BerytusSendSignNonceMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendSignNonceMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<3>(), std::move(nv));
@@ -10744,12 +11080,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendSelectSecurePasswordMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendSelectSecurePasswordMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendSelectSecurePasswordMessage nv;
-      if (NS_WARN_IF(!(BerytusSendSelectSecurePasswordMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendSelectSecurePasswordMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<4>(), std::move(nv));
@@ -10759,12 +11095,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendExchangePublicKeysMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendExchangePublicKeysMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendExchangePublicKeysMessage nv;
-      if (NS_WARN_IF(!(BerytusSendExchangePublicKeysMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendExchangePublicKeysMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<5>(), std::move(nv));
@@ -10774,12 +11110,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendComputeClientProofMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendComputeClientProofMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendComputeClientProofMessage nv;
-      if (NS_WARN_IF(!(BerytusSendComputeClientProofMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendComputeClientProofMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<6>(), std::move(nv));
@@ -10789,12 +11125,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusSendVerifyServerProofMessage::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusSendVerifyServerProofMessage>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusSendVerifyServerProofMessage nv;
-      if (NS_WARN_IF(!(BerytusSendVerifyServerProofMessage::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusSendVerifyServerProofMessage>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<7>(), std::move(nv));
@@ -10806,48 +11142,131 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>::ToJSVal(JSContext* aCx, const SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>>(JSContext* aCx, const SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const BerytusSendGetIdentityFieldsMessage& aVal) {
-      return BerytusSendGetIdentityFieldsMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendGetIdentityFieldsMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendGetPasswordFieldsMessage& aVal) {
-      return BerytusSendGetPasswordFieldsMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendGetPasswordFieldsMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendSelectKeyMessage& aVal) {
-      return BerytusSendSelectKeyMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendSelectKeyMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendSignNonceMessage& aVal) {
-      return BerytusSendSignNonceMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendSignNonceMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendSelectSecurePasswordMessage& aVal) {
-      return BerytusSendSelectSecurePasswordMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendSelectSecurePasswordMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendExchangePublicKeysMessage& aVal) {
-      return BerytusSendExchangePublicKeysMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendExchangePublicKeysMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendComputeClientProofMessage& aVal) {
-      return BerytusSendComputeClientProofMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendComputeClientProofMessage>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusSendVerifyServerProofMessage& aVal) {
-      return BerytusSendVerifyServerProofMessage::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusSendVerifyServerProofMessage>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-template <typename K, typename V, typename Q, typename T>
-bool RecordWord<K, V, Q, T>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+  aRv = false;
+  return true;
+}
+template<>
+bool FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket>& aRv) {
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      nsString nv;
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<0>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      BerytusEncryptedPacket nv;
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<1>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+
+  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  return false;
+}
+template<>
+bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
+  struct Matcher {
+    JSContext* mCx;
+    JS::MutableHandle<JS::Value> mRv;
+    Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
+    
+    bool operator()(const nsString& aVal) {
+      return ToJSVal<nsString>(mCx, aVal, mRv);
+    }
+
+    bool operator()(const BerytusEncryptedPacket& aVal) {
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
+    }
+  };
+  return aValue.InternalValue()->match(Matcher(aCx, aRv));
+}
+template<>
+bool JSValIs<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -10856,7 +11275,7 @@ bool RecordWord<K, V, Q, T>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
     aRv = false;
     return true;
   }
-  JS::Rooted<JSObject*> obj(aCx, aValue.toObject());
+  JS::Rooted<JSObject*> obj(aCx, aValue.toObjectOrNull());
   JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
   if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
     aRv = false;
@@ -10866,16 +11285,9 @@ bool RecordWord<K, V, Q, T>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   JS::Rooted<JS::Value> val(aCx);
   for (size_t i = 0, n = ids.length(); i < n; i++) {
     prop = ids[i];
-    if constexpr (std::is_same_v<K, nsString>) {
-      if (!prop.isString()) {
-        aRv = false;
-        return true;
-      }
-    } else {
-      if (!prop.isInt()) {
-        aRv = false;
-        return true;
-      }
+    if (!prop.isString()) {
+      aRv = false;
+      return true;
     }
 
     if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, prop, &val))) {
@@ -10883,7 +11295,7 @@ bool RecordWord<K, V, Q, T>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
       return false;
     }
     bool isValid;
-    if (NS_WARN_IF(!V::IsJSValueValid(aCx, val, isValid))) {
+    if (NS_WARN_IF((!JSValIs<SafeVariant<nsString, BerytusEncryptedPacket>>(aCx, val, isValid)))) {
       aRv = false;
       return false;
     }
@@ -10895,15 +11307,15 @@ bool RecordWord<K, V, Q, T>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS:
   aRv = true;
   return true;
 }
-template <typename K, typename V, typename Q, typename T>
-bool RecordWord<K, V, Q, T>::FromJSVal(JSContext *aCx, const JS::Handle<JS::Value> aValue, RecordWord<K, V>& aRv) {
+template<>
+bool FromJSVal<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
   if (NS_WARN_IF(aValue.isNull())) {
     return false;
   }
-  JS::Rooted<JSObject*> obj(aCx, aValue.toObject());
+  JS::Rooted<JSObject*> obj(aCx, aValue.toObjectOrNull());
   JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
   if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
     return false;
@@ -10912,52 +11324,38 @@ bool RecordWord<K, V, Q, T>::FromJSVal(JSContext *aCx, const JS::Handle<JS::Valu
   JS::Rooted<JS::Value> val(aCx);
   for (size_t i = 0, n = ids.length(); i < n; i++) {
     prop = ids[i];
-    typename dom::Record<K, V>::EntryType entry;
-    if constexpr (std::is_same_v<K, nsString>) {
-      if (NS_WARN_IF(!prop.isString())) {
-        return false;
-      }
-      // TODO(berytus): change to String not CString.
-      nsAutoJSCString propName;
-      if (NS_WARN_IF(!propName.init(aCx, prop))) {
-        return false;
-      }
-      entry.mKey.Assign(propName);
-    } else {
-      if (NS_WARN_IF(!prop.isInt())) {
-        return false;
-      }
-      entry.mKey = prop.toInt();
+    Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>::EntryType entry;
+    if (NS_WARN_IF(!prop.isString())) {
+      return false;
     }
+    nsAutoJSString propName;
+    if (NS_WARN_IF(!propName.init(aCx, prop))) {
+      return false;
+    }
+    entry.mKey.Assign(propName);
 
     if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, prop, &val))) {
       return false;
     }
-    V nativeValue;
-    if (NS_WARN_IF(!V::FromJSVal(aCx, val, nativeValue))) {
+    if (NS_WARN_IF((!FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(aCx, val, entry.mValue)))) {
       return false;
     }
-    entry.mValue = std::move(nativeValue);
-    aRv.Entries().AppendElement(std::move(entry))
+    aRv.Entries().AppendElement(std::move(entry));
   }
   return true;
 };
-template <typename K, typename V, typename Q, typename T>
-bool RecordWord<K, V, Q, T>::ToJSVal(JSContext* aCx, const RecordWord<K, V>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext* aCx, const Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
   JS::Rooted<JS::PropertyKey> prop(aCx);
   for (const auto& entry : aValue.Entries()) {
-    if constexpr (std::is_same_v<K, nsString>) {
-      JS::Rooted<JS::Value> propName(aCx);
-      if (NS_WARN_IF(!StringToJSVal(aCx, entry.mKey, propName))) {
-        return false;
-      }
-      prop.set(JS::PropertyKey::fromPinnedString(propName.toString()));
-    } else {
-      prop.set(JS::PropertyKey::Int(entry.mKey));
+    JS::Rooted<JS::Value> propName(aCx);
+    if (NS_WARN_IF(!ToJSVal(aCx, entry.mKey, &propName))) {
+      return false;
     }
+    prop.set(JS::PropertyKey::fromPinnedString(propName.toString()));
     JS::Rooted<JS::Value> val(aCx);
-    if (NS_WARN_IF(!V::ToJSVal(aCx, entry.mValue, &val))) {
+    if (NS_WARN_IF((!ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(aCx, entry.mValue, &val)))) {
       return false;
     }
     if (NS_WARN_IF(!JS_SetPropertyById(aCx, obj, prop, val))) {
@@ -10967,11 +11365,348 @@ bool RecordWord<K, V, Q, T>::ToJSVal(JSContext* aCx, const RecordWord<K, V>& aVa
   aRv.setObjectOrNull(obj);
   return true;
 }
-bool SafeVariant<RecordWord<nsString, nsString>>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusChallengeGetIdentityFieldsMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<BerytusChallengeGetIdentityFieldsMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeGetIdentityFieldsMessageResponse& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(aCx, propVal, aRv.mResponse)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<BerytusChallengeGetIdentityFieldsMessageResponse>(JSContext* aCx, const BerytusChallengeGetIdentityFieldsMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(aCx, aValue.mResponse, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<BerytusChallengeGetPasswordFieldsMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<BerytusChallengeGetPasswordFieldsMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeGetPasswordFieldsMessageResponse& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(aCx, propVal, aRv.mResponse)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<BerytusChallengeGetPasswordFieldsMessageResponse>(JSContext* aCx, const BerytusChallengeGetPasswordFieldsMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(aCx, aValue.mResponse, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<BerytusChallengeSelectKeyMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<BerytusChallengeSelectKeyMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeSelectKeyMessageResponse& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<BerytusKeyFieldValue>(aCx, propVal, aRv.mResponse)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<BerytusChallengeSelectKeyMessageResponse>(JSContext* aCx, const BerytusChallengeSelectKeyMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<BerytusKeyFieldValue>(aCx, aValue.mResponse, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<BerytusChallengeSignNonceMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<BerytusChallengeSignNonceMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeSignNonceMessageResponse& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mResponse)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<BerytusChallengeSignNonceMessageResponse>(JSContext* aCx, const BerytusChallengeSignNonceMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mResponse, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<BerytusChallengeSelectSecurePasswordMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<BerytusChallengeSelectSecurePasswordMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeSelectSecurePasswordMessageResponse& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(aCx, propVal, aRv.mResponse)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<BerytusChallengeSelectSecurePasswordMessageResponse>(JSContext* aCx, const BerytusChallengeSelectSecurePasswordMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  if (NS_WARN_IF(!aValue.mResponse.Inited())) {
+    return false;
+  }
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(aCx, aValue.mResponse, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(RecordWord<nsString, nsString>::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -10983,315 +11718,16 @@ bool SafeVariant<RecordWord<nsString, nsString>>::IsJSValueValid(JSContext *aCx,
   aRv = false;
   return true;
 }
-bool SafeVariant<RecordWord<nsString, nsString>>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<RecordWord<nsString, nsString>>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(RecordWord<nsString, nsString>::IsJSValueValid(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      RecordWord<nsString, nsString> nv;
-      if (NS_WARN_IF(!(RecordWord<nsString, nsString>::FromJSVal(aCx, aValue, nv)))) {
-        return false;
-      }
-      aRv.Init(VariantIndex<0>(), std::move(nv));
-      return true;
-    }
-  } while (false);
-  
-
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
-  return false;
-}
-bool SafeVariant<RecordWord<nsString, nsString>>::ToJSVal(JSContext* aCx, const SafeVariant<RecordWord<nsString, nsString>>& aValue, JS::MutableHandle<JS::Value> aRv) {
-  struct Matcher {
-    JSContext* mCx;
-    JS::MutableHandle<JS::Value> mRv;
-    Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
-    
-    bool operator()(const RecordWord<nsString, nsString>& aVal) {
-      return RecordWord<nsString, nsString>::ToJSVal(mCx, aVal, mRv);
-    }
-  };
-  return aValue.InternalValue()->match(Matcher(aCx, aRv));
-}
-bool BerytusChallengeGetIdentityFieldsMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<RecordWord<nsString, nsString>>::IsJSValueValid(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-bool BerytusChallengeGetIdentityFieldsMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeGetIdentityFieldsMessageResponse& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<RecordWord<nsString, nsString>>::FromJSVal(aCx, propVal, aRv.mResponse)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-bool BerytusChallengeGetIdentityFieldsMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeGetIdentityFieldsMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  if (NS_WARN_IF(!aValue.mResponse.Inited())) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<RecordWord<nsString, nsString>>::ToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-bool BerytusChallengeGetPasswordFieldsMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<RecordWord<nsString, nsString>>::IsJSValueValid(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-bool BerytusChallengeGetPasswordFieldsMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeGetPasswordFieldsMessageResponse& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<RecordWord<nsString, nsString>>::FromJSVal(aCx, propVal, aRv.mResponse)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-bool BerytusChallengeGetPasswordFieldsMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeGetPasswordFieldsMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  if (NS_WARN_IF(!aValue.mResponse.Inited())) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<RecordWord<nsString, nsString>>::ToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-bool BerytusChallengeSelectKeyMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(BerytusKeyFieldValue::IsJSValueValid(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-bool BerytusChallengeSelectKeyMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeSelectKeyMessageResponse& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(BerytusKeyFieldValue::FromJSVal(aCx, propVal, aRv.mResponse)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-bool BerytusChallengeSelectKeyMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeSelectKeyMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(BerytusKeyFieldValue::ToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-bool BerytusChallengeSignNonceMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-bool BerytusChallengeSignNonceMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeSignNonceMessageResponse& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, propVal, aRv.mResponse)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-bool BerytusChallengeSignNonceMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeSignNonceMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ArrayBufferToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-bool SafeVariant<nsString, BerytusEncryptedPacket>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      aRv = true;
-      return true;
-    }
-  } while (false);
-
-
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      aRv = true;
-      return true;
-    }
-  } while (false);
-
-  aRv = false;
-  return true;
-}
-bool SafeVariant<nsString, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket>& aRv) {
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       nsString nv;
-      if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -11301,164 +11737,12 @@ bool SafeVariant<nsString, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx, JS
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
-        return false;
-      }
-      aRv.Init(VariantIndex<1>(), std::move(nv));
-      return true;
-    }
-  } while (false);
-  
-
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
-  return false;
-}
-bool SafeVariant<nsString, BerytusEncryptedPacket>::ToJSVal(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
-  struct Matcher {
-    JSContext* mCx;
-    JS::MutableHandle<JS::Value> mRv;
-    Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
-    
-    bool operator()(const nsString& aVal) {
-      return StringToJSVal(mCx, aVal, mRv);
-    }
-
-    bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
-    }
-  };
-  return aValue.InternalValue()->match(Matcher(aCx, aRv));
-}
-bool BerytusChallengeSelectSecurePasswordMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-bool BerytusChallengeSelectSecurePasswordMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeSelectSecurePasswordMessageResponse& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mResponse)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-bool BerytusChallengeSelectSecurePasswordMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeSelectSecurePasswordMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  if (NS_WARN_IF(!aValue.mResponse.Inited())) {
-    return false;
-  }
-  if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-bool SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      aRv = true;
-      return true;
-    }
-  } while (false);
-
-
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      aRv = true;
-      return true;
-    }
-  } while (false);
-
-
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      aRv = true;
-      return true;
-    }
-  } while (false);
-
-  aRv = false;
-  return true;
-}
-bool SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>& aRv) {
-  do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsString(aCx, aValue, isValid)))) {
-      return false;
-    }
-    if (isValid) {
-      nsString nv;
-      if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, nv)))) {
-        return false;
-      }
-      aRv.Init(VariantIndex<0>(), std::move(nv));
-      return true;
-    }
-  } while (false);
-  
-do {
-    bool isValid = false;
-    if (NS_WARN_IF(!(JSValIsArrayBuffer(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       aRv.Init(VariantIndex<1>(), ArrayBuffer());
-      if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, aValue, (aRv.mVariant)->as<ArrayBuffer>())))) {
+      if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
@@ -11468,12 +11752,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusEncryptedPacket::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusEncryptedPacket nv;
-      if (NS_WARN_IF(!(BerytusEncryptedPacket::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -11485,27 +11769,29 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(JSContext* aCx, const SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const nsString& aVal) {
-      return StringToJSVal(mCx, aVal, mRv);
+      return ToJSVal<nsString>(mCx, aVal, mRv);
     }
 
     bool operator()(const ArrayBuffer& aVal) {
-      return ArrayBufferToJSVal(mCx, aVal, mRv);
+      return ToJSVal<ArrayBuffer>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusEncryptedPacket& aVal) {
-      return BerytusEncryptedPacket::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
-bool BerytusChallengeExchangePublicKeysMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusChallengeExchangePublicKeysMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -11517,7 +11803,7 @@ bool BerytusChallengeExchangePublicKeysMessageResponse::IsJSValueValid(JSContext
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -11530,7 +11816,8 @@ bool BerytusChallengeExchangePublicKeysMessageResponse::IsJSValueValid(JSContext
 
 
 }
-bool BerytusChallengeExchangePublicKeysMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeExchangePublicKeysMessageResponse& aRv) {
+template<>
+bool FromJSVal<BerytusChallengeExchangePublicKeysMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeExchangePublicKeysMessageResponse& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -11540,14 +11827,15 @@ bool BerytusChallengeExchangePublicKeysMessageResponse::FromJSVal(JSContext* aCx
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mResponse)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mResponse)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusChallengeExchangePublicKeysMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeExchangePublicKeysMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusChallengeExchangePublicKeysMessageResponse>(JSContext* aCx, const BerytusChallengeExchangePublicKeysMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -11555,7 +11843,7 @@ bool BerytusChallengeExchangePublicKeysMessageResponse::ToJSVal(JSContext* aCx, 
   if (NS_WARN_IF(!aValue.mResponse.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mResponse, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
@@ -11566,7 +11854,8 @@ bool BerytusChallengeExchangePublicKeysMessageResponse::ToJSVal(JSContext* aCx, 
   return true;
 }
 
-bool BerytusChallengeComputeClientProofMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusChallengeComputeClientProofMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -11578,7 +11867,7 @@ bool BerytusChallengeComputeClientProofMessageResponse::IsJSValueValid(JSContext
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::IsJSValueValid(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -11591,7 +11880,8 @@ bool BerytusChallengeComputeClientProofMessageResponse::IsJSValueValid(JSContext
 
 
 }
-bool BerytusChallengeComputeClientProofMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeComputeClientProofMessageResponse& aRv) {
+template<>
+bool FromJSVal<BerytusChallengeComputeClientProofMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeComputeClientProofMessageResponse& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
@@ -11601,14 +11891,15 @@ bool BerytusChallengeComputeClientProofMessageResponse::FromJSVal(JSContext* aCx
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::FromJSVal(aCx, propVal, aRv.mResponse)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mResponse)))) {
     return false;
   }
   
   return true;
 }
             
-bool BerytusChallengeComputeClientProofMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeComputeClientProofMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusChallengeComputeClientProofMessageResponse>(JSContext* aCx, const BerytusChallengeComputeClientProofMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
@@ -11616,7 +11907,7 @@ bool BerytusChallengeComputeClientProofMessageResponse::ToJSVal(JSContext* aCx, 
   if (NS_WARN_IF(!aValue.mResponse.Inited())) {
     return false;
   }
-  if (NS_WARN_IF(!(SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>::ToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<nsString, ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mResponse, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
@@ -11627,70 +11918,43 @@ bool BerytusChallengeComputeClientProofMessageResponse::ToJSVal(JSContext* aCx, 
   return true;
 }
 
-bool BerytusChallengeVerifyServerProofMessageResponse::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<BerytusChallengeVerifyServerProofMessageResponse>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
   }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIsNothing(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
   aRv = true;
   return true;
 
 
 }
-bool BerytusChallengeVerifyServerProofMessageResponse::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeVerifyServerProofMessageResponse& aRv) {
+template<>
+bool FromJSVal<BerytusChallengeVerifyServerProofMessageResponse>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusChallengeVerifyServerProofMessageResponse& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(NothingFromJSVal(aCx, propVal, aRv.mResponse)))) {
-    return false;
-  }
-  
   return true;
 }
             
-bool BerytusChallengeVerifyServerProofMessageResponse::ToJSVal(JSContext* aCx, const BerytusChallengeVerifyServerProofMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<BerytusChallengeVerifyServerProofMessageResponse>(JSContext* aCx, const BerytusChallengeVerifyServerProofMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(NothingToJSVal(aCx, aValue.mResponse, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {
-    return false;
-  }
   
   aRv.setObject(*obj);
   return true;
 }
 
-bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>::IsJSValueValid(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+template<>
+bool JSValIs<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeGetIdentityFieldsMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeGetIdentityFieldsMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11702,7 +11966,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeGetPasswordFieldsMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeGetPasswordFieldsMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11714,7 +11978,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeSelectKeyMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeSelectKeyMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11726,7 +11990,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeSignNonceMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeSignNonceMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11738,7 +12002,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeSelectSecurePasswordMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeSelectSecurePasswordMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11750,7 +12014,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeExchangePublicKeysMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeExchangePublicKeysMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11762,7 +12026,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeComputeClientProofMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeComputeClientProofMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11774,7 +12038,7 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
 
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeVerifyServerProofMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeVerifyServerProofMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
@@ -11786,15 +12050,16 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
   aRv = false;
   return true;
 }
-bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>::FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>& aRv) {
+template<>
+bool FromJSVal<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>& aRv) {
   do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeGetIdentityFieldsMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeGetIdentityFieldsMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeGetIdentityFieldsMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeGetIdentityFieldsMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeGetIdentityFieldsMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<0>(), std::move(nv));
@@ -11804,12 +12069,12 @@ bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChalle
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeGetPasswordFieldsMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeGetPasswordFieldsMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeGetPasswordFieldsMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeGetPasswordFieldsMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeGetPasswordFieldsMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<1>(), std::move(nv));
@@ -11819,12 +12084,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeSelectKeyMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeSelectKeyMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeSelectKeyMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeSelectKeyMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeSelectKeyMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<2>(), std::move(nv));
@@ -11834,12 +12099,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeSignNonceMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeSignNonceMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeSignNonceMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeSignNonceMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeSignNonceMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<3>(), std::move(nv));
@@ -11849,12 +12114,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeSelectSecurePasswordMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeSelectSecurePasswordMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeSelectSecurePasswordMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeSelectSecurePasswordMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeSelectSecurePasswordMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<4>(), std::move(nv));
@@ -11864,12 +12129,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeExchangePublicKeysMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeExchangePublicKeysMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeExchangePublicKeysMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeExchangePublicKeysMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeExchangePublicKeysMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<5>(), std::move(nv));
@@ -11879,12 +12144,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeComputeClientProofMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeComputeClientProofMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeComputeClientProofMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeComputeClientProofMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeComputeClientProofMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<6>(), std::move(nv));
@@ -11894,12 +12159,12 @@ do {
   
 do {
     bool isValid = false;
-    if (NS_WARN_IF(!(BerytusChallengeVerifyServerProofMessageResponse::IsJSValueValid(aCx, aValue, isValid)))) {
+    if (NS_WARN_IF(!(JSValIs<BerytusChallengeVerifyServerProofMessageResponse>(aCx, aValue, isValid)))) {
       return false;
     }
     if (isValid) {
       BerytusChallengeVerifyServerProofMessageResponse nv;
-      if (NS_WARN_IF(!(BerytusChallengeVerifyServerProofMessageResponse::FromJSVal(aCx, aValue, nv)))) {
+      if (NS_WARN_IF(!(FromJSVal<BerytusChallengeVerifyServerProofMessageResponse>(aCx, aValue, nv)))) {
         return false;
       }
       aRv.Init(VariantIndex<7>(), std::move(nv));
@@ -11911,42 +12176,43 @@ do {
   NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
-bool SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>::ToJSVal(JSContext* aCx, const SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>& aValue, JS::MutableHandle<JS::Value> aRv) {
+template<>
+bool ToJSVal<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>>(JSContext* aCx, const SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>& aValue, JS::MutableHandle<JS::Value> aRv) {
   struct Matcher {
     JSContext* mCx;
     JS::MutableHandle<JS::Value> mRv;
     Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
     
     bool operator()(const BerytusChallengeGetIdentityFieldsMessageResponse& aVal) {
-      return BerytusChallengeGetIdentityFieldsMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeGetIdentityFieldsMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeGetPasswordFieldsMessageResponse& aVal) {
-      return BerytusChallengeGetPasswordFieldsMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeGetPasswordFieldsMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeSelectKeyMessageResponse& aVal) {
-      return BerytusChallengeSelectKeyMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeSelectKeyMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeSignNonceMessageResponse& aVal) {
-      return BerytusChallengeSignNonceMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeSignNonceMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeSelectSecurePasswordMessageResponse& aVal) {
-      return BerytusChallengeSelectSecurePasswordMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeSelectSecurePasswordMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeExchangePublicKeysMessageResponse& aVal) {
-      return BerytusChallengeExchangePublicKeysMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeExchangePublicKeysMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeComputeClientProofMessageResponse& aVal) {
-      return BerytusChallengeComputeClientProofMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeComputeClientProofMessageResponse>(mCx, aVal, mRv);
     }
 
     bool operator()(const BerytusChallengeVerifyServerProofMessageResponse& aVal) {
-      return BerytusChallengeVerifyServerProofMessageResponse::ToJSVal(mCx, aVal, mRv);
+      return ToJSVal<BerytusChallengeVerifyServerProofMessageResponse>(mCx, aVal, mRv);
     }
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
@@ -11985,7 +12251,7 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     nsString out;
-    if (NS_WARN_IF(!(StringFromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -11997,7 +12263,7 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12040,7 +12306,7 @@ RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMe
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     double out;
-    if (NS_WARN_IF(!(NumberFromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<double>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12052,7 +12318,7 @@ RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMe
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12095,7 +12361,7 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     PartialKeyExchangeParametersFromScm out;
-    if (NS_WARN_IF(!(PartialKeyExchangeParametersFromScm::FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<PartialKeyExchangeParametersFromScm>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12107,7 +12373,7 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12150,7 +12416,7 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ArrayBuffer out;
-    if (NS_WARN_IF(!(ArrayBufferFromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12162,7 +12428,7 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12212,7 +12478,7 @@ RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContex
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12255,7 +12521,7 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     ELoginUserIntent out;
-    if (NS_WARN_IF(!(ELoginUserIntent::FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<ELoginUserIntent>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12267,7 +12533,7 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12317,7 +12583,7 @@ RefPtr<LoginCloseOpeationResult> AgentProxy::Login_CloseOpeation(RequestContextW
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12360,7 +12626,7 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     RecordMetadata out;
-    if (NS_WARN_IF(!(RecordMetadata::FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<RecordMetadata>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12372,7 +12638,7 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12422,7 +12688,7 @@ RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContex
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12472,7 +12738,7 @@ RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreati
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12515,7 +12781,7 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     nsTArray<UserAttribute> out;
-    if (NS_WARN_IF(!(nsTArray_UserAttribute_FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<nsTArray<UserAttribute>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12527,7 +12793,7 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12577,7 +12843,7 @@ RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_Up
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12620,7 +12886,7 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
-    if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>::FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12632,7 +12898,7 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12675,7 +12941,7 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
-    if (NS_WARN_IF(!(SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>::FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12687,7 +12953,7 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12737,7 +13003,7 @@ RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAu
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12787,7 +13053,7 @@ RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthenticat
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12837,7 +13103,7 @@ RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthenticat
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
@@ -12880,7 +13146,7 @@ RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::Account
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse> out;
-    if (NS_WARN_IF(!(SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>::FromJSVal(aCx, aValue, out)))) {
+    if (NS_WARN_IF(!(FromJSVal<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -12892,7 +13158,7 @@ RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::Account
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     Failure fr;
-    Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };

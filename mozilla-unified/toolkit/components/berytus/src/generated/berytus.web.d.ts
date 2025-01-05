@@ -276,12 +276,12 @@ interface BerytusChallenge {
     readonly active: boolean;
 }
 interface BerytusChallengeGetIdentityFieldsMessageResponse {
-    response: Record_string_stringOrRecord_string_BerytusEncryptedPacket;
+    response: Record<string, stringOrBerytusEncryptedPacket>;
 }
 interface BerytusIdentificationChallenge extends BerytusChallenge {
 }
 interface BerytusChallengeGetPasswordFieldsMessageResponse {
-    response: Record_string_stringOrRecord_string_BerytusEncryptedPacket;
+    response: Record<string, stringOrBerytusEncryptedPacket>;
 }
 interface BerytusPasswordChallenge extends BerytusChallenge {
 }
@@ -307,7 +307,6 @@ interface BerytusChallengeComputeClientProofMessageResponse {
     response: stringOrArrayBufferOrBerytusEncryptedPacket;
 }
 interface BerytusChallengeVerifyServerProofMessageResponse {
-    response?: undefined;
 }
 interface BerytusSecureRemotePasswordChallenge extends BerytusChallenge {
 }
@@ -457,9 +456,6 @@ export type BerytusFieldValueUnion = string | BerytusEncryptedPacket
 	| BerytusKeyFieldValue
 	| BerytusSecurePasswordFieldValue
 	| BerytusSharedKeyFieldValue;
-export type Record_string_stringOrRecord_string_BerytusEncryptedPacket = Record<string, string> |
-	Record<string, BerytusEncryptedPacket>;
-
 export type stringOrBerytusEncryptedPacket = string |
 	BerytusEncryptedPacket;
 

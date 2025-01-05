@@ -224,7 +224,7 @@ already_AddRefed<Promise> BerytusChannel::Create(
                       const nsCOMPtr<nsIGlobalObject>& aGlobal)  {
     nsString selectedId;
     nsresult rv;
-    if (NS_WARN_IF(!mozilla::berytus::StringFromJSVal(aCx, aValue, selectedId))) {
+    if (NS_WARN_IF(!mozilla::berytus::FromJSVal(aCx, aValue, selectedId))) {
       outPromise->MaybeReject(NS_ERROR_FAILURE);
       return;
     }
@@ -271,7 +271,7 @@ already_AddRefed<Promise> BerytusChannel::Create(
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
     berytus::Failure fr;
-    berytus::Failure::FromJSVal(aCx, aValue, fr);
+    FromJSVal(aCx, aValue, fr);
     outPromise->MaybeReject(fr.ToErrorResult());
   };
   selectPromise->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsGlobal);

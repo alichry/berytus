@@ -37,7 +37,11 @@ interface BerytusChallenge {
 };
 
 dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
-  required (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>) response;
+  /**
+   * Implementation should ensure it is of type:
+   *   (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>)
+   */
+  required record<DOMString, (DOMString or BerytusEncryptedPacket)> response;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -51,7 +55,11 @@ interface BerytusIdentificationChallenge : BerytusChallenge {
 };
 
 dictionary BerytusChallengeGetPasswordFieldsMessageResponse {
-  required (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>) response;
+  /**
+   * Implementation should ensure it is of type:
+   *   (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>)
+   */
+  required record<DOMString, (DOMString or BerytusEncryptedPacket)> response;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -131,7 +139,7 @@ dictionary BerytusChallengeComputeClientProofMessageResponse {
 };
 
 dictionary BerytusChallengeVerifyServerProofMessageResponse {
-  undefined response;
+  // nothing
 };
 
 [SecureContext, Exposed=(Window)]

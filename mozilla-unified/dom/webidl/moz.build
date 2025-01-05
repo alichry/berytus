@@ -460,6 +460,7 @@ WEBIDL_FILES = [
     "BerytusAnonymousWebAppActor.webidl",
     "BerytusChallenge.webidl",
     "BerytusChallengeMap.webidl",
+    "BerytusChallengeMessage.webidl",
     "BerytusChallengeParameters.webidl",
     "BerytusChannel.webidl",
     "BerytusCryptoWebAppActor.webidl",
