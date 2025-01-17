@@ -3,13 +3,13 @@ dictionary BerytusChallengeMessageRequestDefinition {
   required any request;
 };
 
+[GenerateConversionToJS]
 dictionary BerytusChallengeMessageResponseDefinition {
   required any response;
 };
 
-[SecureContext, Exposed=(Window)]
-interface BerytusChallengeMessage {
-    readonly attribute DOMString name;
-    readonly attribute any request;
-    readonly attribute any response;
+dictionary BerytusChallengeMessage {
+  required DOMString name;
+  required any request;
+  required any response;
 };

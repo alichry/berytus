@@ -54,6 +54,10 @@ BerytusSecurePasswordField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGi
 
 nsIGlobalObject* BerytusSecurePasswordField::GetParentObject() const { return mGlobal; }
 
+BerytusSecurePasswordFieldOptions const& BerytusSecurePasswordField::Options() const {
+  return mOptions;
+}
+
 void BerytusSecurePasswordField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
   if (mCachedOptions) {
     return;

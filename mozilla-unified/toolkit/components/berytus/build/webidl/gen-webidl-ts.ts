@@ -315,6 +315,24 @@ const generateFieldProperties = async () => {
     await writeFile(dtsFile, dts);
 }
 
+const generateFieldOptionsUnion = async () => {
+    const typesFile = createProject().getSourceFileOrThrow(
+        dtsFile
+    );
+    const optionsIfNames: Array<string> = [];
+    let dts: string = await readFile(dtsFile, { encoding: "utf8" });
+    listFields(typesFile).forEach(intf => {
+        const options = intf.getPropertyOrThrow("options");
+        optionsIfNames.push(options.getType().getSymbolOrThrow().getName());
+    });
+    await writeFile(
+        dtsFile,
+        dts
+        + "\n"
+        + `export type BerytusFieldOptionsUnion = ${optionsIfNames.join("\n\t| ")};`
+        + "\n");
+}
+
 const deleteFunctions = async () => {
     const typesFile = createProject().getSourceFileOrThrow(
         dtsFile
@@ -368,6 +386,7 @@ const generateChallengeMessagingTypes = async () => {
     const patt = /^Berytus(.*)Challenge$/;
     const sendMessageArgsUnionMembers: Array<string> = [];
     const receiveMessageUnionMembers: Array<string> = [];
+    const messageInfoUnionMembers: Array<string> = [];
     typesFile.getInterfaces()
         .filter(f => patt.test(f.getName()))
         .filter(f => f.getName() !== 'BerytusChallenge') // base interface
@@ -410,6 +429,7 @@ interface BerytusSend${messageName}Message extends BerytusChallenge${messageName
 }
 `
                 );
+                messageInfoUnionMembers.push(`Berytus${chName}ChallengeInfo`);
                 receiveMessageUnionMembers.push(innerReturnTypeName);
                 sendMessageArgsUnionMembers.push(`BerytusSend${messageName}Message`);
             });
@@ -418,6 +438,7 @@ interface BerytusSend${messageName}Message extends BerytusChallenge${messageName
     await writeFile(
         dtsFile,
         dts + "\n" + newIntfs.join("\n") + "\n" +
+        `export type BerytusChallengeMessageInfoUnion = ${messageInfoUnionMembers.join("\n\t| ")};` + "\n" +
         `export type BerytusSendMessageUnion = ${sendMessageArgsUnionMembers.join("\n\t| ")};` + "\n" +
         `export type BerytusReceiveMessageUnion = ${receiveMessageUnionMembers.join("\n\t| ")};` + "\n"
     );
@@ -427,6 +448,7 @@ const generate = async () => {
     await generateFieldTypeEnum();
     await generateFieldProperties();
     await ensureUnionsAreAliases(listFields());
+    await generateFieldOptionsUnion();
     await ensureUnionsAreAliases(["BerytusUserAttributeDefinition"]);
     await correctPacketParametersAttribute();
     await generateChallengeTypeEnum();

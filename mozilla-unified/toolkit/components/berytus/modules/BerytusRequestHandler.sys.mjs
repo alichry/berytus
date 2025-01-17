@@ -1017,7 +1017,13 @@ export class SequentialRequestHandler extends ValidatedRequestHandler {
                 + 'to the secret manager.', Cr.NS_ERROR_FAILURE);
         }
         this.busy = true;
-        await super.preCall(group, method, input);
+        try {
+            await super.preCall(group, method, input);
+        }
+        catch (e) {
+            this.busy = false;
+            throw e;
+        }
     }
     async preResolve(group, method, input, value) {
         this.busy = false;

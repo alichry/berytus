@@ -34,7 +34,7 @@ BerytusLoginOperation::BerytusLoginOperation(
   const nsAString& aOperationId,
   const BerytusOnboardingIntent& aIntent
 )
-  : mGlobal(aGlobal), mChannel(aChannel), mId(aOperationId), mIntent(aIntent), mActive(false)
+  : mGlobal(aGlobal), mChannel(aChannel), mId(aOperationId), mIntent(aIntent), mActive(true)
 {
     // Add |MOZ_COUNT_CTOR(BerytusLoginOperation);| for a non-refcounted object.
   nsIDToCString uuidString(nsID::GenerateUUID());
@@ -120,9 +120,12 @@ RefPtr<BerytusLoginOperation::CreationPromise> BerytusLoginOperation::Create(
       // TODO(berytus): AgentProxy.cpp does not handle literal values/patterns.
       // Attribute ID is generated as Variant<nsString> but in reality it should
       // be a union of literal values, e.g. "username" | "nickname"
+      using ThisVariant = decltype(berytus::RequestedUserAttribute::mId);
+      ThisVariant vKey;
+      vKey.Init(attr.mKey);
       args.mOperation.mRequestedUserAttributes.AppendElement(
           berytus::RequestedUserAttribute(
-              nsString(attr.mKey),
+              std::move(vKey),
               bool(attr.mValue)));
     }
   }

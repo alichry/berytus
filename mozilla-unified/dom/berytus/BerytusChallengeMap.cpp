@@ -6,7 +6,7 @@
 
 #include "mozilla/dom/BerytusChallengeMap.h"
 #include "mozilla/dom/BerytusChallengeMapBinding.h"
-#include "nsString.h"
+#include "mozilla/dom/BerytusChallenge.h"
 
 namespace mozilla::dom {
 
@@ -39,10 +39,14 @@ BerytusChallengeMap::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProt
   return BerytusChallengeMap_Binding::Wrap(aCx, this, aGivenProto);
 }
 
+const nsTArray<RefPtr<BerytusChallenge>>& BerytusChallengeMap::List() const {
+  return mChallenges;
+}
+
 void BerytusChallengeMap::AddChallenge(BerytusChallenge* aChallenge, ErrorResult& aRv)
 {
   nsString chId;
-  aChallenge->GetID(chId);
+  aChallenge->GetId(chId);
 
   mozilla::dom::BerytusChallengeMap_Binding::MaplikeHelpers::Set(
     this,

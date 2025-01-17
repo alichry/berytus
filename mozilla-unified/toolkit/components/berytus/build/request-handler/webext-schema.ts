@@ -194,13 +194,15 @@ export interface ArraySchemaEntry {
 
 export interface ArrayBufferSchemaEntry {
     type: "object";
-    isInstanceOf: "ArrayBuffer"
+    isInstanceOf: "ArrayBuffer";
+    additionalProperties: true;
     optional?: true;
 }
 
 export interface ArrayBufferViewSchemaEntry {
     type: "object";
-    isInstanceOf: "ArrayBufferView"
+    isInstanceOf: "ArrayBufferView";
+    additionalProperties: true;
     optional?: true;
 }
 
@@ -724,12 +726,14 @@ class WebExtsApiSchemaGenerator {
         if (parsedType.optional === undefined) {
             return {
                 type: "object",
-                isInstanceOf: "ArrayBuffer"
+                isInstanceOf: "ArrayBuffer",
+                additionalProperties: true
             };
         }
         return {
             type: "object",
             isInstanceOf: "ArrayBuffer",
+            additionalProperties: true,
             optional: parsedType.optional
         }
     }
@@ -738,12 +742,14 @@ class WebExtsApiSchemaGenerator {
         if (parsedType.optional === undefined) {
             return {
                 type: "object",
-                isInstanceOf: "ArrayBufferView"
+                isInstanceOf: "ArrayBufferView",
+                additionalProperties: true
             };
         }
         return {
             type: "object",
             isInstanceOf: "ArrayBufferView",
+            additionalProperties: true,
             optional: parsedType.optional
         }
     }

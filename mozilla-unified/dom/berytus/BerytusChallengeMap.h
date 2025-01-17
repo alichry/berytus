@@ -10,13 +10,14 @@
 #include "js/TypeDecls.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
-#include "mozilla/dom/BerytusChallenge.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
 
 namespace mozilla::dom {
+
+class BerytusChallenge;
 
 class BerytusChallengeMap final : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
                                   public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
@@ -40,6 +41,8 @@ public:
   nsIGlobalObject* GetParentObject() const;
 
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
+
+  const nsTArray<RefPtr<BerytusChallenge>>& List() const;
 
   void AddChallenge(BerytusChallenge* aChallenge, ErrorResult& aRv);
 

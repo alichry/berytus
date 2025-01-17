@@ -55,6 +55,10 @@ BerytusForeignIdentityField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aG
 
 nsIGlobalObject* BerytusForeignIdentityField::GetParentObject() const { return mGlobal; }
 
+BerytusForeignIdentityFieldOptions const& BerytusForeignIdentityField::Options() const {
+  return mOptions;
+}
+
 void BerytusForeignIdentityField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
   if (mCachedOptions) {
     return;

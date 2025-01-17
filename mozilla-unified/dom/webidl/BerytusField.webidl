@@ -46,6 +46,7 @@ enum BerytusFieldType {
  *  Key:PublicKeyAlreadyExists
  * Or, any string that matches the below RegExp:
  *  /^Other:[A-Za-z][A-Za-z0-9\-_]*$/
+ * // TODO(berytus): Define enum in types.ts
  */
 typedef DOMString BerytusFieldRejectionReasonCode;
 

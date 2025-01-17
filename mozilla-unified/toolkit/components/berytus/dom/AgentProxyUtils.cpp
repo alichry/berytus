@@ -7,10 +7,11 @@
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "ErrorList.h"
 #include "js/Value.h"
-#include "js/experimental/TypedData.h"
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusBuffer.h"
+#include "mozilla/dom/BerytusChallengeBinding.h"
+#include "mozilla/dom/BerytusChallengeMap.h"
 #include "mozilla/dom/BerytusChannelBinding.h"
 #include "mozilla/dom/BerytusCryptoWebAppActor.h"
 #include "mozilla/dom/BerytusAnonymousWebAppActor.h"
@@ -36,6 +37,8 @@
 #include "mozilla/dom/BerytusKeyField.h"
 #include "mozilla/dom/BerytusSharedKeyField.h"
 #include "mozilla/dom/BerytusChannel.h"
+#include "mozilla/dom/BerytusChallenge.h"
+#include "mozilla/dom/BerytusSecureRemotePasswordChallenge.h"
 
 namespace mozilla::berytus {
 
@@ -114,7 +117,7 @@ void Utils_LoginOperationMetadata(const RefPtr<const dom::BerytusLoginOperation>
   aOperation->GetID(aRetVal.mId);
 
   dom::BerytusOnboardingIntent intent = aOperation->Intent();
-
+  
   intent == dom::BerytusOnboardingIntent::Authenticate
     ? aRetVal.mType.SetAsAuthentication()
     : aRetVal.mType.SetAsRegistration();
@@ -122,13 +125,34 @@ void Utils_LoginOperationMetadata(const RefPtr<const dom::BerytusLoginOperation>
   aOperation->Active()
     ? aRetVal.mStatus.SetAsCreated()
     : aRetVal.mStatus.SetAsFinished();
-  RefPtr<dom::BerytusFieldMap> fields = aAccount->Fields();
-  for (const auto& field : fields->List()) {
-    berytus::FieldInfo info;
-    field->GetId(info.mId);
-    info.mType.mVal = static_cast<uint8_t>(field->Type());
-    aRetVal.mFields.AppendElement(std::move(info));
+  if (intent == dom::BerytusOnboardingIntent::Register) {
+    RefPtr<dom::BerytusFieldMap> fields = aAccount->Fields();
+    for (const auto& field : fields->List()) {
+      using EntryType = decltype(aRetVal.mFields)::EntryType;
+      EntryType entry;
+      field->GetId(entry.mKey);
+      auto& info = entry.mValue;
+      field->GetId(info.mId);
+      info.mType.mVal = static_cast<uint8_t>(field->Type());
+      berytus::utils::ToProxy::BerytusFieldOptionsUnion(
+        field,
+        info.mOptions);
+      aRetVal.mFields.Entries().AppendElement(std::move(entry));
+    }
+  } else {
+    RefPtr<const dom::BerytusAccountAuthenticationOperation> auth =
+      static_cast<const dom::BerytusAccountAuthenticationOperation*>(aOperation.get());
+    RefPtr<dom::BerytusChallengeMap> chs = auth->Challenges();
+    for (const auto& ch : chs->List()) {
+      using EntryType = decltype(aRetVal.mChallenges)::EntryType;
+      EntryType entry;
+      ch->GetId(entry.mKey);
+      auto& info = entry.mValue;
+      utils::ToProxy::BerytusChallengeInfoUnion(ch, info);
+      aRetVal.mChallenges.Entries().AppendElement(std::move(entry));
+    }
   }
+
 }
 
 nsresult Utils_PreliminaryRequestContext(nsIGlobalObject* aGlobal,
@@ -872,6 +896,9 @@ bool ToProxy::BerytusField(JSContext* aCx,
                            const RefPtr<dom::BerytusField>& aField,
                            FieldProxy& aRetVal) {
   JS::Rooted<JS::Value> jsField(aCx);
+  // TODO(berytus): Investigate whether using DOMReflectors
+  // is a security risk -- could a mal web app override properties
+  // in the reflector?
   if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, aField, &jsField))) {
     return false;
   }
@@ -1013,7 +1040,7 @@ bool ToProxy::BerytusUserAttributeDefinition(
   if (aAttr.mMimeType.WasPassed()) {
     aRetVal.mMimeType.emplace(nsString(aAttr.mMimeType.Value()));
   }
-  aRetVal.mId.Assign(aAttr.mId);
+  aRetVal.mId.Init(aAttr.mId);
   if (aAttr.mValue.IsArrayBuffer()) {
     return !NS_WARN_IF(!berytus::Utils_ArrayBufferToSafeVariant(aAttr.mValue.GetAsArrayBuffer(), aRetVal.mValue));
   }
@@ -1034,6 +1061,213 @@ bool ToProxy::BerytusUserAttributeDefinition(
   }
   MOZ_ASSERT(false, "Unrecognised user attribute definition value union member");
   return false;
+}
+
+void ToProxy::BerytusFieldOptionsUnion(
+    const RefPtr<dom::BerytusField>& aField,
+    FieldOptionsUnionProxy& aRetVal
+) {
+  // NOTE(berytus): Repitition below.
+  switch (aField->Type()) {
+    case dom::BerytusFieldType::Identity: {
+      RefPtr<dom::BerytusIdentityField> field =
+        static_cast<dom::BerytusIdentityField*>(aField.get());
+      const auto& options = field->Options();
+      Maybe<nsString> allowedCharacters;
+      Maybe<berytus::BerytusFieldCategoryOptions> categoryOpts;
+      if (options.mAllowedCharacters.WasPassed()) {
+        allowedCharacters.emplace(options.mAllowedCharacters.Value());
+      }
+      if (options.mCategory.WasPassed()) {
+        nsString categoryId(options.mCategory.Value().mCategoryId);
+        Maybe<double> pos;
+        if (options.mCategory.Value().mPosition.WasPassed()) {
+          pos.emplace(options.mCategory.Value().mPosition.Value());
+        }
+        categoryOpts.emplace(std::move(categoryId), std::move(pos));
+      }
+      berytus::BerytusIdentityFieldOptions proxy(
+        bool(options.mHumanReadable),
+        bool(options.mPrivate),
+        double(options.mMaxLength),
+        std::move(allowedCharacters),
+        std::move(categoryOpts)
+      );
+      aRetVal.Init(std::move(proxy));
+      break;
+    }
+    case dom::BerytusFieldType::ForeignIdentity: {
+      RefPtr<dom::BerytusForeignIdentityField> field =
+        static_cast<dom::BerytusForeignIdentityField*>(aField.get());
+      const auto& options = field->Options();
+      Maybe<berytus::BerytusFieldCategoryOptions> categoryOpts;
+      if (options.mCategory.WasPassed()) {
+        nsString categoryId(options.mCategory.Value().mCategoryId);
+        Maybe<double> pos;
+        if (options.mCategory.Value().mPosition.WasPassed()) {
+          pos.emplace(options.mCategory.Value().mPosition.Value());
+        }
+        categoryOpts.emplace(std::move(categoryId), std::move(pos));
+      }
+      berytus::BerytusForeignIdentityFieldOptions proxy(
+        bool(options.mPrivate),
+        nsString(options.mKind),
+        std::move(categoryOpts)
+      );
+      aRetVal.Init(std::move(proxy));
+      break;
+    }
+    case dom::BerytusFieldType::Password: {
+      RefPtr<dom::BerytusPasswordField> field =
+        static_cast<dom::BerytusPasswordField*>(aField.get());
+      const auto& options = field->Options();
+      Maybe<berytus::BerytusFieldCategoryOptions> categoryOpts;
+      if (options.mCategory.WasPassed()) {
+        nsString categoryId(options.mCategory.Value().mCategoryId);
+        Maybe<double> pos;
+        if (options.mCategory.Value().mPosition.WasPassed()) {
+          pos.emplace(options.mCategory.Value().mPosition.Value());
+        }
+        categoryOpts.emplace(std::move(categoryId), std::move(pos));
+      }
+      Maybe<nsString> rules;
+      if (options.mPasswordRules.WasPassed()) {
+        rules.emplace(options.mPasswordRules.Value());
+      }
+      berytus::BerytusPasswordFieldOptions proxy(
+        std::move(rules),
+        std::move(categoryOpts)
+      );
+      aRetVal.Init(std::move(proxy));
+      break;
+    }
+    case dom::BerytusFieldType::SecurePassword: {
+      RefPtr<dom::BerytusSecurePasswordField> field =
+        static_cast<dom::BerytusSecurePasswordField*>(aField.get());
+      const auto& options = field->Options();
+      Maybe<berytus::BerytusFieldCategoryOptions> categoryOpts;
+      if (options.mCategory.WasPassed()) {
+        nsString categoryId(options.mCategory.Value().mCategoryId);
+        Maybe<double> pos;
+        if (options.mCategory.Value().mPosition.WasPassed()) {
+          pos.emplace(options.mCategory.Value().mPosition.Value());
+        }
+        categoryOpts.emplace(std::move(categoryId), std::move(pos));
+      }
+      berytus::BerytusSecurePasswordFieldOptions proxy(
+        nsString(options.mIdentityFieldId),
+        std::move(categoryOpts)
+      );
+      aRetVal.Init(std::move(proxy));
+      break;
+    }
+    case dom::BerytusFieldType::Key: {
+      RefPtr<dom::BerytusKeyField> field =
+        static_cast<dom::BerytusKeyField*>(aField.get());
+      const auto& options = field->Options();
+      Maybe<berytus::BerytusFieldCategoryOptions> categoryOpts;
+      if (options.mCategory.WasPassed()) {
+        nsString categoryId(options.mCategory.Value().mCategoryId);
+        Maybe<double> pos;
+        if (options.mCategory.Value().mPosition.WasPassed()) {
+          pos.emplace(options.mCategory.Value().mPosition.Value());
+        }
+        categoryOpts.emplace(std::move(categoryId), std::move(pos));
+      }
+      berytus::BerytusKeyFieldOptions proxy(
+        double(options.mAlg),
+        std::move(categoryOpts)
+      );
+      aRetVal.Init(std::move(proxy));
+      break;
+    }
+    case dom::BerytusFieldType::SharedKey: {
+      RefPtr<dom::BerytusSharedKeyField> field =
+        static_cast<dom::BerytusSharedKeyField*>(aField.get());
+      const auto& options = field->Options();
+      Maybe<berytus::BerytusFieldCategoryOptions> categoryOpts;
+      if (options.mCategory.WasPassed()) {
+        nsString categoryId(options.mCategory.Value().mCategoryId);
+        Maybe<double> pos;
+        if (options.mCategory.Value().mPosition.WasPassed()) {
+          pos.emplace(options.mCategory.Value().mPosition.Value());
+        }
+        categoryOpts.emplace(std::move(categoryId), std::move(pos));
+      }
+      berytus::BerytusSharedKeyFieldOptions proxy(
+        double(options.mAlg),
+        std::move(categoryOpts)
+      );
+      aRetVal.Init(std::move(proxy));
+      break;
+    }
+    default:
+      MOZ_RELEASE_ASSERT(false, "Unrecognised Field Type");
+  }
+}
+
+void ToProxy::BerytusChallengeInfoUnion(
+    const RefPtr<dom::BerytusChallenge>& aChallenge,
+    ChallengeInfoUnionProxy& aRetVal
+) {
+  switch (aChallenge->Type()) {
+    case dom::BerytusChallengeType::Identification: {
+      berytus::BerytusIdentificationChallengeInfo info;
+      aChallenge->GetId(info.mId);
+      aRetVal.Init(std::move(info));
+      return;
+    }
+    case dom::BerytusChallengeType::DigitalSignature: {
+      berytus::BerytusDigitalSignatureChallengeInfo info;
+      aChallenge->GetId(info.mId);
+      aRetVal.Init(std::move(info));
+      return;
+    }
+    case dom::BerytusChallengeType::Password: {
+      berytus::BerytusPasswordChallengeInfo info;
+      aChallenge->GetId(info.mId);
+      aRetVal.Init(std::move(info));
+      return;
+    }
+    case dom::BerytusChallengeType::SecureRemotePassword: {
+      berytus::BerytusSecureRemotePasswordChallengeInfo info;
+      aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusSecureRemotePasswordChallenge> ch =
+        static_cast<dom::BerytusSecureRemotePasswordChallenge*>(aChallenge.get());
+      const auto& params = ch->Parameters();
+      if (!params.mEncoding.WasPassed()) {
+        info.mParameters.mEncoding.Init(Nothing());
+      } else {
+        using S1 = berytus::StaticString_None;
+        using S2 = berytus::StaticString_Hex;
+        static_assert(std::u16string_view(S1::mLiteral.get()) == u"None"_ns);
+        static_assert(std::u16string_view(S2::mLiteral.get()) == u"Hex"_ns);
+        switch (params.mEncoding.Value()) {
+          case dom::BerytusSecureRemotePasswordChallengeEncodingType::None: {
+            info.mParameters.mEncoding.Init(S1());
+            break;
+          }
+          case dom::BerytusSecureRemotePasswordChallengeEncodingType::Hex: {
+            info.mParameters.mEncoding.Init(S2());
+            break;
+          }
+          default:
+            MOZ_RELEASE_ASSERT(false, "Unrecognisedd Encoding Type");
+            return;
+        }
+      }
+      aRetVal.Init(std::move(info));
+      return;
+    }
+    case dom::BerytusChallengeType::OffChannelOtp: {
+      berytus::BerytusOffChannelOtpChallengeInfo info;
+      aChallenge->GetId(info.mId);
+      aRetVal.Init(std::move(info));
+      return;
+    }
+    default:
+      MOZ_RELEASE_ASSERT(false, "Unrecognised ChallengeType");
+  }
 }
 
 }

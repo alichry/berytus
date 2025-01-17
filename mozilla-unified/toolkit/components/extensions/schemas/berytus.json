@@ -264,11 +264,13 @@
           },
           "hkdfSalt": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           "hkdfInfo": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           "aesKeyLength": {
             "type": "number"
@@ -300,11 +302,13 @@
           },
           "hkdfSalt": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           "hkdfInfo": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           "aesKeyLength": {
             "type": "number"
@@ -320,14 +324,16 @@
           },
           "webAppPacketSignature": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           }
         }
       },
       {
         "id": "ChannelEnableEndToEndEncryptionResult",
         "type": "object",
-        "isInstanceOf": "ArrayBuffer"
+        "isInstanceOf": "ArrayBuffer",
+        "additionalProperties": true
       },
       {
         "id": "ChannelCloseChannelResult",
@@ -433,6 +439,134 @@
         }
       },
       {
+        "id": "BerytusFieldCategoryOptions",
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "position": {
+            "type": "number",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusForeignIdentityFieldOptions",
+        "type": "object",
+        "properties": {
+          "private": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusIdentityFieldOptions",
+        "type": "object",
+        "properties": {
+          "humanReadable": {
+            "type": "boolean"
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "maxLength": {
+            "type": "number"
+          },
+          "allowedCharacters": {
+            "type": "string",
+            "optional": true
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusKeyFieldOptions",
+        "type": "object",
+        "properties": {
+          "alg": {
+            "type": "number"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusPasswordFieldOptions",
+        "type": "object",
+        "properties": {
+          "passwordRules": {
+            "type": "string",
+            "optional": true
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusSecurePasswordFieldOptions",
+        "type": "object",
+        "properties": {
+          "identityFieldId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusSharedKeyFieldOptions",
+        "type": "object",
+        "properties": {
+          "alg": {
+            "type": "number"
+          },
+          "category": {
+            "$ref": "BerytusFieldCategoryOptions",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusFieldOptionsUnion",
+        "choices": [
+          {
+            "$ref": "BerytusForeignIdentityFieldOptions"
+          },
+          {
+            "$ref": "BerytusIdentityFieldOptions"
+          },
+          {
+            "$ref": "BerytusKeyFieldOptions"
+          },
+          {
+            "$ref": "BerytusPasswordFieldOptions"
+          },
+          {
+            "$ref": "BerytusSecurePasswordFieldOptions"
+          },
+          {
+            "$ref": "BerytusSharedKeyFieldOptions"
+          }
+        ]
+      },
+      {
         "id": "FieldInfo",
         "type": "object",
         "properties": {
@@ -452,8 +586,148 @@
               "Custom"
             ],
             "description": "See berytus.enums.EBerytusFieldType for mappings"
+          },
+          "options": {
+            "$ref": "BerytusFieldOptionsUnion"
           }
         }
+      },
+      {
+        "id": "BerytusIdentificationChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Identification"
+            ]
+          },
+          "parameters": {
+            "type": "null"
+          }
+        }
+      },
+      {
+        "id": "BerytusPasswordChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Password"
+            ]
+          },
+          "parameters": {
+            "type": "null"
+          }
+        }
+      },
+      {
+        "id": "BerytusDigitalSignatureChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "DigitalSignature"
+            ]
+          },
+          "parameters": {
+            "type": "null"
+          }
+        }
+      },
+      {
+        "id": "BerytusSecureRemotePasswordChallengeEncodingType",
+        "choices": [
+          {
+            "type": "string",
+            "enum": [
+              "None"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "Hex"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "BerytusSecureRemotePasswordChallengeParameters",
+        "type": "object",
+        "properties": {
+          "encoding": {
+            "$ref": "BerytusSecureRemotePasswordChallengeEncodingType",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "BerytusSecureRemotePasswordChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SecureRemotePassword"
+            ]
+          },
+          "parameters": {
+            "$ref": "BerytusSecureRemotePasswordChallengeParameters"
+          }
+        }
+      },
+      {
+        "id": "BerytusOffChannelOtpChallengeInfo",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "OffChannelOtp"
+            ]
+          },
+          "parameters": {
+            "type": "null"
+          }
+        }
+      },
+      {
+        "id": "BerytusChallengeMessageInfoUnion",
+        "choices": [
+          {
+            "$ref": "BerytusIdentificationChallengeInfo"
+          },
+          {
+            "$ref": "BerytusPasswordChallengeInfo"
+          },
+          {
+            "$ref": "BerytusDigitalSignatureChallengeInfo"
+          },
+          {
+            "$ref": "BerytusSecureRemotePasswordChallengeInfo"
+          },
+          {
+            "$ref": "BerytusOffChannelOtpChallengeInfo"
+          }
+        ]
       },
       {
         "id": "OperationState",
@@ -480,9 +754,15 @@
             }
           },
           "fields": {
-            "type": "array",
-            "items": {
+            "type": "object",
+            "additionalProperties": {
               "$ref": "FieldInfo"
+            }
+          },
+          "challenges": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "BerytusChallengeMessageInfoUnion"
             }
           },
           "id": {
@@ -646,11 +926,13 @@
         "choices": [
           {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           {
             "type": "object",
-            "isInstanceOf": "ArrayBufferView"
+            "isInstanceOf": "ArrayBufferView",
+            "additionalProperties": true
           }
         ]
       },
@@ -683,7 +965,8 @@
           },
           "ciphertext": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           }
         }
       },
@@ -766,35 +1049,6 @@
         }
       },
       {
-        "id": "BerytusFieldCategoryOptions",
-        "type": "object",
-        "properties": {
-          "categoryId": {
-            "type": "string"
-          },
-          "position": {
-            "type": "number",
-            "optional": true
-          }
-        }
-      },
-      {
-        "id": "BerytusForeignIdentityFieldOptions",
-        "type": "object",
-        "properties": {
-          "private": {
-            "type": "boolean"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "category": {
-            "$ref": "BerytusFieldCategoryOptions",
-            "optional": true
-          }
-        }
-      },
-      {
         "id": "nullOrstringOrBerytusEncryptedPacket",
         "choices": [
           {
@@ -830,29 +1084,6 @@
         }
       },
       {
-        "id": "BerytusIdentityFieldOptions",
-        "type": "object",
-        "properties": {
-          "humanReadable": {
-            "type": "boolean"
-          },
-          "private": {
-            "type": "boolean"
-          },
-          "maxLength": {
-            "type": "number"
-          },
-          "allowedCharacters": {
-            "type": "string",
-            "optional": true
-          },
-          "category": {
-            "$ref": "BerytusFieldCategoryOptions",
-            "optional": true
-          }
-        }
-      },
-      {
         "id": "BerytusIdentityField",
         "type": "object",
         "properties": {
@@ -874,24 +1105,12 @@
         }
       },
       {
-        "id": "BerytusKeyFieldOptions",
-        "type": "object",
-        "properties": {
-          "alg": {
-            "type": "number"
-          },
-          "category": {
-            "$ref": "BerytusFieldCategoryOptions",
-            "optional": true
-          }
-        }
-      },
-      {
         "id": "ArrayBufferOrBerytusEncryptedPacket",
         "choices": [
           {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           {
             "$ref": "BerytusEncryptedPacket"
@@ -940,20 +1159,6 @@
         }
       },
       {
-        "id": "BerytusPasswordFieldOptions",
-        "type": "object",
-        "properties": {
-          "passwordRules": {
-            "type": "string",
-            "optional": true
-          },
-          "category": {
-            "$ref": "BerytusFieldCategoryOptions",
-            "optional": true
-          }
-        }
-      },
-      {
         "id": "BerytusPasswordField",
         "type": "object",
         "properties": {
@@ -971,19 +1176,6 @@
           },
           "id": {
             "type": "string"
-          }
-        }
-      },
-      {
-        "id": "BerytusSecurePasswordFieldOptions",
-        "type": "object",
-        "properties": {
-          "identityFieldId": {
-            "type": "string"
-          },
-          "category": {
-            "$ref": "BerytusFieldCategoryOptions",
-            "optional": true
           }
         }
       },
@@ -1028,19 +1220,6 @@
           },
           "id": {
             "type": "string"
-          }
-        }
-      },
-      {
-        "id": "BerytusSharedKeyFieldOptions",
-        "type": "object",
-        "properties": {
-          "alg": {
-            "type": "number"
-          },
-          "category": {
-            "$ref": "BerytusFieldCategoryOptions",
-            "optional": true
           }
         }
       },
@@ -1171,50 +1350,11 @@
         "$ref": "BerytusFieldValueUnion"
       },
       {
-        "id": "ChallengeParameters",
-        "type": "object",
-        "properties": {}
-      },
-      {
-        "id": "ChallengeMetadata",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "Identification",
-              "DigitalSignature",
-              "Password",
-              "SecureRemotePassword",
-              "ForeignIdentityOtp"
-            ],
-            "description": "See berytus.enums.EChallengeType for mappings"
-          },
-          "parameters": {
-            "$ref": "ChallengeParameters"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "Invalid",
-              "Pending",
-              "Active",
-              "Aborted",
-              "Sealed"
-            ],
-            "description": "See berytus.enums.EChallengeStatus for mappings"
-          }
-        }
-      },
-      {
         "id": "ApproveChallengeRequestArgs",
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "ChallengeMetadata"
+            "$ref": "BerytusChallengeMessageInfoUnion"
           }
         }
       },
@@ -1223,23 +1363,61 @@
         "type": "any"
       },
       {
-        "id": "ChallengeAbortionReason",
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
+        "id": "BerytusChallengeAbortionCode",
+        "choices": [
+          {
+            "type": "string",
+            "enum": [
+              "GenericWebAppFailure"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "UserInterrupt"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "IdentityDoesNotExists"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "IncorrectPassword"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "InvalidProof"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "InvalidSignature"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "IncorrectOtp"
+            ]
           }
-        }
+        ]
       },
       {
         "id": "AbortChallengeArgs",
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "ChallengeMetadata"
+            "$ref": "BerytusChallengeMessageInfoUnion"
           },
           "reason": {
-            "$ref": "ChallengeAbortionReason"
+            "$ref": "BerytusChallengeAbortionCode"
           }
         }
       },
@@ -1252,31 +1430,13 @@
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "ChallengeMetadata"
+            "$ref": "BerytusChallengeMessageInfoUnion"
           }
         }
       },
       {
         "id": "AccountAuthenticationCloseChallengeResult",
         "type": "any"
-      },
-      {
-        "id": "BerytusIdentificationChallengeInfo",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "Identification"
-            ]
-          },
-          "parameters": {
-            "type": "null"
-          }
-        }
       },
       {
         "id": "BerytusSendGetIdentityFieldsMessage",
@@ -1296,24 +1456,6 @@
             "items": {
               "type": "string"
             }
-          }
-        }
-      },
-      {
-        "id": "BerytusPasswordChallengeInfo",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "Password"
-            ]
-          },
-          "parameters": {
-            "type": "null"
           }
         }
       },
@@ -1339,24 +1481,6 @@
         }
       },
       {
-        "id": "BerytusDigitalSignatureChallengeInfo",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "DigitalSignature"
-            ]
-          },
-          "parameters": {
-            "type": "null"
-          }
-        }
-      },
-      {
         "id": "BerytusSendSelectKeyMessage",
         "type": "object",
         "properties": {
@@ -1375,15 +1499,20 @@
         }
       },
       {
-        "id": "ArrayBufferOrArrayBufferView",
+        "id": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
         "choices": [
           {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           {
             "type": "object",
-            "isInstanceOf": "ArrayBufferView"
+            "isInstanceOf": "ArrayBufferView",
+            "additionalProperties": true
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
           }
         ]
       },
@@ -1401,52 +1530,7 @@
             ]
           },
           "payload": {
-            "$ref": "ArrayBufferOrArrayBufferView"
-          }
-        }
-      },
-      {
-        "id": "BerytusSecureRemotePasswordChallengeEncodingType",
-        "choices": [
-          {
-            "type": "string",
-            "enum": [
-              "None"
-            ]
-          },
-          {
-            "type": "string",
-            "enum": [
-              "Hex"
-            ]
-          }
-        ]
-      },
-      {
-        "id": "BerytusSecureRemotePasswordChallengeParameters",
-        "type": "object",
-        "properties": {
-          "encoding": {
-            "$ref": "BerytusSecureRemotePasswordChallengeEncodingType",
-            "optional": true
-          }
-        }
-      },
-      {
-        "id": "BerytusSecureRemotePasswordChallengeInfo",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "SecureRemotePassword"
-            ]
-          },
-          "parameters": {
-            "$ref": "BerytusSecureRemotePasswordChallengeParameters"
+            "$ref": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1476,11 +1560,13 @@
           },
           {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           {
             "type": "object",
-            "isInstanceOf": "ArrayBufferView"
+            "isInstanceOf": "ArrayBufferView",
+            "additionalProperties": true
           },
           {
             "$ref": "BerytusEncryptedPacket"
@@ -1542,6 +1628,24 @@
         }
       },
       {
+        "id": "BerytusSendGetOtpMessage",
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "$ref": "BerytusOffChannelOtpChallengeInfo"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "GetOtp"
+            ]
+          },
+          "payload": {
+            "type": "string"
+          }
+        }
+      },
+      {
         "id": "BerytusSendMessageUnion",
         "choices": [
           {
@@ -1567,6 +1671,9 @@
           },
           {
             "$ref": "BerytusSendVerifyServerProofMessage"
+          },
+          {
+            "$ref": "BerytusSendGetOtpMessage"
           }
         ]
       },
@@ -1620,7 +1727,8 @@
         "properties": {
           "response": {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           }
         }
       },
@@ -1641,7 +1749,8 @@
           },
           {
             "type": "object",
-            "isInstanceOf": "ArrayBuffer"
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
           },
           {
             "$ref": "BerytusEncryptedPacket"
@@ -1672,6 +1781,15 @@
         "properties": {}
       },
       {
+        "id": "BerytusChallengeGetOtpMessageResponse",
+        "type": "object",
+        "properties": {
+          "response": {
+            "$ref": "stringOrBerytusEncryptedPacket"
+          }
+        }
+      },
+      {
         "id": "BerytusReceiveMessageUnion",
         "choices": [
           {
@@ -1697,6 +1815,9 @@
           },
           {
             "$ref": "BerytusChallengeVerifyServerProofMessageResponse"
+          },
+          {
+            "$ref": "BerytusChallengeGetOtpMessageResponse"
           }
         ]
       },
@@ -1989,7 +2110,7 @@
             "parameters": [
               {
                 "name": "context",
-                "$ref": "RequestContextWithOperation"
+                "$ref": "RequestContextWithLoginOperation"
               },
               {
                 "name": "args",
@@ -2136,46 +2257,6 @@
       },
       "Retired": {
         "value": "Retired"
-      }
-    }
-  },
-  {
-    "namespace": "berytus.enum.EChallengeType",
-    "properties": {
-      "Identification": {
-        "value": "Identification"
-      },
-      "DigitalSignature": {
-        "value": "DigitalSignature"
-      },
-      "Password": {
-        "value": "Password"
-      },
-      "SecureRemotePassword": {
-        "value": "SecureRemotePassword"
-      },
-      "ForeignIdentityOtp": {
-        "value": "ForeignIdentityOtp"
-      }
-    }
-  },
-  {
-    "namespace": "berytus.enum.EChallengeStatus",
-    "properties": {
-      "Invalid": {
-        "value": "Invalid"
-      },
-      "Pending": {
-        "value": "Pending"
-      },
-      "Active": {
-        "value": "Active"
-      },
-      "Aborted": {
-        "value": "Aborted"
-      },
-      "Sealed": {
-        "value": "Sealed"
       }
     }
   }

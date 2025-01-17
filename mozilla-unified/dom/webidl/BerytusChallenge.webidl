@@ -3,7 +3,7 @@ enum BerytusChallengeType {
   "DigitalSignature",
   "Password",
   "SecureRemotePassword",
-  "ForeignIdentityOtp",
+  "OffChannelOtp",
 };
 
 enum BerytusChallengeAbortionCode {
@@ -12,7 +12,8 @@ enum BerytusChallengeAbortionCode {
   "IdentityDoesNotExists",
   "IncorrectPassword",
   "InvalidProof",
-  "InvalidSignature"
+  "InvalidSignature",
+  "IncorrectOtp"
 };
 
 typedef DOMString BerytusChallengeId;
@@ -21,21 +22,27 @@ typedef DOMString BerytusChallengeId;
 interface BerytusChallenge {
   readonly attribute BerytusChallengeId id;
   readonly attribute BerytusChallengeType type;
+  [Throws]
   readonly attribute object? parameters;
   readonly attribute boolean active;
 
   [Throws]
   Promise<BerytusChallengeMessageResponseDefinition> send(BerytusChallengeMessageRequestDefinition messageDef);
+
   [Throws]
   Promise<undefined> seal();
+
   [Throws]
   Promise<undefined> abort(BerytusChallengeAbortionCode abortionReasonCode);
+
   [Throws]
   Promise<undefined> abortWithUserInterruptError();
+
   [Throws]
   Promise<undefined> abortWithGenericWebAppFailureError();
 };
 
+[GenerateInit]
 dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
   /**
    * Implementation should ensure it is of type:
@@ -46,6 +53,9 @@ dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
 
 [SecureContext, Exposed=(Window)]
 interface BerytusIdentificationChallenge : BerytusChallenge {
+  [Throws]
+  constructor(DOMString id);
+
   [Throws]
   Promise<BerytusChallengeGetIdentityFieldsMessageResponse> getIdentityFields(
     sequence<DOMString> identityFieldIds
@@ -65,6 +75,9 @@ dictionary BerytusChallengeGetPasswordFieldsMessageResponse {
 [SecureContext, Exposed=(Window)]
 interface BerytusPasswordChallenge : BerytusChallenge {
   [Throws]
+  constructor(DOMString id);
+
+  [Throws]
   Promise<BerytusChallengeGetPasswordFieldsMessageResponse> getPasswordFields(
     sequence<DOMString> passwordFieldIds
   );
@@ -72,10 +85,12 @@ interface BerytusPasswordChallenge : BerytusChallenge {
   Promise<undefined> abortWithIncorrectPasswordError();
 };
 
+[GenerateInit]
 dictionary BerytusChallengeSelectKeyMessageResponse {
   required BerytusKeyFieldValue response;
 };
 
+[GenerateInit]
 dictionary BerytusChallengeSignNonceMessageResponse {
   required ArrayBuffer response;
 };
@@ -83,17 +98,21 @@ dictionary BerytusChallengeSignNonceMessageResponse {
 [SecureContext, Exposed=(Window)]
 interface BerytusDigitalSignatureChallenge : BerytusChallenge {
   [Throws]
+  constructor(DOMString id);
+
+  [Throws]
   Promise<BerytusChallengeSelectKeyMessageResponse> selectKey(
     DOMString keyFieldId
   );
   [Throws]
   Promise<BerytusChallengeSignNonceMessageResponse> signNonce(
-    (ArrayBuffer or ArrayBufferView) nonce
+    (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) nonce
   );
   [Throws]
   Promise<undefined> abortWithInvalidSignatureError();
 };
 
+[GenerateInit]
 dictionary BerytusChallengeSelectSecurePasswordMessageResponse {
   /**
     * The identity field value that is bound to the selected secure password field.
@@ -104,6 +123,7 @@ dictionary BerytusChallengeSelectSecurePasswordMessageResponse {
   required (DOMString or BerytusEncryptedPacket) response;
 };
 
+[GenerateInit]
 dictionary BerytusChallengeExchangePublicKeysMessageResponse {
   /**
    * The client public key (SRP:A) - As hex string or as an ArrayBuffer(View).
@@ -120,6 +140,7 @@ enum BerytusSecureRemotePasswordChallengeEncodingType {
   "Hex"
 };
 
+[GenerateInit, GenerateConversionToJS]
 dictionary BerytusSecureRemotePasswordChallengeParameters {
   /**
    * Defaults to "None"
@@ -127,6 +148,7 @@ dictionary BerytusSecureRemotePasswordChallengeParameters {
   BerytusSecureRemotePasswordChallengeEncodingType encoding;
 };
 
+[GenerateInit]
 dictionary BerytusChallengeComputeClientProofMessageResponse {
   /**
    * The client proof (SRP:M1) - As hex string or as an ArrayBuffer(View).
@@ -138,12 +160,16 @@ dictionary BerytusChallengeComputeClientProofMessageResponse {
   required (DOMString or ArrayBuffer or BerytusEncryptedPacket) response;
 };
 
+[GenerateInit]
 dictionary BerytusChallengeVerifyServerProofMessageResponse {
   // nothing
 };
 
 [SecureContext, Exposed=(Window)]
 interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
+  [Throws]
+  constructor(DOMString id, optional BerytusSecureRemotePasswordChallengeParameters parameters = {});
+
   [Throws]
   Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword(
     DOMString securePasswordFieldId
@@ -182,7 +208,27 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
     (ArrayBuffer or ArrayBufferView or DOMString or BerytusEncryptedPacket) serverProofM2
   );
   [Throws]
-  Promise<undefined> abortWithInvalidSignatureError();
-  [Throws]
   Promise<undefined> abortWithInvalidProofError();
 };
+
+[GenerateInit]
+dictionary BerytusChallengeGetOtpMessageResponse {
+  required (DOMString or BerytusEncryptedPacket) response;
+};
+
+[SecureContext, Exposed=(Window)]
+interface BerytusOffChannelOtpChallenge : BerytusChallenge {
+  [Throws]
+  constructor(DOMString id);
+
+  [Throws]
+  Promise<BerytusChallengeGetOtpMessageResponse> getOtp(
+    DOMString foreignIdentityFieldId
+  );
+  [Throws]
+  Promise<undefined> abortWithIncorrectOtpError();
+};
+
+// TODO(berytus): field Ids specifiied in
+// getOtp, getPasswordFields, getIdentityFields
+// should be defined in the parameters of the challenge.

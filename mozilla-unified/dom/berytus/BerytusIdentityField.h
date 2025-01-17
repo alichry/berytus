@@ -44,6 +44,7 @@ protected:
 
   void CacheOptions(JSContext* aCx, ErrorResult& aRv) override;
 public:
+  BerytusIdentityFieldOptions const& Options() const;
   nsIGlobalObject* GetParentObject() const;
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 

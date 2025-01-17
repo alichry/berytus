@@ -771,7 +771,7 @@ export class IsolatedRequestHandler implements IUnderlyingRequestHandler {
                     return;
                 }
             },
-            async respondToChallengeMessage(context: RequestContextWithOperation & ResponseContext<"accountAuthentication", "respondToChallengeMessage">, args: BerytusSendMessageUnion): Promise<void> {
+            async respondToChallengeMessage(context: RequestContextWithLoginOperation & ResponseContext<"accountAuthentication", "respondToChallengeMessage">, args: BerytusSendMessageUnion): Promise<void> {
                 try {
                     await self.preCall("accountAuthentication", "respondToChallengeMessage", { context, args });
                 } catch (e) {
@@ -1122,7 +1122,12 @@ export class SequentialRequestHandler extends ValidatedRequestHandler {
             );
         }
         this.busy = true;
-        await super.preCall(group, method, input);
+        try {
+            await super.preCall(group, method, input);
+        } catch (e) {
+            this.busy = false;
+            throw e;
+        }
     }
     protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
         this.busy = false;
@@ -1596,7 +1601,7 @@ export class PublicRequestHandler implements IPublicRequestHandler {
                     }, args);
                 })
             },
-            respondToChallengeMessage(context: Omit<RequestContextWithOperation, "request">, args: BerytusSendMessageUnion): Promise<ReturnType<RequestHandler["accountAuthentication"]["respondToChallengeMessage"]>> {
+            respondToChallengeMessage(context: Omit<RequestContextWithLoginOperation, "request">, args: BerytusSendMessageUnion): Promise<ReturnType<RequestHandler["accountAuthentication"]["respondToChallengeMessage"]>> {
                 return new Promise<ReturnType<RequestHandler["accountAuthentication"]["respondToChallengeMessage"]>>((_resolve, _reject) => {
                     const responseCtx: ResponseContext<"accountAuthentication", "respondToChallengeMessage"> = {
                         response: {

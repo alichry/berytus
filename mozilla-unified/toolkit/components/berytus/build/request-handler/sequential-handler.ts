@@ -18,7 +18,12 @@
             );
         }
         this.busy = true;
-        await super.preCall(group, method, input);
+        try {
+            await super.preCall(group, method, input);
+        } catch (e) {
+            this.busy = false;
+            throw e;
+        }
     }
     protected async preResolve(group: string, method: string, input: PreCallInput, value: unknown) {
         this.busy = false;

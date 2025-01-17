@@ -19,13 +19,13 @@
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusLoginOperation.h"
-#include "mozilla/dom/BerytusChallengeMap.h"
 
 namespace mozilla {
 namespace dom {
 
 class BerytusChallengeParameters;
 class Promise;
+class BerytusChallengeMap;
 
 } // namespace dom
 } // namespace mozilla
@@ -56,6 +56,7 @@ protected:
 
   BerytusChannel* Channel() const override;
   BerytusLoginOperation* Operation() override;
+  bool Active() const override;
 
 public:
   // This should return something that eventually allows finding a
@@ -69,7 +70,7 @@ public:
   already_AddRefed<BerytusChallengeMap> Challenges() const;
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
-  already_AddRefed<Promise> CreateChallenge(const nsAString& challengeId, BerytusChallengeType challengeType, const Optional<BerytusChallengeParameters*>& challengeParameters, ErrorResult& aRv);
+  already_AddRefed<Promise> CreateChallenge(JSContext* aCx, const OwningNonNull<BerytusChallenge>& aChallenge, ErrorResult& aRv);
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<Promise> Finish(ErrorResult& aRv);

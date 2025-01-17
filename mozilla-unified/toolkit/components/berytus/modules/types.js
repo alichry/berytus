@@ -57,7 +57,7 @@ var EMetadataProperty;
     EMetadataProperty["ChangePassUrl"] = "ChangePassUrl";
 })(EMetadataProperty || (EMetadataProperty = {}));
 ;
-var EMetadataStatus;
+export var EMetadataStatus;
 (function (EMetadataStatus) {
     EMetadataStatus["Pending"] = "Pending";
     EMetadataStatus["Created"] = "Created";

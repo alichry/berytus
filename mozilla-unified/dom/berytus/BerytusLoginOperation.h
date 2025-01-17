@@ -29,15 +29,13 @@ public:
   NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusLoginOperation)
 
   using CreationPromise = MozPromise<RefPtr<BerytusLoginOperation>, berytus::Failure, true>;
-public:
+protected:
   BerytusLoginOperation(
     nsIGlobalObject* aGlobalObject,
     const RefPtr<BerytusChannel>& aChannel,
     const nsAString& aOperationId,
     const BerytusOnboardingIntent& aIntent
   );
-
-protected:
   virtual ~BerytusLoginOperation();
   nsCOMPtr<nsIGlobalObject> mGlobal;
   RefPtr<BerytusChannel> mChannel;

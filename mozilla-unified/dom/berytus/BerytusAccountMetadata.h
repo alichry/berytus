@@ -1,6 +1,7 @@
 #ifndef DOM_BERYTUSACCOUNTMETADATA_H_
 #define DOM_BERYTUSACCOUNTMETADATA_H_
 
+#include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BerytusAccountBinding.h" // for BerytusAccountStatus
 #include "nsVariant.h"
 #include "nsIGlobalObject.h"
@@ -44,6 +45,7 @@ protected:
     virtual nsIGlobalObject* GetParentObject() const = 0;
     virtual BerytusChannel* Channel() const = 0;
     virtual BerytusLoginOperation* Operation() = 0;
+    virtual bool Active() const = 0;
 
     BerytusAccountStatus mStatus;
     uint64_t mVersion;
@@ -66,6 +68,8 @@ protected:
         const nsAString& aChangePassUrl,
         ErrorResult& aRv
     );
+
+    RefPtr<MozPromise<void*, berytus::Failure, true>> PopulateMetadata();
 };
 
 }

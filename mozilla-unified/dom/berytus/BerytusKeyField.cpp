@@ -55,6 +55,10 @@ BerytusKeyField::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
 
 nsIGlobalObject* BerytusKeyField::GetParentObject() const { return mGlobal; }
 
+BerytusKeyFieldOptions const& BerytusKeyField::Options() const {
+  return mOptions;
+}
+
 void BerytusKeyField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
   if (mCachedOptions) {
     return;

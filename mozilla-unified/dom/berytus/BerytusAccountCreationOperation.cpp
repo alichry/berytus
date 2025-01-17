@@ -5,10 +5,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusAccountCreationOperation.h"
+#include "BerytusAccountAuthenticationOperation.h"
 #include "BerytusChannel.h"
 #include "BerytusLoginOperation.h"
+#include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusAccountCreationOperationBinding.h"
 #include "mozilla/dom/BerytusFieldMap.h"
+#include "mozilla/dom/Promise.h"
 
 namespace mozilla::dom {
 
@@ -61,6 +64,10 @@ BerytusLoginOperation* BerytusAccountCreationOperation::Operation() {
   return this;
 }
 
+bool BerytusAccountCreationOperation::Active() const {
+  return mActive;
+}
+
 BerytusFieldMap* BerytusAccountCreationOperation::FieldMap() const {
   return mFields;
 }
@@ -74,16 +81,95 @@ bool BerytusAccountCreationOperation::Newborn() const {
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
 already_AddRefed<Promise> BerytusAccountCreationOperation::Save(ErrorResult& aRv) {
-  MOZ_ASSERT(false, "BerytusAccountCreationOperation::Save not impld");
-  aRv.Throw(NS_ERROR_FAILURE);
-  return nullptr;
+  RefPtr<Promise> outPromise = Promise::Create(mGlobal, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  if (!Active()) {
+    aRv.ThrowInvalidStateError("Operation is closed; can no longer send secret management requests");
+    return nullptr;
+  }
+  if (NS_WARN_IF(!mChannel->Active())) {
+    aRv.ThrowInvalidStateError("Channel no longer active; can no longer send secret management requests");
+    return nullptr;
+  }
+  const berytus::AgentProxy& agent = mChannel->Agent();
+  MOZ_ASSERT(!agent.IsDisabled());
+  berytus::RequestContextWithOperation reqCtx;
+  nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.Throw(rv);
+    return nullptr;
+  }
+  auto promise = agent.Login_CloseOpeation(reqCtx);
+  promise->Then(
+    GetCurrentSerialEventTarget(),
+    __func__,
+    [this, outPromise](void*){
+      // TODO(berytus): Not a major concern for the PoC;
+      // however, a tiny window could be present where mActive = true
+      // after Save() was called but the promise not yet resolved.
+      mActive = false;
+      outPromise->MaybeResolveWithUndefined();
+    },
+    [outPromise](const berytus::Failure& aFr) {
+      outPromise->MaybeReject(aFr.ToErrorResult());
+    }
+  );
+  return outPromise.forget();
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
 already_AddRefed<Promise> BerytusAccountCreationOperation::TransitionToAuthOperation(ErrorResult& aRv) {
-  MOZ_ASSERT(false, "BerytusAccountCreationOperation::TransitionToAuthOperation not impld");
-  aRv.Throw(NS_ERROR_FAILURE);
-  return nullptr;
+  RefPtr<Promise> outPromise = Promise::Create(mGlobal, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  if (NS_WARN_IF(!mChannel->Active())) {
+    aRv.ThrowInvalidStateError("Channel no longer active");
+    return nullptr;
+  }
+  const berytus::AgentProxy& agent = mChannel->Agent();
+  MOZ_ASSERT(!agent.IsDisabled());
+  berytus::RequestContextWithOperation reqCtx;
+  nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.Throw(rv);
+    return nullptr;
+  }
+  berytus::ApproveTransitionToAuthOpArgs reqArgs;
+  reqArgs.mNewAuthOp.mIntent.SetAsAuthenticate();
+  reqArgs.mNewAuthOp.mType.SetAsAuthentication();
+  nsIDToCString oUuidString(nsID::GenerateUUID());
+  nsString oId = NS_ConvertUTF8toUTF16(oUuidString.get());
+  reqArgs.mNewAuthOp.mId.Assign(oId);
+  reqArgs.mNewAuthOp.mStatus.SetAsPending();
+  // TODO(berytus): if AccountAuthentication op should provide
+  // user attribute info, we need to populate mRequestedUserAttributes
+
+  auto promise = agent.AccountCreation_ApproveTransitionToAuthOp(reqCtx, reqArgs);
+  promise->Then(
+    GetCurrentSerialEventTarget(),
+    __func__,
+    [this, oId](void*) -> RefPtr<BerytusAccountAuthenticationOperation::CreationPromise> {
+      // TODO(berytus): Not a major concern for the PoC;
+      // however, a tiny window could be present where mActive = true
+      // after Save() was called but before resolution of the promise.
+      mActive = false;
+      return BerytusAccountAuthenticationOperation::CreateApproved(mGlobal, mChannel, oId);
+    },
+    [](berytus::Failure&& aFr) -> RefPtr<BerytusAccountAuthenticationOperation::CreationPromise> {
+      return BerytusAccountAuthenticationOperation::CreationPromise::CreateAndReject(std::move(aFr), __func__);
+    }
+  )->Then(
+    GetCurrentSerialEventTarget(), __func__,
+    [outPromise](const RefPtr<BerytusAccountAuthenticationOperation>& aOp) {
+      outPromise->MaybeResolve(aOp);
+    },
+    [outPromise](const berytus::Failure& aFr) {
+      outPromise->MaybeReject(aFr.ToErrorResult());
+    });
+  return outPromise.forget();
 }
 
 RefPtr<BerytusAccountCreationOperation::CreationPromise> BerytusAccountCreationOperation::CreateApproved(

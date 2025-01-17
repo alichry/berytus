@@ -22,6 +22,7 @@ namespace mozilla::dom {
   class BerytusLoginOperation;
   class BerytusWebAppActor;
   class BerytusBuffer;
+  class BerytusChallenge;
   //class BerytusField;
   class BerytusKeyFieldValue;
   class BerytusSharedKeyFieldValue;
@@ -98,6 +99,8 @@ using UserAttributeProxy = berytus::UserAttribute;
 using UserAttributeDefinition = dom::BerytusUserAttributeDefinition;
 using UserAttributeValue = dom::BerytusUserAttribute::SourceValueType;
 using UserAttributeValueProxy = decltype(berytus::UserAttribute::mValue);
+using FieldOptionsUnionProxy = decltype(berytus::FieldInfo::mOptions);
+using ChallengeInfoUnionProxy = decltype(ApproveChallengeRequestArgs::mChallenge);
 
 class FromProxy {
 public:
@@ -231,6 +234,16 @@ public:
         JSContext* aCx,
         const UserAttributeDefinition& aAttr,
         UserAttributeProxy& aRetVal
+    );
+
+    static void BerytusFieldOptionsUnion(
+        const RefPtr<dom::BerytusField>& aField,
+        FieldOptionsUnionProxy& aRetVal
+    );
+
+    static void BerytusChallengeInfoUnion(
+        const RefPtr<dom::BerytusChallenge>& aChallenge,
+        ChallengeInfoUnionProxy& aRetVal
     );
 };
 

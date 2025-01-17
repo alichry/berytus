@@ -173,38 +173,44 @@ void BerytusField::AddFieldMetadataToCachedJSON(JSContext* aCx, ErrorResult& aRv
 void BerytusField::AddValueToJSON(JSContext* aCx,
                                   JS::Handle<JSObject*> aObj,
                                   ErrorResult& aRv) {
-  if (mFieldValue.IsNull()) {
-    return;
-  }
-  JS::Rooted<JS::Value> value(aCx);
-  const auto& intVal = mFieldValue.Value();
-  if (intVal.IsBerytusEncryptedPacket()) {
-    BerytusEncryptedPacketJSON packetJson;
-    intVal.GetAsBerytusEncryptedPacket()->ToJSON(packetJson, aRv);
-    if (NS_WARN_IF(aRv.Failed())) {
-      return;
+  JS::Rooted<JS::Value> value(aCx, JS::NullValue());
+  do {
+    if (mFieldValue.IsNull()) {
+      break;
     }
-    if (NS_WARN_IF(!packetJson.ToObjectInternal(aCx, &value))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return;
+    const auto& intVal = mFieldValue.Value();
+    if (intVal.IsBerytusEncryptedPacket()) {
+      BerytusEncryptedPacketJSON packetJson;
+      intVal.GetAsBerytusEncryptedPacket()->ToJSON(packetJson, aRv);
+      if (NS_WARN_IF(aRv.Failed())) {
+        return;
+      }
+      if (NS_WARN_IF(!packetJson.ToObjectInternal(aCx, &value))) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return;
+      }
+      break;
     }
-  } else if (intVal.IsString()) {
-    JSString* str = JS_NewUCStringCopyN(aCx, intVal.GetAsString().get(), intVal.GetAsString().Length());
-    if (NS_WARN_IF(!str)) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return;
+    if (intVal.IsString()) {
+      JSString* str = JS_NewUCStringCopyN(aCx, intVal.GetAsString().get(), intVal.GetAsString().Length());
+      if (NS_WARN_IF(!str)) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return;
+      }
+      value.setString(str);
+      break;
     }
-    value.setString(str);
-  } else if (intVal.IsBerytusFieldValueDictionary()) {
-    intVal.GetAsBerytusFieldValueDictionary()->ToJSON(aCx, &value, aRv);
-    if (NS_WARN_IF(aRv.Failed())) {
-      return;
+    if (intVal.IsBerytusFieldValueDictionary()) {
+      intVal.GetAsBerytusFieldValueDictionary()->ToJSON(aCx, &value, aRv);
+      if (NS_WARN_IF(aRv.Failed())) {
+        return;
+      }
+      break;
     }
-  } else {
     MOZ_ASSERT(false, "Unrecognised field value union member");
     aRv.Throw(NS_ERROR_FAILURE);
     return;
-  }
+  } while (false);
   if (NS_WARN_IF(!JS_SetProperty(aCx, aObj, "value" ,value))) {
     aRv.Throw(NS_ERROR_FAILURE);
   }

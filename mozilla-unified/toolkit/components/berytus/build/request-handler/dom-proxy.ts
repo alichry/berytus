@@ -689,6 +689,118 @@ bool ${functionName}(JSContext* aCx, const nsString& aValue, JS::MutableHandle<J
     }
 }
 
+class StaticStringType extends BasicType implements IType {
+    static readonly #map: Array<string> = [];
+
+    static createOrGetSlot(literal: string): number {
+        for (let i = 0; i < StaticStringType.#map.length; i++) {
+            if (StaticStringType.#map[i] === literal) {
+                return i;
+            }
+        }
+        const slot = StaticStringType.#map.length;
+        StaticStringType.#map.push(literal);
+        return slot;
+    }
+
+    slot: number;
+    literal: string;
+
+    constructor(literal: string) {
+        const slot = StaticStringType.createOrGetSlot(literal);
+        const id = `StaticString${slot}`;
+        super(id);
+        this.slot = slot;
+        this.literal = literal;
+    }
+
+    get definition(): string {
+        const isAlphaNumOnly = /^[a-zA-Z0-9]+$/.test(this.literal);
+        return `class ${this.symbol} : public StaticStringBase {
+public:
+  constexpr static const nsLiteralString mLiteral =
+      u${JSON.stringify(this.literal)}_ns;
+  const nsLiteralString& GetString() const override {
+    return mLiteral;
+  }
+};
+${this.isJsValValidFunction().functionDef}
+${this.importFromJsValFunction().functionDef}
+${this.exportToJsValFunction().functionDef}
+${isAlphaNumOnly ? `
+using StaticString_${this.literal} = ${this.symbol};` : ``}`;
+    }
+
+    get implementation() {
+        return `${this.isJsValValidFunction().functionImpl}
+${this.importFromJsValFunction().functionImpl}
+${this.exportToJsValFunction().functionImpl}`;
+    }
+
+    movableThroughAssignment = true;
+
+    isJsValValidFunction(): GeneratedFunction {
+        const functionName = `JSValIs<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  if (!aValue.isString()) {
+    aRv = false;
+    return true;
+  }
+  nsString val;
+  if (NS_WARN_IF((!FromJSVal<nsString>(aCx, aValue, val)))) {
+    return false;
+  }
+  if (!val.Equals(${this.symbol}::mLiteral)) {
+    aRv = false;
+    return true;
+  }
+  aRv = true;
+  return true;
+}`
+        }
+    }
+    importFromJsValFunction(): GeneratedFunction {
+        const functionName = `FromJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.symbol}& aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  bool rv;
+  if (NS_WARN_IF(!(${this.isJsValValidFunction().functionName}(aCx, aValue, rv)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!rv)) {
+    return false;
+  }
+  return true;
+}`
+        };
+    }
+    exportToJsValFunction(): GeneratedFunction {
+        const functionName = `ToJSVal<${this.symbol}>`;
+        const funcDef = `template<>
+bool ${functionName}(JSContext* aCx, const ${this.symbol}& aValue, JS::MutableHandle<JS::Value> aRv)`;
+        return {
+            functionName,
+            functionDef: `${funcDef};`,
+            functionImpl: `${funcDef} {
+  JS::Rooted<JSString*> rStr(aCx, JS_NewUCStringCopyN(aCx, aValue.GetString().BeginReading(), aValue.GetString().Length()));
+  aRv.setString(rStr);
+  return true;
+}`
+        }
+    }
+
+
+}
+
 class BoolType extends BasicType implements IType {
 
     constructor() {
@@ -1045,6 +1157,19 @@ class SafeVariantType extends TypeSymbol implements IType {
         return this.subTypes.map(p => p.symbol).join(', ');
     }
 
+    get wrapsStringsOnly() {
+        for (let i = 0; i < this.subTypes.length; i++) {
+            if (
+                this.subTypes[i] instanceof StaticStringType
+                || this.subTypes[i] instanceof StringType
+            ) {
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
+
     get definition() {
         return `template<>
 class ${this.symbol} {
@@ -1071,6 +1196,17 @@ public:
   }
   mozilla::Variant<${this.subTypesSymbols}> const* InternalValue() const { return mVariant; }
   mozilla::Variant<${this.subTypesSymbols}>* InternalValue() { return mVariant; }
+  ${this.wrapsStringsOnly ? `
+  nsString AsString() const {
+    MOZ_ASSERT(mVariant);
+    return mVariant->match(
+        ${this.subTypes.map((st, i) => `[](${st.atArgument()} aStr) -> nsString {
+          ${st instanceof StaticStringType
+            ? `return aStr.GetString();`
+            : `return aStr;`}
+        }`).join(",\n    ")}
+    );
+  }` : ``}
 protected:
   mozilla::Variant<${this.subTypesSymbols}>* mVariant;
 };
@@ -1359,7 +1495,8 @@ bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& a
             functionDef: `${funcDef};`,
             functionImpl: `${funcDef} {
   if (!aValue.isObject()) {
-    return false;
+    aRv = false;
+    return true;
   }
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   aRv = JS::IsArrayBufferObject(obj);
@@ -1463,7 +1600,8 @@ bool ${functionName}(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& a
             functionDef: `${funcDef};`,
             functionImpl: `${funcDef} {
   if (!aValue.isObject()) {
-    return false;
+    aRv = false;
+    return true;
   }
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   aRv = JS_IsArrayBufferViewObject(obj);
@@ -1843,22 +1981,21 @@ bool ${functionName}(JSContext* aCx, const ${this.atArgument()} aValue, JS::Muta
             functionDef: `${funcDef};`,
             functionImpl: `${funcDef} {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-  JS::Rooted<JS::PropertyKey> prop(aCx);
   for (const auto& entry : aValue.Entries()) {
-${this.keyType instanceof StringType ? `\
-    JS::Rooted<JS::Value> propName(aCx);
-    if (NS_WARN_IF(!ToJSVal(aCx, entry.mKey, &propName))) {
-      return false;
-    }
-    prop.set(JS::PropertyKey::fromPinnedString(propName.toString()));` : `\
-    prop.set(JS::PropertyKey::Int(entry.mKey));` }
     JS::Rooted<JS::Value> val(aCx);
     if (NS_WARN_IF((!${this.valueType.exportToJsValFunction().functionName}(aCx, entry.mValue, &val)))) {
       return false;
     }
+${this.keyType instanceof StringType ? `\
+    nsCString propName = NS_ConvertUTF16toUTF8(entry.mKey);
+    if (NS_WARN_IF(!JS_SetProperty(aCx, obj, propName.BeginReading(), val))) {
+      return false;
+    }`
+    : `\
+    JS::Rooted<JS::PropertyKey> prop(aCx, JS::PropertyKey::Int(entry.mKey));
     if (NS_WARN_IF(!JS_SetPropertyById(aCx, obj, prop, val))) {
       return false;
-    }
+    }` }
   }
   aRv.setObjectOrNull(obj);
   return true;
@@ -2079,18 +2216,6 @@ class RequestHandlerMethod extends MethodDef implements IDef {
         }
         return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) const {
   RefPtr<${this.returnType.symbol}::Private> outPromise = new ${this.returnType.symbol}::Private(__func__);
-  nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
-  if (NS_WARN_IF(!inner)) {
-    outPromise->Reject(Failure(), __func__);
-    return outPromise;
-  }
-
-  mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
-  if (NS_WARN_IF(!wgc)) {
-    outPromise->Reject(Failure(), __func__);
-    return outPromise;
-  }
-
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
 
@@ -2196,10 +2321,12 @@ class AgentProxyGenerator {
         if (parsedType.type === "literal") {
             switch (typeof parsedType.value) {
                 case "number":
+                    console.warn("Unsupported NumberLiteralType; resorting to NumberType");
                     return this.defineNumber(parsedType);
                 case "string":
-                    return this.defineString(parsedType);
+                    return this.defineStringLiteral(parsedType);
                 case "boolean":
+                    console.warn("Unsupported BooleanLiteralType; resorting to BooleanType");
                     return this.defineBoolean(parsedType);
                 default:
                     throw new Error("Unrecognised type literal " + parsedType.value);
@@ -2232,10 +2359,12 @@ class AgentProxyGenerator {
         if (parsedType.type === "number") {
             return this.defineNumber(parsedType);
         }
-        if (
-            parsedType.type === "string" ||
-            parsedType.type === "pattern"
-        ) {
+        if (parsedType.type === "string") {
+            return this.defineString(parsedType);
+        }
+        if (parsedType.type === "pattern") {
+            console.warn("Unsupported PatternType; resorting to StringType:");
+            console.warn(parsedType);
             return this.defineString(parsedType);
         }
         if (parsedType.type === "record") {
@@ -2297,10 +2426,6 @@ class AgentProxyGenerator {
         if (
             parsedType.type !== "string"
             && parsedType.type !== "pattern"
-            && !(
-                parsedType.type === "literal"
-                && typeof parsedType.value === "string"
-            )
         ) {
             throw new Error(
                 "Wrong type passed to defineString"
@@ -2314,6 +2439,25 @@ class AgentProxyGenerator {
             return maybeType;
         }
         return strType;
+    }
+
+    defineStringLiteral(parsedType: ParsedType): IType {
+        if (
+            parsedType.type !== "literal"
+            || typeof parsedType.value !== "string"
+        ) {
+            throw new Error(
+                "Wrong type passed to defineStringLiteral"
+            );
+        }
+        const staticStrType = new StaticStringType(parsedType.value);
+        this.defs.push(staticStrType);
+        if (parsedType.optional) {
+            const maybeType = new MaybeType(staticStrType);
+            this.defs.push(maybeType);
+            return maybeType;
+        }
+        return staticStrType;
     }
 
     defineNumber(parsedType: ParsedType): IType {
@@ -2560,6 +2704,23 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
                                                          const W1& aReqCx,
                                                          const W2* aReqArgs,
                                                          ErrorResult& aRv) const {
+  JS::Rooted<JS::Value> reqArgsJS(aCx, JS::UndefinedValue());
+  if (aReqArgs) {
+    if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  }
+  return CallSendQuery(aCx, aGroup, aMethod, aReqCx, reqArgsJS, aRv);
+}
+
+template <typename W1>
+already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(JSContext *aCx,
+                                                         const nsAString & aGroup,
+                                                         const nsAString &aMethod,
+                                                         const W1& aReqCx,
+                                                         JS::Handle<JS::Value> aReqArgsJs,
+                                                         ErrorResult& aRv) const {
   MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
   MOZ_ASSERT(!aRv.Failed());
   if (mDisabled) {
@@ -2646,13 +2807,13 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-  if (aReqArgs) {
-    JS::Rooted<JS::Value> reqArgsJS(aCx);
-    if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+  if (!aReqArgsJs.isUndefined()) {
+    JS::Rooted<JS::Value> wrappedReqArgs(aCx, aReqArgsJs);
+    if (NS_WARN_IF(!JS_WrapValue(aCx, &wrappedReqArgs))) {
       aRv.Throw(NS_ERROR_FAILURE);
       return nullptr;
     }
-    if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", reqArgsJS))) {
+    if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", wrappedReqArgs))) {
       aRv.Throw(NS_ERROR_FAILURE);
       return nullptr;
     }
@@ -2677,6 +2838,131 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
   promise->MaybeResolve(promiseVal);
   return promise.forget();
 }
+
+// template <typename W1, typename W2>
+// already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(JSContext *aCx,
+//                                                          const nsAString & aGroup,
+//                                                          const nsAString &aMethod,
+//                                                          const W1& aReqCx,
+//                                                          const W2* aReqArgs,
+//                                                          ErrorResult& aRv) const {
+//   MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
+//   MOZ_ASSERT(!aRv.Failed());
+//   if (mDisabled) {
+//     aRv.ThrowInvalidStateError("Agent is disabled");
+//     return nullptr;
+//   }
+//   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
+//   if (NS_WARN_IF(!inner)) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+
+//   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
+//   if (NS_WARN_IF(!wgc)) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+
+//   RefPtr<mozilla::dom::JSWindowActorChild> actor =
+//     wgc->GetActor(aCx, "BerytusAgentTarget"_ns, aRv);
+//   if (NS_WARN_IF(aRv.Failed())) {
+//     return nullptr;
+//   }
+
+//   // MOZ_ASSERT(actor->GetWrapper());
+//   JS::Rooted<JSObject*> actorJsImpl(aCx, actor->GetWrapper());
+//   JSAutoRealm ar(aCx, actorJsImpl);
+
+//   JS::Rooted<JS::Value> sendQuery(aCx);
+//   if (NS_WARN_IF(!JS_GetProperty(aCx, actorJsImpl, "sendQuery", &sendQuery))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   if (NS_WARN_IF(!sendQuery.isObject())) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   if (NS_WARN_IF(!JS::IsCallable(&sendQuery.toObject()))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+
+//   JS::Rooted<JS::Value> msgName(aCx, JS::StringValue(JS_NewUCStringCopyZ(aCx, u"BerytusAgentTarget:invokeRequestHandler")));
+//   JS::Rooted<JS::Value> promiseVal(aCx);
+//   JS::RootedVector<JS::Value> args(aCx);
+//   if (NS_WARN_IF(!args.append(msgName))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+
+//   JS::Rooted<JSObject*> msgData(aCx, JS_NewPlainObject(aCx));
+//   if (NS_WARN_IF(!msgData)) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   JS::Rooted<JS::Value> managerId(aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, mManagerId.get(), mManagerId.Length())));
+//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "managerId", managerId))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   const char16_t* groupBuf;
+//   aGroup.GetData(&groupBuf);
+//   JS::Rooted<JS::Value> group(
+//     aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, groupBuf, aGroup.Length())));
+//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "group", group))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   const char16_t* methodBuf;
+//   aMethod.GetData(&methodBuf);
+//   JS::Rooted<JS::Value> method(
+//     aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, methodBuf, aMethod.Length())));
+//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "method", method))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+
+//   JS::Rooted<JS::Value> reqCxJS(aCx);
+//   if (NS_WARN_IF(!ToJSVal(aCx, aReqCx, &reqCxJS))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestContext", reqCxJS))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   if (aReqArgs) {
+//     JS::Rooted<JS::Value> reqArgsJS(aCx);
+//     if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
+//       aRv.Throw(NS_ERROR_FAILURE);
+//       return nullptr;
+//     }
+//     if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", reqArgsJS))) {
+//       aRv.Throw(NS_ERROR_FAILURE);
+//       return nullptr;
+//     }
+//   }
+//   if (NS_WARN_IF(!args.append(JS::ObjectValue(*msgData)))) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   if (!JS_CallFunctionValue(aCx, actorJsImpl, sendQuery, JS::HandleValueArray(args), //JS::HandleValueArray::empty(), //JS::HandleValueArray(aData),
+//                 &promiseVal)) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   if (NS_WARN_IF(!promiseVal.isObject())) {
+//     aRv.Throw(NS_ERROR_FAILURE);
+//     return nullptr;
+//   }
+//   RefPtr<dom::Promise> promise = dom::Promise::Create(mGlobal, aRv);
+//   if (NS_WARN_IF(aRv.Failed())) {
+//     return nullptr;
+//   }
+//   promise->MaybeResolve(promiseVal);
+//   return promise.forget();
+// }
 
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(d => d.implementation).join("\n")}
 
@@ -2714,6 +3000,16 @@ public:
   SafeVariant() = delete;
 };
 
+class StaticStringBase {
+public:
+  virtual const nsLiteralString& GetString() const = 0;
+  operator nsLiteralString const&() const {
+    return GetString();
+  }
+protected:
+  virtual ~StaticStringBase() {}
+};
+
 template <typename T>
 bool JSValIs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   static_assert(false, "No JSValIs specialisation was found!");
@@ -2743,12 +3039,6 @@ public:
   void Disable();
   bool IsDisabled() const;
 
-protected:
-  ~${AgentProxyGenerator.className}();
-  nsCOMPtr<nsIGlobalObject> mGlobal;
-  nsString mManagerId;
-  bool mDisabled;
-
   template <typename W1, typename W2>
   already_AddRefed<dom::Promise> CallSendQuery(JSContext *aCx,
                                                const nsAString & aGroup,
@@ -2756,6 +3046,19 @@ protected:
                                                const W1& aReqCx,
                                                const W2* aReqArgs,
                                                ErrorResult& aRv) const;
+  template <typename W1>
+  already_AddRefed<dom::Promise> CallSendQuery(JSContext *aCx,
+                                               const nsAString & aGroup,
+                                               const nsAString &aMethod,
+                                               const W1& aReqCx,
+                                               JS::Handle<JS::Value> aReqArgsJs,
+                                               ErrorResult& aRv) const;
+
+protected:
+  ~${AgentProxyGenerator.className}();
+  nsCOMPtr<nsIGlobalObject> mGlobal;
+  nsString mManagerId;
+  bool mDisabled;
 public:
 ${this.defs.filter(d => d instanceof MethodDef).map(def => def.definition).join("\n").replace(/^(.*)$/gm, "  $1")}
 

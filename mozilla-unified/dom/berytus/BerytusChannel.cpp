@@ -210,6 +210,10 @@ already_AddRefed<Promise> BerytusChannel::Create(
     return nullptr;
   }
 
+  // NOTE(berytus): Have I thought of manually copying aOptions.mConstraints
+  // 's members to a new locally constructed BerytusChannelConstraints?
+  // This could be moved into the lambda perhaps, but lambda needs to copy it...
+  // Is RootedDictionary<...> copyable?
   JS::PersistentRooted<JS::Value> constraintsJs(aCx);
   constraintsJs.setNull();
   if (aOptions.mConstraints.WasPassed()
@@ -280,9 +284,33 @@ already_AddRefed<Promise> BerytusChannel::Create(
 
 already_AddRefed<Promise> BerytusChannel::Close(ErrorResult& aRv)
 {
-  MOZ_ASSERT(false, "BerytusChannel::Close() not impld");
-  aRv.Throw(NS_ERROR_FAILURE);
-  return nullptr;
+  if (!mActive) {
+    aRv.ThrowInvalidStateError("Channel already closed.");
+    return nullptr;
+  }
+  MOZ_RELEASE_ASSERT(!mAgent->IsDisabled());
+  berytus::RequestContext reqCtx;
+  nsresult rv = berytus::Utils_RequestContext(mGlobal, this, reqCtx);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.Throw(rv);
+    return nullptr;
+  }
+  RefPtr<Promise> outPromise = Promise::Create(mGlobal, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  RefPtr<berytus::ChannelCloseChannelResult> prom =
+    mAgent->Channel_CloseChannel(reqCtx);
+  prom->Then(
+    GetCurrentSerialEventTarget(), __func__,
+    [outPromise, this](void* aIgnore) {
+      mActive = false;
+      mAgent->Disable();
+      outPromise->MaybeResolveWithUndefined();
+    }, [outPromise](const berytus::Failure& aRs) {
+      outPromise->MaybeReject(aRs.ToErrorResult());
+    });
+  return outPromise.forget();
 }
 
 already_AddRefed<Promise> BerytusChannel::Login(JSContext* aCx, const BerytusOnboardingOptions& aOptions, ErrorResult& aRv) {

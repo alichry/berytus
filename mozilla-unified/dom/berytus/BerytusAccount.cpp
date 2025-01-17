@@ -85,6 +85,10 @@ already_AddRefed<Promise> BerytusAccount::AddFields(
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
+  if (!Active()) {
+    aRv.ThrowInvalidStateError("Operation is closed; can no longer send secret manager requests");
+    return nullptr;
+  }
   AddFieldsSequential(aCx, nsTArray<RefPtr<BerytusField>>(aFields.Elements(), aFields.Length()))
     ->Then(GetCurrentSerialEventTarget(), __func__,
       [this, aCx, aFields, outPromise](berytus::AccountCreationAddFieldResult::AllPromiseType::ResolveValueType&& aArray) {
@@ -199,6 +203,10 @@ already_AddRefed<Promise> BerytusAccount::RejectAndReviseFields(
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
+  if (!Active()) {
+    aRv.ThrowInvalidStateError("Operation is closed; can no longer send secret manager requests");
+    return nullptr;
+  }
   BerytusChannel* channel = Channel();
   if (NS_WARN_IF(!channel->Active())) {
     aRv.ThrowInvalidStateError("Channel no longer active");
@@ -299,6 +307,10 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
+  if (!Active()) {
+    aRv.ThrowInvalidStateError("Operation is closed; can no longer send secret manager requests");
+    return nullptr;
+  }
   BerytusChannel* channel = Channel();
   if (NS_WARN_IF(!channel->Active())) {
     aRv.ThrowInvalidStateError("Channel no longer active");
@@ -331,7 +343,7 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
         // aAttributes cannot be copied since BerytusUserAttributeDefinition
         // cannot be copied. We used args instead as a workaround.
         for (const auto& attrDef : args.mUserAttributes) {
-          nsString id(attrDef.mId);
+          nsString id(attrDef.mId.AsString());
           RefPtr<BerytusUserAttribute> attr = UserAttributeMap()->GetAttribute(id);
           BerytusUserAttribute::SourceValueType val;
           res = berytus::utils::FromProxy::BerytusUserAttributeValue(GetParentObject(), attrDef.mValue, val);
@@ -392,7 +404,6 @@ already_AddRefed<Promise> BerytusAccount::AddFieldCategory(
   return nullptr;
 }
 
-
 RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccount::PopulateUserAttributeMap(JSContext* aCx) {
   nsresult rv;
 
@@ -420,7 +431,7 @@ RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccount::PopulateUserAt
         RefPtr<BerytusUserAttribute> newAttr = BerytusUserAttribute::Create(
           aCx,
           GetParentObject(),
-          attr.mId,
+          attr.mId.AsString(),
           attr.mMimeType.isSome() ? attr.mMimeType.ref() : nsString(),
           attr.mInfo.isSome() ? attr.mInfo.ref() : nsString(),
           value,

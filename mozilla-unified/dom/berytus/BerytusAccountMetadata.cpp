@@ -21,6 +21,16 @@ BerytusAccountMetadata::UpdateMetadata(
   const nsAString& aChangePassUrl,
   ErrorResult& aRv
 ) {
+  if (!Active()) {
+    aRv.ThrowInvalidStateError("Operation is closed; can no longer send secret manager requests");
+    return nullptr;
+  }
+  if (NS_WARN_IF(!Channel()->Active())) {
+    aRv.ThrowInvalidStateError("Channel no longer active");
+    return nullptr;
+  }
+  const berytus::AgentProxy& agent = Channel()->Agent();
+  MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation ctx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(
       GetParentObject(), Channel(), Operation(), ctx);
@@ -41,10 +51,6 @@ BerytusAccountMetadata::UpdateMetadata(
       nsString(aChangePassUrl)
     )
   );
-  const berytus::AgentProxy& agent = Channel()->Agent();
-  if (NS_WARN_IF(agent.IsDisabled())) {
-    return nullptr;
-  }
   return agent.Login_UpdateMetadata(ctx, args)
     ->Then(
       GetCurrentSerialEventTarget(), __func__,
@@ -126,6 +132,46 @@ already_AddRefed<Promise> BerytusAccountMetadata::SetStatus(
 already_AddRefed<Promise> BerytusAccountMetadata::SetChangePasswordUrl(
     const nsAString& aUrl, ErrorResult& aRv) {
   return UpdateMetadataPromise(mVersion, mStatus, mCategory, aUrl, aRv);
+}
+
+RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccountMetadata::PopulateMetadata() {
+  using MozPromiseType = MozPromise<void*, berytus::Failure, true>;
+  if (NS_WARN_IF(!Active())) {
+    return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
+  }
+  if (NS_WARN_IF(!Channel()->Active())) {
+    return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
+  }
+  const berytus::AgentProxy& agent = Channel()->Agent();
+  MOZ_ASSERT(!agent.IsDisabled());
+  berytus::RequestContextWithOperation ctx;
+  nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(
+      GetParentObject(), Channel(), Operation(), ctx);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return MozPromiseType::CreateAndReject(berytus::Failure(rv), __func__);
+  }
+  return agent.Login_GetRecordMetadata(ctx)
+    ->Then(GetCurrentSerialEventTarget(), __func__,
+           [this](const berytus::RecordMetadata& aMetadata) -> RefPtr<MozPromiseType> {
+            mCategory.Assign(aMetadata.mCategory);
+            if (NS_WARN_IF(aMetadata.mStatus.mVal > static_cast<uint8_t>(MaxContiguousEnumValue<dom::BerytusAccountStatus>::value))) {
+              return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
+            }
+            mStatus = static_cast<BerytusAccountStatus>(aMetadata.mStatus.mVal);
+            if (NS_WARN_IF(aMetadata.mVersion < 0)) {
+              return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
+            }
+            if (NS_WARN_IF(aMetadata.mVersion != std::floor(aMetadata.mVersion))) {
+              return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
+            }
+            mVersion = static_cast<uint8_t>(aMetadata.mVersion);
+            mChangePassUrl.Assign(aMetadata.mChangePassUrl);
+            void* d = nullptr;
+            return MozPromiseType::CreateAndResolve(d, __func__);
+           },
+           [](berytus::Failure&& aFr) -> RefPtr<MozPromiseType> {
+            return MozPromiseType::CreateAndReject(std::move(aFr), __func__);
+           });
 }
 
 }  // namespace mozilla::dom

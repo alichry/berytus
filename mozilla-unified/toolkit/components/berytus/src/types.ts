@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { BerytusFieldUnion, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusFieldType } from "./generated/berytus.web";
+import { BerytusChallengeAbortionCode, BerytusChallengeMessageInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusFieldType } from "./generated/berytus.web";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -85,12 +85,16 @@ export interface OperationMetadata {
 export interface FieldInfo {
     id: string;
     type: EBerytusFieldType;
+    // NOTE(berytus): ValidatedRequestHandler does not
+    // (yet) check if the options is logically conformant.
+    options: BerytusFieldOptionsUnion;
 }
 
 export interface LoginOperationMetadata extends OperationMetadata {
     intent: ELoginUserIntent;
     requestedUserAttributes: RequestedUserAttributes;
-    fields: Array<FieldInfo>;
+    fields: Record<string, FieldInfo>;
+    challenges: Record<string, BerytusChallengeMessageInfoUnion>;
 }
 
 // TODO(berytus): Addd LoginOperation : *Metadata which includes state
@@ -243,7 +247,7 @@ enum EMetadataProperty {
     ChangePassUrl = "ChangePassUrl"
 };
 
-enum EMetadataStatus {
+export enum EMetadataStatus {
     Pending = "Pending",
     Created = "Created",
     Retired = "Retired",
@@ -294,19 +298,15 @@ export type RejectFieldValueArgs = {
     optionalNewValue?: BerytusFieldValueUnion;
 }
 export type ApproveChallengeRequestArgs = {
-    challenge: ChallengeMetadata,
+    challenge: BerytusChallengeMessageInfoUnion;
 }
 export type AbortChallengeArgs = {
-    challenge: ChallengeMetadata,
-    reason: ChallengeAbortionReason
+    challenge: BerytusChallengeMessageInfoUnion;
+    reason: BerytusChallengeAbortionCode
 }
 export type CloseChallengeArgs = {
-    challenge: ChallengeMetadata,
+    challenge: BerytusChallengeMessageInfoUnion;
 }
-// export type RespondToChallengeMessageArgs = {
-//     challenge: ChallengeMetadata,
-//     challengeMessage: ChallengeMessage
-// }
 export type RespondToChallengeMessageArgs = BerytusSendMessageUnion;
 export type { BerytusSendMessageUnion };
 export type RespondToChallengeMessageResult = BerytusReceiveMessageUnion;
@@ -391,7 +391,7 @@ export interface RequestHandler {
             args: CloseChallengeArgs,
         ): void;
         respondToChallengeMessage(
-            context: RequestContextWithOperation,
+            context: RequestContextWithLoginOperation,
             args: RespondToChallengeMessageArgs
         ): RespondToChallengeMessageResult;
     }

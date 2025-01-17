@@ -47,7 +47,7 @@ dictionary BerytusIdentityFieldOptions : BerytusBaseFieldOptions {
  * PhoneNumber
  * /^Other:[A-Za-z][A-Za-z0-9\-_]+$/
  */
-typedef ByteString BerytusForeignIdentityKind;
+typedef DOMString BerytusForeignIdentityKind;
 
 /* FOREIGN IDENTITY borrows `private` from IDENTITY */
 [GenerateConversionToJS]

@@ -26,7 +26,8 @@ protected:
   virtual BerytusLoginOperation* Operation() = 0;
   virtual BerytusFieldMap* FieldMap() const = 0;
   virtual BerytusUserAttributeMap* UserAttributeMap() const = 0;
-
+  virtual bool Active() const = 0;
+  
   RefPtr<MozPromise<void*, berytus::Failure, true>> PopulateUserAttributeMap(JSContext* aCx);
 
   RefPtr<berytus::AccountCreationAddFieldResult::AllPromiseType> AddFieldsSequential(JSContext* aCx, nsTArray<RefPtr<BerytusField>>&& aFields, nsTArray<RefPtr<berytus::AccountCreationAddFieldResult>>&& aPromises = nsTArray<RefPtr<berytus::AccountCreationAddFieldResult>>(), const size_t& aIndex = 0);
