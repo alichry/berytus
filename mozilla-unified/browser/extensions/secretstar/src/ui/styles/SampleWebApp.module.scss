@@ -1,0 +1,18 @@
+.waveBgSvg {
+    // background-image: url('./images/wave-bg-pdark.svg');
+    background-image: url('./images/wave-bg-blue.svg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow: auto;
+}
+
+.webAppLogo {
+    width: 128px;
+    height: 128px;
+    margin: 0 auto;
+}

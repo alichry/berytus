@@ -1,0 +1,75 @@
+@import './vars.scss';
+@import './text.scss';
+
+$lineHeight: 27px;
+$gap: 1.5rem;
+$sideMargin: 2rem;
+
+.container {
+    margin-top: 24px;
+}
+
+.middleText {
+    @extend .sectionText;
+    align-items: center;
+    text-align: center;
+}
+
+.keyValueTable {
+    margin-left: $sideMargin;
+    margin-right: $sideMargin;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.keyValueTable div {
+    display: flex;
+    flex-direction: row;
+    gap: $gap;
+}
+
+.valueText {
+    font-family: $inter;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: $lineHeight;
+
+    color: #FFF3F3;
+}
+
+.leftColumnText {
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: $lineHeight;
+    /* identical to box height */
+
+    display: flex;
+    align-items: center;
+    text-align: center;
+
+    color: #FFF3F3;
+}
+
+.arrow {
+    // height: 8px;
+    // width: 8px;
+    //background: #FFF3F3;
+    border-top: 8px solid #FFF3F3;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+
+    margin-top: $lineHeight;
+    margin-left: calc(-1 * #{$gap} + 20px); // reset gap and add 20px
+    cursor: pointer;
+}
+.arrowClicked {
+    @extend .arrow;
+    transform: rotate(-180deg);
+
+    margin-top: 0px;
+    margin-bottom: $lineHeight;
+}

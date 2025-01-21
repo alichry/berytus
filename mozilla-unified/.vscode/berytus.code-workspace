@@ -24,12 +24,11 @@
         {
             "name": "webidl",
             "path": "../dom/webidl",
-
         },
-        // {
-        //     "name": "secretstar",
-        //     "path": "../secretstar"
-        // },
+        {
+            "name": "secretstar",
+            "path": "../browser/extensions/secretstar"
+        },
         // {
         //     "name": "berytus-web",
         //     "path": "../berytus-web"

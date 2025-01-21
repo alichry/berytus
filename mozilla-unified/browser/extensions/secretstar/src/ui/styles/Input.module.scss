@@ -1,0 +1,23 @@
+$inputBorderRadius: 3px;
+
+.input {
+    display: block;
+    width: 100%;
+    height: 2rem;
+    margin: 20px 0;
+    color: #fff;
+    padding: 8px;
+    border-radius: $inputBorderRadius;
+    font-size: 14px;
+    font-family: Inter;
+    font-weight: 450;
+    cursor: text;
+
+    background-color: #383838;
+    border: 0.2px solid #fff;
+}
+
+.input:focus {
+    // we only reset the outline. better than all: unset
+    outline: none;
+}

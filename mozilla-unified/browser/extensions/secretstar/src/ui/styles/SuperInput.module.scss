@@ -1,0 +1,141 @@
+@import './SharedInputVars.scss'; // $invalidInput, $errorBorderColor
+
+$bgColor: #383838;
+$border: 0.5px solid $bgColor; // we set the border color to bg color since it looks border if there is no white border :)
+$borderRadius: 4px;
+$preIconRightBorderSep: 0.5px solid #fff;
+
+$errorBorder: 1px solid #{$errorBorderColor};
+
+.inputContainer {
+    display: flex;
+    margin: 20px 0;
+    color: #fff;
+    border-radius: $borderRadius;
+    font-size: 14px;
+    font-family: Inter;
+    font-weight: 450;
+
+    background-color: $bgColor;
+    // instead of applying the border on the container
+    // we apply it on .input, .preIcon, and .afterContainer
+    // this is necessary when we want to control
+    // the border depending on validity of the input.
+    //border: $border;
+}
+
+.input {
+    width: 100%;
+    min-height: 2rem;
+    background-color: transparent;
+    padding: 8px;
+    cursor: text;
+}
+
+.input:focus {
+    outline: none;
+}
+
+.inputContainer:focus-within {
+    //outline: 1px solid blue
+}
+
+.preIcon {
+    display: flex;
+    flex-direction: column;
+    padding-left: 0.5rem;
+    min-width: 1rem;
+    justify-content: center;
+    padding-right: 0.5rem;
+    border-right: $preIconRightBorderSep;
+}
+
+.afterContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 0.5rem;
+}
+
+.afterContainer:empty {
+    // reset padding when empty.
+    padding-right: 0rem;
+}
+
+/* Begin sadness */
+.input {
+    border-top: $border;
+    border-bottom: $border;
+    border-left: $border;
+    border-top-left-radius: $borderRadius;
+    border-bottom-left-radius: $borderRadius;
+}
+.preIcon {
+    // set the border's color & size on all sides
+    // except the right side.
+    border-left: $border;
+    border-top: $border;
+    border-bottom: $border;
+
+    // set the border's radius on top left and bot left.
+    border-top-left-radius: $borderRadius;
+    border-bottom-left-radius: $borderRadius;
+}
+.preIcon ~ .input {
+    // reset the input's left border and radius
+    // when preIcon is visible.
+    border-top-left-radius: initial;
+    border-bottom-left-radius: initial;
+    border-left: initial;
+}
+.afterContainer {
+    border-top-right-radius: $borderRadius;
+    border-bottom-right-radius: $borderRadius;
+    border-top: $border;
+    border-bottom: $border;
+    border-right: $border;
+}
+
+#{$invalidInput} {
+    border-color: $errorBorderColor;
+}
+
+.preIcon ~ #{$invalidInput} {
+    border-color: $errorBorderColor;
+}
+#{$invalidInput} ~ .afterContainer {
+    border-color: $errorBorderColor;
+}
+#{$invalidInput} ~ .preIcon {
+    border-color: $errorBorderColor;
+}
+// .inputContainer:has(> .input:invalid) > .preIcon {
+//     // works in all browsers except firefox, unless
+//     // layout.css.has-selector.enabled is enabled
+//     // in about:config :(((((((((((((((((((((
+//     border-color: $errorBorderColor;
+// }
+
+// Since the above does not work...
+/* Begin super sadness */
+.inputContainer {
+    position: relative;
+}
+.preIcon {
+    position: absolute;
+    height: 100%;
+    left: 0;
+    float: left;
+    margin-right: 9px;
+    font-size: 13px;
+}
+// Last thing. This has to be done in JS.
+// When the icon is shown, do some left padding.
+// to guarantee the proper positioning,
+// change inputIcon from ReactNode to FontAwesome
+// IconProp.
+.inputPreIconShown {
+    padding-left: 2.3rem;
+}
+/* End */
+/* End sadness */

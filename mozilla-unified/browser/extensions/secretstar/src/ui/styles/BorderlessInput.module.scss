@@ -1,0 +1,65 @@
+@import './SharedInputVars.scss'; // $invalidInput
+
+.noBg {
+    background-color: transparent !important;
+}
+
+.inputContainer {
+    @extend .noBg;
+    margin: 0 !important;
+    color: #343434 !important;
+    padding-left: 5px !important;
+}
+
+.textArea {
+    @extend .inputContainer;
+    border: none !important;
+}
+
+.textArea_light {
+    // gray-50
+    --tw-text-opacity: 1 !important;
+    color: rgb(249 250 251 / var(--tw-text-opacity)) !important;
+}
+
+.textArea_gray {
+    color: #343434 !important;
+}
+.textArea_lightgray {
+    // gray-300
+    --tw-text-opacity: 1 !important;
+    color: rgb(209 213 219 / var(--tw-text-opacity)) !important;
+}
+
+.input {
+    padding: 0px !important;
+    min-height: initial !important;
+    border: none !important;
+}
+
+.preIcon {
+    border: none !important;
+}
+
+.afterContainer {
+    border: none !important;
+}
+
+#{$invalidInputPlaceholderShown} {
+    // BRTTODO: replace with @apply .animate-pulse
+    // see https://stackoverflow.com/questions/65532964/how-to-use-apply-directive-of-tailwind-in-any-scss-file-instead-of-only-using
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+    @keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .5;
+    }
+    }
+}
+
+#{$invalidInputPlaceholder} {
+    color: #ef4444 !important;
+    font-style: italic;
+}

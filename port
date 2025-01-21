@@ -6,7 +6,8 @@ PROJ="$(dirname "$(realpath "$0")")"
 BERYTUS_SUBDIRS="toolkit/components/berytus
 dom/berytus
 testing/web-platform/tests/berytus
-testing/web-platform/meta/berytus"
+testing/web-platform/meta/berytus
+browser/extensions/secretstar"
 # Note: make sure there are no unescaped tokens (e.g. whitespace)
 # in the paths specified in BERYTUS_FILES. This is to allow
 # glob patterns within the paths; see cpAllBerytusFiles()
@@ -32,7 +33,8 @@ toolkit/components/extensions/ext-toolkit.json
 toolkit/components/extensions/child/ext-toolkit.js
 toolkit/components/extensions/jar.mn
 toolkit/components/extensions/schemas/jar.mn
-toolkit/components/extensions/test/xpcshell/xpcshell.toml"
+toolkit/components/extensions/test/xpcshell/xpcshell.toml
+browser/extensions/moz.build"
 IGNORE_DIRS="node_modules/"
 
 usage="Berytus source code (ex|im)port usage:

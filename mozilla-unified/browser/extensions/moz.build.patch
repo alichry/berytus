@@ -1,0 +1,10 @@
+--- browser/extensions/moz.build.orig	2025-01-21 11:00:26
++++ browser/extensions/moz.build	2025-01-21 11:00:38
+@@ -7,6 +7,7 @@
+ DIRS += [
+     "formautofill",
+     "screenshots",
++    "secretstar",
+     "webcompat",
+     "report-site-issue",
+     "pictureinpicture",

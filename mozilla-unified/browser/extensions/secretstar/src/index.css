@@ -1,0 +1,108 @@
+html {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+
+@font-face {
+  font-family: 'Iosevka Nerd Font';
+  src: local('IosevkaNerdFont-Regular'), url(./ui/fonts/IosevkaNerdFont-Regular.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 400;
+  src: local('MPLUS1p-Regular'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-Regular.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 100;
+  src: local('MPLUS1p-Thin'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-Thin.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 300;
+  src: local('MPLUS1p-Light'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-Light.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 500;
+  src: local('MPLUS1p-Medium'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-Medium.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 700;
+  src: local('MPLUS1p-Bold'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-Bold.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 800;
+  src: local('MPLUS1p-ExtraBold'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-ExtraBold.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'M PLUS 1p';
+  font-weight: 900;
+  src: local('MPLUS1p-Black'), url(./ui/fonts/M_PLUS_1p/MPLUS1p-Black.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  src: local('Inter-Regular'), url(./ui/fonts/Inter/static/Inter-Regular.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 100;
+  src: local('Inter-Thin'), url(./ui/fonts/Inter/static/Inter-Thin.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 300;
+  src: local('Inter-Light'), url(./ui/fonts/Inter/static/Inter-Light.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500;
+  src: local('Inter-Medium'), url(./ui/fonts/Inter/static/Inter-Medium.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 700;
+  src: local('Inter-Bold'), url(./ui/fonts/Inter/static/Inter-Bold.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 800;
+  src: local('Inter-ExtraBold'), url(./ui/fonts/Inter/static/Inter-ExtraBold.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 900;
+  src: local('Inter-Black'), url(./ui/fonts/Inter/static/Inter-Black.ttf) format('truetype');
+}

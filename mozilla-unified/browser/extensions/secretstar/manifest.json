@@ -1,0 +1,35 @@
+{
+
+    "manifest_version": 2,
+    "name": "Secret*",
+    "version": "1.0",
+
+    "description": "Secret* (SecretStar)",
+
+    "icons": {
+      "16": "public/logo16.png",
+      "32": "public/logo32.png",
+      "48": "public/logo48.png",
+      "64": "public/logo64.png"
+    },
+
+    "background": {
+      "page": "build.worker/index.html",
+      "persistent": false
+    },
+
+    "permissions": ["berytus", "storage", "activeTab", "tabs", "alarms", "storage", "browserSettings"],
+
+    "browser_action": {
+      "default_icon": "public/logo48.png",
+      "default_title": "Secret*",
+      "default_popup": "build/index.html#/popup"
+    },
+
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "secretstsar@alichry"
+      }
+    }
+  
+  }

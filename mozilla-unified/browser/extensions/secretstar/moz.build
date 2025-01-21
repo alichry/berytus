@@ -1,0 +1,96 @@
+# -*- Mode: python; indent-tabs-mode: nil; tab-width: 40 -*-
+# vim: set filetype=python:
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+DEFINES["MOZ_APP_VERSION"] = CONFIG["MOZ_APP_VERSION"]
+DEFINES["MOZ_APP_MAXVERSION"] = CONFIG["MOZ_APP_MAXVERSION"]
+
+
+JAR_MANIFESTS += ["jar.mn"]
+
+with Files("**"):
+    BUG_COMPONENT = ("BuiltInAddons", "Secret*")
+
+FINAL_TARGET_FILES.features["secretstsar@alichry"] += [
+    "manifest.json"
+]
+
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build"] += [
+	"build/asset-manifest.json",
+	"build/favicon.ico",
+	"build/index.html",
+	"build/logo16.png",
+	"build/logo192.png",
+	"build/logo32.png",
+	"build/logo48.png",
+	"build/logo512.png",
+	"build/logo64.png",
+	"build/manifest.json",
+	"build/robots.txt",
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build/static"] += [
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build/static/css"] += [
+	"build/static/css/main.css",
+	"build/static/css/main.css.map",
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build/static/js"] += [
+	"build/static/js/main.js",
+	"build/static/js/main.js.LICENSE.txt",
+	"build/static/js/main.js.map",
+	"build/static/js/web-vitals.chunk.js",
+	"build/static/js/web-vitals.chunk.js.map",
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build/static/media"] += [
+	"build/static/media/authRealmSpinner.f961bb349de205aa9eb3.gif",
+	"build/static/media/Inter-Black.83d81b169bedf85385f2.ttf",
+	"build/static/media/Inter-Bold.0eaf807b1cf0eceabe0f.ttf",
+	"build/static/media/Inter-ExtraBold.4164cfba15dbca5f37aa.ttf",
+	"build/static/media/Inter-Light.02850f28027788580733.ttf",
+	"build/static/media/Inter-Medium.3f7acfe50aad7ad68548.ttf",
+	"build/static/media/Inter-Regular.9ca9ba81e9dcaa12b3a1.ttf",
+	"build/static/media/Inter-Thin.97a5cc3ca8d3b35a4239.ttf",
+	"build/static/media/IosevkaNerdFont-Regular.1812fab6f0b50a0fe999.ttf",
+	"build/static/media/MPLUS1p-Black.ccafc770874c2c3eea84.ttf",
+	"build/static/media/MPLUS1p-Bold.be4e37ac3cdef7da7c56.ttf",
+	"build/static/media/MPLUS1p-ExtraBold.884a6c76e23ba824eab4.ttf",
+	"build/static/media/MPLUS1p-Light.560f69b25deba02f05b2.ttf",
+	"build/static/media/MPLUS1p-Medium.2d50fad9d659b6b0438d.ttf",
+	"build/static/media/MPLUS1p-Regular.d7322c05ec935f9da53f.ttf",
+	"build/static/media/MPLUS1p-Thin.44b1fef53ab3fb532f42.ttf",
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build.worker"] += [
+	"build.worker/asset-manifest.json",
+	"build.worker/favicon.ico",
+	"build.worker/index.html",
+	"build.worker/logo16.png",
+	"build.worker/logo192.png",
+	"build.worker/logo32.png",
+	"build.worker/logo48.png",
+	"build.worker/logo512.png",
+	"build.worker/logo64.png",
+	"build.worker/manifest.json",
+	"build.worker/robots.txt",
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build.worker/static"] += [
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["build.worker/static/js"] += [
+	"build.worker/static/js/dexie-lib.js",
+	"build.worker/static/js/dexie-lib.js.map",
+	"build.worker/static/js/main.js",
+	"build.worker/static/js/main.js.map",
+]
+FINAL_TARGET_FILES.features["secretstsar@alichry"]["public"] += [
+	"public/favicon.ico",
+	"public/index.html",
+	"public/logo16.png",
+	"public/logo192.png",
+	"public/logo32.png",
+	"public/logo48.png",
+	"public/logo512.png",
+	"public/logo64.png",
+	"public/manifest.json",
+	"public/robots.txt",
+]

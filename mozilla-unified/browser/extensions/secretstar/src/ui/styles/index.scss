@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import './fonts.css';
+
+html, body {
+    width: 100%;
+    height: 100%;
+    /* our base font size is designed for small screens,
+     * for bigger screens, we can increase font size.
+     * Currently, Firefox sets font-size to 13px for the
+     * page action popup, but 16px for the
+     */
+    font-size: 100%;
+    background-color: #2B2A33;
+    font-family: 'M PLUS 1p';
+    min-width: 300px;
+    min-height: 320px;
+}
+
+html {
+    padding-bottom: 1rem; // some bottom margin for the last element
+}
+
+#root {
+    height: 100%;
+    //width: 100%;
+    // when running in popup mode, the maximum width
+    // mozilla sets in 800x600. It is better to fix a specific
+    // width.
+
+    max-width: 350px;
+}
+
+p {
+    /* default color */
+    color: #FFF3F3;
+}
+
+.arrow-after {
+    cursor: pointer;
+    white-space: nowrap; // arrow-after is assumed to be placed immediately next to the text. the text must not wrap.
+}
+
+.arrow-after::after {
+    border-top: 8px solid #FFF3F3;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    position: relative;
+    top: 58%;
+    left: 1rem;
+    content: '';
+    cursor: pointer;
+}
+
+.arrow-after-clicked::after {
+    @extend .arrow-after;
+    /* flip top and bottom */
+    border-top: initial;
+    border-bottom: 8px solid #FFF3F3;
+    bottom: 52%;
+    top: initial;
+}
+
+.codeContainer {
+    background-color: white;
+    max-height: 25rem;
+    border-radius: 10px;
+    overflow: auto;
+    padding-left: 8px;
+}
