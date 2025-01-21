@@ -328,130 +328,6 @@ bool ToJSVal<double>(JSContext* aCx, const double& aValue, JS::MutableHandle<JS:
   return true;
 }
 template<>
-bool JSValIs<DocumentMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-template<>
-bool FromJSVal<DocumentMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mId)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-template<>
-bool ToJSVal<DocumentMetadata>(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mId, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-template<>
-bool JSValIs<PreliminaryRequestContext>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-template<>
-bool FromJSVal<PreliminaryRequestContext>(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-template<>
-bool ToJSVal<PreliminaryRequestContext>(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-template<>
 bool JSValIs<nsString>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   aRv = aValue.isString();
   return true;
@@ -483,68 +359,6 @@ bool ToJSVal<nsString>(JSContext* aCx, const nsString& aValue, JS::MutableHandle
   aRv.setString(rStr);
   return true;
 }
-template<>
-bool JSValIs<CryptoActor>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ed25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-template<>
-bool FromJSVal<CryptoActor>(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ed25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mEd25519Key)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-template<>
-bool ToJSVal<CryptoActor>(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mEd25519Key, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "ed25519Key", memberVal0))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
 template<>
 bool JSValIs<UriParams>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
@@ -720,6 +534,222 @@ bool ToJSVal<UriParams>(JSContext* aCx, const UriParams& aValue, JS::MutableHand
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "path", memberVal4))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<DocumentMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "uri", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<UriParams>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<DocumentMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, DocumentMetadata& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "id", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mId)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "uri", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<UriParams>(aCx, propVal, aRv.mUri)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<DocumentMetadata>(JSContext* aCx, const DocumentMetadata& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mId, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "id", memberVal0))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal1(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<UriParams>(aCx, aValue.mUri, &memberVal1)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "uri", memberVal1))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<PreliminaryRequestContext>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<PreliminaryRequestContext>(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<PreliminaryRequestContext>(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
+bool JSValIs<CryptoActor>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ed25519Key", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<CryptoActor>(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "ed25519Key", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mEd25519Key)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<CryptoActor>(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mEd25519Key, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "ed25519Key", memberVal0))) {
     return false;
   }
   
@@ -7848,6 +7878,128 @@ bool ToJSVal<ApproveTransitionToAuthOpArgs>(JSContext* aCx, const ApproveTransit
 
 
 template<>
+bool JSValIs<RequestContextWithLoginOperation>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<LoginOperationMetadata>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<ChannelMetadata>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<RequestContextWithLoginOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithLoginOperation& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<LoginOperationMetadata>(aCx, propVal, aRv.mOperation)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<ChannelMetadata>(aCx, propVal, aRv.mChannel)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<RequestContextWithLoginOperation>(JSContext* aCx, const RequestContextWithLoginOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<LoginOperationMetadata>(aCx, aValue.mOperation, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal1(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<ChannelMetadata>(aCx, aValue.mChannel, &memberVal1)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal1))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal2(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal2)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal2))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+template<>
 bool JSValIs<ArrayBufferView>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
@@ -8753,128 +8905,6 @@ bool ToJSVal<UpdateUserAttributesArgs>(JSContext* aCx, const UpdateUserAttribute
   return true;
 }
 
-
-template<>
-bool JSValIs<RequestContextWithLoginOperation>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<LoginOperationMetadata>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<ChannelMetadata>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<DocumentMetadata>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-template<>
-bool FromJSVal<RequestContextWithLoginOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithLoginOperation& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "operation", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<LoginOperationMetadata>(aCx, propVal, aRv.mOperation)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<ChannelMetadata>(aCx, propVal, aRv.mChannel)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "document", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<DocumentMetadata>(aCx, propVal, aRv.mDocument)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-template<>
-bool ToJSVal<RequestContextWithLoginOperation>(JSContext* aCx, const RequestContextWithLoginOperation& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<LoginOperationMetadata>(aCx, aValue.mOperation, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "operation", memberVal0))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal1(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ChannelMetadata>(aCx, aValue.mChannel, &memberVal1)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal1))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal2(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<DocumentMetadata>(aCx, aValue.mDocument, &memberVal2)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "document", memberVal2))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
 
 template<>
 bool JSValIs<StaticString20>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -15379,15 +15409,15 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
   }
   return outPromise;
 }
-RefPtr<LoginCloseOpeationResult> AgentProxy::Login_CloseOpeation(RequestContextWithOperation& aContext) const {
-  RefPtr<LoginCloseOpeationResult::Private> outPromise = new LoginCloseOpeationResult::Private(__func__);
+RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContextWithOperation& aContext) const {
+  RefPtr<LoginCloseOperationResult::Private> outPromise = new LoginCloseOperationResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
 
   ErrorResult err;
   RefPtr<dom::Promise> prom = CallSendQuery(cx,
                                             u"login"_ns,
-                                            u"closeOpeation"_ns,
+                                            u"closeOperation"_ns,
                                             aContext,
                                             static_cast<PreliminaryRequestContext*>(nullptr),
                                             err);
@@ -15536,7 +15566,7 @@ RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreati
   }
   return outPromise;
 }
-RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithOperation& aContext) const {
+RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithLoginOperation& aContext) const {
   RefPtr<AccountCreationGetUserAttributesResult::Private> outPromise = new AccountCreationGetUserAttributesResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();

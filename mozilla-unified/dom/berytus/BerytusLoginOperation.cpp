@@ -75,7 +75,7 @@ already_AddRefed<Promise> BerytusLoginOperation::Close(ErrorResult& aRv) {
     aRv.ThrowInvalidStateError("Channel has been closed!");
     return nullptr;
   }
-  RefPtr<berytus::LoginCloseOpeationResult> res = mChannel->Agent().Login_CloseOpeation(ctx);
+  RefPtr<berytus::LoginCloseOperationResult> res = mChannel->Agent().Login_CloseOperation(ctx);
   res->Then(
     GetCurrentSerialEventTarget(), __func__,
     [outPromise]() {

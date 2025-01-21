@@ -407,8 +407,8 @@ already_AddRefed<Promise> BerytusAccount::AddFieldCategory(
 RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccount::PopulateUserAttributeMap(JSContext* aCx) {
   nsresult rv;
 
-  berytus::RequestContextWithOperation reqCtx;
-  rv = berytus::Utils_RequestContextWithOperationMetadata(GetParentObject(), Channel(), Operation(), reqCtx);
+  berytus::RequestContextWithLoginOperation reqCtx;
+  rv = berytus::Utils_RequestContextWithLoginOperationMetadata(GetParentObject(), Channel(), Operation(), this, reqCtx);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     RefPtr<MozPromise<void*, berytus::Failure, true>::Private> nextProm;
     nextProm->Reject(berytus::Failure(rv), __func__);

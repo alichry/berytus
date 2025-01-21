@@ -401,11 +401,14 @@ interface Berytus${chName}ChallengeInfo {
     parameters${paramsIntf ? `: ${paramsIntf.getName()}` : `: null`};
 }`
             );
+            const messageNameEnum = `EBerytus${chName}ChallengeMessageName`;
             const messagesMethods = intf.getMethods()
                 .filter(m => !m.getName().startsWith("abort"));
+            const messageNames: Array<string> = [];
             messagesMethods.forEach(m => {
                 const returnType = m.getReturnType();
                 const messageName = m.getName().charAt(0).toUpperCase() + m.getName().substring(1);
+                messageNames.push(messageName);
                 const returnTypeName = returnType.getSymbol()?.getName()
                 if (returnTypeName !== 'Promise') {
                     throw new Error(`Message method ${m.getName()} defined in ${chName} must have a return type of a 'Promise' type. Got ${returnTypeName}`);
@@ -425,7 +428,7 @@ interface BerytusChallenge${messageName}MessageRequest {
                     `\
 interface BerytusSend${messageName}Message extends BerytusChallenge${messageName}MessageRequest {
     challenge: Berytus${chName}ChallengeInfo;
-    name: ${JSON.stringify(messageName)};
+    name: ${messageNameEnum}.${messageName};
 }
 `
                 );
@@ -433,12 +436,15 @@ interface BerytusSend${messageName}Message extends BerytusChallenge${messageName
                 receiveMessageUnionMembers.push(innerReturnTypeName);
                 sendMessageArgsUnionMembers.push(`BerytusSend${messageName}Message`);
             });
-
+            newIntfs.push(`\
+export enum ${messageNameEnum} {
+    ${messageNames.map(s => `${s} = ${JSON.stringify(s)}`).join(",\n\t")}
+}`);
         });
     await writeFile(
         dtsFile,
         dts + "\n" + newIntfs.join("\n") + "\n" +
-        `export type BerytusChallengeMessageInfoUnion = ${messageInfoUnionMembers.join("\n\t| ")};` + "\n" +
+        `export type BerytusChallengeInfoUnion = ${messageInfoUnionMembers.join("\n\t| ")};` + "\n" +
         `export type BerytusSendMessageUnion = ${sendMessageArgsUnionMembers.join("\n\t| ")};` + "\n" +
         `export type BerytusReceiveMessageUnion = ${receiveMessageUnionMembers.join("\n\t| ")};` + "\n"
     );

@@ -40,7 +40,7 @@ echo "" >> "$dtsFile"
 
 "${SCRIPT_DIR}/gen-webidl-ts.ts"
 
-# sed -i '' -E 's/^(interface .*)$/export \1/g' "$dtsFile"
+sed -i '' -E 's/^(interface .*)$/export \1/g' "$dtsFile"
 # sed -i '' -E 's/^(type .*)$/export \1/g' "$dtsFile"
 # sed -i '' -E 's/^(enum .*)$/export \1/g' "$dtsFile"
 

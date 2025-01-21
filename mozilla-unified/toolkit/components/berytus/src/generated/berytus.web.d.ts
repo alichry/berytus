@@ -4,83 +4,83 @@ type KeyType = string;
 type KeyUsage = string;
 type NamedCurve = string;
 type BigInteger = Uint8Array;
-interface Algorithm {
+export interface Algorithm {
     name: string;
 }
-interface AesCbcParams extends Algorithm {
+export interface AesCbcParams extends Algorithm {
     iv: BufferSource;
 }
-interface AesCtrParams extends Algorithm {
+export interface AesCtrParams extends Algorithm {
     counter: BufferSource;
     length: number;
 }
-interface AesGcmParams extends Algorithm {
+export interface AesGcmParams extends Algorithm {
     iv: BufferSource;
     additionalData?: BufferSource;
     tagLength?: number;
 }
-interface HmacImportParams extends Algorithm {
+export interface HmacImportParams extends Algorithm {
     hash: AlgorithmIdentifier;
 }
-interface Pbkdf2Params extends Algorithm {
+export interface Pbkdf2Params extends Algorithm {
     salt: BufferSource;
     iterations: number;
     hash: AlgorithmIdentifier;
 }
-interface RsaHashedImportParams {
+export interface RsaHashedImportParams {
     hash: AlgorithmIdentifier;
 }
-interface AesKeyGenParams extends Algorithm {
+export interface AesKeyGenParams extends Algorithm {
     length: number;
 }
-interface HmacKeyGenParams extends Algorithm {
+export interface HmacKeyGenParams extends Algorithm {
     hash: AlgorithmIdentifier;
     length?: number;
 }
-interface RsaHashedKeyGenParams extends Algorithm {
+export interface RsaHashedKeyGenParams extends Algorithm {
     modulusLength: number;
     publicExponent: BigInteger;
     hash: AlgorithmIdentifier;
 }
-interface RsaOaepParams extends Algorithm {
+export interface RsaOaepParams extends Algorithm {
     label?: BufferSource;
 }
-interface RsaPssParams extends Algorithm {
+export interface RsaPssParams extends Algorithm {
     saltLength: number;
 }
-interface EcKeyGenParams extends Algorithm {
+export interface EcKeyGenParams extends Algorithm {
     namedCurve: NamedCurve;
 }
-interface AesDerivedKeyParams extends Algorithm {
+export interface AesDerivedKeyParams extends Algorithm {
     length: number;
 }
-interface HmacDerivedKeyParams extends HmacImportParams {
+export interface HmacDerivedKeyParams extends HmacImportParams {
     length?: number;
 }
-interface EcdhKeyDeriveParams extends Algorithm {
+export interface EcdhKeyDeriveParams extends Algorithm {
     public: CryptoKey;
 }
-interface DhImportKeyParams extends Algorithm {
+export interface DhImportKeyParams extends Algorithm {
     prime: BigInteger;
     generator: BigInteger;
 }
-interface EcdsaParams extends Algorithm {
+export interface EcdsaParams extends Algorithm {
     hash: AlgorithmIdentifier;
 }
-interface EcKeyImportParams extends Algorithm {
+export interface EcKeyImportParams extends Algorithm {
     namedCurve?: NamedCurve;
 }
-interface HkdfParams extends Algorithm {
+export interface HkdfParams extends Algorithm {
     hash: AlgorithmIdentifier;
     salt: BufferSource;
     info: BufferSource;
 }
-interface RsaOtherPrimesInfo {
+export interface RsaOtherPrimesInfo {
     r: string;
     d: string;
     t: string;
 }
-interface JsonWebKey {
+export interface JsonWebKey {
     kty: string;
     use?: string;
     key_ops?: Array<string>;
@@ -100,19 +100,19 @@ interface JsonWebKey {
     oth?: Array<RsaOtherPrimesInfo>;
     k?: string;
 }
-interface CryptoKey {
+export interface CryptoKey {
     readonly type: KeyType;
     readonly extractable: boolean;
     readonly algorithm: any;
     readonly usages: Array<KeyUsage>;
 }
-interface CryptoKeyPair {
+export interface CryptoKeyPair {
     publicKey: CryptoKey;
     privateKey: CryptoKey;
 }
 type KeyFormat = string;
 type AlgorithmIdentifier = any | string;
-interface SubtleCrypto {
+export interface SubtleCrypto {
 }
 type BerytusPlaintextStringSource = string;
 type BerytusPlaintextBufferSource = BufferSource;
@@ -121,17 +121,17 @@ type BerytusCiphertextSource = BerytusEncryptedPacket;
 type BerytusDataSource = BerytusPlaintextSource | BerytusCiphertextSource;
 type BerytusDataType = string | ArrayBuffer | BerytusEncryptedPacket;
 type BerytusEncryptionParams = AesGcmParams;
-interface AesGcmParamsJSON extends Algorithm {
+export interface AesGcmParamsJSON extends Algorithm {
     iv: Base64URLString;
     additionalData?: Base64URLString;
     tagLength?: number;
 }
 type BerytusEncryptionParamsJSON = AesGcmParamsJSON;
-interface BerytusEncryptedPacketJSON {
+export interface BerytusEncryptedPacketJSON {
     parameters: BerytusEncryptionParamsJSON;
     ciphertext: Base64URLString;
 }
-interface BerytusEncryptedPacket {
+export interface BerytusEncryptedPacket {
     readonly parameters: AesGcmParams;
     readonly ciphertext: ArrayBuffer;
 }
@@ -139,62 +139,62 @@ type BerytusFieldType = "Identity" | "ForeignIdentity" | "Password" | "SecurePas
 type BerytusFieldRejectionReasonCode = string;
 type BerytusFieldId = string;
 type BerytusFieldValue = string | BerytusEncryptedPacket | BerytusFieldValueDictionary;
-interface BerytusField {
+export interface BerytusField {
     readonly id: BerytusFieldId;
     readonly type: BerytusFieldType;
     readonly options: any;
     readonly value: BerytusFieldValue | null;
 }
-interface BerytusFieldCategoryOptions {
+export interface BerytusFieldCategoryOptions {
     categoryId: string;
     position?: number;
 }
-interface BerytusBaseFieldOptions {
+export interface BerytusBaseFieldOptions {
     category?: BerytusFieldCategoryOptions;
 }
-interface BerytusIdentityFieldOptions extends BerytusBaseFieldOptions {
+export interface BerytusIdentityFieldOptions extends BerytusBaseFieldOptions {
     humanReadable: boolean;
     private: boolean;
     maxLength: number;
     allowedCharacters?: string;
 }
 type BerytusForeignIdentityKind = string;
-interface BerytusForeignIdentityFieldOptions extends BerytusBaseFieldOptions {
+export interface BerytusForeignIdentityFieldOptions extends BerytusBaseFieldOptions {
     private: boolean;
     kind: BerytusForeignIdentityKind;
 }
-interface BerytusPasswordFieldOptions extends BerytusBaseFieldOptions {
+export interface BerytusPasswordFieldOptions extends BerytusBaseFieldOptions {
     passwordRules?: string;
 }
-interface BerytusConsumablePasswordFieldOptions extends BerytusPasswordFieldOptions {
+export interface BerytusConsumablePasswordFieldOptions extends BerytusPasswordFieldOptions {
     passwordIdentifier?: string;
 }
-interface BerytusSecurePasswordFieldOptions extends BerytusBaseFieldOptions {
+export interface BerytusSecurePasswordFieldOptions extends BerytusBaseFieldOptions {
     identityFieldId: string;
 }
-interface BerytusKeyFieldOptions extends BerytusBaseFieldOptions {
+export interface BerytusKeyFieldOptions extends BerytusBaseFieldOptions {
     alg: COSEAlgorithmIdentifier;
 }
-interface BerytusSharedKeyFieldOptions extends BerytusKeyFieldOptions {
+export interface BerytusSharedKeyFieldOptions extends BerytusKeyFieldOptions {
 }
-interface BerytusCustomFieldOptions extends BerytusBaseFieldOptions {
+export interface BerytusCustomFieldOptions extends BerytusBaseFieldOptions {
     mimeType: string;
     info: string;
     parameters?: Record<string, string | number | boolean | BufferSource>;
 }
-interface BerytusFieldValueDictionary {
+export interface BerytusFieldValueDictionary {
 }
-interface BerytusForeignIdentityField extends BerytusField {
+export interface BerytusForeignIdentityField extends BerytusField {
     type: EBerytusFieldType.ForeignIdentity;
     options: BerytusForeignIdentityFieldOptions;
     value: nullOrstringOrBerytusEncryptedPacket;
 }
-interface BerytusIdentityField extends BerytusField {
+export interface BerytusIdentityField extends BerytusField {
     type: EBerytusFieldType.Identity;
     options: BerytusIdentityFieldOptions;
     value: nullOrstringOrBerytusEncryptedPacket;
 }
-interface BerytusKeyAgreementParameters {
+export interface BerytusKeyAgreementParameters {
     readonly sessionId: string;
     readonly webAppX25519Key: string;
     readonly scmX25519Key: string;
@@ -203,65 +203,65 @@ interface BerytusKeyAgreementParameters {
     readonly hkdfInfo: ArrayBuffer;
     readonly aesKeyLength: number;
 }
-interface BerytusKeyFieldValue extends BerytusFieldValueDictionary {
+export interface BerytusKeyFieldValue extends BerytusFieldValueDictionary {
     readonly publicKey: ArrayBufferOrBerytusEncryptedPacket;
 }
-interface BerytusKeyField extends BerytusField {
+export interface BerytusKeyField extends BerytusField {
     type: EBerytusFieldType.Key;
     options: BerytusKeyFieldOptions;
     value: nullOrBerytusKeyFieldValue;
 }
-interface BerytusPasswordField extends BerytusField {
+export interface BerytusPasswordField extends BerytusField {
     type: EBerytusFieldType.Password;
     options: BerytusPasswordFieldOptions;
     value: nullOrstringOrBerytusEncryptedPacket;
 }
-interface BerytusSecurePasswordFieldValue extends BerytusFieldValueDictionary {
+export interface BerytusSecurePasswordFieldValue extends BerytusFieldValueDictionary {
     readonly salt: ArrayBufferOrBerytusEncryptedPacket;
     readonly verifier: ArrayBufferOrBerytusEncryptedPacket;
 }
-interface BerytusSecurePasswordField extends BerytusField {
+export interface BerytusSecurePasswordField extends BerytusField {
     type: EBerytusFieldType.SecurePassword;
     options: BerytusSecurePasswordFieldOptions;
     value: nullOrBerytusSecurePasswordFieldValue;
 }
-interface BerytusSharedKeyFieldValue extends BerytusFieldValueDictionary {
+export interface BerytusSharedKeyFieldValue extends BerytusFieldValueDictionary {
     readonly privateKey: ArrayBufferOrBerytusEncryptedPacket;
 }
-interface BerytusSharedKeyField extends BerytusField {
+export interface BerytusSharedKeyField extends BerytusField {
     type: EBerytusFieldType.SharedKey;
     options: BerytusSharedKeyFieldOptions;
     value: nullOrBerytusSharedKeyFieldValue;
 }
 type BerytusUserAttributeKey = string;
-interface BerytusUserAttributeDefinition {
+export interface BerytusUserAttributeDefinition {
     id: BerytusUserAttributeKey;
     info?: string;
     mimeType?: string;
     value: stringOrBufferSourceOrBerytusEncryptedPacket;
 }
 type BerytusUserAttributeValueEncodingType = "None" | "Base64URLString" | "EncryptedPacketJSON";
-interface BerytusUserAttributeJSON {
+export interface BerytusUserAttributeJSON {
     id: BerytusUserAttributeKey;
     info?: string;
     mimeType?: string;
     encoding: BerytusUserAttributeValueEncodingType;
     value: string | BerytusEncryptedPacketJSON;
 }
-interface BerytusUserAttribute {
+export interface BerytusUserAttribute {
     readonly id: BerytusUserAttributeKey;
     readonly mimeType: string | null;
     readonly info: string | null;
     readonly value: string | ArrayBuffer | BerytusEncryptedPacket;
 }
-interface BerytusChallengeMessageRequestDefinition {
+export interface BerytusChallengeMessageRequestDefinition {
     name: string;
     request: any;
 }
-interface BerytusChallengeMessageResponseDefinition {
+export interface BerytusChallengeMessageResponseDefinition {
     response: any;
 }
-interface BerytusChallengeMessage {
+export interface BerytusChallengeMessage {
     name: string;
     request: any;
     response: any;
@@ -269,51 +269,51 @@ interface BerytusChallengeMessage {
 type BerytusChallengeType = "Identification" | "DigitalSignature" | "Password" | "SecureRemotePassword" | "OffChannelOtp";
 type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "InvalidSignature" | "IncorrectOtp";
 type BerytusChallengeId = string;
-interface BerytusChallenge {
+export interface BerytusChallenge {
     readonly id: BerytusChallengeId;
     readonly type: BerytusChallengeType;
     readonly parameters: any | null;
     readonly active: boolean;
 }
-interface BerytusChallengeGetIdentityFieldsMessageResponse {
+export interface BerytusChallengeGetIdentityFieldsMessageResponse {
     response: Record<string, stringOrBerytusEncryptedPacket>;
 }
-interface BerytusIdentificationChallenge extends BerytusChallenge {
+export interface BerytusIdentificationChallenge extends BerytusChallenge {
 }
-interface BerytusChallengeGetPasswordFieldsMessageResponse {
+export interface BerytusChallengeGetPasswordFieldsMessageResponse {
     response: Record<string, stringOrBerytusEncryptedPacket>;
 }
-interface BerytusPasswordChallenge extends BerytusChallenge {
+export interface BerytusPasswordChallenge extends BerytusChallenge {
 }
-interface BerytusChallengeSelectKeyMessageResponse {
+export interface BerytusChallengeSelectKeyMessageResponse {
     response: BerytusKeyFieldValue;
 }
-interface BerytusChallengeSignNonceMessageResponse {
+export interface BerytusChallengeSignNonceMessageResponse {
     response: ArrayBuffer;
 }
-interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
+export interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
 }
-interface BerytusChallengeSelectSecurePasswordMessageResponse {
+export interface BerytusChallengeSelectSecurePasswordMessageResponse {
     response: stringOrBerytusEncryptedPacket;
 }
-interface BerytusChallengeExchangePublicKeysMessageResponse {
+export interface BerytusChallengeExchangePublicKeysMessageResponse {
     response: stringOrArrayBufferOrBerytusEncryptedPacket;
 }
 type BerytusSecureRemotePasswordChallengeEncodingType = "None" | "Hex";
-interface BerytusSecureRemotePasswordChallengeParameters {
+export interface BerytusSecureRemotePasswordChallengeParameters {
     encoding?: BerytusSecureRemotePasswordChallengeEncodingType;
 }
-interface BerytusChallengeComputeClientProofMessageResponse {
+export interface BerytusChallengeComputeClientProofMessageResponse {
     response: stringOrArrayBufferOrBerytusEncryptedPacket;
 }
-interface BerytusChallengeVerifyServerProofMessageResponse {
+export interface BerytusChallengeVerifyServerProofMessageResponse {
 }
-interface BerytusSecureRemotePasswordChallenge extends BerytusChallenge {
+export interface BerytusSecureRemotePasswordChallenge extends BerytusChallenge {
 }
-interface BerytusChallengeGetOtpMessageResponse {
+export interface BerytusChallengeGetOtpMessageResponse {
     response: stringOrBerytusEncryptedPacket;
 }
-interface BerytusOffChannelOtpChallenge extends BerytusChallenge {
+export interface BerytusOffChannelOtpChallenge extends BerytusChallenge {
 }
 export enum EBerytusFieldType {
 	Identity = "Identity",
@@ -358,104 +358,123 @@ export enum EBerytusChallengeType {
 	OffChannelOtp = "OffChannelOtp"
 }
 
-interface BerytusIdentificationChallengeInfo {
+export interface BerytusIdentificationChallengeInfo {
     id: string;
     type: EBerytusChallengeType.Identification;
     parameters: null;
 }
-interface BerytusChallengeGetIdentityFieldsMessageRequest {
+export interface BerytusChallengeGetIdentityFieldsMessageRequest {
     payload: string[]
 }
-interface BerytusSendGetIdentityFieldsMessage extends BerytusChallengeGetIdentityFieldsMessageRequest {
+export interface BerytusSendGetIdentityFieldsMessage extends BerytusChallengeGetIdentityFieldsMessageRequest {
     challenge: BerytusIdentificationChallengeInfo;
-    name: "GetIdentityFields";
+    name: EBerytusIdentificationChallengeMessageName.GetIdentityFields;
 }
 
-interface BerytusPasswordChallengeInfo {
+export enum EBerytusIdentificationChallengeMessageName {
+    GetIdentityFields = "GetIdentityFields"
+}
+export interface BerytusPasswordChallengeInfo {
     id: string;
     type: EBerytusChallengeType.Password;
     parameters: null;
 }
-interface BerytusChallengeGetPasswordFieldsMessageRequest {
+export interface BerytusChallengeGetPasswordFieldsMessageRequest {
     payload: string[]
 }
-interface BerytusSendGetPasswordFieldsMessage extends BerytusChallengeGetPasswordFieldsMessageRequest {
+export interface BerytusSendGetPasswordFieldsMessage extends BerytusChallengeGetPasswordFieldsMessageRequest {
     challenge: BerytusPasswordChallengeInfo;
-    name: "GetPasswordFields";
+    name: EBerytusPasswordChallengeMessageName.GetPasswordFields;
 }
 
-interface BerytusDigitalSignatureChallengeInfo {
+export enum EBerytusPasswordChallengeMessageName {
+    GetPasswordFields = "GetPasswordFields"
+}
+export interface BerytusDigitalSignatureChallengeInfo {
     id: string;
     type: EBerytusChallengeType.DigitalSignature;
     parameters: null;
 }
-interface BerytusChallengeSelectKeyMessageRequest {
+export interface BerytusChallengeSelectKeyMessageRequest {
     payload: string
 }
-interface BerytusSendSelectKeyMessage extends BerytusChallengeSelectKeyMessageRequest {
+export interface BerytusSendSelectKeyMessage extends BerytusChallengeSelectKeyMessageRequest {
     challenge: BerytusDigitalSignatureChallengeInfo;
-    name: "SelectKey";
+    name: EBerytusDigitalSignatureChallengeMessageName.SelectKey;
 }
 
-interface BerytusChallengeSignNonceMessageRequest {
+export interface BerytusChallengeSignNonceMessageRequest {
     payload: ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
-interface BerytusSendSignNonceMessage extends BerytusChallengeSignNonceMessageRequest {
+export interface BerytusSendSignNonceMessage extends BerytusChallengeSignNonceMessageRequest {
     challenge: BerytusDigitalSignatureChallengeInfo;
-    name: "SignNonce";
+    name: EBerytusDigitalSignatureChallengeMessageName.SignNonce;
 }
 
-interface BerytusSecureRemotePasswordChallengeInfo {
+export enum EBerytusDigitalSignatureChallengeMessageName {
+    SelectKey = "SelectKey",
+	SignNonce = "SignNonce"
+}
+export interface BerytusSecureRemotePasswordChallengeInfo {
     id: string;
     type: EBerytusChallengeType.SecureRemotePassword;
     parameters: BerytusSecureRemotePasswordChallengeParameters;
 }
-interface BerytusChallengeSelectSecurePasswordMessageRequest {
+export interface BerytusChallengeSelectSecurePasswordMessageRequest {
     payload: string
 }
-interface BerytusSendSelectSecurePasswordMessage extends BerytusChallengeSelectSecurePasswordMessageRequest {
+export interface BerytusSendSelectSecurePasswordMessage extends BerytusChallengeSelectSecurePasswordMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
-    name: "SelectSecurePassword";
+    name: EBerytusSecureRemotePasswordChallengeMessageName.SelectSecurePassword;
 }
 
-interface BerytusChallengeExchangePublicKeysMessageRequest {
+export interface BerytusChallengeExchangePublicKeysMessageRequest {
     payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
-interface BerytusSendExchangePublicKeysMessage extends BerytusChallengeExchangePublicKeysMessageRequest {
+export interface BerytusSendExchangePublicKeysMessage extends BerytusChallengeExchangePublicKeysMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
-    name: "ExchangePublicKeys";
+    name: EBerytusSecureRemotePasswordChallengeMessageName.ExchangePublicKeys;
 }
 
-interface BerytusChallengeComputeClientProofMessageRequest {
+export interface BerytusChallengeComputeClientProofMessageRequest {
     payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
-interface BerytusSendComputeClientProofMessage extends BerytusChallengeComputeClientProofMessageRequest {
+export interface BerytusSendComputeClientProofMessage extends BerytusChallengeComputeClientProofMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
-    name: "ComputeClientProof";
+    name: EBerytusSecureRemotePasswordChallengeMessageName.ComputeClientProof;
 }
 
-interface BerytusChallengeVerifyServerProofMessageRequest {
+export interface BerytusChallengeVerifyServerProofMessageRequest {
     payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
-interface BerytusSendVerifyServerProofMessage extends BerytusChallengeVerifyServerProofMessageRequest {
+export interface BerytusSendVerifyServerProofMessage extends BerytusChallengeVerifyServerProofMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
-    name: "VerifyServerProof";
+    name: EBerytusSecureRemotePasswordChallengeMessageName.VerifyServerProof;
 }
 
-interface BerytusOffChannelOtpChallengeInfo {
+export enum EBerytusSecureRemotePasswordChallengeMessageName {
+    SelectSecurePassword = "SelectSecurePassword",
+	ExchangePublicKeys = "ExchangePublicKeys",
+	ComputeClientProof = "ComputeClientProof",
+	VerifyServerProof = "VerifyServerProof"
+}
+export interface BerytusOffChannelOtpChallengeInfo {
     id: string;
     type: EBerytusChallengeType.OffChannelOtp;
     parameters: null;
 }
-interface BerytusChallengeGetOtpMessageRequest {
+export interface BerytusChallengeGetOtpMessageRequest {
     payload: string
 }
-interface BerytusSendGetOtpMessage extends BerytusChallengeGetOtpMessageRequest {
+export interface BerytusSendGetOtpMessage extends BerytusChallengeGetOtpMessageRequest {
     challenge: BerytusOffChannelOtpChallengeInfo;
-    name: "GetOtp";
+    name: EBerytusOffChannelOtpChallengeMessageName.GetOtp;
 }
 
-export type BerytusChallengeMessageInfoUnion = BerytusIdentificationChallengeInfo
+export enum EBerytusOffChannelOtpChallengeMessageName {
+    GetOtp = "GetOtp"
+}
+export type BerytusChallengeInfoUnion = BerytusIdentificationChallengeInfo
 	| BerytusPasswordChallengeInfo
 	| BerytusDigitalSignatureChallengeInfo
 	| BerytusDigitalSignatureChallengeInfo

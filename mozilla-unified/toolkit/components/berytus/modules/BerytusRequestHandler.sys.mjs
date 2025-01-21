@@ -274,9 +274,9 @@ export class IsolatedRequestHandler {
                     return;
                 }
             },
-            async closeOpeation(context) {
+            async closeOperation(context) {
                 try {
-                    await self.preCall("login", "closeOpeation", { context });
+                    await self.preCall("login", "closeOperation", { context });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -286,7 +286,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("login", "closeOpeation", { context }, val);
+                                await self.preResolve("login", "closeOperation", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -296,7 +296,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("login", "closeOpeation", { context }, val);
+                                await self.preReject("login", "closeOperation", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -307,13 +307,13 @@ export class IsolatedRequestHandler {
                     }
                 };
                 try {
-                    await self.#impl.login.closeOpeation({
+                    await self.#impl.login.closeOperation({
                         ...context,
                         ...wrappedResponseCtx
                     });
                 }
                 catch (e) {
-                    self.handleUnexpectedException("login", "closeOpeation", context.response, e);
+                    self.handleUnexpectedException("login", "closeOperation", context.response, e);
                     return;
                 }
             },
@@ -817,6 +817,9 @@ ChromeUtils.defineESModuleGetters(lazy, {
 const requestIs = (requestType, d) => {
     return d.context.request.type === requestType;
 };
+const inputIs = (requestType, input) => {
+    return input.context.request.type === requestType;
+};
 /**
  * Implementation copied from Schemas.sys.mjs's Context
  */
@@ -912,17 +915,209 @@ class ResolutionError extends Error {
         return "ResolutionError";
     }
 }
+class FieldIdValidator {
+    /**
+     * op id -> field id -> true
+     * TODO(berytus): There should be a cleanup mechanism.
+     */
+    #fields;
+    constructor() {
+        this.#fields = {};
+    }
+    #fieldExists(operationId, fieldId) {
+        if (!(operationId in this.#fields)) {
+            return false;
+        }
+        if (!(fieldId in this.#fields[operationId])) {
+            return false;
+        }
+        return true;
+    }
+    #addField(operationId, fieldId) {
+        if (!(operationId in this.#fields)) {
+            this.#fields[operationId] = {};
+        }
+        if (!(fieldId in this.#fields[operationId])) {
+            this.#fields[operationId][fieldId] = true;
+        }
+    }
+    #removeField(operationId, fieldId) {
+        if (!(operationId in this.#fields)) {
+            return;
+        }
+        if (!(fieldId in this.#fields[operationId])) {
+            return;
+        }
+        delete this.#fields[operationId][fieldId];
+    }
+    async consume(group, method, input) {
+        if (inputIs("AccountCreation_AddField", input)) {
+            const { operation } = input.context;
+            const { field } = input.args;
+            if (this.#fieldExists(operation.id, field.id)) {
+                throw new Error(`Illegal field creation request; Passed field id (${field.id}) already exists.`);
+            }
+            this.#addField(operation.id, field.id);
+            return;
+        }
+        if (inputIs("AccountCreation_RejectFieldValue", input)) {
+            const { operation } = input.context;
+            const { fieldId } = input.args;
+            if (!this.#fieldExists(operation.id, fieldId)) {
+                throw new Error(`Illegal field creation request; Passed field id (${fieldId}) does not exist.`);
+            }
+            return;
+        }
+    }
+    async rollback(group, method, input) {
+        if (inputIs("AccountCreation_AddField", input)) {
+            const { operation } = input.context;
+            const { field } = input.args;
+            this.#removeField(operation.id, field.id);
+            return;
+        }
+    }
+}
+class ChallangeMessagingSequenceValidator {
+    /**
+     * op id -> ch id -> nb of messages sent
+     * TODO(berytus): There should be a cleanup mechanism.
+     */
+    #counter;
+    constructor() {
+        this.#counter = {};
+    }
+    #defineRecord(operationId, challengeId) {
+        if (!(operationId in this.#counter)) {
+            this.#counter[operationId] = {};
+        }
+        if (!(challengeId in this.#counter[operationId])) {
+            this.#counter[operationId][challengeId] = 0;
+        }
+    }
+    #count(operationId, challengeId) {
+        this.#defineRecord(operationId, challengeId);
+        return this.#counter[operationId][challengeId];
+    }
+    #increment(operationId, challengeId) {
+        this.#defineRecord(operationId, challengeId);
+        this.#counter[operationId][challengeId] += 1;
+    }
+    #decrement(operationId, challengeId) {
+        this.#defineRecord(operationId, challengeId);
+        this.#counter[operationId][challengeId] -= 1;
+    }
+    async consume(group, method, input) {
+        if (!inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
+            return;
+        }
+        const { operation } = input.context;
+        const { challenge } = input.args;
+        switch (challenge.type) {
+            case "Identification": {
+                const names = ["GetIdentityFields"];
+                const currentCount = this.#count(operation.id, challenge.id);
+                if (currentCount >= names.length) {
+                    throw new Error("Illegal message; maximum amount of messages reached.");
+                }
+                const nextMessageName = names[currentCount];
+                if (input.args.name !== nextMessageName) {
+                    throw new Error("Illegal message; Unexpected message name. Expected " + nextMessageName + " instead of " + input.args.name);
+                }
+                this.#increment(operation.id, challenge.id);
+                break;
+            }
+            case "Password": {
+                const names = ["GetPasswordFields"];
+                const currentCount = this.#count(operation.id, challenge.id);
+                if (currentCount >= names.length) {
+                    throw new Error("Illegal message; maximum amount of messages reached.");
+                }
+                const nextMessageName = names[currentCount];
+                if (input.args.name !== nextMessageName) {
+                    throw new Error("Illegal message; Unexpected message name. Expected " + nextMessageName + " instead of " + input.args.name);
+                }
+                this.#increment(operation.id, challenge.id);
+                break;
+            }
+            case "DigitalSignature": {
+                const names = ["SelectKey", "SignNonce"];
+                const currentCount = this.#count(operation.id, challenge.id);
+                if (currentCount >= names.length) {
+                    throw new Error("Illegal message; maximum amount of messages reached.");
+                }
+                const nextMessageName = names[currentCount];
+                if (input.args.name !== nextMessageName) {
+                    throw new Error("Illegal message; Unexpected message name. Expected " + nextMessageName + " instead of " + input.args.name);
+                }
+                this.#increment(operation.id, challenge.id);
+                break;
+            }
+            case "SecureRemotePassword": {
+                const names = ["SelectSecurePassword", "ExchangePublicKeys", "ComputeClientProof", "VerifyServerProof"];
+                const currentCount = this.#count(operation.id, challenge.id);
+                if (currentCount >= names.length) {
+                    throw new Error("Illegal message; maximum amount of messages reached.");
+                }
+                const nextMessageName = names[currentCount];
+                if (input.args.name !== nextMessageName) {
+                    throw new Error("Illegal message; Unexpected message name. Expected " + nextMessageName + " instead of " + input.args.name);
+                }
+                this.#increment(operation.id, challenge.id);
+                break;
+            }
+            case "OffChannelOtp": {
+                const names = ["GetOtp"];
+                const currentCount = this.#count(operation.id, challenge.id);
+                if (currentCount >= names.length) {
+                    throw new Error("Illegal message; maximum amount of messages reached.");
+                }
+                const nextMessageName = names[currentCount];
+                if (input.args.name !== nextMessageName) {
+                    throw new Error("Illegal message; Unexpected message name. Expected " + nextMessageName + " instead of " + input.args.name);
+                }
+                this.#increment(operation.id, challenge.id);
+                break;
+            }
+        }
+    }
+    async rollback(group, method, input) {
+        if (!inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
+            return;
+        }
+        const { challenge } = input.args;
+        const { operation } = input.context;
+        if (!(operation.id in this.#counter)) {
+            console.warn("Expected operation to be set in #counter");
+            return;
+        }
+        if (!(challenge.id in this.#counter[operation.id])) {
+            console.warn("Expected challenge to be set in #counter[...]");
+            return;
+        }
+        this.#decrement(operation.id, challenge.id);
+    }
+}
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema;
+    #validators;
     constructor(impl) {
         // TODO(berytus): ensure impl is conformant
         super(impl);
+        this.#validators = [];
+        this.#validators.push(new FieldIdValidator(), new ChallangeMessagingSequenceValidator());
     }
     #validateValue(typeEntry, value, message) {
         const { error } = typeEntry.normalize(value, new ValidationContext());
         if (error) {
             throw new ResolutionError(message, (typeof error === "function" ? error() : error));
         }
+    }
+    async #executeLogicalValidators(group, method, input) {
+        await Promise.all(this.#validators.map(val => val.consume(group, method, input)));
+    }
+    async #rollbackLogicalValidators(group, method, input) {
+        await Promise.all(this.#validators.map(val => val.rollback(group, method, input)));
     }
     async preCall(group, method, input) {
         const methodType = await this.#getMethodTypeEntry(group, method);
@@ -937,7 +1132,14 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         if (parameters[1]) {
             this.#validateValue(parameters[1].type, input.args, message);
         }
-        await super.preCall(group, method, input);
+        await this.#executeLogicalValidators(group, method, input);
+        try {
+            await super.preCall(group, method, input);
+        }
+        catch (e) {
+            await this.#rollbackLogicalValidators(group, method, input);
+            throw e;
+        }
     }
     async preResolve(group, method, input, output) {
         const resultType = await this.#getMethodResultTypeEntry(group, method);
@@ -953,6 +1155,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
     }
     async preReject(group, method, input, value) {
         // TODO(berytus): validate error value
+        await this.#rollbackLogicalValidators(group, method, input);
         await super.preReject(group, method, input, value);
     }
     async #getMethodResultTypeEntry(group, method) {
@@ -1215,7 +1418,7 @@ export class PublicRequestHandler {
                     }, args);
                 });
             },
-            closeOpeation(context) {
+            closeOperation(context) {
                 return new Promise((_resolve, _reject) => {
                     const responseCtx = {
                         response: {
@@ -1230,10 +1433,10 @@ export class PublicRequestHandler {
                     const requestCtx = {
                         request: {
                             id: uuid(),
-                            type: "Login_CloseOpeation"
+                            type: "Login_CloseOperation"
                         }
                     };
-                    self.#impl.login.closeOpeation({
+                    self.#impl.login.closeOperation({
                         ...context,
                         ...responseCtx,
                         ...requestCtx

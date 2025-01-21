@@ -94,7 +94,13 @@ export enum ESecretManagerType {
     Extension = 1
 };
 
-class SecretManagerInfo {
+export interface ISecretManagerInfo {
+    id: string;
+    label: string;
+    type: ESecretManagerType;
+}
+
+class SecretManagerInfo implements ISecretManagerInfo {
     #id: string;
     #label: string;
     #type: ESecretManagerType;

@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { BerytusChallengeAbortionCode, BerytusChallengeMessageInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusFieldType } from "./generated/berytus.web";
+import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.d.ts";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -54,16 +54,17 @@ export interface Request {
 
 export interface DocumentMetadata {
     id: number; /* e.g. tabId if sent to extensions */
+    uri: UriParams;
 }
 
-enum EOperationStatus {
+export enum EOperationStatus {
     Pending = "Pending",
     Created = "Created",
     Aborted = "Aborted",
     Finished = "Finished"
 }
 
-enum EOperationType {
+export enum EOperationType {
     PendingDeclaration = "PendingDeclaration",
     Registration = "Registration",
     Authentication = "Authentication"
@@ -87,6 +88,9 @@ export interface FieldInfo {
     type: EBerytusFieldType;
     // NOTE(berytus): ValidatedRequestHandler does not
     // (yet) check if the options is logically conformant.
+    // Alternatively, type FieldInfo = Omit<BerytusFieldUnion, "value">
+    // -- however, type-parser would not be able to parse Omit<..>
+    // A better option is to generate *FieldInfoUnion
     options: BerytusFieldOptionsUnion;
 }
 
@@ -94,7 +98,7 @@ export interface LoginOperationMetadata extends OperationMetadata {
     intent: ELoginUserIntent;
     requestedUserAttributes: RequestedUserAttributes;
     fields: Record<string, FieldInfo>;
-    challenges: Record<string, BerytusChallengeMessageInfoUnion>;
+    challenges: Record<string, BerytusChallengeInfoUnion>;
 }
 
 // TODO(berytus): Addd LoginOperation : *Metadata which includes state
@@ -125,7 +129,7 @@ export enum ELoginUserIntent {
     Register = "Register"
 }
 
-type WebAppActor = CryptoActor | OriginActor;
+export type WebAppActor = CryptoActor | OriginActor;
 
 export interface InitialKeyExchangeParametersDraft {
     readonly channelId: string; // provided by Berytus
@@ -240,6 +244,20 @@ export interface FieldValueRejectionReason {
     code: string;
 }
 
+// TODO(berytus): ERejectionCode should be in the API.
+export enum ERejectionCode {
+    UnknownReason,
+    GeneralError,
+    NetworkError,
+    UserError,
+    OperationAborted,
+    /* begin challenge trap codes */
+    ChallengeNotSupported,
+    UnexpectedChallengeMessage,
+    InvalidChallengeMessage
+    /* end challenge trap codes */
+}
+
 enum EMetadataProperty {
     Version = "Version",
     Status = "Status",
@@ -298,19 +316,21 @@ export type RejectFieldValueArgs = {
     optionalNewValue?: BerytusFieldValueUnion;
 }
 export type ApproveChallengeRequestArgs = {
-    challenge: BerytusChallengeMessageInfoUnion;
+    challenge: BerytusChallengeInfoUnion;
 }
 export type AbortChallengeArgs = {
-    challenge: BerytusChallengeMessageInfoUnion;
+    challenge: BerytusChallengeInfoUnion;
     reason: BerytusChallengeAbortionCode
 }
 export type CloseChallengeArgs = {
-    challenge: BerytusChallengeMessageInfoUnion;
+    challenge: BerytusChallengeInfoUnion;
 }
 export type RespondToChallengeMessageArgs = BerytusSendMessageUnion;
 export type { BerytusSendMessageUnion };
 export type RespondToChallengeMessageResult = BerytusReceiveMessageUnion;
 export type { BerytusReceiveMessageUnion };
+export type { BerytusChallengeInfoUnion };
+export { EBerytusChallengeType };
 /* Request Arguments */
 
 export interface RequestHandler {
@@ -344,7 +364,7 @@ export interface RequestHandler {
             context: RequestContext,
             args: ApproveOperationArgs
         ): ELoginUserIntent;
-        closeOpeation(
+        closeOperation(
             context: RequestContextWithOperation
         ): void;
         /* Berytus setPasswordUrl/setStatus/setVersion/setCategory: */
@@ -362,7 +382,7 @@ export interface RequestHandler {
             args: ApproveTransitionToAuthOpArgs
         ): void;
         getUserAttributes(
-            context: RequestContextWithOperation
+            context: RequestContextWithLoginOperation
         ): UserAttributes;
         updateUserAttributes(
             context: RequestContextWithOperation,

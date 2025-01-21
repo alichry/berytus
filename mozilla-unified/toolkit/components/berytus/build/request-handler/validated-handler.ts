@@ -2,6 +2,186 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { project } from "./Project.js";
+import type { EnumDeclaration } from "ts-morph";
+
+const generateFieldIdValidator = () => {
+    const code = `\
+class FieldIdValidator implements ILogicalValidator {
+    /**
+     * op id -> field id -> true
+     * TODO(berytus): There should be a cleanup mechanism.
+     */
+    #fields: Record<string, Record<string, true>>;
+
+    constructor() {
+        this.#fields = {};
+    }
+
+    #fieldExists(operationId: string, fieldId: string) {
+        if (!(operationId in this.#fields)) {
+            return false;
+        }
+        if (!(fieldId in this.#fields[operationId])) {
+            return false;
+        }
+        return true;
+    }
+
+    #addField(operationId: string, fieldId: string) {
+        if (!(operationId in this.#fields)) {
+            this.#fields[operationId] = {};
+        }
+        if (!(fieldId in this.#fields[operationId])) {
+            this.#fields[operationId][fieldId] = true;
+        }
+    }
+
+    #removeField(operationId: string, fieldId: string) {
+        if (!(operationId in this.#fields)) {
+            return;
+        }
+        if (!(fieldId in this.#fields[operationId])) {
+            return;
+        }
+        delete this.#fields[operationId][fieldId];
+    }
+
+    async consume(group: string, method: string, input: PreCallInput): Promise<void> {
+        if (inputIs("AccountCreation_AddField", input)) {
+            const { operation } = input.context as RequestContextWithOperation;
+            const { field } = input.args;
+            if (this.#fieldExists(operation.id, field.id)) {
+                throw new Error(\`Illegal field creation request; Passed field id (\${field.id}) already exists.\`);
+            }
+            this.#addField(operation.id, field.id);
+            return;
+        }
+        if (inputIs("AccountCreation_RejectFieldValue", input)) {
+            const { operation } = input.context as RequestContextWithOperation;
+            const { fieldId } = input.args;
+            if (! this.#fieldExists(operation.id, fieldId)) {
+                throw new Error(\`Illegal field creation request; Passed field id (\${fieldId}) does not exist.\`);
+            }
+            return;
+        }
+    }
+
+    async rollback(group: string, method: string, input: PreCallInput): Promise<void> {
+        if (inputIs("AccountCreation_AddField", input)) {
+            const { operation } = input.context as RequestContextWithOperation;
+            const { field } = input.args;
+            this.#removeField(operation.id, field.id);
+            return;
+        }
+    }
+}`;
+    return code;
+}
+const generateChallangeSequenceValidator = () => {
+    // Note(berytus): Depends on the generation of message name enums
+    // Berytus${chName}ChallengeMessageName
+    // implemented in gen-webidl-ts.ts
+    const typesFile = project.getSourceFileOrThrow(
+        './src/generated/berytus.web.d.ts'
+    );
+    const infos = typesFile.getInterfaces()
+        .filter(f => /^Berytus[a-zA-Z0-9]+ChallengeInfo$/.test(f.getName()));
+    const msgNameEnums: Record<string, EnumDeclaration> = {};
+    typesFile.getEnums()
+        .forEach(e => {
+            const res = e.getName().match(/^EBerytus([a-zA-Z0-9]+)ChallengeMessageName+$/);
+            if (res === null) {
+                return;
+            }
+            const [_, chName] = res;
+            msgNameEnums[chName] = e;
+        });
+
+    const code = `\
+class ChallangeMessagingSequenceValidator implements ILogicalValidator {
+    /**
+     * op id -> ch id -> nb of messages sent
+     * TODO(berytus): There should be a cleanup mechanism.
+     */
+    #counter: Record<string, Record<string, number>>;
+
+    constructor() {
+        this.#counter = {};
+    }
+
+    #defineRecord(operationId: string, challengeId: string) {
+        if (!(operationId in this.#counter)) {
+            this.#counter[operationId] = {};
+        }
+        if (!(challengeId in this.#counter[operationId])) {
+            this.#counter[operationId][challengeId] = 0;
+        }
+    }
+
+    #count(operationId: string, challengeId: string): number {
+        this.#defineRecord(operationId, challengeId);
+        return this.#counter[operationId][challengeId];
+    }
+
+    #increment(operationId: string, challengeId: string) {
+        this.#defineRecord(operationId, challengeId);
+        this.#counter[operationId][challengeId] += 1;
+    }
+
+    #decrement(operationId: string, challengeId: string) {
+        this.#defineRecord(operationId, challengeId);
+        this.#counter[operationId][challengeId] -= 1;
+    }
+
+    async consume(group: string, method: string, input: PreCallInput): Promise<void> {
+        if (!inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
+            return;
+        }
+        const { operation } = input.context as RequestContextWithOperation;
+        const { challenge } = input.args;
+        switch (challenge.type) {
+            ${infos.map(info => {
+                const chName = info.getPropertyOrThrow("type").getType().getLiteralValue() as string;
+                const enumDecl = msgNameEnums[chName];
+                return `case "${chName}": {
+                const names = [${enumDecl.getMembers().map(m => JSON.stringify(m.getValue())).join(", ")}];
+                const currentCount = this.#count(operation.id, challenge.id);
+                if (currentCount >= names.length) {
+                    throw new Error("Illegal message; maximum amount of messages reached.");
+                }
+                const nextMessageName = names[currentCount];
+                if (input.args.name !== nextMessageName) {
+                    throw new Error("Illegal message; Unexpected message name. Expected " + nextMessageName + " instead of " + input.args.name);
+                }
+                this.#increment(operation.id, challenge.id);
+                break;
+            }`
+            }).join("\n\t\t\t")}
+        }
+    }
+
+    async rollback(group: string, method: string, input: PreCallInput): Promise<void> {
+        if (!inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
+            return;
+        }
+        const { challenge } = input.args;
+        const { operation } = input.context as RequestContextWithOperation;
+        if (!(operation.id in this.#counter)) {
+            console.warn("Expected operation to be set in #counter");
+            return;
+        }
+        if (!(challenge.id in this.#counter[operation.id])) {
+            console.warn("Expected challenge to be set in #counter[...]");
+            return;
+        }
+        this.#decrement(operation.id, challenge.id);
+    }
+}
+`;
+    return code;
+}
+
 export const generateValidatedHandler = () => {
     const typesToImport: Record<string, true> = {
         "RequestType": true,
@@ -20,6 +200,10 @@ ChromeUtils.defineESModuleGetters(lazy, {
 
 const requestIs = <RT extends RequestType>(requestType: RT, d: { context: PreliminaryRequestContext; args?: unknown; output: unknown}): d is { context: PreliminaryRequestContext; args: RequestHandlerFunctionParameters<RT>[1]; output: RequestHandlerFunctionReturnType<RT> } => {
     return d.context.request.type === requestType;
+}
+
+const inputIs = <RT extends RequestType>(requestType: RT, input: { context: PreliminaryRequestContext; args?: unknown; }): input is { context: PreliminaryRequestContext; args: RequestHandlerFunctionParameters<RT>[1]; } => {
+    return input.context.request.type === requestType;
 }
 
 /**
@@ -137,12 +321,26 @@ class ResolutionError extends Error {
     }
 }
 
+interface ILogicalValidator {
+    consume(group: string, method: string, input: PreCallInput): Promise<void>;
+    rollback(group: string, method: string, input: PreCallInput): Promise<void>;
+}
+
+${generateFieldIdValidator()}
+${generateChallangeSequenceValidator()}
+
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema: any;
+    #validators: ILogicalValidator[];
 
     constructor(impl: IUnderlyingRequestHandler) {
         // TODO(berytus): ensure impl is conformant
         super(impl);
+        this.#validators = [];
+        this.#validators.push(
+            new FieldIdValidator(),
+            new ChallangeMessagingSequenceValidator()
+        );
     }
 
     #validateValue(
@@ -160,6 +358,14 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
                 (typeof error === "function" ? error() : error)
             );
         }
+    }
+
+    async #executeLogicalValidators(group: string, method: string, input: PreCallInput) {
+        await Promise.all(this.#validators.map(val => val.consume(group, method, input)));
+    }
+
+    async #rollbackLogicalValidators(group: string, method: string, input: PreCallInput) {
+        await Promise.all(this.#validators.map(val => val.rollback(group, method, input)));
     }
 
     protected async preCall(group: string, method: string, input: PreCallInput) {
@@ -186,7 +392,13 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
                 message
             );
         }
-        await super.preCall(group, method, input);
+        await this.#executeLogicalValidators(group, method, input);
+        try {
+            await super.preCall(group, method, input);
+        } catch (e) {
+            await this.#rollbackLogicalValidators(group, method, input);
+            throw e;
+        }
     }
 
     protected async preResolve(group: string, method: string, input: PreCallInput, output: unknown) {
@@ -212,6 +424,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
 
     protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
         // TODO(berytus): validate error value
+        await this.#rollbackLogicalValidators(group, method, input);
         await super.preReject(group, method, input, value);
     }
 

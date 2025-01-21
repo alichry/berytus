@@ -63,13 +63,47 @@ template<>
 bool FromJSVal<double>(JSContext* aCx, JS::Handle<JS::Value> aValue, double& aRv);
 template<>
 bool ToJSVal<double>(JSContext* aCx, const double& aValue, JS::MutableHandle<JS::Value> aRv);
+template<>
+bool JSValIs<nsString>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<nsString>(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv);
+template<>
+bool ToJSVal<nsString>(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv);
+struct UriParams {
+  nsString mUri;
+  nsString mScheme;
+  nsString mHostname;
+  double mPort;
+  nsString mPath;
+  UriParams() = default;
+  UriParams(nsString&& aUri, nsString&& aScheme, nsString&& aHostname, double&& aPort, nsString&& aPath) : mUri(std::move(aUri)), mScheme(std::move(aScheme)), mHostname(std::move(aHostname)), mPort(std::move(aPort)), mPath(std::move(aPath)) {}
+  UriParams(UriParams&& aOther) : mUri(std::move(aOther.mUri)), mScheme(std::move(aOther.mScheme)), mHostname(std::move(aOther.mHostname)), mPort(std::move(aOther.mPort)), mPath(std::move(aOther.mPath))  {}
+  UriParams& operator=(UriParams&& aOther) {
+    mUri = std::move(aOther.mUri);
+  mScheme = std::move(aOther.mScheme);
+  mHostname = std::move(aOther.mHostname);
+  mPort = std::move(aOther.mPort);
+  mPath = std::move(aOther.mPath);
+    return *this;
+  }
+  
+  ~UriParams() {}
+};
+template<>
+bool JSValIs<UriParams>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<UriParams>(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv);
+template<>
+bool ToJSVal<UriParams>(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv);
 struct DocumentMetadata {
   double mId;
+  UriParams mUri;
   DocumentMetadata() = default;
-  DocumentMetadata(double&& aId) : mId(std::move(aId)) {}
-  DocumentMetadata(DocumentMetadata&& aOther) : mId(std::move(aOther.mId))  {}
+  DocumentMetadata(double&& aId, UriParams&& aUri) : mId(std::move(aId)), mUri(std::move(aUri)) {}
+  DocumentMetadata(DocumentMetadata&& aOther) : mId(std::move(aOther.mId)), mUri(std::move(aOther.mUri))  {}
   DocumentMetadata& operator=(DocumentMetadata&& aOther) {
     mId = std::move(aOther.mId);
+  mUri = std::move(aOther.mUri);
     return *this;
   }
   
@@ -99,12 +133,6 @@ template<>
 bool FromJSVal<PreliminaryRequestContext>(JSContext* aCx, JS::Handle<JS::Value> aValue, PreliminaryRequestContext& aRv);
 template<>
 bool ToJSVal<PreliminaryRequestContext>(JSContext* aCx, const PreliminaryRequestContext& aValue, JS::MutableHandle<JS::Value> aRv);
-template<>
-bool JSValIs<nsString>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-template<>
-bool FromJSVal<nsString>(JSContext* aCx, JS::Handle<JS::Value> aValue, nsString& aRv);
-template<>
-bool ToJSVal<nsString>(JSContext* aCx, const nsString& aValue, JS::MutableHandle<JS::Value> aRv);
 struct CryptoActor {
   nsString mEd25519Key;
   CryptoActor() = default;
@@ -123,32 +151,6 @@ template<>
 bool FromJSVal<CryptoActor>(JSContext* aCx, JS::Handle<JS::Value> aValue, CryptoActor& aRv);
 template<>
 bool ToJSVal<CryptoActor>(JSContext* aCx, const CryptoActor& aValue, JS::MutableHandle<JS::Value> aRv);
-struct UriParams {
-  nsString mUri;
-  nsString mScheme;
-  nsString mHostname;
-  double mPort;
-  nsString mPath;
-  UriParams() = default;
-  UriParams(nsString&& aUri, nsString&& aScheme, nsString&& aHostname, double&& aPort, nsString&& aPath) : mUri(std::move(aUri)), mScheme(std::move(aScheme)), mHostname(std::move(aHostname)), mPort(std::move(aPort)), mPath(std::move(aPath)) {}
-  UriParams(UriParams&& aOther) : mUri(std::move(aOther.mUri)), mScheme(std::move(aOther.mScheme)), mHostname(std::move(aOther.mHostname)), mPort(std::move(aOther.mPort)), mPath(std::move(aOther.mPath))  {}
-  UriParams& operator=(UriParams&& aOther) {
-    mUri = std::move(aOther.mUri);
-  mScheme = std::move(aOther.mScheme);
-  mHostname = std::move(aOther.mHostname);
-  mPort = std::move(aOther.mPort);
-  mPath = std::move(aOther.mPath);
-    return *this;
-  }
-  
-  ~UriParams() {}
-};
-template<>
-bool JSValIs<UriParams>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-template<>
-bool FromJSVal<UriParams>(JSContext* aCx, JS::Handle<JS::Value> aValue, UriParams& aRv);
-template<>
-bool ToJSVal<UriParams>(JSContext* aCx, const UriParams& aValue, JS::MutableHandle<JS::Value> aRv);
 struct OriginActor {
   UriParams mOriginalUri;
   UriParams mCurrentUri;
@@ -1611,7 +1613,7 @@ template<>
 bool FromJSVal<RequestContextWithOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithOperation& aRv);
 template<>
 bool ToJSVal<RequestContextWithOperation>(JSContext* aCx, const RequestContextWithOperation& aValue, JS::MutableHandle<JS::Value> aRv);
-using LoginCloseOpeationResult = MozPromise<void*, Failure, true>;
+using LoginCloseOperationResult = MozPromise<void*, Failure, true>;
 struct EMetadataStatus {
   uint8_t mVal;
   EMetadataStatus() : mVal(0) {}
@@ -1701,6 +1703,23 @@ bool FromJSVal<ApproveTransitionToAuthOpArgs>(JSContext* aCx, JS::Handle<JS::Val
 template<>
 bool ToJSVal<ApproveTransitionToAuthOpArgs>(JSContext* aCx, const ApproveTransitionToAuthOpArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 using AccountCreationApproveTransitionToAuthOpResult = MozPromise<void*, Failure, true>;
+struct RequestContextWithLoginOperation {
+  LoginOperationMetadata mOperation;
+  ChannelMetadata mChannel;
+  DocumentMetadata mDocument;
+  RequestContextWithLoginOperation() = default;
+  RequestContextWithLoginOperation(LoginOperationMetadata&& aOperation, ChannelMetadata&& aChannel, DocumentMetadata&& aDocument) : mOperation(std::move(aOperation)), mChannel(std::move(aChannel)), mDocument(std::move(aDocument)) {}
+  RequestContextWithLoginOperation(RequestContextWithLoginOperation&& aOther) : mOperation(std::move(aOther.mOperation)), mChannel(std::move(aOther.mChannel)), mDocument(std::move(aOther.mDocument))  {}
+  
+  
+  ~RequestContextWithLoginOperation() {}
+};
+template<>
+bool JSValIs<RequestContextWithLoginOperation>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<RequestContextWithLoginOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithLoginOperation& aRv);
+template<>
+bool ToJSVal<RequestContextWithLoginOperation>(JSContext* aCx, const RequestContextWithLoginOperation& aValue, JS::MutableHandle<JS::Value> aRv);
 template<>
 bool JSValIs<ArrayBufferView>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
@@ -1902,23 +1921,6 @@ bool FromJSVal<UpdateUserAttributesArgs>(JSContext* aCx, JS::Handle<JS::Value> a
 template<>
 bool ToJSVal<UpdateUserAttributesArgs>(JSContext* aCx, const UpdateUserAttributesArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 using AccountCreationUpdateUserAttributesResult = MozPromise<void*, Failure, true>;
-struct RequestContextWithLoginOperation {
-  LoginOperationMetadata mOperation;
-  ChannelMetadata mChannel;
-  DocumentMetadata mDocument;
-  RequestContextWithLoginOperation() = default;
-  RequestContextWithLoginOperation(LoginOperationMetadata&& aOperation, ChannelMetadata&& aChannel, DocumentMetadata&& aDocument) : mOperation(std::move(aOperation)), mChannel(std::move(aChannel)), mDocument(std::move(aDocument)) {}
-  RequestContextWithLoginOperation(RequestContextWithLoginOperation&& aOther) : mOperation(std::move(aOther.mOperation)), mChannel(std::move(aOther.mChannel)), mDocument(std::move(aOther.mDocument))  {}
-  
-  
-  ~RequestContextWithLoginOperation() {}
-};
-template<>
-bool JSValIs<RequestContextWithLoginOperation>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-template<>
-bool FromJSVal<RequestContextWithLoginOperation>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContextWithLoginOperation& aRv);
-template<>
-bool ToJSVal<RequestContextWithLoginOperation>(JSContext* aCx, const RequestContextWithLoginOperation& aValue, JS::MutableHandle<JS::Value> aRv);
 class StaticString20 : public StaticStringBase {
 public:
   constexpr static const nsLiteralString mLiteral =
@@ -3479,11 +3481,11 @@ public:
   RefPtr<ChannelEnableEndToEndEncryptionResult> Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs) const;
   RefPtr<ChannelCloseChannelResult> Channel_CloseChannel(RequestContext& aContext) const;
   RefPtr<LoginApproveOperationResult> Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs) const;
-  RefPtr<LoginCloseOpeationResult> Login_CloseOpeation(RequestContextWithOperation& aContext) const;
+  RefPtr<LoginCloseOperationResult> Login_CloseOperation(RequestContextWithOperation& aContext) const;
   RefPtr<LoginGetRecordMetadataResult> Login_GetRecordMetadata(RequestContextWithOperation& aContext) const;
   RefPtr<LoginUpdateMetadataResult> Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs) const;
   RefPtr<AccountCreationApproveTransitionToAuthOpResult> AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs) const;
-  RefPtr<AccountCreationGetUserAttributesResult> AccountCreation_GetUserAttributes(RequestContextWithOperation& aContext) const;
+  RefPtr<AccountCreationGetUserAttributesResult> AccountCreation_GetUserAttributes(RequestContextWithLoginOperation& aContext) const;
   RefPtr<AccountCreationUpdateUserAttributesResult> AccountCreation_UpdateUserAttributes(RequestContextWithOperation& aContext, UpdateUserAttributesArgs& aArgs) const;
   RefPtr<AccountCreationAddFieldResult> AccountCreation_AddField(RequestContextWithLoginOperation& aContext, AddFieldArgs& aArgs) const;
   RefPtr<AccountCreationRejectFieldValueResult> AccountCreation_RejectFieldValue(RequestContextWithLoginOperation& aContext, RejectFieldValueArgs& aArgs) const;

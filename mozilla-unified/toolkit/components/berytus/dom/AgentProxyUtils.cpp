@@ -39,6 +39,7 @@
 #include "mozilla/dom/BerytusChannel.h"
 #include "mozilla/dom/BerytusChallenge.h"
 #include "mozilla/dom/BerytusSecureRemotePasswordChallenge.h"
+#include "mozilla/dom/Document.h"
 
 namespace mozilla::berytus {
 
@@ -51,6 +52,11 @@ nsresult Utils_DocumentMetadata(nsIGlobalObject* aGlobal, berytus::DocumentMetad
     return NS_ERROR_FAILURE;
   }
   aRv.mId = static_cast<double>(inner->WindowID());
+  dom::Document* doc = inner->GetDoc();
+  MOZ_ASSERT(doc);
+  nsIURI* uri = doc->GetDocumentURI();
+  MOZ_ASSERT(uri);
+  Utils_nsURIToUriParams(uri, aRv.mUri);
   return NS_OK;
 }
 

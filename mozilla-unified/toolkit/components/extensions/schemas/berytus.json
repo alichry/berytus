@@ -34,11 +34,35 @@
         }
       },
       {
+        "id": "UriParams",
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "scheme": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "port": {
+            "type": "number"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      },
+      {
         "id": "DocumentMetadata",
         "type": "object",
         "properties": {
           "id": {
             "type": "number"
+          },
+          "uri": {
+            "$ref": "UriParams"
           }
         }
       },
@@ -62,27 +86,6 @@
         "type": "object",
         "properties": {
           "ed25519Key": {
-            "type": "string"
-          }
-        }
-      },
-      {
-        "id": "UriParams",
-        "type": "object",
-        "properties": {
-          "uri": {
-            "type": "string"
-          },
-          "scheme": {
-            "type": "string"
-          },
-          "hostname": {
-            "type": "string"
-          },
-          "port": {
-            "type": "number"
-          },
-          "path": {
             "type": "string"
           }
         }
@@ -710,7 +713,7 @@
         }
       },
       {
-        "id": "BerytusChallengeMessageInfoUnion",
+        "id": "BerytusChallengeInfoUnion",
         "choices": [
           {
             "$ref": "BerytusIdentificationChallengeInfo"
@@ -762,7 +765,7 @@
           "challenges": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "BerytusChallengeMessageInfoUnion"
+              "$ref": "BerytusChallengeInfoUnion"
             }
           },
           "id": {
@@ -864,7 +867,7 @@
         }
       },
       {
-        "id": "LoginCloseOpeationResult",
+        "id": "LoginCloseOperationResult",
         "type": "any"
       },
       {
@@ -920,6 +923,27 @@
       {
         "id": "AccountCreationApproveTransitionToAuthOpResult",
         "type": "any"
+      },
+      {
+        "id": "RequestContextWithLoginOperation",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "LoginOperationMetadata"
+          },
+          "channel": {
+            "$ref": "ChannelMetadata"
+          },
+          "request": {
+            "$ref": "Request"
+          },
+          "document": {
+            "$ref": "DocumentMetadata"
+          },
+          "response": {
+            "$ref": "Response"
+          }
+        }
       },
       {
         "id": "BufferSource",
@@ -1026,27 +1050,6 @@
       {
         "id": "AccountCreationUpdateUserAttributesResult",
         "type": "any"
-      },
-      {
-        "id": "RequestContextWithLoginOperation",
-        "type": "object",
-        "properties": {
-          "operation": {
-            "$ref": "LoginOperationMetadata"
-          },
-          "channel": {
-            "$ref": "ChannelMetadata"
-          },
-          "request": {
-            "$ref": "Request"
-          },
-          "document": {
-            "$ref": "DocumentMetadata"
-          },
-          "response": {
-            "$ref": "Response"
-          }
-        }
       },
       {
         "id": "nullOrstringOrBerytusEncryptedPacket",
@@ -1354,7 +1357,7 @@
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "BerytusChallengeMessageInfoUnion"
+            "$ref": "BerytusChallengeInfoUnion"
           }
         }
       },
@@ -1414,7 +1417,7 @@
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "BerytusChallengeMessageInfoUnion"
+            "$ref": "BerytusChallengeInfoUnion"
           },
           "reason": {
             "$ref": "BerytusChallengeAbortionCode"
@@ -1430,7 +1433,7 @@
         "type": "object",
         "properties": {
           "challenge": {
-            "$ref": "BerytusChallengeMessageInfoUnion"
+            "$ref": "BerytusChallengeInfoUnion"
           }
         }
       },
@@ -1962,7 +1965,7 @@
               }
             ]
           },
-          "closeOpeation": {
+          "closeOperation": {
             "type": "function",
             "parameters": [
               {
@@ -2017,7 +2020,7 @@
             "parameters": [
               {
                 "name": "context",
-                "$ref": "RequestContextWithOperation"
+                "$ref": "RequestContextWithLoginOperation"
               }
             ]
           },

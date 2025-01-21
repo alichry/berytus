@@ -63,7 +63,7 @@ protected:
   RefPtr<BerytusChannel> mChannel;
   RefPtr<BerytusFieldMap> mFields;
   RefPtr<BerytusUserAttributeMap> mUserAttributes;
-  
+
 public:
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

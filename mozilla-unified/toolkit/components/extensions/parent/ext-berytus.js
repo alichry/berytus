@@ -84,6 +84,14 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
     });
   }
 
+  onShutdown() {
+    console.log("ParentBerytusAPI Extension onShutdown");
+    if (!liaison.isManagerRegistered(this.extension.id)) {
+      return;
+    }
+    liaison.ereaseManager(this.extension.id);
+  }
+
   #initListeners() {
     const types = this.#getRequestTypes();
     this.listeners = {};

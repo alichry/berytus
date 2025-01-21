@@ -2,9 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { liaison, ESecretManagerType } from "resource://gre/modules/BerytusLiaison.sys.mjs";
-import type { CredentialsMetadata, GetCredentialsMetadataArgs } from "./types";
+import { ESecretManagerType } from "resource://gre/modules/BerytusLiaison.sys.mjs";
+import type { GetCredentialsMetadataArgs } from "./types";
 import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
+import type { CollectCredentialsMetadataEntry } from "./Agent.sys.mjs";
+import { Agent } from "resource://gre/modules/BerytusAgent.sys.mjs";
 
 const lazy = {};
 XPCOMUtils.defineLazyPreferenceGetter(
@@ -14,59 +16,11 @@ XPCOMUtils.defineLazyPreferenceGetter(
     false
 );
 
-export interface ManangerSelectionEntry {
-    manager: {
-        id: string;
-        label: string;
-        type: ESecretManagerType;
+export interface ManangerSelectionEntry extends CollectCredentialsMetadataEntry  {
+    manager: CollectCredentialsMetadataEntry['manager'] & {
+        // TODO(berytus): Handle ext icons
         icon?: string;
-    };
-    credentialsMetadata: CredentialsMetadata | Promise<CredentialsMetadata>;
-}
-
-const collectCredentialsMetadata = async (
-    innerWindowId: number,
-    args: GetCredentialsMetadataArgs
-): Promise<Array<ManangerSelectionEntry>> => {
-    const managers = liaison.managers;
-    const entries: Array<ManangerSelectionEntry> = [];
-    const keys = args.channelConstraints.secretManagerPublicKey;
-    const context = { document: { id: innerWindowId }};
-    const relevantManagers = keys && keys.length > 0
-        ? (await Promise.all(managers.map(async manager => {
-            const handler = liaison.getRequestHandler(manager.id);
-            let key: string;
-            try {
-                key = await handler.manager.getSigningKey(
-                    context,
-                    { webAppActor: args.webAppActor }
-                );
-            } catch (e) {
-                return null;
-            }
-            if (keys.indexOf(key) !== -1) {
-                return manager;
-            }
-            return null;
-            // TODO(berytus): Perhaps, in the future, we could
-            // include another list of managers, the ones that
-            // threw an exceptions (see try-catch above), and the
-            // ones who where filtered out.
-        }))).filter(m => !!m)
-        : managers;
-
-    for (let i = 0; i < relevantManagers.length; i++) {
-        const manager = relevantManagers[i];
-        const handler = liaison.getRequestHandler(manager.id);
-        entries.push({
-            manager,
-            credentialsMetadata: handler.manager.getCredentialsMetadata(
-                context,
-                args
-            )
-        });
     }
-    return entries;
 }
 
 export class PromptService {
@@ -75,8 +29,15 @@ export class PromptService {
         browsingContext: BrowsingContext,
         args: GetCredentialsMetadataArgs
     ): Promise<string> {
-        const managerEntries = await collectCredentialsMetadata(
+        const managerEntries = await Agent.collectCredentialsMetadata(
             browsingContext.currentWindowContext.innerWindowId,
+            {
+                uri: browsingContext.currentURI.spec,
+                port: browsingContext.currentURI.port,
+                scheme: browsingContext.currentURI.scheme,
+                hostname: browsingContext.currentURI.host,
+                path: browsingContext.currentURI.filePath
+            },
             args
         );
         const selectedExtensionId = await Prompter.promptUsingPopupNotification(

@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { CredentialsMetadata, GetCredentialsMetadataArgs, IPublicRequestHandler } from "./types";
-import type { Liaison } from './Liaison.sys.mjs';
+import type { CredentialsMetadata, GetCredentialsMetadataArgs, IPublicRequestHandler, UriParams } from "./types";
+import type { ISecretManagerInfo, Liaison } from './Liaison.sys.mjs';
 
 let lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
@@ -11,8 +11,8 @@ ChromeUtils.defineESModuleGetters(lazy, {
 });
 
 export interface CollectCredentialsMetadataEntry {
-    managerId: string;
-    credentialsMetadata: Promise<CredentialsMetadata>
+    manager: ISecretManagerInfo;
+    credentialsMetadata: CredentialsMetadata | Promise<CredentialsMetadata>
 };
 
 export function Agent() { }
@@ -21,25 +21,57 @@ Agent.target = function (managerId: string) {
     return new AgentTarget(lazy.liaison, managerId);
 }
 
-Agent.collectCredentialsMetadata = async function (
+Agent.collectCredentialsMetadata = async (
     innerWindowId: number,
+    uri: UriParams,
     args: GetCredentialsMetadataArgs
-): Promise<Array<CollectCredentialsMetadataEntry>> {
+): Promise<Array<CollectCredentialsMetadataEntry>> => {
     const managers = lazy.liaison.managers;
     const entries: Array<CollectCredentialsMetadataEntry> = [];
-    for (let i = 0; i < managers.length; i++) {
-        const manager = managers[i];
-        const handler = lazy.liaison.getRequestHandler(manager.id);
+    const keys = args.channelConstraints.secretManagerPublicKey;
+    const context = {
+        document: {
+            id: innerWindowId,
+            uri
+        },
+    };
+    const relevantManagers = keys && keys.length > 0
+        ? (await Promise.all(managers.map(async manager => {
+            const target = Agent.target(manager.id);
+            let key: string;
+            try {
+                key = await target.manager.getSigningKey(
+                    context,
+                    { webAppActor: args.webAppActor }
+                );
+            } catch (e) {
+                return null;
+            }
+            if (keys.indexOf(key) !== -1) {
+                return manager;
+            }
+            return null;
+            // TODO(berytus): Perhaps, in the future, we could
+            // include another list of managers, the ones that
+            // threw an exceptions (see try-catch above), and the
+            // ones who where filtered out.
+        }))).filter(m => !!m)
+        : managers;
+
+    for (let i = 0; i < relevantManagers.length; i++) {
+        const manager = relevantManagers[i];
+        const target = Agent.target(manager.id);
         entries.push({
-            managerId: manager.id,
-            credentialsMetadata: handler.manager.getCredentialsMetadata(
-                { document: { id: innerWindowId } },
+            manager,
+            credentialsMetadata: target.manager.getCredentialsMetadata(
+                context,
                 args
             )
         });
     }
     return entries;
 }
+
 
 class AgentTarget implements IPublicRequestHandler {
     #liaison: Liaison;

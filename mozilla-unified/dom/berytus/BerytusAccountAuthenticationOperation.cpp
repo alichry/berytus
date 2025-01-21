@@ -148,7 +148,7 @@ already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Finish(ErrorRes
     aRv.Throw(rv);
     return nullptr;
   }
-  auto promise = agent.Login_CloseOpeation(reqCtx);
+  auto promise = agent.Login_CloseOperation(reqCtx);
   promise->Then(
     GetCurrentSerialEventTarget(),
     __func__,

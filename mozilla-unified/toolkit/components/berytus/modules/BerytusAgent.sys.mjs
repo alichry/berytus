@@ -10,15 +10,42 @@ export function Agent() { }
 Agent.target = function (managerId) {
     return new AgentTarget(lazy.liaison, managerId);
 };
-Agent.collectCredentialsMetadata = async function (innerWindowId, args) {
+Agent.collectCredentialsMetadata = async (innerWindowId, uri, args) => {
     const managers = lazy.liaison.managers;
     const entries = [];
-    for (let i = 0; i < managers.length; i++) {
-        const manager = managers[i];
-        const handler = lazy.liaison.getRequestHandler(manager.id);
+    const keys = args.channelConstraints.secretManagerPublicKey;
+    const context = {
+        document: {
+            id: innerWindowId,
+            uri
+        },
+    };
+    const relevantManagers = keys && keys.length > 0
+        ? (await Promise.all(managers.map(async (manager) => {
+            const target = Agent.target(manager.id);
+            let key;
+            try {
+                key = await target.manager.getSigningKey(context, { webAppActor: args.webAppActor });
+            }
+            catch (e) {
+                return null;
+            }
+            if (keys.indexOf(key) !== -1) {
+                return manager;
+            }
+            return null;
+            // TODO(berytus): Perhaps, in the future, we could
+            // include another list of managers, the ones that
+            // threw an exceptions (see try-catch above), and the
+            // ones who where filtered out.
+        }))).filter(m => !!m)
+        : managers;
+    for (let i = 0; i < relevantManagers.length; i++) {
+        const manager = relevantManagers[i];
+        const target = Agent.target(manager.id);
         entries.push({
-            managerId: manager.id,
-            credentialsMetadata: handler.manager.getCredentialsMetadata({ document: { id: innerWindowId } }, args)
+            manager,
+            credentialsMetadata: target.manager.getCredentialsMetadata(context, args)
         });
     }
     return entries;

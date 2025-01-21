@@ -18,7 +18,7 @@ class LoginRequestHandler {
         }
         context.response.resolve(args.operation.intent);
     }
-    closeOpeation(context) {
+    closeOperation(context) {
         context.response.resolve();
     }
     getRecordMetadata(context) {

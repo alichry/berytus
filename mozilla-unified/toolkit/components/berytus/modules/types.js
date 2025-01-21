@@ -1,15 +1,16 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+import { EBerytusChallengeType } from "./generated/berytus.web.d.js";
 ;
-var EOperationStatus;
+export var EOperationStatus;
 (function (EOperationStatus) {
     EOperationStatus["Pending"] = "Pending";
     EOperationStatus["Created"] = "Created";
     EOperationStatus["Aborted"] = "Aborted";
     EOperationStatus["Finished"] = "Finished";
 })(EOperationStatus || (EOperationStatus = {}));
-var EOperationType;
+export var EOperationType;
 (function (EOperationType) {
     EOperationType["PendingDeclaration"] = "PendingDeclaration";
     EOperationType["Registration"] = "Registration";
@@ -49,6 +50,20 @@ var EFieldType;
     EFieldType["Key"] = "Key";
 })(EFieldType || (EFieldType = {}));
 ;
+// TODO(berytus): ERejectionCode should be in the API.
+export var ERejectionCode;
+(function (ERejectionCode) {
+    ERejectionCode[ERejectionCode["UnknownReason"] = 0] = "UnknownReason";
+    ERejectionCode[ERejectionCode["GeneralError"] = 1] = "GeneralError";
+    ERejectionCode[ERejectionCode["NetworkError"] = 2] = "NetworkError";
+    ERejectionCode[ERejectionCode["UserError"] = 3] = "UserError";
+    ERejectionCode[ERejectionCode["OperationAborted"] = 4] = "OperationAborted";
+    /* begin challenge trap codes */
+    ERejectionCode[ERejectionCode["ChallengeNotSupported"] = 5] = "ChallengeNotSupported";
+    ERejectionCode[ERejectionCode["UnexpectedChallengeMessage"] = 6] = "UnexpectedChallengeMessage";
+    ERejectionCode[ERejectionCode["InvalidChallengeMessage"] = 7] = "InvalidChallengeMessage";
+    /* end challenge trap codes */
+})(ERejectionCode || (ERejectionCode = {}));
 var EMetadataProperty;
 (function (EMetadataProperty) {
     EMetadataProperty["Version"] = "Version";
@@ -65,3 +80,4 @@ export var EMetadataStatus;
 })(EMetadataStatus || (EMetadataStatus = {}));
 ;
 ;
+export { EBerytusChallengeType };

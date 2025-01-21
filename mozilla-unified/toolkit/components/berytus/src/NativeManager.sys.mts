@@ -30,7 +30,7 @@ class LoginRequestHandler implements LoginRequests {
         }
         context.response.resolve(args.operation.intent);
     }
-    closeOpeation(context: RequestContextWithOperation & ResponseContext<'login', 'closeOpeation'>): void {
+    closeOperation(context: RequestContextWithOperation & ResponseContext<'login', 'closeOperation'>): void {
         context.response.resolve();
     }
     getRecordMetadata(context: RequestContextWithOperation & ResponseContext<'login', 'getRecordMetadata'>): void {
