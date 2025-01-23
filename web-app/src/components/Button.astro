@@ -1,0 +1,46 @@
+---
+// export type ButtonProps = {
+//     color?: string;
+// } & {
+//     [key: `x-:${string}`]: string;
+// }
+
+export interface ButtonProps extends astroHTML.JSX.ButtonHTMLAttributes {
+    //[key: `x-:${string}`]: string;
+    color?: string;
+}
+
+interface Props extends Omit<astroHTML.JSX.ButtonHTMLAttributes, 'color'>,
+                        ButtonProps {};
+
+const { class: className, color, ...otherProps} = Astro.props;
+
+---
+
+<style>
+    button:not(:disabled):active {
+        transform: translateY(2px);
+    }
+    button:disabled {
+        background-color: #9e9e9e;
+    }
+    button {
+        background-color: #281401;
+    }
+    button:hover {
+
+    }
+    button.purple {
+        background-color: #5308F3;
+    }
+    button.purple:hover {
+        background-color: #260078;
+    }
+</style>
+
+<button
+    class:list={[className, "border rounded px-5 py-1.5 border-black", color]}
+    {...otherProps}
+>
+    <slot />
+</button>

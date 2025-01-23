@@ -1,0 +1,1118 @@
+enum BerytusAccountStatus {
+    "Pending",
+
+    // "Unreserved",
+    // "VerificationPendingAndUnreserved",
+    // "VerificationPendingAndReserved",
+
+    // "PendingVerificationUnreserved",
+    // "PendingVerificationReserved",
+    "Created",
+    "Retired"
+};
+
+dictionary BerytusUserAttributeDefinition {
+    /**
+     * The user attribute key
+     */
+    required BerytusUserAttributeKey id;
+    /**
+     * A human-readable description of this attribute
+     */
+    DOMString info;
+    /**
+     * The mime type for the contents of this user attribute.
+     * Defaults to text/plain. Note, if
+     */
+    DOMString mimeType;
+    /**
+     * The user attribute's value.
+     */
+    required BerytusDataSource value;
+};
+
+typedef DOMString BerytusAccountCategory;
+
+typedef unsigned long long BerytusAccountVersion;
+
+dictionary BerytusFieldRejectionParameters {
+    required (BerytusField or DOMString) field;
+    required BerytusFieldRejectionReasonCode reason;
+    /**
+     * Optional - the desired value to override the field
+     *  value with.
+     *
+     *  Care must be taken here... When plaintext is passed,
+     *  some field types might only accept strings or buffers.
+     *  Consult the individual field types' constructors
+     *  to see what is allowed for the value type.
+     */
+    (BerytusDataSource or BerytusFieldValueDictionary) newValue;
+};
+
+[Exposed=(Window)]
+interface mixin BerytusAccountMetadata {
+    /**
+     * The account category. This is used to establish
+     * different categories that can exist in the same
+     * Web Application, e.g. an admin account and a regular
+     * user account.
+     *
+     * Defaults to <empty string>
+     */
+    readonly attribute BerytusAccountCategory category;
+
+    /**
+     * The account record version. The account shema, as
+     * defined by the Web Application, might change overtime.
+     * Versoning the account record helps in migrating an
+     * old account record to conform to the latest schema.
+     *
+     * Defaults to 0
+     */
+    readonly attribute BerytusAccountVersion version;
+
+    /**
+     * The account status reflected by the Web Application.
+     * Despite offering several API calls to modify the
+     * account record,
+     *
+     * Defaults to "Pending"
+     */
+    readonly attribute BerytusAccountStatus status;
+
+    /**
+     * The password change URL associated with this
+     * account record. By default, no password
+     * change url is set. This is useful for Password
+     * Managers as we have seen it as a "quirk" in
+     * https://github.com/apple/password-manager-resources
+     */
+    readonly attribute DOMString? changePasswordUrl;
+};
+
+[Exposed=(Window)]
+interface mixin BerytusAccountWritableMetadata {
+    [Throws]
+    Promise<undefined> setCategory(BerytusAccountCategory category);
+
+    [Throws]
+    Promise<undefined> setStatus(BerytusAccountStatus status);
+
+    [Throws]
+    Promise<undefined> setVersion(BerytusAccountVersion version);
+
+    [Throws]
+    Promise<undefined> setChangePasswordUrl(DOMString url);
+};
+
+/**
+ * BRTTODO: Add SecureContext
+ */
+[Exposed=(Window)]
+interface mixin BerytusAccount {
+    /**
+     * The registered user attriibutes with this account record.
+     */
+    readonly attribute BerytusUserAttributeMap userAttributes;
+
+    /**
+     * The existing fields in the account record.
+     * Additional calls to `addFields` will add
+     * further entries to the fields map.
+     */
+    readonly attribute BerytusFieldMap fields;
+
+    [Throws]
+    Promise<record<DOMString, BerytusField>> addFields(
+        BerytusField... field
+    );
+    [Throws]
+    Promise<record<DOMString, BerytusField>> rejectAndReviseFields(
+        BerytusFieldRejectionParameters... rejectionParameters
+    );
+
+    /**
+     * Web applications might want to set (create) an additional
+     * (custom) user attribute or override a default attribute.
+     * In the latter case, the web application  might require
+     * the attribute value to match a specific format.
+     * The primary purpose of allowing the web application
+     * to store the transformed/new value of a user attribute is
+     * the ability to retrieve it again when resuming the registration procewss.
+     * The account could be in a unreserved pending verification state
+     * where it is not even created in the web app but it is only
+     * saved in the Secret Manager. In this case, the web app frontend
+     * could just retrieve the transformed/new/default user attributes
+     * and proceed with the registration.
+     *
+     * @param attributes A key-value dictionary where keys are
+     *  user attribute ids (BerytusUserAttributeKey) and the values
+     *  are the desired user attribute value.
+     */
+    [Throws]
+    Promise<undefined> setUserAttributes(
+        record<DOMString, BerytusUserAttributeDefinition> attributes
+    );
+
+    /* --------------------------------------------------- */
+    /* Extra methods (might not be implemented)            */
+    /* --------------------------------------------------- */
+    /**
+     * Create a field category.
+     * @param id The ID of the category. Must match the following RegExp:
+     *  ^[a-zA-Z][a-zA-Z0-9_\-]$
+     * @param info A human-readable description of the category, i.e.
+     *  its purpose.
+     */
+    [Throws]
+    Promise<undefined> addFieldCategory(
+        DOMString id,
+        DOMString info
+    );
+};[Exposed=(Window)]
+interface BerytusAccountAuthenticationOperation : BerytusLoginOperation {
+    readonly attribute BerytusChallengeMap challenges;
+
+    [Throws]
+    Promise<AuthRealmChallenge> createChallenge(
+        DOMString challengeId,
+        AuthRealmChallengeType challengeType,
+        optional BerytusChallengeParameters? challengeParameters
+    );
+
+    [Throws]
+    Promise<undefined> finish();
+};
+
+BerytusAccountAuthenticationOperation includes BerytusAccountMetadata;
+
+/**
+ * Work In Progress: Enums for challenge messages.
+ * These will be moved to separate files once we introduce interfaces
+ * for each challenge type.
+ */
+
+enum BerytusIdentificationChallengeMessageName {
+    "GetIdentityFields"
+};
+
+enum BerytusPasswordChallengeMessageName {
+    "GetPasswordFields"
+};
+
+enum BerytusSecureRemotePasswordChallengeMessageName {
+    "SelectSecurePasswordField",
+    "ExchangePublicKeys",
+    "ComputeClientProof",
+    "VerifyServerProof"
+};
+
+enum BerytusDigitalSignatureChallengeMessageName {
+    "GetPublicKey",
+    "SignNonce"
+};
+
+enum BerytusForeignIdentityOtpChallengeMessageName {
+    "GetOtp"
+};/**
+ * BRTTODO: Add SecureContext
+ */
+[Exposed=(Window)]
+interface BerytusAccountCreationOperation : BerytusLoginOperation {
+
+    /**
+     * This attribute indicates whether the account
+     * record was just created or was previously created.
+     * This is important when it comes to resuming
+     * the registration process.
+     */
+    readonly attribute boolean newborn;
+
+    /**
+     * Whether or not a creation proof is needed for the
+     * account to saved in the Secret Manager. This
+     * preferrence is Secret Manager-specific. If this
+     * is true, the proof signature must be passed to save().
+     */
+    readonly attribute boolean creationProofRequired;
+
+    /**
+     * Attempt to save this account in the Secret Manager.
+     * A proof signed by the web application might be required.
+     * It is indicated by the `creationProofRequired` attribute.
+     * An error will be thrown if the proof is invalid.
+     */
+    [Throws]
+    Promise<undefined> save(optional BufferSource signature);
+
+    /**
+     * After calling save(), the web app has the choice to turn this
+     * registration operation into an authentication operation.
+     * From there, the web app can initiate a foreign identity OTP challenge
+     * (e.g. for phone sms verification). Also, the web app can simply
+     * pass the auth operation object to its authentication handler function
+     * and the existing implementation for the authentication process will
+     * proceed as if the user's intent was originally set to 'Authenticate'.
+     * The Secret Manager will automatically select the created account
+     * through this registration operation for the transitioned authentication
+     * operation -- no account selection would be necessary.
+     */
+    [Throws]
+    Promise<BerytusAccountAuthenticationOperation> transitionToAuthOperation();
+};
+
+BerytusAccountCreationOperation includes BerytusAccount;
+BerytusAccountCreationOperation includes BerytusAccountMetadata;
+BerytusAccountCreationOperation includes BerytusAccountWritableMetadata;/**
+ * An Anonymous Actor is an unauthentication actor.
+ * We cannot be sure whether this actor is the actual
+ * representive of the web application. Either first-party
+ * JavaScript code running on the web page has constructed it,
+ * or an illegitimate or 3rd party code has constructed it.
+ */
+[Exposed=(Window)]
+interface BerytusAnonymousWebAppActor : BerytusWebAppActor {
+    constructor();
+};/**
+ * BRTTODO: Add SecureContext
+ */
+[Exposed=(Window)]
+interface BerytusChallengeMap {
+    readonly maplike<DOMString, AuthRealmChallenge>;
+};/**
+ * Base data object for challenge parameters.
+ * Challenges that require parameters should extend this
+ * and specify a constructor with typed parameters.
+ * (We are still thinking whether to use a dictionary instead).
+ */
+[Exposed=(Window)]
+interface BerytusChallengeParameters {};[GenerateConversionToJS]
+dictionary BerytusAccountConstraints {
+    /**
+     * The authenticator-defined category id.
+     * The value could represent a specific
+     * user type such as admin, teacher, etc.
+     * This would be used to narrow down the list
+     * of existing accounts in the Secret Manager.
+     */
+    BerytusAccountCategory category;
+    /**
+     * Authenticators might evolve their account-credentials
+     * schema. Specifying a desired schema version
+     * could be worthwile...
+     */
+    BerytusAccountVersion schemaVersion;
+    /**
+     * The key-value dictionary of (foreign) identity field id
+     * mapping to its value. This is also used to narrow
+     * down the list of existing accounts further to match
+     * the expected account by  the authenticator.
+     *
+     * This is ideal when the authenticator knows
+     * which account it was to retrieve without
+     * confusing the user to select one.
+     *
+     * If this is specified, and `onboard` is called,
+     * only authentication could be undertaken since
+     * the channel is now bound to a specific account.
+     * I.e. the intent is fixed to 'Authenticate' by
+     * default.
+     */
+    record<DOMString, DOMString> identity;
+};
+
+[GenerateConversionToJS]
+dictionary BerytusChannelConstraints {
+    /**
+     * Optional - The desired Secret Manager to interact
+     * with. The public key serves as a unique
+     * identifier. If omitted, any Secret Manager
+     * could be elected. If specified along with
+     * 'account', then the account constraints
+     * will be applied to the desired Secret Manager
+     * instead of all installed Secret Managers.
+     * More than one public key could be specified
+     * to allow a list of one-or-more accepted
+     * Secret Managers by the Web Application.
+     */
+    sequence<DOMString> secretManagerPublicKey;
+
+    /**
+     * Optional - The authenticator (web app) has the chance
+     * to narrow down the list of accounts to
+     * match account-related constraints such
+     * as identity and foreign identity field values,
+     * the authenticator-defined category (admin, user)
+     * and the authenticator account record schema version.
+     */
+    BerytusAccountConstraints account;
+
+    /**
+     * Whether the web application would like to enable
+     * end-to-end encryption. If this is true, the passed
+     * web app actor must be a CryptoActor. Otherwise,
+     * an error will be thrown.
+     */
+    boolean enableEndToEndEncryption;
+
+    /**
+     * Whether or not the web application would like to
+     * received tokenized values from the Secret Manager
+     * over the client-side. Those tokens will be replace
+     * over the wire when fetch requests are dispatched.
+     * `enableEndToEndEncryption` and `enableTokenization`
+     * must not be equally true.
+     *
+     * Note, this has no effect at the moment. We
+     * are currently against it, for now.
+     */
+    boolean enableTokenization;
+};
+
+[GenerateConversionToJS]
+dictionary BerytusChannelOptions {
+    /**
+     * The Web app-side Actor for the Channel.
+     * A Crypto Actor must be passed if end-to-end
+     * encryption or Secure Credential Mapping is desired.
+     */
+    required BerytusWebAppActor webApp;
+    // /**
+    //  * Optional - The Web App Actor can provide a nonce
+    //  * to be signed by the elected Secret Manager
+    //  * to authenticate its ownership of its disclosed
+    //  * public key. The signature is provided in the
+    //  * `secretManager` attribute of the created Channel.
+    //  */
+    // BufferSource secretManagerNonce;
+    /**
+     * Optional - channcel constraints, e.g. which
+     *  Secret Manager is accepted. An account
+     *  classifier (email, username, category, etc.)
+     *  can be specified to make sure that the Secret Manager
+     *  has such account(s). Filtering against an account
+     *  is desirable when the web application wants to
+     *  update the credentials of that account, for examople.
+     *  When it comes to onboarding, specifying an account
+     *  filter is not necessary. Alternatively, the web
+     *  app can specify an account category to filter against,
+     *  e.g. uint16 2 for "admin"
+     */
+    BerytusChannelConstraints constraints;
+};
+
+enum BerytusOnboardingIntent {
+    "Unknown",
+    "Authenticate",
+    "Register"
+};
+
+[GenerateConversionToJS]
+dictionary BerytusOnboardingOptions {
+    /**
+     * Optional - The user's intent for this onboarding operation;
+     *  to login with an existing account or create a new one.
+     *  The web app can use its own UI to query the
+     *  user for his intent. Accordingly, this propery could
+     *  reflect the retrieved user intent. If unspecified,
+     *  it defaults to "Unknown" and the secret manager
+     *  will query the user for his intent using its UI.
+     *  However, if the channel creation options included
+     *  account constraints specifying identity fields,
+     *  the intent is fixed to "Authenticate", and if
+     *  otherwise is specified, an error will be thrown.
+     *
+     *  Note - The web application might enforce
+     *  an intent without consulting the user if necessary.
+     *  For example, if the web application is not
+     *  accepting any new users, then "Authenticate"
+     *  can be specified to only allow authentication.
+     *
+     *  Note - When the intent is fixed to 'Authenticate',
+     *  the selected Secret Manager must have at least
+     *  one existing account in its database. Therefore,
+     *  it is impossible to select a Secret Manager
+     *  without an existing acocunt when intent is 'Authenticate'.
+     */
+    BerytusOnboardingIntent intent;
+
+    /**
+     * Optional - Desired user attributes to retrieve from the
+     *  Secret Manager when undertaking an account creation operation.
+     *  If the login operation results in an account authentication
+     *  operation, this attribute will have no impact. When the
+     *  operation is returned, and is an instance of
+     *  BerytusAccountCreationOperation, the `userAttributes` property
+     *  will be populated according to the required user attributes
+     *  specified here.
+     *
+     *  A dictionay where the keys should match a subset of
+     *  the OpenID standard claims or a string with a prefix of of `custom:`
+     *  See the typedef BerytusUserAttributeKey for exact RegExp for the
+     *  custom user attribute keys. If the key value is `true`, then
+     *  the web application expects the Secret Manager to return a non-empty
+     *  value. If the Secret Manager was not unable to provide a non-empty
+     *  value, an error will be thrown. To retrieve potentially empty
+     *  user attributes, specify a value of `false`. We recommend
+     *  that `true` be set only when the Web Application cannot resort
+     *  to leveraging its own UI for querying the user's input for
+     *  the needed user attributes (identity information).
+     */
+    record<DOMString, boolean> requiredUserAttributes;
+};
+
+/**
+ * For development, we have omitted SecureContext
+ * to make it available over HTTP.
+ */
+[Exposed=(Window)]
+interface BerytusChannel {
+    readonly attribute boolean active;
+
+    readonly attribute BerytusWebAppActor webApp;
+    /**
+     * This is the selected Secret Manager.
+     *  Null if enableEndToEndEncryption was set to false.
+     * BRTTODO: 21/1/2024 -- It is better to have an AnonymousSecretManagerActor
+     * instead when enableEndToEncryption was set to false.
+     */
+    readonly attribute BerytusSecretManagerActor? secretManager;
+    /**
+     * Key agreement parameters.
+     *  Null if enableEndToEncryption was set to false.
+     */
+    readonly attribute BerytusKeyAgreementParameters? keyAgreementParams;
+
+    //readonly attribute BerytusChannelConstraints? constraints;
+
+    /**
+     * Establish a new channel. Depending on the options,
+     * a Secret Manager will be elected for this channel.
+     * If no suitable Secret Manager was found, or if the
+     * user aborted the operation, an error will be thrown.
+     *
+     * @param options The channel creation options
+     * @return {BerytusChannel}
+     */
+    [Throws]
+    static Promise<BerytusChannel> create(
+        optional BerytusChannelOptions options = {}
+    );
+
+    [Throws]
+    Promise<undefined> close();
+
+    [Throws]
+    Promise<(BerytusAccountAuthenticationOperation or BerytusAccountCreationOperation)> login(
+        optional BerytusOnboardingOptions options = {}
+    );
+
+    [Throws]
+    Promise<BerytusKeyAgreementParameters> prepareKeyAgreementParameters(
+        DOMString webAppX25519PublicKey
+    );
+
+    /**
+     * @param keyAgreementSignature the signature data of the string
+     *  created by BerytusKeyAgreementParameters.toJSON()
+     */
+    [Throws]
+    Promise<DOMString> enableEndToEndEncryption(
+        ArrayBuffer keyAgreementSignature
+    );
+};/**
+ * An Authenticated Actor. We verify whether this Actor
+ * is a legitimate representive of the web application's
+ * authentication subsystem by requesting its credentials.
+ * In this case, the Actor presents its Ed25519 key,
+ * serving both as an identifier and allowing for
+ * key authentication. The question that comes next, how
+ * can we validate whether the key used is owned by the
+ * legitimate web app? We leverage the SSL certificate and read
+ * the subjectAltName to find the allowed Ed25519 public keys.
+ * This is an extension to the X509 standard, I just made it up.
+ */
+[Exposed=(Window)]
+interface BerytusCryptoWebAppActor : BerytusWebAppActor {
+    /**
+     * The SPKI base64 string representation of the
+     * Ed25519 Public Key of the Subsystem.
+     */
+    readonly attribute DOMString ed25519Key;
+
+    /**
+     * @param ed25519 The Subsystem's Ed25519 public key.
+     * @param handler Proof handler
+     */
+    [Throws]
+    constructor(DOMString ed25519Key);
+};typedef UTF8String BerytusPlaintextStringSource;
+
+typedef BufferSource BerytusPlaintextBufferSource;
+
+typedef (BerytusPlaintextStringSource or BerytusPlaintextBufferSource) BerytusPlaintextSource;
+
+typedef BerytusEncryptedPacket BerytusCiphertextSource;
+
+typedef (BerytusPlaintextSource or BerytusCiphertextSource) BerytusDataSource;
+
+typedef (DOMString or ArrayBuffer or BerytusEncryptedPacket) BerytusDataType;
+
+[Exposed=(Window)]
+interface BerytusEncryptedPacket {
+    /**
+     * @pararm data - the ciphertext
+     * @parram iv - The IV used in AES-GCM encryption using the
+     *  agreed AES-GCM key.
+     */
+    [Throws]
+    constructor(BufferSource ciphertext, BufferSource iv);
+
+    [SameObject, Throws]
+    readonly attribute ArrayBuffer iv;
+
+    [SameObject, Throws]
+    readonly attribute ArrayBuffer ciphertext;
+};enum BerytusFieldType {
+  "Identity",
+  "ForeignIdentity",
+  "Password",
+  "SecurePassword",
+  "ConsumablePassword",
+  /**
+   * The "Key" field is a public/private key pair.
+   * The Secret Manager only returns the public key
+   * material of the created key. To ensure the private
+   * key is not or has not been, by any chance, accessed
+   * by the Web Application. The "Key" field value (the private key)
+   * cannot be specified by the Web Application during
+   * field creation. Therefore, the Secret Manager has to
+   * produce a private key during field creation.
+   *
+   * In addition to the isolation of the private key,
+   * the Secret Manager could act as a decryption oracle
+   * for the Web Application to leverage, if needed.
+   */
+  "Key",
+  /**
+   * The "SharedKey" field is a public/private key pair.
+   * It is shared in the sense that both the Web Application
+   * and the Secret Manager, at some point, read the
+   * private key material of the produced key. This is
+   * important in instances where the Web Application
+   * must produce the key instead of the the Secret Manager
+   * or when the Web Application must hold a copy of the
+   * produced private key. This is different than the "Key"
+   * field where the Secret Manager must produce the
+   * key and isolate the private key.
+   *
+   * The private key material can be retrieved by the
+   * Web Application later on.
+   */
+  "SharedKey",
+  "Custom"
+};
+
+/**
+ * Possible values:
+ *  Identity:IdentityAlreadyExists
+ *  ForeignIdentity:IdentityAlreadyExists
+ *  Password:IncompatiblePassword
+ *  Key:PublicKeyAlreadyExists
+ * Or, any string that matches the below RegExp:
+ *  /^Other:[A-Za-z][A-Za-z0-9\-_]*$/
+ */
+typedef DOMString BerytusFieldRejectionReasonCode;
+
+/**
+ * BRTTODO: Add SecureContext
+ * An account field for an in-progress account creation
+ * (registration) session.
+ */
+[Exposed=(Window)]
+interface BerytusField {
+    readonly attribute DOMString id;
+    readonly attribute BerytusFieldType type;
+    readonly attribute object options;
+
+    /**
+     * BerytusDataType encapsulate plaintext data types
+     *  (strings and buffers) and the BerytusEncryptedPacket
+     *  type. However, for the SecurePassword field,
+     *  the value contains a salt and a verifier which
+     *  is eerie to store it a JSON string. We specify
+     *  `object` to allow for such field values to return
+     *  a dictionary type where the values are of type of BerytusDataType,
+     *  or at least a subset of its union members.
+     */
+    [Throws]
+    readonly attribute (BerytusDataType or BerytusFieldValueDictionary)? value;
+
+    /**
+     * Whether this field can be rejected. This depends
+     * on how this field was created or whether it was
+     * rejected previously with a provided value.
+     * If this field was created with a desired value,
+     * or rejected with a desired value, then canBeRejected
+     * will be false.
+     *
+     * N.B. Suppose the web application creates a field
+     *  with a provided value (without asking the SM for one).
+     *  The Web App finds later on that the provided value
+     *  is no bueno. If we enforce canBeRejected = false
+     *  when the web app has provided a value a priori,
+     *  this would be problematic. Therefore, it could
+     *  be worthwile to keep allowing field values to
+     *  change even if it was already provided by the web app.
+     *  This is also applicable when resuming the account
+     *  registration session.
+     * BRTTODO 14/12/2023 -- leave it for later.
+     */
+    readonly attribute boolean canBeRejected;
+
+    /**
+     * BRTTODO REMOVE THIS - we have moved the rejection
+     *  method call to the operation.
+     *
+     * Suppose the field value shouldd be unique
+     * and it already exists in the web application.
+     * To solve this challenge, the web app
+     * should call this method to retrieve a new value or
+     * override the existing one. In other cases, a web app
+     * might reject a field value for unknown reasons.
+     */
+    // Promise<BerytusField> reject(
+    //     BerytusFieldRejectionReasonCode reason,
+    //     optional BerytusPacket newValue
+    // );
+};/**
+ * BRTTODO: Add SecureContext
+ */
+[Exposed=(Window)]
+interface BerytusFieldMap {
+    readonly maplike<DOMString, BerytusField>;
+};dictionary BerytusFieldCategoryOptions {
+    /**
+     * The category id  to group the field under.
+     * The category id must be created before hand
+     * through account.createFieldCategory(id, info);
+     */
+    required DOMString categoryId;
+
+    /**
+     * Optional - Field position within the category.
+     */
+    unsigned short position;
+};
+
+dictionary BerytusBaseFieldOptions {
+    /**
+     * Optional - The field can be grouped alongside
+     * other fields in a category. If this is desired,
+     * then pass a `category` option to specify
+     * the category id, created using
+     * Account.createFieldCategory.
+     * NOT IMPLEMENTED AT THE MOMENT.
+     */
+    BerytusFieldCategoryOptions category;
+};
+
+/* IDENTITY */
+[GenerateConversionToJS]
+dictionary BerytusIdentityFieldOptions : BerytusBaseFieldOptions {
+    /* Is this identifier supposed to be human-readable? */
+    required boolean     humanReadable;
+    /**
+     * Is this identifier _discoverable_ by other users?
+     * BRTTODO: convert this from a binary option to an enum since
+     * It is possible for a web app to have a user's identity visibility
+     * to depend on the user's preferences. E.g., in a web app, the email
+     * address is not discoverable by default, however, it could be made
+     * discoverable after modifying the privacy preferences in the web app
+     * settings dashboard. This is out of the registration scope, but it
+     * is valuable....
+     */
+    required boolean     private;
+    required unsigned short       maxLength;
+    /* What are the allowed characters for this identifier? */
+    ByteString            allowedCharacters;
+
+};
+
+/**
+ * Possible values:
+ * EmailAddress
+ * PhoneNumber
+ * /^Other:[A-Za-z][A-Za-z0-9\-_]+$/
+ */
+typedef ByteString BerytusForeignIdentityKind;
+
+/* FOREIGN IDENTITY borrows `private` from IDENTITY */
+[GenerateConversionToJS]
+dictionary BerytusForeignIdentityFieldOptions : BerytusBaseFieldOptions {
+    /**
+     * Is this foreign identifier _discoverable_ by other users?
+     * BRTTODO: convert this from a binary option to an enum since
+     * It is possible for a web app to have a user's identity visibility
+     * to depend on the user's preferences. E.g., in a web app, the email
+     * address is not discoverable by default, however, it could be made
+     * discoverable after modifying the privacy preferences in the web app
+     * settings dashboard. This is out of the registration scope, but it
+     * is valuable....
+     */
+    required boolean                      private;
+    required BerytusForeignIdentityKind   kind;
+};
+
+/* PASSWORD */
+[GenerateConversionToJS]
+dictionary BerytusPasswordFieldOptions : BerytusBaseFieldOptions {
+    /**
+     * Optional - The password composition policy.
+     * Based on Check Apple's password rules:
+     * https://github.com/apple/password-manager-resources/blob/main/quirks/password-rules.json
+     */
+    DOMString passwordRules;
+};
+
+/* CONSUMABLE PASSWORD */
+[GenerateConversionToJS]
+dictionary BerytusConsumablePasswordFieldOptions : BerytusPasswordFieldOptions {
+    /**
+     * Optional - Consumable password may be distinguishable from
+     * other consumable passwords. A web application might request
+     * a specific consumable password using its identifier.
+     */
+    DOMString passwordIdentifier;
+};
+
+/* SECURE PASSWORD */
+[GenerateConversionToJS]
+dictionary BerytusSecurePasswordFieldOptions : BerytusBaseFieldOptions {
+    /**
+     * This must be the fieldId for the desired the SRP username value.
+     * The `username` must be a registered field in the Password Manager.
+     * identityFieldId should point to an Identity or ForeignIdentity field.
+     */
+    required ByteString identityFieldId;
+};
+
+/* KEY */
+[GenerateConversionToJS]
+dictionary BerytusKeyFieldOptions : BerytusBaseFieldOptions {
+    /**
+     * COSEAlgorithmIdentifier is borrowed from WebAuthentication.webidl
+     * See https://www.iana.org/assignments/cose/cose.xhtml#algorithms
+     * Note: Obviously, not all algorithms are suitable.
+     * The specified algorithm must be suitable for signing (and
+     * potentially asymmetric encryption, maybe? might be better
+     * to separate signing keys from encryption keys) of data.
+     * Otherwise, it SHOULD be rejected. It is an array of
+     * COSEAlgorithmIdentifier to allow the specification of
+     * a signing algorithm, and an encryption algorithm.
+     */
+    //required sequence<COSEAlgorithmIdentifier>     alg;
+    required COSEAlgorithmIdentifier     alg;
+    // ^ BRTTODO: 2/1/2024 - At the moment, only a single COSEE algorithm can be
+    // specified. In the future, this should be changed to a sequence
+    // (array) of algorithms, e.g. to specify an encrpytion algorithm
+    // and a signing alogirthm at the same time.
+};
+
+/* SHARED KEY */
+[GenerateConversionToJS]
+dictionary BerytusSharedKeyFieldOptions : BerytusKeyFieldOptions {};
+
+/**
+ * Custom field creation options.
+ */
+[GenerateConversionToJS]
+dictionary BerytusCustomFieldOptions : BerytusBaseFieldOptions {
+    /**
+     * The mime type of this field's data. E.g.
+     * text/plain
+     * application/json
+     */
+    required DOMString mimeType;
+
+    /**
+     * A human-readable description of this custom field. E.g.,
+     * its purpose.
+     */
+    required DOMString info;
+
+    /**
+     * Optional - Custom fields might require additional
+     * options that we cannot standardise. The parameters object
+     * will be passed to the Secret Manager. it must not contain
+     * any sensitive information. This can be retrieved during
+     * authentication.
+     */
+    record<DOMString, (DOMString or long long or boolean or ArrayBuffer)> parameters;
+};/**
+ * Base interface for special field values that require
+ * a dictioanry format to specify more than one values.
+ * This is mainly used in the unnion type of BerytusField.value.
+ * If we had specified 'object' instead of 'BerytusFieldValue'
+ * an error will be thrown as the parser would have problem
+ * distinguishing between ArrayBuffer and 'object'.
+ * Any children of `BerytusFieldValue` should have the attribute
+ * type `BerytusDataType` or a subset of its union members.
+ */
+[Exposed=(Window)]
+interface BerytusFieldValueDictionary {};[Exposed=(Window)]
+interface BerytusForeignIdentityField : BerytusField {
+    /* readonly attribute BerytusForeignIdentityFieldOptions options; */
+
+    [Throws]
+    constructor(
+        DOMString id,
+        BerytusForeignIdentityFieldOptions options,
+        optional (BerytusPlaintextStringSource or BerytusCiphertextSource) desiredValue
+    );
+};[Exposed=(Window)]
+interface BerytusIdentityField : BerytusField {
+    /* readonly attribute BerytusIdentityFieldOptions options; */
+
+    /**
+     * @param id - a unique identifier for this field. Must match
+     *  the following regexp ^[a-zA-Z][a-zA-Z0-9_\-]$.
+     * @param options - field options.
+     * @param desiredValue - The web app can dictate what the value is.
+     *  Otherwise, the secret manager will come up with a value.
+     */
+    [Throws]
+    constructor(
+        DOMString id,
+        BerytusIdentityFieldOptions options,
+        optional (BerytusPlaintextStringSource or BerytusCiphertextSource) desiredValue
+    );
+};[Exposed=(Window)]
+interface BerytusKeyAgreementParameters {
+    // readonly attribute ArrayBuffer scmNonce;
+    // readonly attribute ArrayBuffer webAppNonce;
+    readonly attribute DOMString sessionId; // Session ID provided by Berytus
+    readonly attribute DOMString webAppX25519Key;
+    readonly attribute DOMString scmX25519Key;
+    readonly attribute DOMString hkdfHash;
+    readonly attribute ArrayBuffer hkdfSalt;
+    readonly attribute ArrayBuffer hkdfInfo;
+    readonly attribute unsigned short aesKeyLength; // bits
+
+    // readonly attribute BerytusX25519Parameters x25519Params;
+    // readonly attribute BerytusHkdfParameters hkdfParams;
+    // readonly attribute BerytusAesGcmParameters aesGcmParams;
+
+    /**
+     * Convert this object to an ordered-JSON string.
+     * This is designed for key agreement parameter signing.
+     * toJSON is deterministic. hkdfSalt and hkdfInfo are encoded
+     * as base64.
+     * The order is as follows:
+     * - sessionId
+     * - webAppX25519Key
+     * - scmX25519Key
+     * - hkdfHash;
+     * - hkdfSalt
+     * - hkdfInfo
+     * - aesKeyLength
+     *
+     * Two space characters are used as indentation.
+     */
+    [Throws]
+    DOMString toJSON();
+};[Exposed=(Window)]
+interface BerytusKeyFieldValue : BerytusFieldValueDictionary {
+    [Throws]
+    readonly attribute (ArrayBuffer or BerytusEncryptedPacket) publicKey;
+};
+
+[Exposed=(Window)]
+interface BerytusKeyField : BerytusField {
+    /* -- readonly attribute BerytusKeyFieldOptions options; */
+    /* -- readonly attribute BerytusKeyFieldValue value; */
+
+    [Throws]
+    constructor(
+        DOMString id,
+        BerytusKeyFieldOptions options
+    );
+};/**
+ * The login operation encapsulates either the authentication
+ * or the registration process.
+ */
+[Exposed=(Window)]
+interface BerytusLoginOperation {
+    readonly attribute BerytusOnboardingIntent intent;
+};[Exposed=(Window)]
+interface BerytusPasswordField : BerytusField {
+    /* readonly attribute BerytusPasswordFieldOptions options; */
+
+    [Throws]
+    constructor(
+        DOMString id,
+        optional BerytusPasswordFieldOptions options = {},
+        optional (BerytusPlaintextStringSource or BerytusCiphertextSource) desiredValue
+    );
+};[Exposed=(Window)]
+interface BerytusSecretManagerActor {
+    /**
+     * Ed25519 public key of the Secret Manager.
+     * SPKI Hex-encoded. Anonymous Secret Managers
+     * will not reuse ed25519 keys across sessions.
+     */
+    readonly attribute DOMString ed25519Key;
+};[Exposed=(Window)]
+interface BerytusSecurePasswordFieldValue : BerytusFieldValueDictionary {
+    readonly attribute (DOMString or BerytusEncryptedPacket) salt;
+    readonly attribute (DOMString or BerytusEncryptedPacket) verifier;
+};
+
+[Exposed=(Window)]
+interface BerytusSecurePasswordField : BerytusField {
+    /* -- readonly attribute BerytusSecurePasswordFieldOptions options; */
+    /* -- readonly attribute BerytusSecurePasswordValue value; */
+
+    /**
+     * @param id - field id
+     * @param options - field options.
+     */
+    [Throws]
+    constructor(
+        DOMString id,
+        BerytusSecurePasswordFieldOptions options
+    );
+};[Exposed=(Window)]
+interface BerytusSharedKeyFieldValue : BerytusFieldValueDictionary {
+    [Throws]
+    readonly attribute (ArrayBuffer or BerytusEncryptedPacket) privateKey; // BRTTODO: perhaps rename this to `secretKey` to make room for symmetric keys.
+
+    [Throws]
+    constructor((BufferSource or BerytusEncryptedPacket) privateKey);
+};
+
+[Exposed=(Window)]
+interface BerytusSharedKeyField : BerytusField {
+    /* readonly attribute BerytusSharedKeyFieldOptions options; */
+
+    /**
+     * @param id - field id
+     * @param options - field options.
+     * @param desiredPrivateKeyValue - The DER-encoded private key
+     *  per the PKCS standard. When it is passed as ciphertext,
+     *  it can be passed as a /buffer or as a base64-encoded string/ of
+     *  the DER data.
+     */
+    [Throws]
+    constructor(
+        DOMString id,
+        BerytusSharedKeyFieldOptions options,
+        optional BerytusSharedKeyFieldValue desiredPrivateKeyValue
+    );
+};/**
+ * Must match any of the following strings based on the standardised
+ * OpenID Claims.
+ *  https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
+ * Valid keys:
+ *  name
+ *  givenName
+ *  familyName
+ *  middleName
+ *  nickname
+ *  profile
+ *  picture
+ *  website
+ *  email
+ *  gender
+ *  birthdate
+ *  zoneinfo
+ *  locale
+ *  phoneNumber
+ *  address
+ * Or any string matching the following RegExp:
+ *  /^custom:[a-zA-Z][a-zA-Z0-9_\-]*$/
+ */
+typedef DOMString BerytusUserAttributeKey;
+
+/**
+ * BRTTODO: Add SecureContext
+ */
+[Exposed=(Window)]
+interface BerytusUserAttribute {
+    readonly attribute BerytusUserAttributeKey id;
+    /**
+     * A user attribute can represent readable strings
+     * or binary formats such as a PNG. This attribute
+     * is used as an indicator for such variations of
+     * user attribute mime types.
+     */
+    readonly attribute DOMString? mimeType;
+    /**
+     * Optional - A human-readable description is often helpful
+     * for the user to understand that this user attribute
+     * is and, perhaps, what it is used for.
+     */
+    readonly attribute DOMString? info;
+
+    /**
+     * The user attribute's value.
+     * Throws when the value is an ArrayBuffer and we aint got no memory son.
+     */
+    [Throws]
+    readonly attribute BerytusDataType value;
+};/**
+ * BRTTODO: Add SecureContext
+ */
+[Exposed=(Window)]
+interface BerytusUserAttributeMap {
+    readonly maplike<BerytusUserAttributeKey, BerytusUserAttribute>;
+};/**
+ * The WebAppActor is the web application's representitive
+ * for authentication and account management when interacting
+ * with the Secret Manager. In other words, the actor is just
+ * a representive of the account- and authentication-related
+ * subsystem of a web application. This interface is just
+ * the base interface to group differrent types of Actors
+ * together. See the other Actor types below.
+ * We refer to the Subsystem as the authentication and
+ * account management subsystem of the web application.
+ */
+[Exposed=(Window)]
+interface BerytusWebAppActor {};// dictionary ChallengeParameters {
+
+// };
+dictionary AuthRealmChallengeMessage {
+  required ByteString name;
+  required any payload;
+};
+dictionary AuthRealmChallengeMessageResponse {
+  required any payload;
+};
+enum AuthRealmChallengeType {
+  "Identification",
+  "DigitalSignature",
+  "Password",
+  "SecureRemotePassword",
+  "ForeignIdentityOtp",
+};
+
+// [Exposed=(Window), GenerateConversionToJS]
+// interface AuthRealmChallengeParameters {
+//   readonly maplike<ByteString, any>;
+// };
+// [GenerateConversionToJS]
+// dictionary AuthRealmChallengeParameters {};
+
+[Exposed=(Window)]
+interface AuthRealmChallenge {
+  readonly attribute ByteString id;
+  readonly attribute AuthRealmChallengeType type;
+  readonly attribute boolean active;
+
+  Promise<AuthRealmChallengeMessageResponse> sendMessage(
+    AuthRealmChallengeMessage message
+  );
+  Promise<undefined> seal();
+  Promise<undefined> abort(ByteString abortionReasonCode);
+};

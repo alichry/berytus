@@ -1,0 +1,687 @@
+---
+// import Editor from './Editor';
+import { Image } from 'astro:assets';
+import NightlyPng from '../nightly.png';
+import SecretstarPng from '../secretstar-192.png';
+import Button from './Button.astro';
+import CodeBlock from './CodeBlock.astro';
+import CodeBlock2 from './CodeBlock2.astro';
+import NextPrev from './NextPrev.astro';
+import ArrowLeft from './ArrowLeft.astro';
+import ArrowRight from './ArrowRight.astro';
+import Notice from './Notice.astro';
+
+interface Props {
+    class?: string;
+}
+const { class: className } = Astro.props;
+
+const defaultUserPng = "data:image/png;base64,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";
+---
+
+<!--
+/**
+ * Sample registration process. The web application
+ * defines the following fields under the account record
+ *  - username
+ *  - email
+ *  - secure remote password
+ *  - plain password
+ *  - key pair
+ * After the creation of those fields, it validates
+ * the username and email to check whether they exist in
+ * its database, and if that is the case, it will reject it and
+ * ask the secret manager to produce another value.
+ * This field value validation process is exhaustive.
+ */
+async function register(operation) {
+	await operation.addFields(
+		new BerytusForeignIdentityField('email', {
+			private: true,
+			kind: 'EmailAddress'
+		}),
+		new BerytusIdentityField('username', {
+			private: false,
+			humanReadable: true,
+			maxLength: 24
+		}),
+		new BerytusSecurePasswordField('securePassword', {
+			identityFieldId: 'username'
+		}),
+		new BerytusPasswordField('password', {
+			passwordRules: 'minlength: 6;'
+		}),
+		new BerytusKeyField('key', { alg: -52 })
+	);
+
+	/* exhaustively validate and revise field values (e.g. check if username does not exist) here */
+
+	while (usernameExists(operation.fields.get('username').value)) {
+		await operation.rejectAndReviseFields(
+			{
+				field: operation.fields.get('username'),
+				reason: 'Identity:IdentityAlreadyExists'
+			}
+		);
+	}
+	while (emailExists(operation.fields.get('email').value)) {
+		await operation.rejectAndReviseFields(
+			{
+				field: operation.fields.get('email'),
+				reason: 'ForeignIdentity:IdentityAlreadyExists'
+			}
+		);
+	}
+	while (keyExists(operation.fields.get('key').value)) {
+		await operation.rejectAndReviseFields(
+			{
+				field: operation.fields.get('key'),
+				reason: 'Key:PublicKeyAlreadyExists'
+			}
+		);
+	}
+
+	await operation.setVersion(1);
+	await operation.setStatus('Created');
+
+	/* todo: send the account data to the backend */
+
+	await operation.save();
+}
+
+/**
+ * Sample authentication process. The web application
+ * expects the account record to have the same fields
+ * defined in the registration process.
+ */
+async function authenticate(operation) {
+	const idch = await op.createChallenge(
+		'idch', /* challenge id */
+		'Identification' /* challenge type */
+	);
+
+	const ids = await idch.sendMessage({
+    	name: 'GetIdentityFields',
+    	payload: ['username', 'email'] /* (Foreign)Identity field ids */
+  	});
+
+	const psch = await op.createChallenge(
+		'psch',
+		'Password'
+	);
+	const passwords = await psch.sendMessage({
+    	name: 'GetPasswordFields',
+    	payload: ['password'] /* Password field ids */
+  	});
+    console.log("ids", ids, "passwds", passwords);
+}
+
+function emailExists(email) {
+	return false;
+}
+
+function userExists(username) {
+	return false;
+}
+
+function keyExists(key) {
+	return false;
+}
+
+login();
+`;
+
+</script>
+-->
+<script>
+    import '../berytus/StepWalker';
+    import Alpine from 'alpinejs';
+
+    const store = Alpine.store('stepWalker');
+</script>
+
+<div class:list={[className, "mt-12 mx-6"]} x-data="{ berytusSupported: window.BerytusChannel !== undefined }">
+    <p class="font-bold text-slate-700 text-2xl text-center">
+        Project artifacts
+    </p>
+    <div class="flex flex-row flex-wrap gap-20 max-w-sm mt-6 mx-auto justify-between">
+        <div class="flex-1">
+            <Image
+                src={NightlyPng}
+                alt="Firefox nightly browser"
+                class="w-[96px] h-[96px] ml-2"
+            />
+            <p class="mt-2 font-medium px-2 py-1 text-center rounded-lg bg-violet-900 text-white text-xs max-w-fit">
+                Firefox + Berytus
+            </p>
+            <ul class="text-slate-800 mt-3 list-disc">
+                <li>
+                    <a href="https://code.berytus.io/?dir=workspace" target="_blank">
+                        Source code (web)
+                    </a>
+                </li>
+                <li>
+                    <a href="https://code.berytus.io/?dir=compressed" target="_blank">
+                        Source code (zip)
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="flex-1">
+            <Image
+                src={SecretstarPng}
+                alt="Secret* secret manager"
+                class="w-[96px] h-[96px] ml-2"
+            />
+            <p class="mt-2 font-medium px-2 py-1 text-center rounded-lg bg-violet-900 text-white text-xs max-w-fit">
+                Secret* (manager)
+            </p>
+            <ul class="text-slate-800 mt-3 list-disc">
+            <li>
+                <a href="https://code.berytus.io/?dir=workspace/secretstar" target="_blank">
+                    Source code (web)
+                </a>
+            </li>
+            <li>
+                <a href="https://code.berytus.io/?dir=compressed" target="_blank">
+                    Source code (zip)
+                </a>
+            </li>
+        </ul>
+        </div>
+    </div>
+    <p class="font-bold text-slate-700 text-2xl text-center mt-8">
+        Getting started
+    </p>
+    <div class="max-w-lg dashed border mx-auto mt-4 px-4 py-4">
+        <p class="text-slate-800">
+            The quickest way to get started is to download the
+            packaged Secret* extension and our extended Firefox browser
+            binary. Unfortunately, we do not have the packaged
+            browser binary for Windows. Windows users should
+            build it from the source code. If you are compiling
+            it yourself instead of downloading the packaged
+            browser binary, follow the build instructions below.
+            Otherwise, skip to the installation instructions.
+        </p>
+        <hr class="mt-4 mb-4" />
+        <div class="flex flex-row gap-4 flex-wrap justify-between">
+            <Button class="text-base pb-2">
+                <a
+                    class="no-underline"
+                    href="https://code.berytus.io/?dir=release/secretstar"
+                    target="_blank"
+                >
+                    <Image
+                        src={SecretstarPng}
+                        alt="Secret*"
+                        class="w-[24px] inline mr-1"
+                    />
+                    All platforms
+                </a>
+
+            </Button>
+            <Button class="text-base pb-2">
+                <a
+                    class="no-underline"
+                    href="https://code.berytus.io/?dir=release/berytus-firefox/mac"
+                    target="_blank"
+                >
+                    <Image
+                        src={NightlyPng}
+                        alt="Firefox Nightly"
+                        class="w-[24px] inline mr-1"
+                    />
+                    Mac
+                </a>
+            </Button>
+            <Button class="text-base pb-2 text-sm">
+                <a
+                    class="no-underline"
+                    href="https://code.berytus.io/?dir=release/berytus-firefox/linux-x86_64"
+                    target="_blank"
+                >
+                    <Image
+                        src={NightlyPng}
+                        alt="Firefox Nightly"
+                        class="w-[24px] inline mr-1"
+                    />
+                        Linux (x86_64)
+                </a>
+            </Button>
+        </div>
+        <details class="mt-4">
+            <summary class="font-medium text-lg text-slate-700">
+                Build instructions
+            </summary>
+            <ul class="list-decimal ml-4 mt-2 text-slate-800 [&>li]:mt-1">
+                <li>
+                    Install the necessary system dependencies.
+                    <ul class="list-disc ml-4 mt-2 text-slate-800 [&>li]:mt-1">
+                        <li>clang</li>
+                        <li>rust</li>
+                        <li>nasm</li>
+                        <li>python3.8</li>
+                        <li>Node.js</li>
+                        <li>
+                            Typescript (globally)
+                            <span class="cursor-default border-2 p-0.5" title="This is not needed for the official mozilla repository, but typescript is used in an external build step we introduced when building the Berytus Core API.">&#63;</span>
+                        </li>
+                        <li>
+                            pcre2grep
+                            <span class="cursor-default border-2 p-0.5" title="This is not needed for the official mozilla repository, but pcre2grep is used in an external build step we introduced when building the Berytus Core API.">&#63;</span>
+                        </li>
+                        <li><a href="https://github.com/mozilla/sccache">sccache</a></li>
+                    </ul>
+                </li>
+                <li>
+                    Install the other necessary system dependencies using the official mozilla
+                    system
+                    <a href="https://firefox-source-docs.mozilla.org/setup/linux_build.html">
+                        bootstrap
+                    </a> tool.
+                    Follow the instructions provided in the official mozilla documentation
+                    pages to bootstrap your machine. For linux, the commands are:
+                    <code class="text-xs whitespace-pre-line">
+$ python3 -m pip install --user mercurial
+$ curl https://hg.mozilla.org/mozilla-central/raw-file/default/python/mozboot/bin/bootstrap.py -O
+# Run the bootstrap script. You can halt the script
+# when you are prompted to choose whether to download
+# the artifacts or not and for which platform.
+$ python3 bootstrap.py
+# Install further dependencies in the configure command.
+$ ./mach configure
+                    </code>
+                    You can disregard or remove the <code class="text-xs">mozilla-unified</code>
+                    directory now.
+                </li>
+                <li>
+                    Now, your system should be configured with the necessary dependencies.
+                    Download the source code of Firefox + Berytus using the links
+                    under the 'Project artifacts' section at the top of the page.
+                </li>
+                <li>Extract the contents of the zip file</li>
+                <li>
+                    Open a terminal and <code class="text-xs">cd</code>
+                    into the directory containing the source code.
+                </li>
+                <li>
+                    Run the following commands:
+                    <code class="text-xs whitespace-pre-line">
+# Install JS dependencies for core API and build it
+$ cd toolkit/components/authrealm
+$ npm install
+$ npm run build:rollup
+# Note, if the build fails because of an out of
+# memory error, use the following command instead:
+$ NODE_OPTIONS="--max-old-space-size=4096" npm run build:rollup
+# Our rollup build process is inefficient.
+$ cd ../../../ # return to the root directory
+
+# Optional: Install JS dependencies for Secret* and build it
+$ cd secretstar
+$ npm install
+$ npm run build
+$ cd ../ # return to the root directory.
+
+# Configure build options
+$ cat &lt;&lt;EOF &gt; ./mozconfig
+    # mozilla build config
+    ac_add_options --with-ccache=sccache
+    ac_add_options --disable-bootstrap
+EOF
+
+# Run the clobber in case it cleans up ~/.mozbuild
+# from any potential artifacts produced by mozilla-unified.
+# Don't run ./mach clobber everytime you want to
+# re-build the browser. Just this time.
+$ ./mach clobber
+
+# Finally, build the browser.
+$ ./mach build
+
+# After the build completes, run the browser
+$ ./mach run
+                    </code>
+                </li>
+            </ul>
+        </details>
+        <hr class="my-2" />
+        <details class="mt-4">
+            <summary class="font-medium text-lg text-slate-700">
+                Installation instructions
+            </summary>
+            <ul class="list-disc ml-4 mt-2 text-slate-800 [&>li]:mt-1">
+                <li>
+                    Secret* - extract the zip contents into a desired directory.
+                </li>
+                <li>
+                    Browser/MacOS - mount the disk image as you normally
+                    do for any installer and drag the firefox nightly icon into
+                    the applications folder. The browser can be launched by searching
+                    for 'Nightly.app'.
+                </li>
+                <li>
+                    Browser/Linux - extract the zip contents into a desired directory.
+                    The browser can be launched by executing the 'firefox' binary,
+                    e.g. using terminal <code>./firefox</code>
+                </li>
+            </ul>
+        </details>
+        <hr class="my-2" />
+        <details class="mt-3">
+            <summary class="font-medium text-lg text-slate-700">
+                Launch instructions
+            </summary>
+            <ul class="list-decimal ml-6 mt-2 text-slate-800 [&>li]:mt-1">
+                <li>
+                    Open the installed firefox + berytus browser.
+                <li>
+                    In the address bar, navigate to <code>about:debugging</code>
+                </li>
+                <li>
+                    Press on 'This Nightly' on the left-hand bar.
+                </li>
+                <li>
+                    Under Temporary Extensions, click on 'Load Temporary Add-on...'
+                </li>
+                <li>
+                    In the file browser, navigate to the directory where you
+                    extracted sectret* into. Select manifest.json in that directory.
+                </li>
+                <li>
+                    Click on the extension/add-on icon located at the top-right side of the browser.
+                </li>
+                <li>
+                    Click on Secret* to open the pop up page.
+                </li>
+                <li>
+                    Now, to set up the secret manager, click on the bouncing ID card button.
+                </li>
+                <li>
+                    Go to 'Settings'
+                </li>
+                <li>
+                    Optional: tick 'Seamless onboarding' if you wish to experience an automated epxerience.
+                </li>
+                <li>
+                    Optional: Specify a sample email address and phone number with an international country code
+                </li>
+                <li>
+                    Optional: Click on 'Use Development Identity.' or fill your identity innformation by going back to the idendity tab. Filling your identity info is not necessary as you will get prompted to input it during registration if needed.
+                </li>
+            </ul>
+            <p class="text-slate-800 mt-2 block">
+                ✅ Your secret manager is now configured and the
+                browser your running supports the Berytus API.
+                Navigate to this web page to start experimenting
+                <code class="text-sm" x-text="window.document.URL"></code>
+            </p>
+        </details>
+        <hr class="my-2" />
+        <details class="mt-4">
+            <summary class="font-medium text-lg text-slate-700">
+                Simulation instructions
+            </summary>
+            <p class="text-slate-800 mt-2 block">
+                Make sure you ran the launch instructions to open the browser and load the Secret* extension.
+                The simulation would show you a running example of most WebIDL API we have streamlined.
+            </p>
+            <ul class="list-decimal ml-4 mt-2 text-slate-800 [&>li]:mt-1">
+                <li>
+                    Click on the extension/add-on icon located at the top-right side of the browser.
+                </li>
+                <li>
+                    Click on Secret* to open the pop up page.
+                </li>
+                <li>
+                    Click on the top-right button. It will open a new tab.
+                </li>
+            </ul>
+            <p class="text-slate-800 mt-2 block">
+                In the newly opened tab you can click on 'Continue with AuthRealm'
+                to start an authentication or registration session. Note,
+                the framework is called 'AuthRealm' here because it was the original
+                name. Berytus is what we are sticking with and it is used for the second version
+                of our WebIDL API.
+            </p>
+        </details>
+        <hr class="my-2" />
+        <details class="mt-3">
+            <summary class="font-medium text-lg text-slate-700">
+                Open Source roadmap
+            </summary>
+            <p class="text-slate-800 mt-2 block">
+                Berytus is on its way to GitHub 🏃‍♂️ There are a few housekeeping tasks
+                we need to care of before creating a public repository. Here are a few:
+            </p>
+            <ul class="list-disc ml-4 mt-2 text-slate-800 [&>li]:mt-1">
+                <li>
+                    Separate the Berytus code in a standalone repository, detached from Mozilla Unified.
+                    We aim to provide tools to port the Berytus modules into any Mozilla Unified project.
+                    This would make it easy to port Berytus to other Firefox-based browsers.
+                </li>
+                <li>
+                    Significantly reduce the dependence on XPIDL interfaces, e.g., by using primitives in method arguments
+                    instead of specialised objects/interfaces holding a subset of the necessary parameters.
+                </li>
+                <li>
+                    Delete deadcode and refactor where necessary.
+                </li>
+            </ul>
+        </details>
+    </div>
+
+
+    <div class="px-12">
+        <p class="font-bold text-slate-700 text-2xl text-center mt-12">
+            Now the fun starts!
+        </p>
+        <p class="font-bold text-slate-400 text-lg text-center mb-8">
+            Run the codeblock below to register a new account
+            or authenticate with an existing account
+            via Berytus.
+        </p>
+
+        <div
+            x-data="$store.stepWalker"
+            class="flex flex-col gap-6"
+        >
+            <div x-show="!!$store.stepWalker.state?.userAttributes.name || Object.keys($store.stepWalker.state?.identityFields || {}).length > 0" class="border-2 border-[#0f172a] px-4 pb-6 pt-2">
+                <div class="flex flex-row mb-2">
+                    <div class="flex-1"></div>
+                    <p class="underline text-lg text-slate-700 font-bold" x-text="`${$store.stepWalker.state?.category}.V${$store.stepWalker.state?.version}`"></p>
+                </div>
+                <div class="flex flex-row gap-12">
+                    <img
+                        width={128}
+                        class="rounded-full block h-[128px]"
+                        x-bind:src={`state?.userAttributes.picture || "${defaultUserPng}"`}
+                    ></img>
+                    <div class="flex flex-col flex-wrap gap-1">
+                        <p
+                            class="text-lg text-slate-700 font-bold"
+                            x-text="(state?.userAttributes.name || '')"
+                        ></p>
+                        <template x-for="(value, id) in state?.userAttributes">
+                            <!-- <div x-show="(id !== 'name' && id !== 'picture') "></div> -->
+                            <div x-show="id === 'birthdate' || id === 'gender' || id === 'address'">
+                                <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                <p
+                                    class="text-base text-slate-700"
+                                    x-text="value"
+                                ></p>
+                            </div>
+                        </template>
+                        <details x-show="!!Object.keys(state?.userAttributes || {}).find(f => f !== 'name' && f !== 'picture' && f !== 'birthdate' && f !== 'gender' && f !== 'address')">
+                            <summary class="text-base text-slate-700">Optional</summary>
+                            <template x-for="(value, id) in state?.userAttributes">
+                                <div x-show="id !== 'name' && id !== 'picture' && id !== 'birthdate' && id !== 'gender' && id !== 'address'">
+                                    <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                    <p
+                                        class="text-base text-slate-700"
+                                        x-text="value"
+                                    ></p>
+                                </div>
+                            </template>
+                        </details>
+                    </div>
+                    <!-- <hr class="h-[inherit] border-l-2 border-black" /> -->
+                    <div
+                        class="flex flex-col gap-1"
+                        x-show=" state?.credentialFields.length + state?.identityFields.length > 0"
+                    >
+                        <div>
+                            <p class="text-lg text-slate-700 font-bold">Credentials</p>
+                        </div>
+                        <template x-for="{ id, value } in state?.identityFields">
+                            <div>
+                                <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                <p
+                                    class="text-base text-slate-700"
+                                    x-text="value"
+                                ></p>
+                            </div>
+                        </template>
+                        <template x-for="{ id, value } in state?.credentialFields">
+                            <div>
+                                <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                <p
+                                    class="text-base text-slate-700"
+                                    x-text="value"
+                                ></p>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <div>
+                            <p class="text-lg text-slate-700 font-bold">Metadata</p>
+                            <div>
+                                <i class="text-base text-slate-400">Category</i>
+                                <p
+                                    class="text-base text-slate-700"
+                                    x-text="state?.category"
+                                ></p>
+                            </div>
+                            <div>
+                                <i class="text-base text-slate-400">Version</i>
+                                <p
+                                    class="text-base text-slate-700"
+                                    x-text="state?.version"
+                                ></p>
+                            </div>
+                            <div x-show="!!state?.status">
+                                <i class="text-base text-slate-400">Status</i>
+                                <p
+                                    class="text-base text-slate-700"
+                                    x-text="state?.status"
+                                ></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div x-show="$store.stepWalker.finished" class="flex flex-row">
+                <Notice type="info" class="flex-1">
+                    <p>
+                        Nice! You've completed all the steps.
+                        You can restart the stage if you wish.
+                    </p>
+                </Notice>
+                <hr class="w-[2rem] h-[2px] my-auto bg-black" />
+                <Button
+                    x-bind:disabled="$store.stepWalker.restarting"
+                    x-text="$store.stepWalker.restarting ? '...' : 'Restart'"
+                    x-on:click="$store.stepWalker.restart()"
+                    class="my-auto"
+                />
+            </div>
+            <Notice
+                type="info"
+                x-show="!$store.stepWalker.started"
+                class="max-w-xl mx-auto"
+            >
+                Make sure you download/compile the lastest release
+                of Berytus/Firefox and Secret* before running the code below.
+            </Notice>
+            <div
+                x-show="! $store.stepWalker.finished && $store.stepWalker.ready"
+                class="flex flex-row gap-4"
+            >
+                <ArrowLeft
+                    class="self-center mb-6"
+                    x-show="$store.stepWalker.canSelectPrevious"
+                    x-on:click="$store.stepWalker.selectPrevious();"
+                />
+                <CodeBlock2
+                    class='mx-auto'
+                    :code="$store.stepWalker.code"
+                    :title="$store.stepWalker.selected.label + '->' + $store.stepWalker.step"
+                >
+                    <div class="flex flex-row">
+                        <div class="flex-1"></div>
+                        <input type="checkbox" id="pauseBw" name="pauseBw" checked>
+                        <label for="pauseBw" class="ml-1.5 text-slate-700"> Pause between steps</label><br>
+                    </div>
+                    <div class="mt-2 mx-auto w-fit">
+                        <Button
+                            x-show="berytusSupported && !$store.stepWalker.error"
+                            x-bind:disabled="$store.stepWalker.loading"
+                            x-on:click="document.getElementById('pauseBw').checked ? $store.stepWalker.walk() : $store.stepWalker.keepWalking()"
+                            x-text="$store.stepWalker.loading ? '...' : 'Execute'"
+                        >Execute</Button>
+                        <div x-show="$store.stepWalker.error" class="flex flex-row">
+                            <Notice type="error" class="flex-1">
+                                <p x-text="$store.stepWalker.error?.message"></p>
+                            </Notice>
+                            <hr class="w-[2rem] h-[2px] my-auto bg-black" />
+                            <Button
+                                x-bind:disabled="$store.stepWalker.restarting"
+                                x-text="$store.stepWalker.restarting ? '...' : 'Restart'"
+                                x-on:click="$store.stepWalker.restart()"
+                                class="my-auto"
+                            />
+                        </div>
+                    </div>
+                </CodeBlock2>
+                <ArrowRight
+                    class="self-center mb-6"
+                    x-show="$store.stepWalker.canSelectNext"
+                    x-on:click="$store.stepWalker.selectNext()"
+                />
+            </div>
+        </div>
+
+        <!-- <div x-data="$store.sampleLogin">
+            <div x-show:="! finished && ready">
+                <CodeBlock2
+                    class='mx-auto'
+                    :width="currentBlock.width"
+                    :height="currentBlock.height"
+                    :code="currentBlock.code"
+                >
+                    <Button
+                        x-bind:disabled="!!$store.sampleLogin.loading"
+                        x-on:click="$store.sampleLogin.continue()"
+                        x-text="$store.sampleLogin.loading ? '...' : '≫ Execute'"
+                    >≫ Execute</Button>
+                </CodeBlock2>
+            </div>
+        </div> -->
+        <!-- <NextPrev dir="next" x-on:click="$store.sampleLogin.nextOption()" /> -->
+    </div>
+    <div class="mb-12">
+        <p class="text-slate-800 text-lg mt-12 text-center">
+            <strong x-text="berytusSupported ? ' ✅' : ' ❌' "></strong>
+            Your browser
+            <strong x-text="berytusSupported ? 'SUPPORTS' : 'DOES NOT SUPPORT' "></strong>
+            the Berytus Web API
+        </p>
+        <p
+            class="mt-2 text-black max-w-lg mx-auto block"
+            :class="! berytusSupported ? 'text-red-700' : ''"
+            x-text="! berytusSupported ? 'Oh no! It looks like your browser does not implement the Berytus API. Please download our extended firefox browser that implements it using the provided download links.' : ''"
+        ></p>
+    </div>
+
+</div>

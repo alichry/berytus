@@ -1,0 +1,47 @@
+---
+const encodedEmail = btoa('<>');
+// x-init={`$refs.email.textContent = atob('${encodedEmail}')`}
+---
+<div x-data class="w-full">
+    <dialog x-ref="disclaimer" class="px-6 py-6 border-2 border-slate-800 max-w-md">
+        <!-- <p class="italic">
+            The authors of Berytus
+            <code class="text-sm not-italic" x-ref="email"></code>
+        </p> -->
+        <p class="mt-2">Icon credits:</p>
+        <ul class="list-disc ml-4 mt-2">
+            <li>
+                Icon for Secret*:
+                Rainbow icons created by <a href="https://www.flaticon.com/free-icon/star_6584630">Freepik - Flaticon</a>
+            </li>
+            <li>
+                Icon for Berytus API:
+                <a href="https://iconscout.com/icons/government" class="text-underline font-size-sm" target="_blank">Government</a> by <a href="https://iconscout.com/contributors/fengquanli" class="text-underline font-size-sm" target="_blank">fengquan</a>
+            </li>
+            <li>
+                Icon for Web App:
+                <a href="https://iconscout.com/icons/app" class="text-underline font-size-sm" target="_blank">App</a> by <a href="https://iconscout.com/contributors/laura-reen" class="text-underline font-size-sm">Laura Reen</a> on <a href="https://iconscout.com" class="text-underline font-size-sm">IconScout</a>
+            </li>
+            <li>
+                Icon for Secret Manager / Identity:
+                <a href="https://iconscout.com/icons/id-card" class="text-underline font-size-sm" target="_blank">Id Card</a> by <a href="https://iconscout.com/contributors/lima-studio" class="text-underline font-size-sm">Lima Studio</a> on <a href="https://iconscout.com" class="text-underline font-size-sm">IconScout</a>
+            </li>
+            <li>
+                Icon for Secret Manager / Key:
+                <a href="https://iconscout.com/icons/password" class="text-underline font-size-sm" target="_blank">Password</a> by <a href="https://iconscout.com/contributors/circlontech" class="text-underline font-size-sm">Circlon Tech</a> on <a href="https://iconscout.com" class="text-underline font-size-sm">IconScout</a>
+            </li>
+        </ul>
+        <form method="dialog">
+          <button class="border py-1 px-2 mt-4" autofocus>OK</button>
+        </form>
+    </dialog>
+    <div class="bg-light h-[3rem] border-slate-800 border-y text-slate-800 w-full flex flex-row">
+        <div class="flex-1" />
+        <a
+            class="self-center text-sm mr-4 cursor-pointer text-underline"
+            x-on:click="$refs.disclaimer.showModal()"
+        >
+            Disclaimer
+        </a>
+    </div>
+</div>

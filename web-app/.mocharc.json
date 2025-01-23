@@ -1,0 +1,4 @@
+{
+    // "loader": "ts-node/esm"
+    "loader": "ts-paths-esm-loader"
+}

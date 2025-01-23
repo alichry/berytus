@@ -1,0 +1,58 @@
+version: '3'
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "0.0.0.0:80:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASS_FILE=/run/secrets/dbpass
+      - DB_NAME=app
+    depends_on:
+      - db
+    secrets:
+      - dbpass
+  db:
+    image: mariadb:latest
+    environment:
+      - MARIADB_USER=user
+      - MARIADB_PASSWORD_FILE=/run/secrets/dbpass
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/dbrootpass
+      - MARIADB_DATABASE=app
+      - MARIADB_AUTO_UPGRADE=1
+    volumes:
+      - appdb:/var/lib/mysql:rw
+    secrets:
+      - dbpass
+      - dbrootpass
+  dbmigrate:
+    restart: no
+    build:
+      dockerfile: dbmigrate.dockerfile
+    depends_on:
+      - db
+    environment:
+      # FLYWAY_PASSWORD is set at run time, see the Dockerfile ENTRYPOINT,
+      # by reading the DB_PASSWORD_FILE
+      - DB_PASSWORD_FILE=/run/secrets/dbpass
+      - FLYWAY_URL=jdbc:mariadb://db:3306/app
+      - FLYWAY_USER=user
+      - FLYWAY_LOCATIONS=filesystem:/sql
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+      - FLYWAY_EXECUTE_IN_TRANSACTION=true
+      - FLYWAY_CONNECT_RETRIES=5 # needed to wait for the db to start
+      - FLYWAY_CONNECT_RETRIES_INTERVAL=10
+    secrets:
+      - dbpass
+volumes:
+  appdb:
+secrets:
+  dbpass:
+    file: ./dbpass.txt
+  dbrootpass:
+    file: ./dbrootpass.txt

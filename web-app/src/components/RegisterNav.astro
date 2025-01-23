@@ -1,0 +1,81 @@
+---
+import Input from "./Input.astro";
+import Button from "./Button.astro";
+import ShiftRight from "./ShiftRight.astro";
+import { signal } from '@preact/signals';
+import PresetChooser from "./PresetChooser";
+
+const selectedPresets = signal("password");
+const stage = signal(0);
+
+interface AttributePreset {
+    id: string;
+    label: string;
+    type?: "text" | "image";
+}
+
+interface FieldPreset {
+    id: string;
+    type: BerytusFieldType;
+}
+
+interface Props {
+    class?: string;
+    ':class'?: string;
+}
+
+const { class: className, ':class': apClass } = Astro.props;
+
+// interface Props {
+//     attributes: Array<AttributePreset>;
+//     fields: Array<FieldPreset>;
+// }
+
+// const { attributes, fields } = Astro.props;
+// const x = 1;
+---
+
+<script>
+    import Alpine from "alpinejs";
+
+    Alpine.data('registerNav', () => ({
+        stage: "Attributes",
+        attributes: {
+            firstName: {
+                label: 'First name',
+                value: ''
+            },
+            lastName: {
+                label: 'Last name',
+                value: ''
+            }
+        },
+        currentAttribute: 'firstName',
+
+    }));
+</script>
+
+<div x-data="registerNav" x-bind:class={apClass}>
+    { stage.value === 0 ? (
+        <PresetChooser
+            selectedPresets={selectedPresets}
+            onNext={() => stage.value++}
+            client:visible
+        />
+    ) : null}
+
+
+    <!-- <template x-for="(attribute, key) in attributes">
+        <Input
+            label=""
+            name="lastName"
+            x-model="input.lastName"
+            fullWidth
+        />
+    </template> -->
+
+
+    <ShiftRight class="mb-4">
+        <Button>Register</Button>
+    </ShiftRight>
+</div>

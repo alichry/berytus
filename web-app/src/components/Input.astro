@@ -1,0 +1,27 @@
+---
+interface Props extends astroHTML.JSX.InputHTMLAttributes {
+    label?: string;
+    class?: string;
+    fullWidth?: boolean;
+}
+const { class: className, fullWidth, label, ...otherProps } = Astro.props;
+
+---
+<style>
+    input.teal {
+        background-color: #0f766e;
+    }
+    input.def {
+        background-color: #383838;
+    }
+</style>
+<div class:list={[className]}>
+    <label class:list={["mb-1.5 ml-0.5 block text-slate-700 text-sm", ! label ? 'hidden' : '']}>
+        { label }
+    </label>
+    <input
+        {...otherProps}
+        class:list={["block border-2 rounded border-sky-800 pl-2.5 text-slate-800 py-1.5 bg-slate-800 text-white active:bg-red", fullWidth ? 'w-full' : '']}
+    />
+
+</div>

@@ -1,0 +1,40 @@
+---
+import DashedLine from './DashedLine.astro';
+import LoginForm from './LoginForm.astro';
+import RegisterForm from './RegisterForm.astro';
+import Slider from './Slider.astro';
+import PresetChooser from './PresetChooser';
+import RegisterNav from './RegisterNav.astro';
+
+interface Props {
+    class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<div class:list={[className, "mt-12"]} x-data="{ login: true }">
+    <p class="font-bold text-slate-700 text-2xl text-center">Try it out yourself!</p>
+    <p class="font-bold text-slate-400 text-lg text-center mb-8">Experiment with the login form below.</p>
+    <div class="mx-auto w-3/4 max-w-[24rem] border-4 rounded border-dotted pt-4 pb-8 px-6">
+        <div class="flex flex-row gap-1 mb-6">
+            <!-- <p class="font-medium text-xl text-fuchsia-900 mb-0">Login</p> -->
+            <p class="font-medium text-xl text-slate-900 mb-0 text-center"
+                x-text="login ? 'Login' : 'Register'">
+
+            </p>
+            <!-- <DashedLine /> -->
+        </div>
+        <Slider items={['Intent', 'Attributes', 'Fields', 'Submit']} current="Attributes" class="mb-4" />
+        <LoginForm :class="! login ? 'hidden' : ''" />
+        <!-- <RegisterForm :class="login ? 'hidden' : ''" /> -->
+        <RegisterNav  :class="login ? 'hidden' : ''" />
+        <hr class="mb-4" />
+        <p class="text-slate-600 text-sm">
+            <span x-text="login ? 'Don\\\'t have an account? Click' : 'Already have an account? Click'"></span>
+            <span x-on:click="login = ! login" class="border-b border-b-black inline cursor-pointer">
+                here</span>
+            <span x-text="login ? 'to register' : 'to login'"></span>
+        </p>
+    </div>
+</div>

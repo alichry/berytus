@@ -1,0 +1,48 @@
+---
+export enum ECircleState {
+    Finished,
+    Active,
+    Next
+}
+interface Props {
+    state?: ECircleState;
+    class?: string;
+}
+
+const { state = ECircleState.Next, class: className } = Astro.props;
+---
+
+<style>
+    .circle {
+        height: 2rem;
+        width: 2rem;
+        /* background-color: #bbb; */
+        /* background-color: #b5b4b4; */
+        border-radius: 50%;
+        display: inline-block;
+        border-width: 2px;;
+        border-color: #a2a2a2; /* #a2a2a2 */
+    }
+    .circle.finished {
+        border-width: 2px;
+        border-color: #00b391;
+        background-color: rgb(115, 244, 171);
+    }
+    .circle.active {
+        border-width: 2px;
+        border-color: #00b391;
+        background-color: #fff;
+    }
+</style>
+
+<div class={className}>
+    <div class:list={[
+        "circle",
+        state === ECircleState['Active']
+        ? 'active'
+        : state === ECircleState['Finished']
+        ? 'finished'
+        : ''
+    ]}>
+    </div>
+</div>
