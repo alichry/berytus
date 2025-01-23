@@ -11110,6 +11110,212 @@ bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue,
   };
   return aValue.InternalValue()->match(Matcher(aCx, aRv));
 }
+template<>
+bool JSValIs<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      aRv = true;
+      return true;
+    }
+  } while (false);
+
+  aRv = false;
+  return true;
+}
+template<>
+bool FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aRv) {
+  do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<JSNull>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      JSNull nv;
+      if (NS_WARN_IF(!(FromJSVal<JSNull>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<0>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<nsString>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      nsString nv;
+      if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<1>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusEncryptedPacket>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      BerytusEncryptedPacket nv;
+      if (NS_WARN_IF(!(FromJSVal<BerytusEncryptedPacket>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<2>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusKeyFieldValue>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      BerytusKeyFieldValue nv;
+      if (NS_WARN_IF(!(FromJSVal<BerytusKeyFieldValue>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<3>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusSecurePasswordFieldValue>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      BerytusSecurePasswordFieldValue nv;
+      if (NS_WARN_IF(!(FromJSVal<BerytusSecurePasswordFieldValue>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<4>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+do {
+    bool isValid = false;
+    if (NS_WARN_IF(!(JSValIs<BerytusSharedKeyFieldValue>(aCx, aValue, isValid)))) {
+      return false;
+    }
+    if (isValid) {
+      BerytusSharedKeyFieldValue nv;
+      if (NS_WARN_IF(!(FromJSVal<BerytusSharedKeyFieldValue>(aCx, aValue, nv)))) {
+        return false;
+      }
+      aRv.Init(VariantIndex<5>(), std::move(nv));
+      return true;
+    }
+  } while (false);
+  
+
+  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  return false;
+}
+template<>
+bool ToJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, const SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv) {
+  struct Matcher {
+    JSContext* mCx;
+    JS::MutableHandle<JS::Value> mRv;
+    Matcher(JSContext* aCx, JS::MutableHandle<JS::Value> aRv) : mCx(aCx), mRv(aRv) {}
+    
+    bool operator()(const JSNull& aVal) {
+      return ToJSVal<JSNull>(mCx, aVal, mRv);
+    }
+
+    bool operator()(const nsString& aVal) {
+      return ToJSVal<nsString>(mCx, aVal, mRv);
+    }
+
+    bool operator()(const BerytusEncryptedPacket& aVal) {
+      return ToJSVal<BerytusEncryptedPacket>(mCx, aVal, mRv);
+    }
+
+    bool operator()(const BerytusKeyFieldValue& aVal) {
+      return ToJSVal<BerytusKeyFieldValue>(mCx, aVal, mRv);
+    }
+
+    bool operator()(const BerytusSecurePasswordFieldValue& aVal) {
+      return ToJSVal<BerytusSecurePasswordFieldValue>(mCx, aVal, mRv);
+    }
+
+    bool operator()(const BerytusSharedKeyFieldValue& aVal) {
+      return ToJSVal<BerytusSharedKeyFieldValue>(mCx, aVal, mRv);
+    }
+  };
+  return aValue.InternalValue()->match(Matcher(aCx, aRv));
+}
 
 template<>
 bool JSValIs<FieldValueRejectionReason>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -15666,8 +15872,8 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
-    if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
+    SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
+    if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
@@ -15709,8 +15915,8 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
-    if (NS_WARN_IF(!(FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
+    SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
+    if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);

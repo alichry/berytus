@@ -37,8 +37,6 @@ BerytusLoginOperation::BerytusLoginOperation(
   : mGlobal(aGlobal), mChannel(aChannel), mId(aOperationId), mIntent(aIntent), mActive(true)
 {
     // Add |MOZ_COUNT_CTOR(BerytusLoginOperation);| for a non-refcounted object.
-  nsIDToCString uuidString(nsID::GenerateUUID());
-  mId.Assign(NS_ConvertUTF8toUTF16(uuidString.get()));
 }
 
 BerytusLoginOperation::~BerytusLoginOperation()

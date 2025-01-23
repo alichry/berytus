@@ -1320,8 +1320,19 @@
         ]
       },
       {
+        "id": "AddFieldResult",
+        "choices": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "BerytusFieldValueUnion"
+          }
+        ]
+      },
+      {
         "id": "AccountCreationAddFieldResult",
-        "$ref": "BerytusFieldValueUnion"
+        "$ref": "AddFieldResult"
       },
       {
         "id": "FieldValueRejectionReason",
@@ -1349,8 +1360,19 @@
         }
       },
       {
+        "id": "RejectFieldResult",
+        "choices": [
+          {
+            "type": "null"
+          },
+          {
+            "$ref": "BerytusFieldValueUnion"
+          }
+        ]
+      },
+      {
         "id": "AccountCreationRejectFieldValueResult",
-        "$ref": "BerytusFieldValueUnion"
+        "$ref": "RejectFieldResult"
       },
       {
         "id": "ApproveChallengeRequestArgs",

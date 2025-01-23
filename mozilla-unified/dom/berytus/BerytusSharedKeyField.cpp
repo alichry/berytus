@@ -70,7 +70,7 @@ void BerytusSharedKeyField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
   mCachedOptions = options.toObjectOrNull();
 }
 
-bool BerytusSharedKeyField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+bool BerytusSharedKeyField::IsValueValid(const Nullable<ValueUnion>& aValue) const {
   return aValue.IsNull() ||
     (aValue.Value().IsBerytusFieldValueDictionary() && aValue.Value().GetAsBerytusFieldValueDictionary()->Type() == Type());
 }

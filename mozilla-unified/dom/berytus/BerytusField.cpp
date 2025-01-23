@@ -62,6 +62,10 @@ BerytusFieldType BerytusField::Type() const
   return mFieldType;
 }
 
+Nullable<BerytusField::ValueUnion> const& BerytusField::GetValue() const {
+  return mFieldValue;
+}
+
 void BerytusField::GetValue(JSContext* aCx,
                             Nullable<ValueUnion>& aRetVal,
                             ErrorResult& aRv) const {
@@ -226,7 +230,7 @@ void BerytusField::SetValue(JSContext* aCx,
 void BerytusField::SetValueImpl(JSContext* aCx,
                             const Nullable<ValueUnion>& aValue,
                             ErrorResult& aRv) {
-  if (NS_WARN_IF(!IsValueValid(aCx, aValue))) {
+  if (NS_WARN_IF(!IsValueValid(aValue))) {
     aRv.Throw(NS_ERROR_INVALID_ARG);
     return;
   }

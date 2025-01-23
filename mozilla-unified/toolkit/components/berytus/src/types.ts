@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.d.ts";
+import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValue, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.d.ts";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -310,11 +310,24 @@ export type AddFieldArgs = {
     field: BerytusFieldUnion;
 }
 
+/**
+ * The secret manager should resolve with null
+ * when a field value was specified in the args.
+ */
+export type AddFieldResult = BerytusFieldValueUnion | null;
+
 export type RejectFieldValueArgs = {
     fieldId: string;
     reason: FieldValueRejectionReason,
     optionalNewValue?: BerytusFieldValueUnion;
 }
+
+/**
+ * The secret manager should resolve with null
+ * when a field value was specified in the args.
+ */
+export type RejectFieldResult = BerytusFieldValueUnion | null;
+
 export type ApproveChallengeRequestArgs = {
     challenge: BerytusChallengeInfoUnion;
 }
@@ -391,11 +404,11 @@ export interface RequestHandler {
         addField(
             context: RequestContextWithLoginOperation,
             args: AddFieldArgs
-        ): BerytusFieldValueUnion;
+        ): AddFieldResult;
         rejectFieldValue(
             context: RequestContextWithLoginOperation,
             args: RejectFieldValueArgs
-        ): BerytusFieldValueUnion;
+        ): RejectFieldResult;
     };
     accountAuthentication: {
         approveChallengeRequest(

@@ -40,13 +40,13 @@ protected:
   ~BerytusForeignIdentityField();
   BerytusForeignIdentityFieldOptions mOptions;
 
-  bool IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const override;
-
   void CacheOptions(JSContext* aCx, ErrorResult& aRv) override;
 public:
   BerytusForeignIdentityFieldOptions const& Options() const;
   nsIGlobalObject* GetParentObject() const;
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
+
+  bool IsValueValid(const Nullable<ValueUnion>& aValue) const override;
 
   static already_AddRefed<BerytusForeignIdentityField> Constructor(
     const GlobalObject& aGlobal,

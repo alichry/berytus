@@ -71,7 +71,7 @@ void BerytusKeyField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
   mCachedOptions = options.toObjectOrNull();
 }
 
-bool BerytusKeyField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+bool BerytusKeyField::IsValueValid(const Nullable<ValueUnion>& aValue) const {
   return aValue.IsNull() ||
     (aValue.Value().IsBerytusFieldValueDictionary() && aValue.Value().GetAsBerytusFieldValueDictionary()->Type() == Type());
 }

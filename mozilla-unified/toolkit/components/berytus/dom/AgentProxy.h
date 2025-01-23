@@ -2464,7 +2464,42 @@ template<>
 bool FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aRv);
 template<>
 bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv);
-using AccountCreationAddFieldResult = MozPromise<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>, Failure, true>;
+template<>
+class SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> {
+public:
+  SafeVariant() : mVariant(nullptr) {}
+  SafeVariant(SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>&& aOther) : mVariant(std::move(aOther.mVariant)) {
+    aOther.mVariant = nullptr;
+  }
+  SafeVariant& operator=(SafeVariant&& aOther) {
+    mVariant = std::move(aOther.mVariant);
+    aOther.mVariant = nullptr;
+    return *this;
+  }
+  ~SafeVariant() {
+    delete mVariant;
+  };
+  template <typename... Args>
+  void Init(Args&&... aTs) {
+    MOZ_ASSERT(!mVariant);
+    mVariant = new Variant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>(std::forward<Args>(aTs)...);
+  }
+  bool Inited() const {
+    return mVariant;
+  }
+  mozilla::Variant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> const* InternalValue() const { return mVariant; }
+  mozilla::Variant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>* InternalValue() { return mVariant; }
+  
+protected:
+  mozilla::Variant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>* mVariant;
+};
+template<>
+bool JSValIs<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aRv);
+template<>
+bool ToJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(JSContext* aCx, const SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>& aValue, JS::MutableHandle<JS::Value> aRv);
+using AccountCreationAddFieldResult = MozPromise<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>, Failure, true>;
 struct FieldValueRejectionReason {
   nsString mCode;
   FieldValueRejectionReason() = default;
@@ -2540,7 +2575,7 @@ template<>
 bool FromJSVal<RejectFieldValueArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, RejectFieldValueArgs& aRv);
 template<>
 bool ToJSVal<RejectFieldValueArgs>(JSContext* aCx, const RejectFieldValueArgs& aValue, JS::MutableHandle<JS::Value> aRv);
-using AccountCreationRejectFieldValueResult = MozPromise<SafeVariant<nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>, Failure, true>;
+using AccountCreationRejectFieldValueResult = MozPromise<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>, Failure, true>;
 struct ApproveChallengeRequestArgs {
   SafeVariant<BerytusIdentificationChallengeInfo, BerytusPasswordChallengeInfo, BerytusDigitalSignatureChallengeInfo, BerytusSecureRemotePasswordChallengeInfo, BerytusOffChannelOtpChallengeInfo> mChallenge;
   ApproveChallengeRequestArgs() = default;

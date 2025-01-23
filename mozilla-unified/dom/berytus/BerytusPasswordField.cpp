@@ -72,7 +72,7 @@ void BerytusPasswordField::CacheOptions(JSContext* aCx, ErrorResult& aRv) {
   mCachedOptions = options.toObjectOrNull();
 }
 
-bool BerytusPasswordField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+bool BerytusPasswordField::IsValueValid(const Nullable<ValueUnion>& aValue) const {
   return aValue.IsNull() ||
     aValue.Value().IsBerytusEncryptedPacket() ||
     aValue.Value().IsString();

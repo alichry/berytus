@@ -39,6 +39,8 @@ public:
 
   BerytusFieldType Type() const;
 
+  virtual bool IsValueValid(const Nullable<ValueUnion>& aValue) const = 0;
+
   void SetValue(JSContext* aCx,
                 const Nullable<ValueUnion>& aValue,
                 ErrorResult& aRv);
@@ -46,6 +48,8 @@ public:
   void GetValue(JSContext* aCx,
                         Nullable<ValueUnion>& aRetVal,
                         ErrorResult& aRv) const;
+
+  Nullable<ValueUnion> const& GetValue() const;
 
   void GetOptions(JSContext* aCx,
                   JS::MutableHandle<JSObject*> aRetVal,
@@ -67,8 +71,6 @@ public:
   const BerytusFieldType mFieldType;
   Nullable<ValueUnion> mFieldValue;
   JS::Heap<JSObject*> mCachedOptions;
-
-  virtual bool IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const = 0;
 
   virtual void SetValueImpl(JSContext* aCx,
                 const Nullable<ValueUnion>& aValue,

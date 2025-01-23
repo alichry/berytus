@@ -397,18 +397,13 @@ nsresult FromProxy::BerytusFieldValueUnion(
     const FieldValueUnionProxy& aProxy,
     FieldValueUnion& aRetVal) {
   FieldValueMatcher matcher(aGlobal, aCx, aRetVal);
-  if (aProxy.IsNull()) {
-    aRetVal.SetNull();
-    return NS_OK;
-  }
-  if (NS_WARN_IF(!aProxy.Value().Inited())) {
+  if (NS_WARN_IF(!aProxy.Inited())) {
     return NS_ERROR_INVALID_ARG;;
   }
-  nsresult rv = aProxy.Value().InternalValue()->match(matcher);
+  nsresult rv = aProxy.InternalValue()->match(matcher);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;
   }
-  MOZ_ASSERT(!aRetVal.IsNull());
   return NS_OK;
 }
 

@@ -71,7 +71,7 @@ void BerytusForeignIdentityField::CacheOptions(JSContext* aCx, ErrorResult& aRv)
   mCachedOptions = options.toObjectOrNull();
 }
 
-bool BerytusForeignIdentityField::IsValueValid(JSContext* aCx, const Nullable<ValueUnion>& aValue) const {
+bool BerytusForeignIdentityField::IsValueValid(const Nullable<ValueUnion>& aValue) const {
   return aValue.IsNull() ||
     aValue.Value().IsBerytusEncryptedPacket() ||
     aValue.Value().IsString();
