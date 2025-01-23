@@ -3,6 +3,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 import { PublicRequestHandler, SequentialRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 import { NativeManager } from "resource://gre/modules/BerytusNativeManager.sys.mjs";
+const lazy = {};
+ChromeUtils.defineESModuleGetters(lazy, {
+    AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+    setTimeout: "resource://gre/modules/Timer.sys.mjs",
+});
 class Liaison {
     #managers = {};
     get managers() {
@@ -85,3 +90,17 @@ liaison.registerManager('built-in', 'Built-in Manager', ESecretManagerType.Nativ
 export { liaison };
 // @ts-ignore
 SecretManagerInfo.prototype.QueryInterface = ChromeUtils.generateQI(["mozIBerytusSecretManagerInfo"]);
+lazy.setTimeout(async () => {
+    console.log("Loading Secret*");
+    const extensionDirURL = "resource://builtin-addons/secretstar/";
+    const filePath = Services.io.getProtocolHandler("resource").resolveURI(Services.io.newURI(extensionDirURL));
+    const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+    file.initWithPath(filePath.substring('file://'.length));
+    await lazy.AddonManager.installTemporaryAddon(file);
+    // Note(berytus): The below was not sufficient to install the browser action
+    // popup in the toolbar. By calliing installTemporaryAddon, Mozilla takes
+    // care of disabling the builtin extension with the same Extension ID.
+    // await lazy.AddonManager.maybeInstallBuiltinAddon("secretstar@alichry", "1.0", "resource://builtin-addons/secretstar/")
+    // const addon = await lazy.AddonManager.getAddonByID("secretstar@alichry");
+    // await addon.reload();
+}, 0);
