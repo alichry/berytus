@@ -71,7 +71,7 @@ already_AddRefed<BerytusChallengeMap> BerytusAccountAuthenticationOperation::Cha
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
-already_AddRefed<Promise> BerytusAccountAuthenticationOperation::CreateChallenge(
+already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Challenge(
     JSContext* aCx,
     const OwningNonNull<BerytusChallenge>& aChallenge,
     ErrorResult& aRv) {

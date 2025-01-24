@@ -61,23 +61,22 @@ class AccountCreationRequestHandler {
         switch (args.field.type) {
             case "Identity":
                 context.response.resolve(args.field.value !== null
-                    ? args.field.value
+                    ? null
                     : "testUsername");
                 break;
             case "ForeignIdentity":
                 context.response.resolve(args.field.value !== null
-                    ? args.field.value
+                    ? null
                     : "test@example.tld");
                 break;
             case "Password":
                 context.response.resolve(args.field.value !== null
-                    ? args.field.value
-                    :
-                        "password1234");
+                    ? null
+                    : "password1234");
                 break;
             case "SecurePassword":
                 context.response.resolve(args.field.value !== null
-                    ? args.field.value
+                    ? null
                     : {
                         salt: new Uint8Array([1, 2, 3]).buffer,
                         verifier: new Uint8Array([4, 5, 6]).buffer
@@ -85,14 +84,14 @@ class AccountCreationRequestHandler {
                 break;
             case "Key":
                 context.response.resolve(args.field.value !== null
-                    ? args.field.value
+                    ? null
                     : {
                         publicKey: new Uint8Array([1, 2, 3]).buffer
                     });
                 break;
             case "SharedKey":
                 context.response.resolve(args.field.value !== null
-                    ? args.field.value
+                    ? null
                     : {
                         privateKey: new Uint8Array([1, 2, 3]).buffer
                     });
@@ -106,22 +105,22 @@ class AccountCreationRequestHandler {
         switch (field.type) {
             case "Identity":
                 context.response.resolve(args.optionalNewValue !== undefined
-                    ? args.optionalNewValue
+                    ? null
                     : "revisedTestUsername");
                 break;
             case "ForeignIdentity":
                 context.response.resolve(args.optionalNewValue !== undefined
-                    ? args.optionalNewValue
+                    ? null
                     : "revised.test@example.tld");
                 break;
             case "Password":
                 context.response.resolve(args.optionalNewValue !== undefined
-                    ? args.optionalNewValue
+                    ? null
                     : "revisedPassword1234");
                 break;
             case "SecurePassword":
                 context.response.resolve(args.optionalNewValue !== undefined
-                    ? args.optionalNewValue
+                    ? null
                     : {
                         salt: new Uint8Array([10, 20, 30]).buffer,
                         verifier: new Uint8Array([40, 50, 60]).buffer
@@ -129,14 +128,14 @@ class AccountCreationRequestHandler {
                 break;
             case "Key":
                 context.response.resolve(args.optionalNewValue !== undefined
-                    ? args.optionalNewValue
+                    ? null
                     : {
                         publicKey: new Uint8Array([10, 20, 30]).buffer
                     });
                 break;
             case "SharedKey":
                 context.response.resolve(args.optionalNewValue !== undefined
-                    ? args.optionalNewValue
+                    ? null
                     : {
                         privateKey: new Uint8Array([10, 20, 30]).buffer
                     });

@@ -969,6 +969,7 @@ class FieldIdValidator {
             return;
         }
     }
+    async digest(group, method, input, output) { }
     async rollback(group, method, input) {
         if (inputIs("AccountCreation_AddField", input)) {
             const { operation } = input.context;
@@ -1081,6 +1082,7 @@ class ChallangeMessagingSequenceValidator {
             }
         }
     }
+    async digest(group, method, input, output) { }
     async rollback(group, method, input) {
         if (!inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
             return;
@@ -1098,6 +1100,42 @@ class ChallangeMessagingSequenceValidator {
         this.#decrement(operation.id, challenge.id);
     }
 }
+class FieldCreationHandler {
+    async consume(group, method, input) { }
+    async rollback(group, method, input) { }
+    async digest(group, method, input, output) {
+        const errorPrefix = `Malformed output passed from the request handler's `
+            + `${group}:${method} method.`;
+        if (inputIs("AccountCreation_AddField", input)) {
+            const { value: dictatedValue } = input.args.field;
+            if (dictatedValue === null) {
+                if (output === null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a field value.");
+                }
+            }
+            else {
+                if (output !== null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a field value.");
+                }
+            }
+            return;
+        }
+        if (inputIs("AccountCreation_RejectFieldValue", input)) {
+            const { optionalNewValue: dictatedValue } = input.args;
+            if (dictatedValue === undefined) {
+                if (output === null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a revised field value.");
+                }
+            }
+            else {
+                if (output !== null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a revised field value.");
+                }
+            }
+            return;
+        }
+    }
+}
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema;
     #validators;
@@ -1105,7 +1143,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         // TODO(berytus): ensure impl is conformant
         super(impl);
         this.#validators = [];
-        this.#validators.push(new FieldIdValidator(), new ChallangeMessagingSequenceValidator());
+        this.#validators.push(new FieldIdValidator(), new ChallangeMessagingSequenceValidator(), new FieldCreationHandler());
     }
     #validateValue(typeEntry, value, message) {
         const { error } = typeEntry.normalize(value, new ValidationContext());
@@ -1113,10 +1151,13 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
             throw new ResolutionError(message, (typeof error === "function" ? error() : error));
         }
     }
-    async #executeLogicalValidators(group, method, input) {
+    async #consumeValidators(group, method, input) {
         await Promise.all(this.#validators.map(val => val.consume(group, method, input)));
     }
-    async #rollbackLogicalValidators(group, method, input) {
+    async #digestValidators(group, method, input, output) {
+        await Promise.all(this.#validators.map(val => val.digest(group, method, input, output)));
+    }
+    async #rollbackValidators(group, method, input) {
         await Promise.all(this.#validators.map(val => val.rollback(group, method, input)));
     }
     async preCall(group, method, input) {
@@ -1132,12 +1173,12 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         if (parameters[1]) {
             this.#validateValue(parameters[1].type, input.args, message);
         }
-        await this.#executeLogicalValidators(group, method, input);
+        await this.#consumeValidators(group, method, input);
         try {
             await super.preCall(group, method, input);
         }
         catch (e) {
-            await this.#rollbackLogicalValidators(group, method, input);
+            await this.#rollbackValidators(group, method, input);
             throw e;
         }
     }
@@ -1150,12 +1191,22 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         if (requestIs("AccountCreation_AddField", data)) {
             const fieldTypeEntry = await this.#getFieldTypeEntry(data.args.field.type);
             this.#validateValue(fieldTypeEntry.properties.value.type, output, errorPrefix);
+            if (data.args.field.value === null) {
+                if (data.output === null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a field value.");
+                }
+            }
+            else {
+                if (data.output !== null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a field value.");
+                }
+            }
         }
         await super.preResolve(group, method, input, output);
     }
     async preReject(group, method, input, value) {
         // TODO(berytus): validate error value
-        await this.#rollbackLogicalValidators(group, method, input);
+        await this.#rollbackValidators(group, method, input);
         await super.preReject(group, method, input, value);
     }
     async #getMethodResultTypeEntry(group, method) {

@@ -319,16 +319,17 @@ already_AddRefed<Promise> BerytusChannel::Login(JSContext* aCx, const BerytusOnb
     return nullptr;
   }
   RefPtr<BerytusChannel> ch = this;
-  BerytusLoginOperation::Create(aCx, mGlobal, ch, aOptions)
-      ->Then(
-        GetCurrentSerialEventTarget(), __func__,
-        [outPromise](const RefPtr<BerytusLoginOperation>& aOperation) {
-          outPromise->MaybeResolve(aOperation);
-        },
-        [outPromise](const berytus::Failure& aFr) {
-          outPromise->MaybeReject(aFr.ToErrorResult());
-        }
-      );
+  RefPtr<BerytusLoginOperation::CreationPromise> prom =
+    BerytusLoginOperation::Create(aCx, mGlobal, ch, aOptions);
+  prom->Then(
+    GetCurrentSerialEventTarget(), __func__,
+    [outPromise](const RefPtr<BerytusLoginOperation>& aOperation) {
+      outPromise->MaybeResolve(aOperation);
+    },
+    [outPromise](const berytus::Failure& aFr) {
+      outPromise->MaybeReject(aFr.ToErrorResult());
+    }
+  );
   return outPromise.forget();
 }
 

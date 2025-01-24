@@ -1,5 +1,5 @@
 --- dom/bindings/Bindings.conf.orig	2024-10-31 21:28:22
-+++ dom/bindings/Bindings.conf	2025-01-13 19:00:37
++++ dom/bindings/Bindings.conf	2025-01-24 19:06:38
 @@ -79,8 +79,48 @@
  'BatteryManager': {
      'nativeType': 'mozilla::dom::battery::BatteryManager',
@@ -7,7 +7,7 @@
 +},
 +
 +'BerytusAccountAuthenticationOperation': {
-+    'implicitJSContext': ['createChallenge']
++    'implicitJSContext': ['challenge']
 +},
 +
 +'BerytusChallenge': {

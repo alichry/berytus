@@ -79,6 +79,9 @@ class Liaison {
     }
 
     getRequestHandler(id: string): IPublicRequestHandler {
+        // TODO(berytus): attach ValidatedRequestHandlers with
+        // BrowsingContexts. Use a WeakMap so that stateful informaion
+        // held by ValidatedRequestHandlers would be gone when BCs die.
         const manager = this.#managers[id];
         if (! manager) {
             throw new Error(

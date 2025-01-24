@@ -70,7 +70,7 @@ public:
   already_AddRefed<BerytusChallengeMap> Challenges() const;
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
-  already_AddRefed<Promise> CreateChallenge(JSContext* aCx, const OwningNonNull<BerytusChallenge>& aChallenge, ErrorResult& aRv);
+  already_AddRefed<Promise> Challenge(JSContext* aCx, const OwningNonNull<BerytusChallenge>& aChallenge, ErrorResult& aRv);
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<Promise> Finish(ErrorResult& aRv);

@@ -969,6 +969,7 @@ class ResolutionError extends Error {
 interface ILogicalValidator {
     consume(group: string, method: string, input: PreCallInput): Promise<void>;
     rollback(group: string, method: string, input: PreCallInput): Promise<void>;
+    digest(group: string, method: string, input: PreCallInput, output: unknown): Promise<void>;
 }
 
 class FieldIdValidator implements ILogicalValidator {
@@ -1030,6 +1031,8 @@ class FieldIdValidator implements ILogicalValidator {
             return;
         }
     }
+
+    async digest(group: string, method: string, input: PreCallInput, output: unknown): Promise<void> {}
 
     async rollback(group: string, method: string, input: PreCallInput): Promise<void> {
         if (inputIs("AccountCreation_AddField", input)) {
@@ -1150,6 +1153,8 @@ class ChallangeMessagingSequenceValidator implements ILogicalValidator {
         }
     }
 
+    async digest(group: string, method: string, input: PreCallInput, output: unknown): Promise<void> {}
+
     async rollback(group: string, method: string, input: PreCallInput): Promise<void> {
         if (!inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
             return;
@@ -1168,6 +1173,42 @@ class ChallangeMessagingSequenceValidator implements ILogicalValidator {
     }
 }
 
+class FieldCreationHandler implements ILogicalValidator {
+    async consume(group: string, method: string, input: PreCallInput): Promise<void> {}
+
+    async rollback(group: string, method: string, input: PreCallInput): Promise<void> {}
+
+    async digest(group: string, method: string, input: PreCallInput, output: unknown): Promise<void> {
+        const errorPrefix = `Malformed output passed from the request handler's `
+            + `${group}:${method} method.`;
+        if (inputIs("AccountCreation_AddField", input)) {
+            const { value: dictatedValue } = input.args.field;
+            if (dictatedValue === null) {
+                if (output === null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a field value.");
+                }
+            } else {
+                if (output !== null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a field value.");
+                }
+            }
+            return;
+        }
+        if (inputIs("AccountCreation_RejectFieldValue", input)) {
+            const { optionalNewValue: dictatedValue } = input.args;
+            if (dictatedValue === undefined) {
+                if (output === null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a revised field value.");
+                }
+            } else {
+                if (output !== null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a revised field value.");
+                }
+            }
+            return;
+        }
+    }
+}
 
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema: any;
@@ -1179,7 +1220,8 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         this.#validators = [];
         this.#validators.push(
             new FieldIdValidator(),
-            new ChallangeMessagingSequenceValidator()
+            new ChallangeMessagingSequenceValidator(),
+            new FieldCreationHandler()
         );
     }
 
@@ -1200,11 +1242,15 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         }
     }
 
-    async #executeLogicalValidators(group: string, method: string, input: PreCallInput) {
+    async #consumeValidators(group: string, method: string, input: PreCallInput) {
         await Promise.all(this.#validators.map(val => val.consume(group, method, input)));
     }
 
-    async #rollbackLogicalValidators(group: string, method: string, input: PreCallInput) {
+    async #digestValidators(group: string, method: string, input: PreCallInput, output: unknown) {
+        await Promise.all(this.#validators.map(val => val.digest(group, method, input, output)));
+    }
+
+    async #rollbackValidators(group: string, method: string, input: PreCallInput) {
         await Promise.all(this.#validators.map(val => val.rollback(group, method, input)));
     }
 
@@ -1232,11 +1278,11 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
                 message
             );
         }
-        await this.#executeLogicalValidators(group, method, input);
+        await this.#consumeValidators(group, method, input);
         try {
             await super.preCall(group, method, input);
         } catch (e) {
-            await this.#rollbackLogicalValidators(group, method, input);
+            await this.#rollbackValidators(group, method, input);
             throw e;
         }
     }
@@ -1258,13 +1304,22 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
                 output,
                 errorPrefix
             );
+            if (data.args.field.value === null) {
+                if (data.output === null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a field value.");
+                }
+            } else {
+                if (data.output !== null) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a field value.");
+                }
+            }
         }
         await super.preResolve(group, method, input, output);
     }
 
     protected async preReject(group: string, method: string, input: PreCallInput, value: unknown) {
         // TODO(berytus): validate error value
-        await this.#rollbackLogicalValidators(group, method, input);
+        await this.#rollbackValidators(group, method, input);
         await super.preReject(group, method, input, value);
     }
 

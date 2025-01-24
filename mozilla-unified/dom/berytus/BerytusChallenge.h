@@ -55,7 +55,7 @@ private:
   RefPtr<BerytusLoginOperation> mOperation;
   void Connect(const RefPtr<BerytusChannel>& aChannel,
                const RefPtr<BerytusLoginOperation>& aOperation);
-  friend already_AddRefed<Promise> BerytusAccountAuthenticationOperation::CreateChallenge(
+  friend already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Challenge(
     JSContext* aCx,
     const OwningNonNull<BerytusChallenge>& aChallenge,
     ErrorResult& aRv);

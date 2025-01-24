@@ -6,6 +6,7 @@
 #include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusAccountBinding.h"
+#include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/BerytusUserAttribute.h"
 #include "mozilla/dom/Promise.h"
 
@@ -99,10 +100,12 @@ already_AddRefed<Promise> BerytusAccount::AddFields(
           RefPtr<BerytusField> field = aFields.ElementAt(i);
           auto& valueProxy = aArray.ElementAt(i);
           ErrorResult rv;
-          UpdateFieldValueFromProxy(aCx, field, std::move(valueProxy), rv);
-          if (NS_WARN_IF(rv.Failed())) {
-            outPromise->MaybeReject(std::move(rv));
-            return;
+          if (field->GetValue().IsNull()) {
+            UpdateFieldValueFromProxy(aCx, field, std::move(valueProxy), rv);
+            if (NS_WARN_IF(rv.Failed())) {
+              outPromise->MaybeReject(std::move(rv));
+              return;
+            }
           }
           Record<nsString, RefPtr<BerytusField>>::EntryType entry;
           field->GetId(entry.mKey);
@@ -220,6 +223,7 @@ already_AddRefed<Promise> BerytusAccount::RejectAndReviseFields(
     return nullptr;
   }
   nsTArray<RefPtr<BerytusField>> fields;
+  nsTArray<Optional<OwningStringOrBerytusEncryptedPacketOrBerytusFieldValueDictionary>> values;
   for (const auto& params : aRejectionParameters) {
     RefPtr<BerytusField> field;
     if (params.mField.IsBerytusField()) {
@@ -232,16 +236,42 @@ already_AddRefed<Promise> BerytusAccount::RejectAndReviseFields(
     }
     fields.AppendElement(field);
   }
+  for (size_t i = 0; i < aRejectionParameters.Length(); i++) {
+    const auto& params = aRejectionParameters.ElementAt(i);
+    values.AppendElement(Optional<OwningStringOrBerytusEncryptedPacketOrBerytusFieldValueDictionary>());
+    if (params.mNewValue.WasPassed()) {
+      const auto& field = fields.ElementAt(i);
+      if (field->Type() == BerytusFieldType::Key) {
+        aRv.ThrowTypeError("Illegal rejection parameter. A BerytusKeyField cannot be revised with a web app-specified value.");
+        return nullptr;
+      }
+      if (field->Type() == BerytusFieldType::SecurePassword) {
+        aRv.ThrowTypeError("Illegal rejection parameter. A BerytusSecurePasswordField cannot be revised with a web app-specified value.");
+        return nullptr;
+      }
+      if (!field->IsValueValid(Nullable<BerytusField::ValueUnion>(params.mNewValue.Value()))) {
+        aRv.ThrowTypeError("Illegal rejection parameter. Passed newValue is not conformant according to the field type.");
+        return nullptr;
+      }
+      // TODO(berytus): Ensure upstream code perform the above validation checks too.
+      values.ElementAt(i).Construct(params.mNewValue.Value());
+    }
+  }
   RejectFieldsSequential(aCx, std::move(clonedParamsList))
     ->Then(GetCurrentSerialEventTarget(), __func__,
-      [outPromise, this, fields = std::move(fields), aCx](nsTArray<berytus::AccountCreationRejectFieldValueResult::ResolveValueType>&& aValues) {
-        MOZ_ASSERT(aValues.Length() == fields.Length());
+      [outPromise, this, fields = std::move(fields), values = std::move(values), aCx](nsTArray<berytus::utils::FieldValueUnionProxy>&& aProxyValues) {
+        MOZ_ASSERT(aProxyValues.Length() == fields.Length());
         Record<nsString, RefPtr<BerytusField>> record;
         for (size_t i = 0; i < fields.Length(); i++) {
           auto field = fields.ElementAt(i);
+          const auto& value = values.ElementAt(i);
           JSAutoRealm ar(aCx, GetParentObject()->GetGlobalJSObject());
           ErrorResult rv;
-          UpdateFieldValueFromProxy(aCx, field, std::move(aValues.ElementAt(i)), rv);
+          if (!value.WasPassed()) {
+            UpdateFieldValueFromProxy(aCx, field, std::move(aProxyValues.ElementAt(i)), rv);
+          } else {
+            field->SetValue(aCx, Nullable<BerytusField::ValueUnion>(value.InternalValue()), rv);
+          }
           if (NS_WARN_IF(rv.Failed())) {
             outPromise->MaybeReject(std::move(rv));
             return;
@@ -265,6 +295,7 @@ void BerytusAccount::UpdateFieldValueFromProxy(
     RefPtr<BerytusField>& aField,
     berytus::utils::FieldValueUnionProxy&& aValueProxy,
     ErrorResult& aRv) {
+  MOZ_ASSERT(!aValueProxy.InternalValue()->is<berytus::JSNull>());
   nsresult rv;
   Nullable<BerytusField::ValueUnion> value;
   rv = berytus::utils::FromProxy::BerytusFieldValueUnion(GetParentObject(), aCx, berytus::utils::FieldValueUnionProxy(std::move(aValueProxy)), value);
@@ -272,7 +303,7 @@ void BerytusAccount::UpdateFieldValueFromProxy(
     aRv.Throw(rv);
     return;
   }
-  MOZ_ASSERT(!value.IsNull()); // TODO(berytus): Remove Nullable from FromProxy::BerytusFieldValueUnion
+  MOZ_ASSERT(!value.IsNull());
   aField->SetValue(aCx, value, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return;

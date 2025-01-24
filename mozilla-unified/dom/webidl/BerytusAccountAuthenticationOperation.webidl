@@ -8,7 +8,7 @@ interface BerytusAccountAuthenticationOperation : BerytusLoginOperation {
     readonly attribute BerytusChallengeMap challenges;
 
     [Throws]
-    Promise<undefined> createChallenge(BerytusChallenge challenge);
+    Promise<undefined> challenge(BerytusChallenge challenge);
 
     [Throws]
     Promise<undefined> finish();
