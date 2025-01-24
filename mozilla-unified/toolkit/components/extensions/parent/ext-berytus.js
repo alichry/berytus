@@ -22,6 +22,24 @@ const { liaison } = ChromeUtils.importESModule(
   "resource://gre/modules/BerytusLiaison.sys.mjs"
 );
 
+function findTabByInnerWindowId(innerWindowId) {
+  // TODO(berytus): From ext-authRealm: use windowTracker.browserWindows() iterator
+  const chromeWindows = Services.wm.getEnumerator("navigator:browser");
+  while (chromeWindows.hasMoreElements()) {
+    const chromeWindow = chromeWindows.getNext();
+    const tabs = chromeWindow.gBrowser.tabs;
+    for (let i = 0; i < tabs.length; i++) {
+      const tab = tabs[i];
+      // const ttTabId = tabTracker.getBrowserTabId(tab.linkedBrowser);
+      // const { innerWindowId: currentInnerWindowId, outerWindowId: currentOuterWindowId } = tab.linkedBrowser?.browsingContext?.currentWindowGlobal
+      // console.log("Browser tab id:", ttTabId, "currentInnerWindowId:", currentInnerWindowId, "currentOuterWindowId:", currentOuterWindowId);
+      if (innerWindowId === tab.linkedBrowser?.browsingContext?.currentWindowGlobal?.innerWindowId) {
+        return tab;
+      }
+    }
+  }
+}
+
 
 /**
  * @typedef {import("../../berytus/src/types.ts").PreliminaryRequestContext} PreliminaryRequestContext
@@ -79,13 +97,12 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
     this.#initLiaisonHandler();
     extension.callOnClose({
       close() {
-        console.log("ParentAuthRealmAPI Extension closing (0)");
+
       }
     });
   }
 
   onShutdown() {
-    console.log("ParentBerytusAPI Extension onShutdown");
     if (!liaison.isManagerRegistered(this.extension.id)) {
       return;
     }
@@ -164,6 +181,9 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
       cx.response.reject("GeneralError2");
       return;
     }
+    const nativeTab = findTabByInnerWindowId(cx.document.id);
+    const tabId = tabTracker.getId(nativeTab);
+    cx.document.id = tabId; // replace innerWindowId with tabId.
     this.#requests[cx.request.id] = {
       ...cx,
       response: {
@@ -267,6 +287,7 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
           cx.response.reject(reason);
         },
         register: () => {
+          console.log("ext-berytus.parent: registering extension " + this.extension.id);
           if (liaison.isManagerRegistered(this.extension.id)) {
             throw new Error('Extension already registered; cannot register.');
           }

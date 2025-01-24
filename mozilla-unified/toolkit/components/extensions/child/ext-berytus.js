@@ -56,7 +56,6 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPI {
         return {
             berytus: {
                 registerRequestHandler: async (handler) => {
-
                     if (this.listeners) {
                         throw new ExtensionError(
                             "Cannot register another handler! Please make sure you call unregister before registering again."
