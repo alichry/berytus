@@ -10,13 +10,6 @@ declare global {
             unregisterRequestHandler(): void,
             resolveRequest(requestId: string, value: unknown): Promise<void>,
             rejectRequest(requestId: string, value: unknown): Promise<void>,
-            openPageActionPopupIfNecessary(
-                requestId: { requestId: string; tabId: number },
-                url?: string
-            )
         }
     };
-    var AuthRealm: any;
-    var AuthRealmRegistrationSession: any;
-    var AuthRealmLoginSession: any;
 }

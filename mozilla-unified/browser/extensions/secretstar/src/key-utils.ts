@@ -60,6 +60,20 @@ export function ab2base64(buffer: ArrayBufferLike) {
     return btoa(ab2str(buffer));
 }
 
+export function decodeHex(hex: string): ArrayBufferLike {
+    if (hex.startsWith("0x")) {
+        hex = hex.substring(2);
+    }
+    if (hex.length % 2 !== 0) {
+        throw new Error("Bad Hex.");
+    }
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length;) {
+        bytes[i / 2] = Number.parseInt(hex.slice(i, i += 2), 16);
+    }
+    return bytes.buffer;
+}
+
 export async function privateKeyBufToPublicKeyBuf(privateKeyBuf: ArrayBufferLike): Promise<ArrayBuffer> {
     const privateKey = await window.crypto.subtle.importKey(
         "pkcs8",

@@ -1,10 +1,10 @@
 import { Session, SrpChallenge, db } from "@root/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 import Loading from "../../components/Loading";
 import GetIdentityFieldsMessage from "./Identification/messages/GetIdentityFields/Message";
-import { useAbortRequestOnWindowClose, useNavigateWithPopupContextAndPageContextRoute, useRequest, useSettings } from "@root/hooks";
+import { useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useRequest, useSettings } from "@root/hooks";
 import UnknownChallengeMessage from "./UnknownChallengeMessage";
 import ErrorPage from "@root/ui/components/ErrorPage";
 import GetPasswordFieldsMessage from "./Password/messages/GetPasswordFields/Message";
@@ -15,14 +15,15 @@ import ComputeClientProofMessage from "./SecureRemotePassword/messages/ComputeCl
 import VerifyServerProofMessage from "./SecureRemotePassword/messages/VerifyServerProof/Message";
 import GetPublicKeyMessage from "./DigitalSignature/messages/GetPublicKey/Message";
 import SignNonceMessage from "./DigitalSignature/messages/SignNonce/Message";
-import { ab2base64, bufToPem, formatSignatureBufToString } from "@root/key-utils";
+import { ab2base64, bufToPem, decodeHex, formatSignatureBufToString } from "@root/key-utils";
 import {
     EBerytusPasswordChallengeMessageName,
     EBerytusOffChannelOtpChallengeMessageName,
     EBerytusIdentificationChallengeMessageName,
     EBerytusDigitalSignatureChallengeMessageName,
     EBerytusSecureRemotePasswordChallengeMessageName,
-    EBerytusChallengeType
+    EBerytusChallengeType,
+    BerytusReceiveMessageUnion
 } from "@berytus/types-extd";
 export interface RespondToMessageProps {
 }
@@ -66,10 +67,18 @@ export default function RespondToMessage({}: RespondToMessageProps) {
     const request = query ?
         query.session.requests[query.session.requests.length - 1] :
         undefined;
-    const { maybeResolve, maybeReject } = useRequest(request);
+
     const tabId = query?.session.context.document.id;
+
+    const navigate = useNavigateWithPageContextRoute();
+    const onProcessed = useCallback(() => {
+        navigate('/loading');
+    }, [navigate]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountAuthentication_RespondToChallengeMessage">(
+        request,
+        { onProcessed }
+    );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
-    const navigate = useNavigateWithPopupContextAndPageContextRoute(tabId);
     const settings = useSettings();
     const loading = ! query ||
         maybeResolve === undefined ||
@@ -84,6 +93,17 @@ export default function RespondToMessage({}: RespondToMessageProps) {
         return <Loading />;
     }
 
+    const submit = (value: BerytusReceiveMessageUnion) => {
+        if (loading) {
+            setError(new Error('Submit called before all the goods have been loaded'));
+            return false;
+        }
+        const { sent } = maybeResolve(value);
+        if (! sent) {
+            setError(new Error("Unable to resolve request; this request has been already resolved."));
+        }
+    }
+
     const { session, challenge, message } = query;
     if (challenge.type === EBerytusChallengeType.Identification) {
         switch (message.name) {
@@ -94,7 +114,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                     message={message}
                     settings={settings}
                     onSubmit={(fieldValues) => {
-                        maybeResolve(fieldValues) && navigate('/loading');
+                        submit({ response: fieldValues });
                     }}
                 />;
         }
@@ -108,7 +128,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                     message={message}
                     settings={settings}
                     onSubmit={(fieldValues) => {
-                        maybeResolve(fieldValues) && navigate('/loading');
+                        submit({ response: fieldValues });
                     }}
                 />;
         }
@@ -122,15 +142,12 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                     message={message}
                     settings={settings}
                     onSubmit={async ({ username, password }) => {
-                        const res = await db.sessions.update(session, {
+                        await db.sessions.update(session, {
                             [`challenges.${challenge.id}.srpState`]: {
                                 fields: { username, password }
                             }
                         });
-                        console.log("updated res:", res);
-                        const newSession = await db.sessions.get(session.id);
-                        console.log("new session:", newSession);
-                        maybeResolve(username) && navigate('/loading');
+                        submit({ response: username });
                     }}
                 />
             case EBerytusSecureRemotePasswordChallengeMessageName.ExchangePublicKeys:
@@ -164,7 +181,12 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                             [`challenges.${challengeId}.srpState.clientPublicKeyHexA`]: clientPublicKeyHexA,
                             [`challenges.${challengeId}.srpState.serverPublicKeyHexB`]: serverPublicKeyHexB,
                         });
-                        maybeResolve(clientPublicKeyHexA) && navigate('/loading');
+
+                        submit({
+                            response: challenge.parameters.encoding === "Hex"
+                                ? clientPublicKeyHexA
+                                : decodeHex(clientPublicKeyHexA)
+                        });
                     }}
                 />;
             case EBerytusSecureRemotePasswordChallengeMessageName.ComputeClientProof:
@@ -178,7 +200,11 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                             [`challenges.${challengeId}.srpState.salt`]: salt,
                             [`challenges.${challengeId}.srpState.clientProof`]: clientProof,
                         });
-                        maybeResolve(clientProof) && navigate('/loading');
+                        submit({
+                            response: challenge.parameters.encoding === "Hex"
+                                ? clientProof
+                                : decodeHex(clientProof)
+                        });
                     }}
                 />;
             case EBerytusSecureRemotePasswordChallengeMessageName.VerifyServerProof:
@@ -191,7 +217,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                         await db.sessions.update(session, {
                             [`challenges.${challengeId}.srpState.serverProofValid`]: serverProofValid,
                         });
-                        maybeResolve({}) && navigate('/loading');
+                        submit({});
                     }}
                 />
         }
@@ -205,7 +231,9 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                     message={message}
                     settings={settings}
                     onSubmit={(fieldValues) => {
-                        maybeResolve(fieldValues) && navigate('/loading');
+                        submit({
+                            response: fieldValues
+                        })
                     }}
                 />
         }
@@ -223,7 +251,11 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                         await db.sessions.update(session, {
                             [`challenges.${challengeId}.dsState.privateKey`]: pem,
                         });
-                        maybeResolve(publicKey) && navigate('/loading');
+                        submit({
+                            response: {
+                                publicKey
+                            }
+                        })
                     }}
                 />;
             case EBerytusDigitalSignatureChallengeMessageName.SignNonce:
@@ -238,7 +270,9 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                             [`challenges.${challengeId}.dsState.signedMessage`]: pem,
                             [`challenges.${challengeId}.dsState.nonce`]: ab2base64(nonce),
                         });
-                        maybeResolve(signedMessage) && navigate('/loading');
+                        submit({
+                            response: signedMessage
+                        });
                     }}
                 />
         }

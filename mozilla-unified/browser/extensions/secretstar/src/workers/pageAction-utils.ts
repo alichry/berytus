@@ -1,10 +1,16 @@
 import { PAGECONTEXT_POPUP } from '@root/pagecontext';
 import { url, paths } from './paths';
 
-export function setPageActionUrlInTab(tabIdWherePageActionIs: number, relativePath: string) {
+export function setPageActionUrlInTab(
+    tabIdWherePageActionIs: number,
+    path: string,
+    relative = true
+) {
     return browser.pageAction.setPopup({
         tabId: tabIdWherePageActionIs,
-        popup: url(relativePath, PAGECONTEXT_POPUP)
+        popup: relative
+            ? url(path, PAGECONTEXT_POPUP)
+            : path
     });
 }
 

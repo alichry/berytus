@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Field, FieldValueRejection, Session, db } from "@root/db/db";
-import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPopupContextAndPageContextRoute, useSettings, useIdentity } from "@root/hooks";
+import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
@@ -9,7 +9,7 @@ import JsrpClient from '../../JsrpClient';
 import { ab2base64, ab2str, base64ToArrayBuffer, formatBase64AsPem, pemToBuf, privateKeyBufToPublicKeyBuf, str2ab } from "@root/key-utils";
 import { randomFieldValue } from '@root/utils';
 import type { FieldInfo } from '@berytus/types';
-import { BerytusForeignIdentityFieldOptions, BerytusSecurePasswordFieldOptions, BerytusSecurePasswordFieldValue } from "@berytus/types-extd";
+import { BerytusFieldValueUnion, BerytusForeignIdentityFieldOptions, BerytusSecurePasswordFieldOptions } from "@berytus/types-extd";
 import { EBerytusFieldType, ERejectionCode } from "@berytus/enums";
 
 const isSecurePasswordOptions = (
@@ -61,12 +61,18 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         }
     );
     const tabId = session?.context.document.id;
-    const { maybeResolve, maybeReject } = useRequest(session?.requests[session?.requests.length - 1]);
-    useAbortRequestOnWindowClose({ maybeReject, tabId });
-    const navigate = useNavigateWithPopupContextAndPageContextRoute(tabId);
+    const navigate = useNavigateWithPageContextRoute();
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [value, setValue] = useState<Uint8Array>(new Uint8Array());
     const [error, setError] = useState<Error | undefined>();
+    const onProcessed = useCallback(() => {
+        navigate('/loading');
+    }, [navigate]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountCreation_AddField">(
+        session?.requests[session?.requests.length - 1],
+        { onProcessed }
+    );
+    useAbortRequestOnWindowClose({ maybeReject, tabId });
     const field = session?.createFieldOptions?.find(f => f.id === fieldId);
     const rejection: FieldValueRejection | undefined =
         session?.rejectedFieldValues?.find(f => f.fieldId === fieldId);
@@ -109,8 +115,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             setError(new Error('Submit called before all the goods have been loaded'));
             return false;
         }
-        // BRTTODO: Use null instead of undefined
-        let resolveWith: string | BerytusSecurePasswordFieldValue | ArrayBuffer | undefined;
+        let resolveWith: BerytusFieldValueUnion | null;
         let newField: Field;
         if (field.type === EBerytusFieldType.Key) {
             const privateKeyBase64 = ab2base64(value.buffer); // we store this
@@ -119,7 +124,9 @@ export default function CreateField({ rejected }: CreateFieldProps) {
                 ...field,
                 value: privateKeyBase64
             };
-            resolveWith = publicKeyBuf;
+            resolveWith = {
+                publicKey: publicKeyBuf
+            };
         } else if (isSecurePasswordOptions(field.options)) {
             const client = new JsrpClient();
             const { identityFieldId } = field.options;
@@ -185,9 +192,9 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             if (
                 rejection.webAppDictatedValue
             ) {
-                // AuthRealm API specifies that when a dictated value
+                // Berytus API specifies that when a dictated value
                 // is provided, we should resolve with undefined.
-                resolveWith = undefined;
+                resolveWith = null;
             }
         } else {
             change = {
@@ -195,12 +202,12 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             };
         }
         await db.sessions.update(session.id, change);
-        if (maybeResolve(resolveWith)) {
-            navigate('/loading');
-            return true;
+        const { sent } = maybeResolve(resolveWith);
+        if (! sent) {
+            setError(new Error('Unable to resolve. The request has been resolved previously.'));
+            return false;
         }
-        setError(new Error('Refusing to resolve. The request has been resolved previously.'));
-        return false;
+        return true;
     }
 
     useEffect(() => {

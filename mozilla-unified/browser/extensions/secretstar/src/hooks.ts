@@ -1,65 +1,133 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { Account, db, Field, Identity, Picture } from "@root/db";
-import { useEffect, useState } from "react";
-import { Location, NavigateFunction, NavigateOptions, To, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { NavigateFunction, NavigateOptions, To, useNavigate, useParams } from "react-router-dom";
 import { MODE, MODE_PAGE_ACTION } from './env';
 import { url } from "./workers/paths";
 import { PAGECONTEXT_POPUP } from "./pagecontext";
 import { Schema } from "yup";
-import type { WebAppActor, Request } from "@berytus/types";
+import type { WebAppActor, Request, RequestType, RequestHandlerFunctionReturnType } from "@berytus/types";
 import { ERejectionCode } from "@berytus/enums";
-type MaybeResolve = (...args: any[]) => boolean;
-type MaybeReject = (reason: ERejectionCode) => boolean;
 
-const resolveIf = (hasBeenProcessed: boolean, ...args: any[]): boolean => {
-    if (hasBeenProcessed) {
-        return false;
-    }
-    try {
-        // @ts-ignore
-        browser.authRealm.resolveRequest(...args);
-    } catch(e: any) {
-        console.error("An error has occurre during authRealm.resolveRequest:", e.message);
-        console.error(e);
-        return false;
-    }
-    return true;
+interface MaybeResult {
+    sent: boolean;
+    promise: Promise<void>;
 }
-const rejectIf = (hasBeenProcessed: boolean, ...args: any[]): boolean => {
+
+type MaybeResolve<ER extends RequestType> =
+    RequestHandlerFunctionReturnType<ER> extends undefined | void
+    ? (value?: undefined) => MaybeResult
+    : (value: RequestHandlerFunctionReturnType<ER>) => MaybeResult;
+
+type MaybeReject = (reason: ERejectionCode) => MaybeResult;
+
+const resolveIf = (hasBeenProcessed: boolean, requestId: string, value: unknown): MaybeResult => {
     if (hasBeenProcessed) {
-        return false;
+        return {
+            sent: false,
+            promise: Promise.resolve()
+        };
     }
-    // @ts-ignore
-    browser.authRealm.rejectRequest(...args);
-    return true;
+    const prom = browser.runtime.sendMessage({
+        type: "resolveRequest",
+        data: {
+            requestId,
+            value
+        }
+    }).catch(e => {
+        console.error("An error has occurre during browser.runtime.sendMessage('resolveRequest'):", e.message);
+        console.error(e);
+        throw e;
+    });
+    return {
+        sent: true,
+        promise: prom
+    };
+}
+const rejectIf = (hasBeenProcessed: boolean, requestId: string, value: unknown): MaybeResult => {
+    if (hasBeenProcessed) {
+        return {
+            sent: false,
+            promise: Promise.resolve()
+        };
+    }
+    const prom = browser.runtime.sendMessage({
+        type: "rejectRequest",
+        data: {
+            requestId,
+            value
+        }
+    }).catch(e => {
+        console.error("An error has occurre during browser.runtime.sendMessage('rejectRequest'):", e.message);
+        console.error(e);
+        throw e;
+    });
+    return {
+        sent: true,
+        promise: prom
+    };
 }
 
 const createMaybeFunction = (
     resolveOrReject: "resolve" | "reject",
     hasBeenProcessed: boolean,
-    setProcessed: (newValue: boolean) => void,
-    request: Request
+    setProcessed: (newValue: true) => void,
+    setIgnored: (newValue: true) => void,
+    setProcessing: (newValue: boolean) => void,
+    setError: (e: unknown) => void,
+    requestId: string
 ) => {
     const target = resolveOrReject === "resolve" ? resolveIf : rejectIf;
-    return (...args: any[]): boolean => {
-        if (! target(hasBeenProcessed, request, ...args)) {
-            return false;
+    return (value: unknown): MaybeResult => {
+        setProcessing(true);
+        const res = target(hasBeenProcessed, requestId, value);
+        if (! res.sent) {
+            setIgnored(true);
+            setProcessing(false);
+            return res;
         }
-        setProcessed(true)
-        return true;
+        res.promise
+            .then(() => {
+                setProcessed(true);
+            })
+            .catch(e => {
+                setError(e);
+            })
+            .finally(() => {
+                setProcessing(false);
+            })
+        return res;
     }
 }
 
-interface UseRequestHook {
+interface UseRequestHook<ER extends RequestType> {
+    processing: boolean;
     processed: boolean;
-    maybeResolve?: MaybeResolve;
+    maybeResolve?: MaybeResolve<ER>;
     maybeReject?: MaybeReject;
+    error?: unknown;
 }
 
-export function useRequest(req: Request | undefined): UseRequestHook {
+interface UseRequestCallbacks {
+    onProcessed?(): void;
+    onIgnored?(): void;
+}
+
+/**
+ * @note Make sure callbacks are memoised using useCallback;
+ * otherwise, they will get invoked on each render if the
+ * request has been processed or ignored.
+ */
+export function useRequest<ER extends RequestType>(
+    req: Request | undefined,
+    { onProcessed, onIgnored }: UseRequestCallbacks = {}
+): UseRequestHook<ER> {
+    const [processing, setProcessing] = useState<boolean>(false);
     const [processed, setProcessed] = useState<boolean>(false);
-    const [maybeResolve, setMaybeResolve] = useState<MaybeResolve>();
+    const [ignored, setIgnored] = useState<boolean>(false);
+    const [maybeResolve, setMaybeResolve] = useState<MaybeResolve<ER>>();
     const [maybeReject, setMaybeReject] = useState<MaybeReject>();
+    const [error, setError] = useState<unknown>();
 
     useEffect(() => {
         if (! req) {
@@ -68,16 +136,34 @@ export function useRequest(req: Request | undefined): UseRequestHook {
             return;
         }
         setMaybeResolve(
-            () => createMaybeFunction("resolve", processed, setProcessed, req)
+            () => createMaybeFunction("resolve", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
         );
         setMaybeReject(
-            () => createMaybeFunction("reject", processed, setProcessed, req)
+            () => createMaybeFunction("reject", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
         );
     }, [processed, req]);
+    useEffect(() => {
+        if (ignored) {
+            if (! onIgnored) {
+                return;
+            }
+            onIgnored();
+            return;
+        }
+        if (processed) {
+            if (! onProcessed) {
+                return;
+            }
+            onProcessed();
+            return;
+        }
+    }, [processed, ignored, onIgnored, onProcessed]);
     return {
+        processing,
         processed,
         maybeResolve,
         maybeReject,
+        error
     }
 }
 

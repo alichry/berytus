@@ -4,9 +4,9 @@ import { Identity, PRIMARY_IDENTITY_ID } from './Identity';
 import { Picture } from './Picture';
 import { Channel } from './Channel';
 import { WebApp } from './WebApp';
-import type { Request, FieldInfo, AddFieldArgs, FieldValueRejectionReason, RecordMetadata, BerytusSendMessageUnion, PreliminaryRequestContext, BerytusChallengeInfoUnion, OperationMetadata, UserAttributeKey, WebAppActor, ChannelMetadata, LoginOperationMetadata, UriParams } from '@berytus/types';
+import type { Request, FieldInfo, FieldValueRejectionReason, RecordMetadata, BerytusSendMessageUnion, PreliminaryRequestContext, BerytusChallengeInfoUnion, UserAttributeKey, WebAppActor, ChannelMetadata, LoginOperationMetadata, UriParams, RequestContext, RequestContextWithOperation, RequestContextWithLoginOperation } from '@berytus/types';
 import { EBerytusChallengeType } from "@berytus/enums";
-import { BerytusEncryptedPacket, BerytusUserAttributeKey } from '@berytus/types-extd';
+import { BerytusEncryptedPacket } from '@berytus/types-extd';
 
 export interface Field extends FieldInfo {
   value: string;
@@ -19,7 +19,7 @@ export interface FieldValueRejection extends FieldValueRejectionReason {
 }
 
 export interface UserAttribute {
-  id: BerytusUserAttributeKey;
+  id: UserAttributeKey;
   mimeType?: string;
   // TODO(berytus): REmove this once we remove ArrayBufferViews.
   value: string | ArrayBuffer | ArrayBufferView | BerytusEncryptedPacket;
@@ -71,7 +71,7 @@ export interface Session {
    * This is the ExtensionRequestContext. Currently, it holds the active
    * request and the tabId where the Authentication or Registration session is.
    */
-  context: PreliminaryRequestContext;
+  context: PreliminaryRequestContext | RequestContext | RequestContextWithOperation | RequestContextWithLoginOperation;
   /**
    * Only set in the MODE_EXTERNAL_WINDOW mode. If set, this is
    * the tabId of the created window. See session-utils.ts->openWindowOrRedirectTab
@@ -81,7 +81,7 @@ export interface Session {
    * Registration session is.
    */
   tabId?: number;
-  channel: Omit<ChannelMetadata, 'scmActor'>;
+  channel: ChannelMetadata;
   operation: LoginOperationMetadata;
   //sessionInfo: OperationMetadata;
   requests: Array<Request>;
@@ -128,6 +128,12 @@ export interface Settings {
 
 export const PRIMARY_SETTINGS_ID = "primary";
 
+export interface PendingRequest {
+  id: string;
+  url: string;
+  tabId: number;
+}
+
 export class SecretDexie extends Dexie {
   // 'friends' is added by dexie when declaring the stores()
   // We just tell the typing system this is the case
@@ -137,6 +143,7 @@ export class SecretDexie extends Dexie {
   picture!: Table<Picture>;
   channel!: Table<Channel>;
   webApp!: Table<WebApp>;
+  pendingRequests!: Table<PendingRequest>;
   protected settings!: Table<Settings & { id: string }>;
 
   constructor() {
@@ -149,6 +156,7 @@ export class SecretDexie extends Dexie {
       picture: 'filename',
       channel: 'id',
       webAppKey: '++id, ed25519Key',
+      pendingRequests: 'id'
     });
     this.on('ready', async (dexieDb: Dexie) => {
       const db = dexieDb as SecretDexie;

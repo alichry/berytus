@@ -1,10 +1,11 @@
 import UserIntentView from "@components/UserIntentView";
 import { useParams } from "react-router-dom";
-import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPopupContextAndPageContextRoute, useAccounts } from "../../hooks";
+import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPopupContextAndPageContextRoute, useAccounts, useNavigateWithPageContextRoute } from "../../hooks";
 import { Session, db } from "@root/db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Loading from "../components/Loading";
 import { ELoginUserIntent } from "@berytus/enums";
+import { useCallback } from "react";
 
 export default function UserIntent() {
     const { sessionId, afterVersion } = useParams<string>();
@@ -29,10 +30,16 @@ export default function UserIntent() {
         session?.channel.constraints?.account?.schemaVersion
     );
     const tabId = session?.context.document.id;
-    const { maybeResolve, maybeReject } = useRequest(session?.requests[0]);
+    const navigate = useNavigateWithPageContextRoute();
+    const onProcessed = useCallback(() => {
+            navigate('/loading');
+        }, [navigate]);
+    const { maybeResolve, maybeReject } = useRequest<"Login_ApproveOperation">(
+        session?.requests[0],
+        { onProcessed }
+    );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
-    const navigate = useNavigateWithPopupContextAndPageContextRoute(tabId);
-
+    console.log(!!session, !!maybeResolve, !!maybeReject);
     if (! session || ! maybeResolve || ! maybeReject) {
         // BRTTODO: Put an error since the session record should exist by now.
         // Or is that the useLiveQuery is still fetching obj...
@@ -55,7 +62,7 @@ export default function UserIntent() {
                 };
                 await db.sessions.update(session,  change);
             }
-            maybeResolve(intent) && navigate('/loading')
+            maybeResolve(intent);
         }}
         onCancel={() => window.close()}
     />

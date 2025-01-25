@@ -27,7 +27,7 @@ export default function AuthFinished() {
             return record;
         }
     );
-    const { maybeResolve, maybeReject } = useRequest(session?.requests[session?.requests.length - 1]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountAuthentication_CloseChallenge">(session?.requests[session?.requests.length - 1]);
     useEffect(() => {
         if (! maybeResolve) {
             return;

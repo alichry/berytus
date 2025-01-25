@@ -39,7 +39,7 @@ export default function TransitionToAuth() {
             return { currSession, nextSession, account };
         }
     );
-    const { maybeResolve, maybeReject } = useRequest(records?.nextSession.requests[records?.nextSession?.requests.length - 1]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountCreation_ApproveTransitionToAuthOp">(records?.nextSession.requests[records?.nextSession?.requests.length - 1]);
     const tabId =  records?.currSession.context.document.id;
     useAbortRequestOnWindowClose({ maybeReject, tabId });
     const loading = ! records || ! maybeReject || ! maybeResolve;

@@ -1,6 +1,6 @@
 //const {CracoAliasPlugin} = require('react-app-alias-ex')
 const { CracoAliasPlugin, configPaths } = require('react-app-rewire-alias/lib/aliasDangerous')
-const { ProvidePlugin, optimize: { LimitChunkCountPlugin } } = require('webpack');
+const { ProvidePlugin, optimize: { LimitChunkCountPlugin }, web } = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const options = {} // default is empty for most cases
@@ -18,6 +18,10 @@ module.exports = {
       plugin: {
         overrideWebpackConfig: ({ webpackConfig }) => {
           const miniCssPlugin = webpackConfig.plugins.find(plugin => plugin instanceof MiniCssExtractPlugin);
+          if (!miniCssPlugin) {
+            // in dev mode, no miniCssPlugin is defined.
+            return webpackConfig;
+          }
           miniCssPlugin.options.filename = 'static/css/[name].css';
           return webpackConfig;
         },
@@ -51,6 +55,7 @@ module.exports = {
       webpackConfig.optimization = { usedExports: true }
       webpackConfig.output.filename = 'static/js/[name].js'; /* default is static/js/[name].[contenthash:8].js */
       webpackConfig.output.chunkFilename = 'static/js/[name].chunk.js';
+      webpackConfig.optimization.minimize = false;
       webpackConfig.optimization.splitChunks = {
         name: (module, chunks, cacheGroupKey) => {
           const allChunksNames = chunks.map((chunk) => chunk.name).join('-');

@@ -27,7 +27,7 @@ export default function EnableE2E() {
             return { session, channel };
         }
     );
-    const { maybeResolve, maybeReject } = useRequest(records?.session?.requests[records?.session?.requests.length - 1]);
+    const { maybeResolve, maybeReject } = useRequest<"Channel_EnableEndToEndEncryption">(records?.session?.requests[records?.session?.requests.length - 1]);
     if (! records || ! maybeReject || ! maybeResolve) {
         return <Loading />;
     }

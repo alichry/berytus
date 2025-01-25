@@ -15,8 +15,7 @@ if (typeof browser === "undefined" || browser.berytus === undefined) {
             unregisterRequestHandler: dummy,
             registerRequestHandler: dummy,
             resolveRequest: dummyAsync,
-            rejectRequest: dummyAsync,
-            openPageActionPopupIfNecessary: dummy
+            rejectRequest: dummyAsync
         }
     };
 

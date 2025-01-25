@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPopupContextAndPageContextRoute, useSettings, useIdentity } from "../../hooks";
+import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPageContextRoute, useSettings, useIdentity } from "../../hooks";
 import GetUserAttributesView from "@components/GetUserAttributesView";
 import type { UserAttributeKey } from "@berytus/types";
 import { UserAttribute } from "@root/db/db";
@@ -7,7 +7,7 @@ import { Session, db, RRequiredUserAttributes, RUserAttributes } from '@root/db/
 import { useLiveQuery } from "dexie-react-hooks";
 import Loading from "../components/Loading";
 import { UserAttributes } from "@root/db";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { userAttributesLabels } from "../utils/userAttributesLabels";
 import { stringifyUserAttributeValue } from "../components/AccountView";
 
@@ -21,6 +21,7 @@ function getMissingAttributes(requiredAttributes: RRequiredUserAttributes, userA
             ) {
                 return key;
             }
+            return null;
         })
         .filter(key => !!key);
 }
@@ -51,9 +52,15 @@ export default function GetUserAttributes() {
         }
     );
     const tabId = session?.context.document.id;
-    const { maybeResolve, maybeReject } = useRequest(session?.requests[session?.requests.length - 1]);
+    const navigate = useNavigateWithPageContextRoute();
+    const onProcessed = useCallback(() => {
+        navigate('/loading');
+    }, [navigate]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountCreation_GetUserAttributes">(
+        session?.requests[session?.requests.length - 1],
+        { onProcessed }
+    );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
-    const navigate = useNavigateWithPopupContextAndPageContextRoute(tabId);
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
     const requiredUserAttributes = session?.requiredUserAttributes;
     const user = identity?.userAttributes;
@@ -100,12 +107,13 @@ export default function GetUserAttributes() {
             userAttributes: transformedUser
         };
         await db.sessions.update(session.id, change);
-        if (maybeResolve(transformedUser)) {
-            navigate('/loading');
-            return true;
+        const asArray = Object.values(transformedUser).filter(u => !!u);
+        const { sent } = maybeResolve(asArray as Array<Exclude<typeof asArray[0], undefined>>);
+        if (! sent) {
+            setError(new Error('Unable to resolve request. The request has been previously resolved.'));
+            return false;
         }
-        setError(new Error('Refusing to resolve request. The request has been previously resolved.'));
-        return false;
+        return true;
     }
 
     useEffect(() => {

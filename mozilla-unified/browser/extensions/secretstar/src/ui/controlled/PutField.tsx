@@ -1,10 +1,10 @@
 import { PutField as TPutField, Session, db, Field } from "@root/db/db";
-import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPopupContextAndPageContextRoute, useSettings } from "@root/hooks";
+import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
 import PutFieldView from "../components/PutFieldView";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function PutField() {
     const { sessionId, fieldId } = useParams<string>();
@@ -30,10 +30,17 @@ export default function PutField() {
         },
         [sessionId, fieldId]
     );
-    const { maybeResolve, maybeReject } = useRequest(session?.requests[session?.requests.length - 1]);
+
     const tabId = session?.context.document.id;
+    const navigate = useNavigateWithPageContextRoute();
+    const onProcessed = useCallback(() => {
+        navigate('/loading');
+    }, [navigate]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountCreation_AddField">(
+        session?.requests[session?.requests.length - 1],
+        { onProcessed }
+    );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
-    const navigate = useNavigateWithPopupContextAndPageContextRoute(tabId);
     const [field, setField] = useState<TPutField>();
     const [error, setError] = useState<Error>();
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
@@ -71,12 +78,12 @@ export default function PutField() {
                 fields: (session.fields || []).concat(newField)
             };
             await db.sessions.update(session.id, change);
-            if (maybeResolve(undefined)) {
-                navigate('/loading');
-                return true;
+            const { sent } = maybeResolve(null);
+            if (! sent) {
+                setError(new Error("Unable to resolve request; this request has been already resolved."));
+                return false;
             }
-            setError(new Error('Refusing to resolve request. The request has been previously resolved.'));
-            return false;
+            return true;
         } catch (e) {
             setError(e as Error);
             return false;

@@ -3,8 +3,8 @@ import Loading from "../../components/Loading";
 import ApproveChallengeView from "../../components/ApproveChallengeView";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@root/db";
-import { useState } from "react";
-import { useAbortRequestOnWindowClose, useNavigateWithPopupContextAndPageContextRoute, useRequest, useSeamless, useSettings } from "@root/hooks";
+import { useCallback, useState } from "react";
+import { useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useRequest, useSeamless } from "@root/hooks";
 import { atLeastOneErrorSet } from "@root/utils";
 import ConcatErrorMessages from "@root/ui/components/ConcatErrorMessages";
 
@@ -38,10 +38,16 @@ export default function ApproveChallenge() {
         };
     }, [sessionId, challengeId]);
     const request = query?.session.requests[query!.session.requests.length - 1];
-    const { maybeResolve, maybeReject } = useRequest(request);
     const tabId = query?.session.context.document.id;
+    const navigate = useNavigateWithPageContextRoute();
+    const onProcessed = useCallback(() => {
+        navigate('/loading');
+    }, [navigate]);
+    const { maybeResolve, maybeReject } = useRequest<"AccountAuthentication_ApproveChallengeRequest">(
+        request,
+        { onProcessed }
+    );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
-    const navigate = useNavigateWithPopupContextAndPageContextRoute(tabId);
 
     const loading = query === undefined || maybeResolve === undefined || maybeReject === undefined;
 
@@ -71,7 +77,7 @@ export default function ApproveChallenge() {
         return <Loading />;
     }
 
-    const { challenge, session } = query;
+    const { challenge } = query;
 
     return (
         <ApproveChallengeView

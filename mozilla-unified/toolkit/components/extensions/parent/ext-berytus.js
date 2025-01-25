@@ -278,6 +278,8 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
             throw new Error('Invalid request id; cannot resolve request.');
           }
           cx.response.resolve(value);
+          // TODO(berytus): the above should be async, and we should
+          // delete this.#requests[requestId]
         },
         rejectRequest: (requestId, reason) => {
           const cx = this.#requests[requestId];

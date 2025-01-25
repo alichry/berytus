@@ -20,7 +20,7 @@ JAR_MANIFESTS += [\"jar.mn\"]
 with Files(\"**\"):
     BUG_COMPONENT = (\"BuiltInAddons\", \"Secret*\")
 
-FINAL_TARGET_FILES.features[\"secretstsar@alichry\"] += [
+FINAL_TARGET_FILES.features[\"secretstar@alichry\"] += [
     \"manifest.json\"
 ]
 "
@@ -33,7 +33,7 @@ listEntries() {
         echo "Missing dir" >&2
         return 1
     fi
-    echo "FINAL_TARGET_FILES.features[\"secretstsar@alichry\"][\"${dir}\"] += ["
+    echo "FINAL_TARGET_FILES.features[\"secretstar@alichry\"][\"${dir}\"] += ["
     find "$dir" -type f -maxdepth 1 | sort -f | sed -E 's/^(.*)$/\t"\1",/g;'
     echo "]"
     find "$dir" -type d -maxdepth 1 -not -path "$dir" | while IFS= read subdir; do
