@@ -11,11 +11,8 @@ import { ERejectionCode, EOperationType, EMetadataStatus, RequestType } from "@b
 import type { PreliminaryRequestContext } from "@berytus/types";
 import { userAttributesLabels } from "@root/ui/utils/userAttributesLabels";
 import { stringifyArrayBufferOrEncryptedPacket, stringifyEncryptedPacket } from "./field-utils";
-
-// @ts-ignore
-browser.berytus.openPageActionPopupIfNecessary = (...args: any[]) => {
-    console.warn("openPageActionPopupIfNecessary called with", ...args);
-}
+import { setPageActionUrlInTab } from "./pageAction-utils";
+import { openPageActionPopupIfNecessary } from "./pageAction-popup-fix";
 
 const plainContext = (context: PreliminaryRequestContext) => {
     return {
@@ -24,22 +21,14 @@ const plainContext = (context: PreliminaryRequestContext) => {
     }
 }
 
-function resolveAfter(seconds: number) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(undefined);
-        }, seconds * 1000);
-    })
-}
-
 async function printSessionForSimiluationPrep(
-    phase: RequestType,
+    phase: RequestType | `${RequestType}:${string}`,
     sessionId: string
 ) {
     const session = await getSessionRecord(sessionId);
     console.log('simulate:', JSON.stringify({
         phase, session
-    }));
+    }, null, 2));
 }
 
 async function printSessionWithChannelForSimulationPrep(
@@ -57,8 +46,6 @@ async function printSessionWithChannelForSimulationPrep(
     }, null, 2));
 }
 
-console.log("Starting2");
-
 async function showUi(
     context: PreliminaryRequestContext,
     sessionId: string,
@@ -75,8 +62,7 @@ async function showUi(
         await openWindowOrRedirectTab(sessionId, tabId, relativePath);
         return;
     }
-    // @ts-ignore: TODO(berytus): Implement openPageActionPopupIfNecessary
-    browser.berytus.openPageActionPopupIfNecessary(
+    openPageActionPopupIfNecessary(
         { requestId: context.request.id, tabId: context.document.id },
         url(relativePath, PAGECONTEXT_POPUP)
     );
@@ -157,7 +143,6 @@ browser.berytus.registerRequestHandler({
                     )
                 },
             };
-            console.log("generateKeyExchangeParameters", 'webAppX25519', args.paramsDraft.webAppX25519Key, 'webAppEd25519', channel.webAppEd25519Key, 'params', params);
             await db.channel.update(channel, change);
             context.response.resolve(
                 {
@@ -174,7 +159,7 @@ browser.berytus.registerRequestHandler({
             if (MODE === MODE_EXTERNAL_WINDOW) {
                 window = await openWindow(relativePath);
             } else {
-                browser.berytus.openPageActionPopupIfNecessary(
+                openPageActionPopupIfNecessary(
                     { requestId: context.request.id, tabId: context.document.id },
                     url(relativePath, PAGECONTEXT_POPUP)
                 );
@@ -202,27 +187,11 @@ browser.berytus.registerRequestHandler({
             if (MODE === MODE_EXTERNAL_WINDOW) {
                 window = await openWindow(relativePath);
             } else {
-                browser.berytus.openPageActionPopupIfNecessary(
+                openPageActionPopupIfNecessary(
                     { requestId: context.request.id, tabId: context.document.id },
                     url(relativePath, PAGECONTEXT_POPUP)
                 );
             }
-            console.log("ARgs:");
-            console.log({
-                id: args.operation.id,
-                requests: [context.request],
-                channel: context.channel,
-                operation: args.operation,
-                context,
-                tabId: window?.tabs ? window.tabs[0].id : undefined,
-                metadata: {
-                    version: context.channel.constraints.account?.schemaVersion || 0,
-                    status: EMetadataStatus.Pending,
-                    category: context.channel.constraints.account?.category || "",
-                    changePassUrl: ""
-                },
-                version: 1
-            });
             await db.sessions.add({
                 id: args.operation.id,
                 requests: [context.request],
@@ -418,7 +387,7 @@ browser.berytus.registerRequestHandler({
                 version: sessionRecord.version + 1
             };
             await db.sessions.update(sessionId, change);
-            printSessionForSimiluationPrep('AccountCreation_AddField', sessionId);
+            printSessionForSimiluationPrep('AccountCreation_AddField:Put', sessionId);
         },
         async rejectFieldValue(context, args): Promise<void> {
             const sessionId = context.operation.id;
