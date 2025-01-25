@@ -1,6 +1,7 @@
 import { AbstractAccountStageHandler } from "../AbstractAccountHandler";
 import type { TypedStageHandler } from "@root/berytus/types";
 import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler";
+import { assert, assertIsString } from "../assertions";
 
 const version = 1 as const;
 const category = "Customer" as const;
@@ -99,10 +100,8 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        const idCh = await operation.createChallenge(
-            "id",
-            "Identification"
-        );
+        const idCh = new BerytusIdentificationChallenge("id");
+        await operation.challenge(idCh);
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "identification" as const };
         //! EXPORT_FN_IGNORE_END
@@ -112,7 +111,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
-        const idCh = operation.challenges.get('id');
+        const idCh = operation.challenges.get('id') as BerytusIdentificationChallenge;
         if (! idCh) {
             throw new Error("ID challenge not set.");
         }
@@ -132,10 +131,10 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             }
         }
         //! EXPORT_FN_IGNORE_END
-        const { payload: { username } } = await idCh.sendMessage({
-            name: 'GetIdentityFields',
-            payload: ['username']
-        });
+        const { response: { username } } = await idCh.getIdentityFields(['username']);
+        //! EXPORT_FN_IGNORE_START
+        assertIsString(username);
+        //! EXPORT_FN_IGNORE_END
         /*!
          * We use a web app-specific routine, `accountExists`,
          * to check whether the account exists or not given its username.
@@ -143,7 +142,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
          * @type {(username: string): Promise<boolean>}
          */
         if (! await accountExists(username)) {
-            await idCh.abort("Identification:IdentityDoesNotExists");
+            await idCh.abort("IdentityDoesNotExists");
             throw new Error("User failed to pass identification challenge");
         }
         await idCh.seal();
@@ -161,10 +160,8 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        const passCh = await operation.createChallenge(
-            "pass",
-            "Password"
-        );
+        const passCh = new BerytusPasswordChallenge("pass");
+        await operation.challenge(passCh)
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "passwordAuth" as const };
         //! EXPORT_FN_IGNORE_END
@@ -174,7 +171,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
-        const passCh = operation.challenges.get('pass');
+        const passCh = operation.challenges.get('pass') as BerytusPasswordChallenge;
         if (! passCh) {
             throw new Error("Pass challenge not set.");
         }
@@ -206,10 +203,10 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             }
         };
         //! EXPORT_FN_IGNORE_END
-        const { payload: { password } } = await passCh.sendMessage({
-            name: 'GetPasswordFields',
-            payload: ['password']
-        });
+        const { response: { password } } = await passCh.getPasswordFields(['password']);
+        //! EXPORT_FN_IGNORE_START
+        assertIsString(password);
+        //! EXPORT_FN_IGNORE_END
         /*!
          * We use a web app-specific routine, `login`, for password
          * authentication.
@@ -217,7 +214,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
          * @type {(username: string, password: string): Promise<boolean>}
          */
         if (! await login(username, password)) {
-            await passCh.abort("Password:IncorrectPassword");
+            await passCh.abort("IncorrectPassword");
             throw new Error("User failed to pass the password challenge");
         }
         await passCh.seal();

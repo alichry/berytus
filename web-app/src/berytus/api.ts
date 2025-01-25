@@ -2,7 +2,7 @@ interface VersionOnboardConfiguration {
     version: number | RegExp | string;
     fields: Array<BerytusField>;
     fieldValidators: Record<string, () => Promise<any>>;
-    challengeValidators: Record<AuthRealmChallengeType, () => any>;
+    challengeValidators: Record<BerytusChallengeType, () => any>;
 };
 
 
