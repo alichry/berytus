@@ -3,11 +3,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 import { PublicRequestHandler, SequentialRequestHandler } from "resource://gre/modules/BerytusRequestHandler.sys.mjs";
 import { NativeManager } from "resource://gre/modules/BerytusNativeManager.sys.mjs";
-const lazy = {};
-ChromeUtils.defineESModuleGetters(lazy, {
-    AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
-    setTimeout: "resource://gre/modules/Timer.sys.mjs",
-});
 class Liaison {
     #managers = {};
     get managers() {
@@ -24,7 +19,7 @@ class Liaison {
         }
         delete this.#managers[id];
     }
-    registerManager(id, label, type, handler) {
+    registerManager({ id, type, name, icon }, handler) {
         if (this.#managers[id]) {
             throw new Error(`Cannot register manager id "${id}", ` +
                 ' manager already register (duplicate id).');
@@ -33,16 +28,16 @@ class Liaison {
             throw new Error("Cannot register manager. "
                 + `Passed ID (${String(id)}) is invalid.`);
         }
-        if (typeof label !== "string" || label.trim().length === 0) {
+        if (typeof name !== "string" || name.trim().length === 0) {
             throw new Error(`Cannot register manager for id "${id}". `
-                + `Passed Label (${String(label)}) is invalid.`);
+                + `Passed name (${String(name)}) is invalid.`);
         }
         if (!(type in ESecretManagerType)) {
             throw new Error(`Cannot register manager for id "${id}". `
                 + `Passed Type (${String(type)}) is invalid.`);
         }
         this.#managers[id] = {
-            metadata: new SecretManagerInfo(id, label, type),
+            metadata: new SecretManagerInfo(id, name, type, icon),
             handler: new SequentialRequestHandler(handler)
         };
     }
@@ -71,39 +66,34 @@ export var ESecretManagerType;
 ;
 class SecretManagerInfo {
     #id;
-    #label;
+    #name;
     #type;
-    constructor(id, label, type) {
+    #icon;
+    constructor(id, name, type, icon) {
         this.#id = id;
-        this.#label = label;
+        this.#name = name;
         this.#type = type;
+        this.#icon = icon;
     }
     get id() {
         return this.#id;
     }
-    get label() {
-        return this.#label;
+    get name() {
+        return this.#name;
     }
     get type() {
         return this.#type;
     }
+    get icon() {
+        return this.#icon;
+    }
 }
 const liaison = new Liaison();
-liaison.registerManager('built-in', 'Built-in Manager', ESecretManagerType.Native, new NativeManager());
+liaison.registerManager({
+    id: 'built-in',
+    name: 'Built-in Manager',
+    type: ESecretManagerType.Native
+}, new NativeManager());
 export { liaison };
 // @ts-ignore
 SecretManagerInfo.prototype.QueryInterface = ChromeUtils.generateQI(["mozIBerytusSecretManagerInfo"]);
-lazy.setTimeout(async () => {
-    console.log("Loading Secret*");
-    const extensionDirURL = "resource://builtin-addons/secretstar/";
-    const filePath = Services.io.getProtocolHandler("resource").resolveURI(Services.io.newURI(extensionDirURL));
-    const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-    file.initWithPath(filePath.substring('file://'.length));
-    await lazy.AddonManager.installTemporaryAddon(file);
-    // Note(berytus): The below was not sufficient to install the browser action
-    // popup in the toolbar. By calliing installTemporaryAddon, Mozilla takes
-    // care of disabling the builtin extension with the same Extension ID.
-    // await lazy.AddonManager.maybeInstallBuiltinAddon("secretstar@alichry", "1.0", "resource://builtin-addons/secretstar/")
-    // const addon = await lazy.AddonManager.getAddonByID("secretstar@alichry");
-    // await addon.reload();
-}, 0);

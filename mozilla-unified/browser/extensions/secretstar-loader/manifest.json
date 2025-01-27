@@ -1,0 +1,26 @@
+{
+    "manifest_version": 2,
+    "name": "Secret* Loader",
+    "hidden": true,
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "ss-loader@alichry"
+      }
+    },
+    "version": "1.0.0",
+    "description": "",
+    "experiment_apis": {
+      "ssLoader": {
+        "schema": "schema.json",
+        "parent": {
+          "scopes": ["addon_parent"],
+          "script": "api.js",
+          "events": [],
+          "paths": [["ssLoader"]]
+        }
+      }
+    },
+    "background": {
+      "scripts": ["run.js"]
+    }
+  }

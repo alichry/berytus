@@ -1,6 +1,7 @@
 import { Account, Session, db } from "@root/db/db";
 import { randomPassword } from "@root/utils";
-import { EBerytusFieldType, ELoginUserIntent, EMetadataStatus, EOperationStatus, EOperationType } from "@berytus/enums";
+import { EBerytusChallengeType, EBerytusFieldType, ELoginUserIntent, EMetadataStatus, EOperationStatus, EOperationType } from "@berytus/enums";
+import { EBerytusIdentificationChallengeMessageName, EBerytusPasswordChallengeMessageName } from "@berytus/types-extd";
 
 export const Accounts: Account[] = [
     {
@@ -1127,6 +1128,960 @@ const _sessions: Array<PhaseEntry> = [
         "version": 1
       }
     },
+    {
+      "phase": "AccountAuthentication_ApproveChallengeRequest",
+      "session": {
+        "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+        "requests": [
+          {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{b492b35a-a126-4f57-a50c-62ee4fffe51f}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          }
+        ],
+        "channel": {
+          "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 1
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 1
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 1,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 1,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 2,
+        "selectedAccountId": "ic49-aewd-z9se-hgai",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {}
+          }
+        }
+      }
+    },
+    {
+      "phase": "AccountAuthentication_RespondToChallengeMessage",
+      "session": {
+        "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+        "requests": [
+          {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{b492b35a-a126-4f57-a50c-62ee4fffe51f}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{1f8f1714-a050-498f-881e-af24f9545072}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          }
+        ],
+        "channel": {
+          "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 1
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 1
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 1,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 1,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 3,
+        "selectedAccountId": "ic49-aewd-z9se-hgai",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {
+              "GetIdentityFields": {
+                "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
+                "payload": [
+                  "username"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "phase": "AccountAuthentication_CloseChallenge",
+      "session": {
+        "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+        "requests": [
+          {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{b492b35a-a126-4f57-a50c-62ee4fffe51f}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{1f8f1714-a050-498f-881e-af24f9545072}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{04a6669f-ed02-4407-9dbe-de9eab2e82e2}",
+            "type": "AccountAuthentication_CloseChallenge"
+          }
+        ],
+        "channel": {
+          "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 1
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 1
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 1,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 1,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 3,
+        "selectedAccountId": "ic49-aewd-z9se-hgai",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {
+              "GetIdentityFields": {
+                "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
+                "payload": [
+                  "username"
+                ]
+              }
+            },
+            "closed": true
+          }
+        }
+      }
+    },
+    {
+      "phase": "AccountAuthentication_ApproveChallengeRequest",
+      "session": {
+        "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+        "requests": [
+          {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{b492b35a-a126-4f57-a50c-62ee4fffe51f}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{1f8f1714-a050-498f-881e-af24f9545072}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{04a6669f-ed02-4407-9dbe-de9eab2e82e2}",
+            "type": "AccountAuthentication_CloseChallenge"
+          },
+          {
+            "id": "{2e9e8fda-8341-4a19-9cc8-483678c38a25}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          }
+        ],
+        "channel": {
+          "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 1
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 1
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 1,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 1,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 4,
+        "selectedAccountId": "ic49-aewd-z9se-hgai",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {
+              "GetIdentityFields": {
+                "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
+                "payload": [
+                  "username"
+                ]
+              }
+            },
+            "closed": true
+          },
+          "pass": {
+            "id": "pass",
+            "type": "Password" as EBerytusChallengeType.Password,
+            "parameters": null,
+            "messages": {}
+          }
+        }
+      }
+    },
+    {
+      "phase": "AccountAuthentication_RespondToChallengeMessage",
+      "session": {
+        "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+        "requests": [
+          {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{b492b35a-a126-4f57-a50c-62ee4fffe51f}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{1f8f1714-a050-498f-881e-af24f9545072}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{04a6669f-ed02-4407-9dbe-de9eab2e82e2}",
+            "type": "AccountAuthentication_CloseChallenge"
+          },
+          {
+            "id": "{2e9e8fda-8341-4a19-9cc8-483678c38a25}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{f500327c-cc4f-456e-ae23-db9a6f2b59ac}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          }
+        ],
+        "channel": {
+          "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 1
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 1
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 1,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 1,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 5,
+        "selectedAccountId": "ic49-aewd-z9se-hgai",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {
+              "GetIdentityFields": {
+                "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
+                "payload": [
+                  "username"
+                ]
+              }
+            },
+            "closed": true
+          },
+          "pass": {
+            "id": "pass",
+            "type": "Password" as EBerytusChallengeType.Password,
+            "parameters": null,
+            "messages": {
+              "GetPasswordFields": {
+                "name": "GetPasswordFields" as EBerytusPasswordChallengeMessageName.GetPasswordFields,
+                "payload": [
+                  "password"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "phase": "AccountAuthentication_CloseChallenge",
+      "session": {
+        "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+        "requests": [
+          {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{b492b35a-a126-4f57-a50c-62ee4fffe51f}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{1f8f1714-a050-498f-881e-af24f9545072}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{04a6669f-ed02-4407-9dbe-de9eab2e82e2}",
+            "type": "AccountAuthentication_CloseChallenge"
+          },
+          {
+            "id": "{2e9e8fda-8341-4a19-9cc8-483678c38a25}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{f500327c-cc4f-456e-ae23-db9a6f2b59ac}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{0b080c24-186d-4e9d-ad41-d7e5766b9e93}",
+            "type": "AccountAuthentication_CloseChallenge"
+          }
+        ],
+        "channel": {
+          "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 1
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{358fe212-cc2f-492b-8a07-f252437ce56b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{30f67fc0-013c-4a08-9251-14d853cec3dc}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 1
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 1,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{f4bb253f-368c-4724-8239-d3ccee038f8d}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 1,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 5,
+        "selectedAccountId": "ic49-aewd-z9se-hgai",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {
+              "GetIdentityFields": {
+                "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
+                "payload": [
+                  "username"
+                ]
+              }
+            },
+            "closed": true
+          },
+          "pass": {
+            "id": "pass",
+            "type": "Password" as EBerytusChallengeType.Password,
+            "parameters": null,
+            "messages": {
+              "GetPasswordFields": {
+                "name": "GetPasswordFields" as EBerytusPasswordChallengeMessageName.GetPasswordFields,
+                "payload": [
+                  "password"
+                ]
+              }
+            },
+            "closed": true
+          }
+        }
+      }
+    }
 ]
 //_sessions.save = _sessions.putPrivateKey;
 
@@ -1211,8 +2166,22 @@ export const SimulationUrls = Sessions.map((entry, i) => {
         url = `auth/${sess.id}/challenge/${challengeId}/message/${messageId}`;
     } else if (phase === 'AccountCreation_ApproveTransitionToAuthOp') {
         url = `transition-to-auth-op/${sess.transitionedFromSessionId}/${sess.id}`;
-     } else {
-        throw new Error("unknown phase: " + phase);
+    } else if (phase === 'AccountAuthentication_CloseChallenge') {
+      // Note(berytus); use the last one for now. This is not correct
+      // since the rejectedFieldId might not be the last one
+      // in the array. But we let it pass..
+      const challenges = Object.values(sess.challenges!);
+      const lastChallenge = challenges[challenges.length - 1];
+      url = `auth/${sess.id}/challenge/${lastChallenge.id}/sealed`;
+    } else if (phase === 'AccountAuthentication_AbortChallenge') {
+      // Note(berytus); use the last one for now. This is not correct
+      // since the rejectedFieldId might not be the last one
+      // in the array. But we let it pass..
+      const challenges = Object.values(sess.challenges!);
+      const lastChallenge = challenges[challenges.length - 1];
+      url = `auth/${sess.id}/challenge/${lastChallenge.id}/aborted`;
+    } else {
+      throw new Error("unknown phase: " + phase);
     }
     return {
         phase: phases[i],

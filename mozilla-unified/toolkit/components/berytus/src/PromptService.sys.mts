@@ -16,12 +16,7 @@ XPCOMUtils.defineLazyPreferenceGetter(
     false
 );
 
-export interface ManangerSelectionEntry extends CollectCredentialsMetadataEntry  {
-    manager: CollectCredentialsMetadataEntry['manager'] & {
-        // TODO(berytus): Handle ext icons
-        icon?: string;
-    }
-}
+export interface ManangerSelectionEntry extends CollectCredentialsMetadataEntry  {}
 
 export class PromptService {
 
@@ -103,7 +98,6 @@ class Prompter {
             }
             for (let i = 0; i < managerEntries.length; i++) {
                 const { manager, credentialsMetadata } = managerEntries[i];
-
                 //const extInfo = Prompter.#getExtensionInfo(manager.id);
                 const newItem = itemTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
 
@@ -135,7 +129,7 @@ class Prompter {
                 }
                 newItem.getElementsByClassName(
                     "berytus-secret-manager-list-item-label-primary"
-                )[0].textContent = manager.label;
+                )[0].textContent = manager.name;
                 newItem.getElementsByClassName(
                     "berytus-secret-manager-list-item-label-secondary"
                 )[0].textContent = manager.id;

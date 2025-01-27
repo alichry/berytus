@@ -7,9 +7,6 @@
 DEFINES["MOZ_APP_VERSION"] = CONFIG["MOZ_APP_VERSION"]
 DEFINES["MOZ_APP_MAXVERSION"] = CONFIG["MOZ_APP_MAXVERSION"]
 
-
-JAR_MANIFESTS += ["jar.mn"]
-
 with Files("**"):
     BUG_COMPONENT = ("BuiltInAddons", "Secret*")
 
@@ -38,7 +35,6 @@ FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static/css"] += [
 ]
 FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static/js"] += [
 	"build/static/js/main.js",
-	"build/static/js/main.js.LICENSE.txt",
 	"build/static/js/main.js.map",
 	"build/static/js/web-vitals.chunk.js",
 	"build/static/js/web-vitals.chunk.js.map",

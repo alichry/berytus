@@ -80,7 +80,7 @@ declare global {
         abstract receiveMessage(msg: ActorMessage): any;
     }
     abstract class JSWindowActorChild {
-        contentWindow: object;
+        contentWindow: typeof window;
         receiveMessage(msg: ActorMessage): any;
         sendAsyncMessage(aName: string, aData: unknown, transferables: Array<unknown>): void;
         sendQuery(msgName: string, data: unknown): Promise<unknown>;

@@ -7,21 +7,21 @@ export class BerytusAgentTargetChild extends JSWindowActorChild {
      * Copied from ASRouterChild.sys.mjs
      */
     wrapPromise(promise: Promise<unknown>) {
-        // @ts-ignore: contentWindow is a global window object, I cannot be type it
         return new this.contentWindow.Promise((resolve, reject) =>
           promise.then(resolve, reject)
         );
     }
 
     sendQuery(aName: string, aData: unknown) {
+        const { contentWindow } = this;
         return this.wrapPromise(
             new Promise((resolve, reject) => {
                 super.sendQuery(aName, aData).then(
                     result => {
-                        resolve(Cu.cloneInto(result, this.contentWindow));
+                        resolve(Cu.cloneInto(result, contentWindow));
                     },
                     err => {
-                        reject(Cu.cloneInto(err, this.contentWindow));
+                        reject(Cu.cloneInto(err, contentWindow));
                     }
                 );
             })

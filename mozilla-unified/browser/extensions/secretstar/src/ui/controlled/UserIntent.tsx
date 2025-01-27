@@ -39,7 +39,6 @@ export default function UserIntent() {
         { onProcessed }
     );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
-    console.log(!!session, !!maybeResolve, !!maybeReject);
     if (! session || ! maybeResolve || ! maybeReject) {
         // BRTTODO: Put an error since the session record should exist by now.
         // Or is that the useLiveQuery is still fetching obj...

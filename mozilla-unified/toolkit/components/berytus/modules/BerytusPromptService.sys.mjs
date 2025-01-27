@@ -86,7 +86,7 @@ class Prompter {
                 if (manager.icon) {
                     newItem.getElementsByClassName("berytus-secret-manager-list-item-icon")[0].setAttribute('src', manager.icon);
                 }
-                newItem.getElementsByClassName("berytus-secret-manager-list-item-label-primary")[0].textContent = manager.label;
+                newItem.getElementsByClassName("berytus-secret-manager-list-item-label-primary")[0].textContent = manager.name;
                 newItem.getElementsByClassName("berytus-secret-manager-list-item-label-secondary")[0].textContent = manager.id;
                 const spinner = newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-spinner-icon")[0];
                 spinner.removeAttribute('hidden');

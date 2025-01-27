@@ -20,14 +20,15 @@
     "permissions": ["berytus", "storage", "activeTab", "tabs", "alarms", "storage", "browserSettings"],
 
     "action": {
+      "default_area": "navbar",
       "default_icon": {
         "16": "public/logo16.png",
         "32": "public/logo32.png",
         "48": "public/logo48.png",
         "64": "public/logo64.png"
       },
-      "default_title": "Secret*",
-      "default_popup": "build/index.html#/popup"
+      "default_popup": "build/index.html#/popup",
+      "default_title": "Secret*"
     },
 
     "page_action": {

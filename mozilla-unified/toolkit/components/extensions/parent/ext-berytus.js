@@ -100,9 +100,15 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
 
       }
     });
+    console.debug(`ext-berytus(parent)::constructor(${this.extension.id})`);
   }
 
-  onShutdown() {
+  onStartup() {
+    console.debug(`ext-berytus(parent)::onStartup(${this.extension.id})`);
+  }
+
+  onShutdown(isAppShutdown) {
+    console.debug(`ext-berytus(parent)::onShutdown(${isAppShutdown}, ${this.extension.id})`);
     if (!liaison.isManagerRegistered(this.extension.id)) {
       return;
     }
@@ -247,7 +253,6 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
   }
 
   getAPI(context) {
-
     /**
      * @type {Record<string, any>}
      */
@@ -289,14 +294,22 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
           cx.response.reject(reason);
         },
         register: () => {
-          console.log("ext-berytus.parent: registering extension " + this.extension.id);
+          console.log("ext-berytus(parent)::register(" + this.extension.id + ")");
           if (liaison.isManagerRegistered(this.extension.id)) {
             throw new Error('Extension already registered; cannot register.');
           }
+          const { name, icons } = this.extension.manifest;
           liaison.registerManager(
-            this.extension.id,
-            'Test',
-            1,
+            {
+              id: this.extension.id,
+              name,
+              type: 1,
+              icon: icons
+                ? typeof icons === "string"
+                  ? icons
+                  : (icons[64] || icons[48] || icons[32] || icons[16])
+                : undefined
+            },
             this.#liaisonHandler
           );
         },

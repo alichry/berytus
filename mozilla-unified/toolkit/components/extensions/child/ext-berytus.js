@@ -31,14 +31,22 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPI {
         this.extensionRegistered = false;
         this.listeners = null;
         this.requestContexts = {};
-
+        console.debug(
+            `ext-berytus(child)::constructor(${extension.id})`
+        );
     }
+
+    onStartup() {
+        console.debug(`ext-berytus(child)::onStartup(${this.extension.id})`);
+    }
+
 
     /**
      * The parent's onShutdown handles deregisteration with
      * the Liaison.
      */
-    onShutdown() {
+    onShutdown(isAppShutdown) {
+        console.debug(`ext-berytus(child)::onShutdown(${isAppShutdown}, ${this.extension.id})`);
         this.extensionRegistered = false;
         this.listeners = null;
     }
