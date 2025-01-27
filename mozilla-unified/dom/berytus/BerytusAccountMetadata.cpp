@@ -29,7 +29,7 @@ BerytusAccountMetadata::UpdateMetadata(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = Channel()->Agent();
+  berytus::AgentProxy& agent = Channel()->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation ctx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(
@@ -142,7 +142,7 @@ RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccountMetadata::Popula
   if (NS_WARN_IF(!Channel()->Active())) {
     return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
   }
-  const berytus::AgentProxy& agent = Channel()->Agent();
+  berytus::AgentProxy& agent = Channel()->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation ctx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(

@@ -83,7 +83,7 @@ already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Challenge(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = mChannel->Agent();
+  berytus::AgentProxy& agent = mChannel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);
@@ -140,7 +140,7 @@ already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Finish(ErrorRes
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = mChannel->Agent();
+  berytus::AgentProxy& agent = mChannel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);

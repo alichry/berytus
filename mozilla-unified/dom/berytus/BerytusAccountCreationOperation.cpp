@@ -93,7 +93,7 @@ already_AddRefed<Promise> BerytusAccountCreationOperation::Save(ErrorResult& aRv
     aRv.ThrowInvalidStateError("Channel no longer active; can no longer send secret management requests");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = mChannel->Agent();
+  berytus::AgentProxy& agent = mChannel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);
@@ -129,7 +129,7 @@ already_AddRefed<Promise> BerytusAccountCreationOperation::TransitionToAuthOpera
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = mChannel->Agent();
+  berytus::AgentProxy& agent = mChannel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);

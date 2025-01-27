@@ -58,7 +58,7 @@ RefPtr<berytus::AccountCreationAddFieldResult> BerytusAccount::AddField(JSContex
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = channel->Agent();
+  berytus::AgentProxy& agent = channel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   nsresult rv;
   berytus::RequestContextWithLoginOperation ctx;
@@ -162,7 +162,7 @@ RefPtr<berytus::AccountCreationRejectFieldValueResult> BerytusAccount::RejectFie
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = channel->Agent();
+  berytus::AgentProxy& agent = channel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   nsresult rv;
   berytus::RequestContextWithLoginOperation ctx;
@@ -215,7 +215,7 @@ already_AddRefed<Promise> BerytusAccount::RejectAndReviseFields(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = channel->Agent();
+  berytus::AgentProxy& agent = channel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   nsTArray<BerytusFieldRejectionParameters> clonedParamsList;
   if (NS_WARN_IF(!CloneRejectionParametersList(aCx, aRejectionParameters, clonedParamsList))) {
@@ -347,7 +347,7 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = channel->Agent();
+  berytus::AgentProxy& agent = channel->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   nsresult rv;
   berytus::RequestContextWithOperation ctx;

@@ -45,7 +45,7 @@ BerytusChannel::BerytusChannel(
   const RefPtr<BerytusWebAppActor>& aWebAppActor,
   const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
   const RefPtr<BerytusKeyAgreementParameters>& aKeyAgreementParams,
-  const RefPtr<mozilla::berytus::AgentProxy>& aAgent
+  const RefPtr<mozilla::berytus::OwnedAgentProxy>& aAgent
 ) : mGlobal(aGlobal),
     mCachedConstraints(nullptr),
     // mConstraints(RootingCx()),
@@ -132,7 +132,7 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusChannel::GetKeyAgreementP
   return do_AddRef(mKeyAgreementParams);
 }
 
-const berytus::AgentProxy& BerytusChannel::Agent() const {
+berytus::AgentProxy& BerytusChannel::Agent() const {
   MOZ_ASSERT(mAgent);
   return *mAgent;
 }
@@ -232,7 +232,7 @@ already_AddRefed<Promise> BerytusChannel::Create(
       outPromise->MaybeReject(NS_ERROR_FAILURE);
       return;
     }
-    RefPtr<mozilla::berytus::AgentProxy> proxy = new mozilla::berytus::AgentProxy(aGlobal, selectedId);
+    RefPtr<mozilla::berytus::OwnedAgentProxy> proxy = new mozilla::berytus::OwnedAgentProxy(aGlobal, selectedId);
     berytus::PreliminaryRequestContext reqCx;
     if (NS_WARN_IF(NS_FAILED(berytus::Utils_PreliminaryRequestContext(aGlobal, reqCx)))) {
       outPromise->MaybeReject(NS_ERROR_FAILURE);

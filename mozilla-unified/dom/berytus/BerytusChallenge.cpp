@@ -110,7 +110,7 @@ already_AddRefed<Promise> BerytusChallenge::SendMessageRaw(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = Channel()->Agent();
+  berytus::AgentProxy& agent = Channel()->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithLoginOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithLoginOperationMetadata(mGlobal, Channel(), Operation(), nullptr, reqCtx);
@@ -197,7 +197,7 @@ already_AddRefed<Promise> BerytusChallenge::Seal(JSContext* aCx, ErrorResult& aR
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = Channel()->Agent();
+  berytus::AgentProxy& agent = Channel()->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, Channel(), Operation(), reqCtx);
@@ -243,7 +243,7 @@ already_AddRefed<Promise> BerytusChallenge::Abort(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  const berytus::AgentProxy& agent = Channel()->Agent();
+  berytus::AgentProxy& agent = Channel()->Agent();
   MOZ_ASSERT(!agent.IsDisabled());
   berytus::RequestContextWithOperation reqCtx;
   nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, Channel(), Operation(), reqCtx);

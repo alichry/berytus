@@ -13,6 +13,7 @@
 #include "mozilla/dom/JSWindowActorChild.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/Promise-inl.h"
+#include "mozilla/dom/PromiseNativeHandler.h"
 
 static mozilla::LazyLogModule sLogger("berytus_agent");
 
@@ -31,9 +32,6 @@ AgentProxy::AgentProxy(
 
 AgentProxy::~AgentProxy() {}
 
-void AgentProxy::Disable() {
-  mDisabled = true;
-}
 bool AgentProxy::IsDisabled() const {
   return mDisabled;
 }
@@ -44,7 +42,7 @@ already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
                                                          const nsAString &aMethod,
                                                          const W1& aReqCx,
                                                          const W2* aReqArgs,
-                                                         ErrorResult& aRv) const {
+                                                         ErrorResult& aRv) {
   JS::Rooted<JS::Value> reqArgsJS(aCx, JS::UndefinedValue());
   if (aReqArgs) {
     if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
@@ -61,7 +59,7 @@ already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
                                                          const nsAString &aMethod,
                                                          const W1& aReqCx,
                                                          JS::Handle<JS::Value> aReqArgsJs,
-                                                         ErrorResult& aRv) const {
+                                                         ErrorResult& aRv) {
   MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
   MOZ_ASSERT(!aRv.Failed());
   if (mDisabled) {
@@ -180,130 +178,20 @@ already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
   return promise.forget();
 }
 
-// template <typename W1, typename W2>
-// already_AddRefed<dom::Promise> AgentProxy::CallSendQuery(JSContext *aCx,
-//                                                          const nsAString & aGroup,
-//                                                          const nsAString &aMethod,
-//                                                          const W1& aReqCx,
-//                                                          const W2* aReqArgs,
-//                                                          ErrorResult& aRv) const {
-//   MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
-//   MOZ_ASSERT(!aRv.Failed());
-//   if (mDisabled) {
-//     aRv.ThrowInvalidStateError("Agent is disabled");
-//     return nullptr;
-//   }
-//   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
-//   if (NS_WARN_IF(!inner)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
+NS_IMPL_ADDREF_INHERITED(OwnedAgentProxy, AgentProxy)
+NS_IMPL_RELEASE_INHERITED(OwnedAgentProxy, AgentProxy)
+NS_INTERFACE_MAP_BEGIN(OwnedAgentProxy)
+NS_INTERFACE_MAP_END_INHERITING(AgentProxy)
 
-//   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
-//   if (NS_WARN_IF(!wgc)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
+OwnedAgentProxy::OwnedAgentProxy(
+    nsIGlobalObject* aGlobal, const nsAString& aManagerId)
+    : AgentProxy(aGlobal, aManagerId) {}
 
-//   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-//     wgc->GetActor(aCx, "BerytusAgentTarget"_ns, aRv);
-//   if (NS_WARN_IF(aRv.Failed())) {
-//     return nullptr;
-//   }
+OwnedAgentProxy::~OwnedAgentProxy() {}
 
-//   // MOZ_ASSERT(actor->GetWrapper());
-//   JS::Rooted<JSObject*> actorJsImpl(aCx, actor->GetWrapper());
-//   JSAutoRealm ar(aCx, actorJsImpl);
-
-//   JS::Rooted<JS::Value> sendQuery(aCx);
-//   if (NS_WARN_IF(!JS_GetProperty(aCx, actorJsImpl, "sendQuery", &sendQuery))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!sendQuery.isObject())) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!JS::IsCallable(&sendQuery.toObject()))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-
-//   JS::Rooted<JS::Value> msgName(aCx, JS::StringValue(JS_NewUCStringCopyZ(aCx, u"BerytusAgentTarget:invokeRequestHandler")));
-//   JS::Rooted<JS::Value> promiseVal(aCx);
-//   JS::RootedVector<JS::Value> args(aCx);
-//   if (NS_WARN_IF(!args.append(msgName))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-
-//   JS::Rooted<JSObject*> msgData(aCx, JS_NewPlainObject(aCx));
-//   if (NS_WARN_IF(!msgData)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   JS::Rooted<JS::Value> managerId(aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, mManagerId.get(), mManagerId.Length())));
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "managerId", managerId))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   const char16_t* groupBuf;
-//   aGroup.GetData(&groupBuf);
-//   JS::Rooted<JS::Value> group(
-//     aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, groupBuf, aGroup.Length())));
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "group", group))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   const char16_t* methodBuf;
-//   aMethod.GetData(&methodBuf);
-//   JS::Rooted<JS::Value> method(
-//     aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, methodBuf, aMethod.Length())));
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "method", method))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-
-//   JS::Rooted<JS::Value> reqCxJS(aCx);
-//   if (NS_WARN_IF(!ToJSVal(aCx, aReqCx, &reqCxJS))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestContext", reqCxJS))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (aReqArgs) {
-//     JS::Rooted<JS::Value> reqArgsJS(aCx);
-//     if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
-//       aRv.Throw(NS_ERROR_FAILURE);
-//       return nullptr;
-//     }
-//     if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", reqArgsJS))) {
-//       aRv.Throw(NS_ERROR_FAILURE);
-//       return nullptr;
-//     }
-//   }
-//   if (NS_WARN_IF(!args.append(JS::ObjectValue(*msgData)))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (!JS_CallFunctionValue(aCx, actorJsImpl, sendQuery, JS::HandleValueArray(args), //JS::HandleValueArray::empty(), //JS::HandleValueArray(aData),
-//                 &promiseVal)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!promiseVal.isObject())) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   RefPtr<dom::Promise> promise = dom::Promise::Create(mGlobal, aRv);
-//   if (NS_WARN_IF(aRv.Failed())) {
-//     return nullptr;
-//   }
-//   promise->MaybeResolve(promiseVal);
-//   return promise.forget();
-// }
+void OwnedAgentProxy::Disable() {
+  mDisabled = true;
+}
 
 template<>
 bool JSValIs<double>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
@@ -15362,7 +15250,7 @@ bool ToJSVal<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, Beryt
 }
 
 
-RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs) const {
+RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs) {
   RefPtr<ManagerGetSigningKeyResult::Private> outPromise = new ManagerGetSigningKeyResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15381,6 +15269,7 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Manager_GetSigningKey:onResolve()"));
     nsString out;
     if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15393,6 +15282,7 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Manager_GetSigningKey:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15402,10 +15292,13 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs) const {
+RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs) {
   RefPtr<ManagerGetCredentialsMetadataResult::Private> outPromise = new ManagerGetCredentialsMetadataResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15424,6 +15317,7 @@ RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMe
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Manager_GetCredentialsMetadata:onResolve()"));
     double out;
     if (NS_WARN_IF(!(FromJSVal<double>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15436,6 +15330,7 @@ RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMe
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Manager_GetCredentialsMetadata:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15445,10 +15340,13 @@ RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMe
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs) const {
+RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs) {
   RefPtr<ChannelGenerateKeyExchangeParametersResult::Private> outPromise = new ChannelGenerateKeyExchangeParametersResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15467,6 +15365,7 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_GenerateKeyExchangeParameters:onResolve()"));
     PartialKeyExchangeParametersFromScm out;
     if (NS_WARN_IF(!(FromJSVal<PartialKeyExchangeParametersFromScm>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15479,6 +15378,7 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_GenerateKeyExchangeParameters:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15488,10 +15388,13 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs) const {
+RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs) {
   RefPtr<ChannelEnableEndToEndEncryptionResult::Private> outPromise = new ChannelEnableEndToEndEncryptionResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15510,6 +15413,7 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_EnableEndToEndEncryption:onResolve()"));
     ArrayBuffer out;
     if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15522,6 +15426,7 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_EnableEndToEndEncryption:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15531,10 +15436,13 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContext& aContext) const {
+RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContext& aContext) {
   RefPtr<ChannelCloseChannelResult::Private> outPromise = new ChannelCloseChannelResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15553,6 +15461,7 @@ RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContex
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_CloseChannel:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -15560,6 +15469,7 @@ RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContex
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_CloseChannel:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15569,10 +15479,13 @@ RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContex
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs) const {
+RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs) {
   RefPtr<LoginApproveOperationResult::Private> outPromise = new LoginApproveOperationResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15591,6 +15504,7 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_ApproveOperation:onResolve()"));
     ELoginUserIntent out;
     if (NS_WARN_IF(!(FromJSVal<ELoginUserIntent>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15603,6 +15517,7 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_ApproveOperation:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15612,10 +15527,13 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContextWithOperation& aContext) const {
+RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContextWithOperation& aContext) {
   RefPtr<LoginCloseOperationResult::Private> outPromise = new LoginCloseOperationResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15634,6 +15552,7 @@ RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContex
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_CloseOperation:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -15641,6 +15560,7 @@ RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContex
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_CloseOperation:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15650,10 +15570,13 @@ RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContex
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext) const {
+RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext) {
   RefPtr<LoginGetRecordMetadataResult::Private> outPromise = new LoginGetRecordMetadataResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15672,6 +15595,7 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_GetRecordMetadata:onResolve()"));
     RecordMetadata out;
     if (NS_WARN_IF(!(FromJSVal<RecordMetadata>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15684,6 +15608,7 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_GetRecordMetadata:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15693,10 +15618,13 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs) const {
+RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs) {
   RefPtr<LoginUpdateMetadataResult::Private> outPromise = new LoginUpdateMetadataResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15715,6 +15643,7 @@ RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContex
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_UpdateMetadata:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -15722,6 +15651,7 @@ RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContex
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Login_UpdateMetadata:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15731,10 +15661,13 @@ RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContex
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs) const {
+RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs) {
   RefPtr<AccountCreationApproveTransitionToAuthOpResult::Private> outPromise = new AccountCreationApproveTransitionToAuthOpResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15753,6 +15686,7 @@ RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreati
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_ApproveTransitionToAuthOp:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -15760,6 +15694,7 @@ RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreati
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_ApproveTransitionToAuthOp:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15769,10 +15704,13 @@ RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreati
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithLoginOperation& aContext) const {
+RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithLoginOperation& aContext) {
   RefPtr<AccountCreationGetUserAttributesResult::Private> outPromise = new AccountCreationGetUserAttributesResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15791,6 +15729,7 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_GetUserAttributes:onResolve()"));
     nsTArray<UserAttribute> out;
     if (NS_WARN_IF(!(FromJSVal<nsTArray<UserAttribute>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15803,6 +15742,7 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_GetUserAttributes:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15812,10 +15752,13 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_UpdateUserAttributes(RequestContextWithOperation& aContext, UpdateUserAttributesArgs& aArgs) const {
+RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_UpdateUserAttributes(RequestContextWithOperation& aContext, UpdateUserAttributesArgs& aArgs) {
   RefPtr<AccountCreationUpdateUserAttributesResult::Private> outPromise = new AccountCreationUpdateUserAttributesResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15834,6 +15777,7 @@ RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_Up
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_UpdateUserAttributes:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -15841,6 +15785,7 @@ RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_Up
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_UpdateUserAttributes:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15850,10 +15795,13 @@ RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_Up
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(RequestContextWithLoginOperation& aContext, AddFieldArgs& aArgs) const {
+RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(RequestContextWithLoginOperation& aContext, AddFieldArgs& aArgs) {
   RefPtr<AccountCreationAddFieldResult::Private> outPromise = new AccountCreationAddFieldResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15872,6 +15820,7 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_AddField:onResolve()"));
     SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
     if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15884,6 +15833,7 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_AddField:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15893,10 +15843,13 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_RejectFieldValue(RequestContextWithLoginOperation& aContext, RejectFieldValueArgs& aArgs) const {
+RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_RejectFieldValue(RequestContextWithLoginOperation& aContext, RejectFieldValueArgs& aArgs) {
   RefPtr<AccountCreationRejectFieldValueResult::Private> outPromise = new AccountCreationRejectFieldValueResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15915,6 +15868,7 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_RejectFieldValue:onResolve()"));
     SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue> out;
     if (NS_WARN_IF(!(FromJSVal<SafeVariant<JSNull, nsString, BerytusEncryptedPacket, BerytusKeyFieldValue, BerytusSecurePasswordFieldValue, BerytusSharedKeyFieldValue>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -15927,6 +15881,7 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountCreation_RejectFieldValue:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15936,10 +15891,13 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs) const {
+RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs) {
   RefPtr<AccountAuthenticationApproveChallengeRequestResult::Private> outPromise = new AccountAuthenticationApproveChallengeRequestResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15958,6 +15916,7 @@ RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAu
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_ApproveChallengeRequest:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -15965,6 +15924,7 @@ RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAu
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_ApproveChallengeRequest:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15974,10 +15934,13 @@ RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAu
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs) const {
+RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs) {
   RefPtr<AccountAuthenticationAbortChallengeResult::Private> outPromise = new AccountAuthenticationAbortChallengeResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15996,6 +15959,7 @@ RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthenticat
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_AbortChallenge:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -16003,6 +15967,7 @@ RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthenticat
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_AbortChallenge:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -16012,10 +15977,13 @@ RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthenticat
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs) const {
+RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs) {
   RefPtr<AccountAuthenticationCloseChallengeResult::Private> outPromise = new AccountAuthenticationCloseChallengeResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -16034,6 +16002,7 @@ RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthenticat
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_CloseChallenge:onResolve()"));
     void* out = nullptr;
     outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
@@ -16041,6 +16010,7 @@ RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthenticat
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_CloseChallenge:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -16050,10 +16020,13 @@ RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthenticat
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::AccountAuthentication_RespondToChallengeMessage(RequestContextWithLoginOperation& aContext, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aArgs) const {
+RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::AccountAuthentication_RespondToChallengeMessage(RequestContextWithLoginOperation& aContext, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aArgs) {
   RefPtr<AccountAuthenticationRespondToChallengeMessageResult::Private> outPromise = new AccountAuthenticationRespondToChallengeMessageResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -16072,6 +16045,7 @@ RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::Account
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_RespondToChallengeMessage:onResolve()"));
     SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse, BerytusChallengeGetOtpMessageResponse> out;
     if (NS_WARN_IF(!(FromJSVal<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, BerytusChallengeGetPasswordFieldsMessageResponse, BerytusChallengeSelectKeyMessageResponse, BerytusChallengeSignNonceMessageResponse, BerytusChallengeSelectSecurePasswordMessageResponse, BerytusChallengeExchangePublicKeysMessageResponse, BerytusChallengeComputeClientProofMessageResponse, BerytusChallengeVerifyServerProofMessageResponse, BerytusChallengeGetOtpMessageResponse>>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
@@ -16084,6 +16058,7 @@ RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::Account
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("AccountAuthentication_RespondToChallengeMessage:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -16093,6 +16068,9 @@ RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::Account
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }

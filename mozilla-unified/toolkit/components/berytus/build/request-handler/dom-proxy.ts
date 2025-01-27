@@ -2021,7 +2021,7 @@ abstract class MethodDef implements IDef {
     }
 
     get definition() {
-        return `${this.returnType.atReturn()} ${this.name}(${this.parameters.map(p => p.toString()).join(', ')}) const;`
+        return `${this.returnType.atReturn()} ${this.name}(${this.parameters.map(p => p.toString()).join(', ')});`
     }
 
     abstract get implementation(): string;
@@ -2214,7 +2214,7 @@ class RequestHandlerMethod extends MethodDef implements IDef {
         if (! parameters || parameters.length === 0 ) {
             return ``;
         }
-        return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) const {
+        return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) {
   RefPtr<${this.returnType.symbol}::Private> outPromise = new ${this.returnType.symbol}::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -2233,6 +2233,7 @@ class RequestHandlerMethod extends MethodDef implements IDef {
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("${name}:onResolve()"));
     ${this.returnType.resolveType instanceof VoidType ? `\
 void* out = nullptr;
     outPromise->Resolve(out, __func__);` : `\
@@ -2248,6 +2249,7 @@ ${this.returnType.resolveType.symbol} out;
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("${name}:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -2257,6 +2259,9 @@ ${this.returnType.resolveType.symbol} out;
     prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
   if (NS_WARN_IF(thenRes.isErr())) {
     outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
   }
   return outPromise;
 }`;
@@ -2672,6 +2677,7 @@ class AgentProxyGenerator {
 #include "mozilla/dom/JSWindowActorChild.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/Promise-inl.h"
+#include "mozilla/dom/PromiseNativeHandler.h"
 
 static mozilla::LazyLogModule sLogger("berytus_agent");
 
@@ -2690,9 +2696,6 @@ ${AgentProxyGenerator.className}::${AgentProxyGenerator.className}(
 
 ${AgentProxyGenerator.className}::~${AgentProxyGenerator.className}() {}
 
-void ${AgentProxyGenerator.className}::Disable() {
-  mDisabled = true;
-}
 bool ${AgentProxyGenerator.className}::IsDisabled() const {
   return mDisabled;
 }
@@ -2703,7 +2706,7 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
                                                          const nsAString &aMethod,
                                                          const W1& aReqCx,
                                                          const W2* aReqArgs,
-                                                         ErrorResult& aRv) const {
+                                                         ErrorResult& aRv) {
   JS::Rooted<JS::Value> reqArgsJS(aCx, JS::UndefinedValue());
   if (aReqArgs) {
     if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
@@ -2720,7 +2723,7 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
                                                          const nsAString &aMethod,
                                                          const W1& aReqCx,
                                                          JS::Handle<JS::Value> aReqArgsJs,
-                                                         ErrorResult& aRv) const {
+                                                         ErrorResult& aRv) {
   MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
   MOZ_ASSERT(!aRv.Failed());
   if (mDisabled) {
@@ -2839,130 +2842,20 @@ already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(J
   return promise.forget();
 }
 
-// template <typename W1, typename W2>
-// already_AddRefed<dom::Promise> ${AgentProxyGenerator.className}::CallSendQuery(JSContext *aCx,
-//                                                          const nsAString & aGroup,
-//                                                          const nsAString &aMethod,
-//                                                          const W1& aReqCx,
-//                                                          const W2* aReqArgs,
-//                                                          ErrorResult& aRv) const {
-//   MOZ_LOG(sLogger, LogLevel::Info, ("SendQuery %s:%s", NS_ConvertUTF16toUTF8(aGroup).get(), NS_ConvertUTF16toUTF8(aMethod).get()));
-//   MOZ_ASSERT(!aRv.Failed());
-//   if (mDisabled) {
-//     aRv.ThrowInvalidStateError("Agent is disabled");
-//     return nullptr;
-//   }
-//   nsPIDOMWindowInner* inner = mGlobal->GetAsInnerWindow();
-//   if (NS_WARN_IF(!inner)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
+NS_IMPL_ADDREF_INHERITED(Owned${AgentProxyGenerator.className}, ${AgentProxyGenerator.className})
+NS_IMPL_RELEASE_INHERITED(Owned${AgentProxyGenerator.className}, ${AgentProxyGenerator.className})
+NS_INTERFACE_MAP_BEGIN(Owned${AgentProxyGenerator.className})
+NS_INTERFACE_MAP_END_INHERITING(${AgentProxyGenerator.className})
 
-//   mozilla::dom::WindowGlobalChild* wgc = inner->GetWindowGlobalChild();
-//   if (NS_WARN_IF(!wgc)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
+Owned${AgentProxyGenerator.className}::Owned${AgentProxyGenerator.className}(
+    nsIGlobalObject* aGlobal, const nsAString& aManagerId)
+    : ${AgentProxyGenerator.className}(aGlobal, aManagerId) {}
 
-//   RefPtr<mozilla::dom::JSWindowActorChild> actor =
-//     wgc->GetActor(aCx, "BerytusAgentTarget"_ns, aRv);
-//   if (NS_WARN_IF(aRv.Failed())) {
-//     return nullptr;
-//   }
+Owned${AgentProxyGenerator.className}::~Owned${AgentProxyGenerator.className}() {}
 
-//   // MOZ_ASSERT(actor->GetWrapper());
-//   JS::Rooted<JSObject*> actorJsImpl(aCx, actor->GetWrapper());
-//   JSAutoRealm ar(aCx, actorJsImpl);
-
-//   JS::Rooted<JS::Value> sendQuery(aCx);
-//   if (NS_WARN_IF(!JS_GetProperty(aCx, actorJsImpl, "sendQuery", &sendQuery))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!sendQuery.isObject())) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!JS::IsCallable(&sendQuery.toObject()))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-
-//   JS::Rooted<JS::Value> msgName(aCx, JS::StringValue(JS_NewUCStringCopyZ(aCx, u"BerytusAgentTarget:invokeRequestHandler")));
-//   JS::Rooted<JS::Value> promiseVal(aCx);
-//   JS::RootedVector<JS::Value> args(aCx);
-//   if (NS_WARN_IF(!args.append(msgName))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-
-//   JS::Rooted<JSObject*> msgData(aCx, JS_NewPlainObject(aCx));
-//   if (NS_WARN_IF(!msgData)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   JS::Rooted<JS::Value> managerId(aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, mManagerId.get(), mManagerId.Length())));
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "managerId", managerId))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   const char16_t* groupBuf;
-//   aGroup.GetData(&groupBuf);
-//   JS::Rooted<JS::Value> group(
-//     aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, groupBuf, aGroup.Length())));
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "group", group))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   const char16_t* methodBuf;
-//   aMethod.GetData(&methodBuf);
-//   JS::Rooted<JS::Value> method(
-//     aCx, JS::StringValue(JS_NewUCStringCopyN(aCx, methodBuf, aMethod.Length())));
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "method", method))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-
-//   JS::Rooted<JS::Value> reqCxJS(aCx);
-//   if (NS_WARN_IF(!ToJSVal(aCx, aReqCx, &reqCxJS))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestContext", reqCxJS))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (aReqArgs) {
-//     JS::Rooted<JS::Value> reqArgsJS(aCx);
-//     if (NS_WARN_IF(!ToJSVal(aCx, *aReqArgs, &reqArgsJS))) {
-//       aRv.Throw(NS_ERROR_FAILURE);
-//       return nullptr;
-//     }
-//     if (NS_WARN_IF(!JS_SetProperty(aCx, msgData, "requestArgs", reqArgsJS))) {
-//       aRv.Throw(NS_ERROR_FAILURE);
-//       return nullptr;
-//     }
-//   }
-//   if (NS_WARN_IF(!args.append(JS::ObjectValue(*msgData)))) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (!JS_CallFunctionValue(aCx, actorJsImpl, sendQuery, JS::HandleValueArray(args), //JS::HandleValueArray::empty(), //JS::HandleValueArray(aData),
-//                 &promiseVal)) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   if (NS_WARN_IF(!promiseVal.isObject())) {
-//     aRv.Throw(NS_ERROR_FAILURE);
-//     return nullptr;
-//   }
-//   RefPtr<dom::Promise> promise = dom::Promise::Create(mGlobal, aRv);
-//   if (NS_WARN_IF(aRv.Failed())) {
-//     return nullptr;
-//   }
-//   promise->MaybeResolve(promiseVal);
-//   return promise.forget();
-// }
+void Owned${AgentProxyGenerator.className}::Disable() {
+  mDisabled = true;
+}
 
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(d => d.implementation).join("\n")}
 
@@ -2984,6 +2877,7 @@ ${this.defs.filter(d => d instanceof MethodDef).map((m) => `${m.implementation}`
 #include "mozilla/dom/DOMException.h" // for Failure's Exception
 #include "mozilla/Logging.h"
 #include "mozilla/dom/Record.h"
+#include "mozilla/dom/PromiseNativeHandler.h"
 
 using mozilla::LogLevel;
 
@@ -3030,13 +2924,12 @@ bool ToJSVal(JSContext* aCx, const T& aValue, JS::MutableHandle<JS::Value> aRv) 
 
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(def => def.definition).join("\n")}
 
-class ${AgentProxyGenerator.className} final : public nsISupports {
+class ${AgentProxyGenerator.className} : public nsISupports {
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_CLASS(${AgentProxyGenerator.className})
 
 public:
   ${AgentProxyGenerator.className}(nsIGlobalObject* aGlobal, const nsAString& aManagerId);
-  void Disable();
   bool IsDisabled() const;
 
   template <typename W1, typename W2>
@@ -3045,24 +2938,59 @@ public:
                                                const nsAString &aMethod,
                                                const W1& aReqCx,
                                                const W2* aReqArgs,
-                                               ErrorResult& aRv) const;
+                                               ErrorResult& aRv);
   template <typename W1>
   already_AddRefed<dom::Promise> CallSendQuery(JSContext *aCx,
                                                const nsAString & aGroup,
                                                const nsAString &aMethod,
                                                const W1& aReqCx,
                                                JS::Handle<JS::Value> aReqArgsJs,
-                                               ErrorResult& aRv) const;
+                                               ErrorResult& aRv);
 
 protected:
-  ~${AgentProxyGenerator.className}();
+  virtual ~${AgentProxyGenerator.className}();
   nsCOMPtr<nsIGlobalObject> mGlobal;
   nsString mManagerId;
   bool mDisabled;
+
 public:
 ${this.defs.filter(d => d instanceof MethodDef).map(def => def.definition).join("\n").replace(/^(.*)$/gm, "  $1")}
 
 };
+
+class Owned${AgentProxyGenerator.className} final : public ${AgentProxyGenerator.className} {
+public:
+    NS_DECL_ISUPPORTS_INHERITED
+
+    Owned${AgentProxyGenerator.className}(nsIGlobalObject* aGlobal, const nsAString& aManagerId);
+
+    void Disable();
+protected:
+    ~Owned${AgentProxyGenerator.className}();
+};
+
+// based on dom::MozPromiseRejectOnDestruction in PromiseNativeHandler.h
+// we just reject with a berytus::Failure instead of an nsresult.
+template <typename T>
+class MozPromiseRejectWithBerytusFailureOnDestruction final
+    : public dom::MozPromiseRejectOnDestructionBase {
+ public:
+  MozPromiseRejectWithBerytusFailureOnDestruction(const RefPtr<T>& aMozPromise,
+                                StaticString aCallSite)
+      : mMozPromise(aMozPromise), mCallSite(aCallSite) {
+    MOZ_ASSERT(aMozPromise);
+  }
+
+ protected:
+  ~MozPromiseRejectWithBerytusFailureOnDestruction() override {
+    // Rejecting will be no-op if the promise is already settled
+    mMozPromise->Reject(berytus::Failure(NS_BINDING_ABORTED), mCallSite);
+  }
+
+  RefPtr<T> mMozPromise;
+  StaticString mCallSite;
+};
+
 }  // namespace mozilla::berytus
 
 #endif`;

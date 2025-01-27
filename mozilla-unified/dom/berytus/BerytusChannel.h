@@ -50,7 +50,7 @@ protected:
     const RefPtr<BerytusWebAppActor>& aWebAppActor,
     const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
     const RefPtr<BerytusKeyAgreementParameters>& aKeyAgreementParams, // can be a nullptr
-    const RefPtr<mozilla::berytus::AgentProxy>& aAgent
+    const RefPtr<mozilla::berytus::OwnedAgentProxy>& aAgent
   );
   ~BerytusChannel();
   nsString mId;
@@ -60,7 +60,7 @@ protected:
   RefPtr<BerytusWebAppActor> mWebAppActor;
   RefPtr<BerytusSecretManagerActor> mSecretManagerActor;
   RefPtr<BerytusKeyAgreementParameters> mKeyAgreementParams; // can be a nullptr
-  RefPtr<mozilla::berytus::AgentProxy> mAgent;
+  RefPtr<mozilla::berytus::OwnedAgentProxy> mAgent;
 
   bool mActive = true;
 public:
@@ -73,7 +73,7 @@ public:
 
   bool Active() const;
 
-  const berytus::AgentProxy& Agent() const;
+  berytus::AgentProxy& Agent() const;
 
   BerytusWebAppActor* GetWebAppActor() const;
 

@@ -7,7 +7,8 @@ BERYTUS_SUBDIRS="toolkit/components/berytus
 dom/berytus
 testing/web-platform/tests/berytus
 testing/web-platform/meta/berytus
-browser/extensions/secretstar"
+browser/extensions/secretstar
+browser/extensions/secretstar-loader"
 # Note: make sure there are no unescaped tokens (e.g. whitespace)
 # in the paths specified in BERYTUS_FILES. This is to allow
 # glob patterns within the paths; see cpAllBerytusFiles()
