@@ -12,6 +12,7 @@ enum BerytusChallengeAbortionCode {
   "IdentityDoesNotExists",
   "IncorrectPassword",
   "InvalidProof",
+  "PublicKeyMismatch",
   "InvalidSignature",
   "IncorrectOtp"
 };
@@ -108,6 +109,10 @@ interface BerytusDigitalSignatureChallenge : BerytusChallenge {
   Promise<BerytusChallengeSignNonceMessageResponse> signNonce(
     (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) nonce
   );
+
+  [Throws]
+  Promise<undefined> abortWithPublicKeyMismatchError();
+
   [Throws]
   Promise<undefined> abortWithInvalidSignatureError();
 };
@@ -232,3 +237,29 @@ interface BerytusOffChannelOtpChallenge : BerytusChallenge {
 // TODO(berytus): field Ids specifiied in
 // getOtp, getPasswordFields, getIdentityFields
 // should be defined in the parameters of the challenge.
+
+// NOTE(berytus): Web App Poc depends on the below.
+
+enum BerytusIdentificationChallengeMessageName {
+    "GetIdentityFields"
+};
+
+enum BerytusPasswordChallengeMessageName {
+    "GetPasswordFields"
+};
+
+enum BerytusSecureRemotePasswordChallengeMessageName {
+    "SelectSecurePassword",
+    "ExchangePublicKeys",
+    "ComputeClientProof",
+    "VerifyServerProof"
+};
+
+enum BerytusDigitalSignatureChallengeMessageName {
+    "SelectKey",
+    "SignNonce"
+};
+
+enum BerytusOffChannelOtpChallengeMessageName {
+    "GetOtp"
+};

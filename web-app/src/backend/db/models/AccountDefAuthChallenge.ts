@@ -7,7 +7,7 @@ export enum EChallengeType {
     DigitalSignature = 'DigitalSignature',
     Password = 'Password',
     SecureRemotePassword = 'SecureRemotePassword',
-    ForeignIdentityOtp = 'ForeignIdentityOtp'
+    OffChannelOtp = 'OffChannelOtp'
 }
 
 interface PGetChallengeDef extends RowDataPacket {

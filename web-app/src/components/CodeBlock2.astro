@@ -4,11 +4,12 @@ import macButtonsSvg from './svg/mac-buttons.svg?raw';
 interface Props {
     ':code': string;
     ':title': string;
+    ':notice'?: string;
     class?: string;
 }
 
 const { class: className } = Astro.props;
-let { ':code': xCode, ':title': xTitle } = Astro.props;
+let { ':code': xCode, ':title': xTitle, ':notice': xNotice } = Astro.props;
 ---
 
 <style>
@@ -95,9 +96,14 @@ let { ':code': xCode, ':title': xTitle } = Astro.props;
     class:list={[className, "w-full"]}
 >
     <div class="blockContainer">
-        <div class="flex flex-row">
-            <Fragment set:html={macButtonsSvg} />
-            <p x-text={xTitle} class="flex-1 text-center leading-none pr-4 italic text-gray-300"></p>
+        <div>
+            <div class="flex flex-row">
+                <Fragment set:html={macButtonsSvg} />
+                <p x-text={xTitle} class="flex-1 text-center leading-none pr-4 italic text-gray-300"></p>
+            </div>
+            { xNotice ? (
+                <p x-text={xNotice} class="bg-blue-800 mt-3 -ml-3 text-xs text-white py-0.5 text-center"></p>
+            ) : null}
         </div>
         <div id="block"></div>
     </div>

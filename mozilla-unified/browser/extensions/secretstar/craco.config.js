@@ -55,7 +55,7 @@ module.exports = {
       webpackConfig.optimization = { usedExports: true }
       webpackConfig.output.filename = 'static/js/[name].js'; /* default is static/js/[name].[contenthash:8].js */
       webpackConfig.output.chunkFilename = 'static/js/[name].chunk.js';
-      webpackConfig.optimization.minimize = false;
+      webpackConfig.optimization.minimize = true;
       webpackConfig.optimization.splitChunks = {
         name: (module, chunks, cacheGroupKey) => {
           const allChunksNames = chunks.map((chunk) => chunk.name).join('-');

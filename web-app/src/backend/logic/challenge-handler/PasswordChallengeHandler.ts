@@ -95,8 +95,6 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
             const { id: fieldId, value: passedValue } = passwords[i];
             const expectedEntry = expected.find(x => x.id === fieldId);
             if (! expectedEntry) {
-                // Why did this cheeky caller passing a field id that is not
-                // part of the challenge parameters?
                 throw new Error('Malformed message response.');
             }
             const cmp = await PasswordHandler.compare(

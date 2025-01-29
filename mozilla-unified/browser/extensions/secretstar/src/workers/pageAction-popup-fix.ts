@@ -97,6 +97,7 @@ browser.runtime.onMessage.addListener(
                         ? browser.berytus.resolveRequest(request.data.requestId, request.data.value)
                         : browser.berytus.rejectRequest(request.data.requestId, request.data.value)
                 );
+                console.debug("secretstar@alichry: settled request", request.data.requestId);
             } catch (e) {
                 console.warn("secretstar: error resolving request:");
                 console.error(e);
@@ -108,7 +109,7 @@ browser.runtime.onMessage.addListener(
             return;
         }
         if (request.type === "rejectRequest") {
-            hide().then(() => send("resolve"));
+            hide().then(() => send("reject"));
             sendResponse();
             return;
         }

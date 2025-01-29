@@ -81,6 +81,13 @@ already_AddRefed<Promise> BerytusDigitalSignatureChallenge::SignNonce(
   return SendMessageRaw(aCx, u"SignNonce"_ns, JS::HandleValue(payload), aRv);
 }
 
+already_AddRefed<Promise> BerytusDigitalSignatureChallenge::AbortWithPublicKeyMismatchError(
+    JSContext* aCx,
+    ErrorResult& aRv
+) {
+  return Abort(aCx, BerytusChallengeAbortionCode::PublicKeyMismatch, aRv);
+}
+
 already_AddRefed<Promise> BerytusDigitalSignatureChallenge::AbortWithInvalidSignatureError(
     JSContext* aCx,
     ErrorResult& aRv

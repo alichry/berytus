@@ -142,7 +142,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
          * @type {(username: string): Promise<boolean>}
          */
         if (! await accountExists(username)) {
-            await idCh.abort("IdentityDoesNotExists");
+            await idCh.abortWithIdentityDoesNotExistsError();
             throw new Error("User failed to pass identification challenge");
         }
         await idCh.seal();

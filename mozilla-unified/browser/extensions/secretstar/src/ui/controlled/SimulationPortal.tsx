@@ -17,10 +17,6 @@ export default function SimulationPortal() {
                         onClick={() => navigate(su.url)}
                     />
                 ))}
-                <Button
-                    text="Sample WebApp"
-                    onClick={() => navigate("/sample")}
-                />
             </div>
 
         </Container>

@@ -7,6 +7,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useIdentity, useNavigateWithPageContextRoute } from "@root/hooks";
 import { PAGECONTEXT_WINDOW } from "@root/pagecontext";
 
+const isDev = process.env.NODE_ENV === "development";
+
 /**
  * BRTTODO: Show past sessions
  */
@@ -26,8 +28,7 @@ export default function Home() {
             <FontAwesomeIcon
                 icon={faUpRightFromSquare}
                 className="cursor-pointer"
-                onClick={() => { window.open(url('/sample', PAGECONTEXT_WINDOW)) }}
-                //text="Open sample web app"
+                onClick={() => { window.open("https://poc.berytus.io") }}
             />
             <FontAwesomeIcon
                 icon={faUser}
@@ -37,8 +38,10 @@ export default function Home() {
             />
             <FontAwesomeIcon
                 icon={faFlask}
-                className="cursor-pointer"
-                onClick={() => { navigate('/simulate') }}
+                className={isDev ? "cursor-pointer" : "cursor-not-allowed opacity-25"}
+                onClick={() => {
+                    isDev && navigate('/simulate');
+                }}
                 //text="Go to simulator"
             />
         </CommonBodyContainer>

@@ -16,6 +16,10 @@ if (typeof browser === "undefined" || browser.berytus === undefined) {
             registerRequestHandler: dummy,
             resolveRequest: dummyAsync,
             rejectRequest: dummyAsync
+        },
+        runtime: {
+            ...global.browser?.runtime,
+            sendMessage: dummyAsync
         }
     };
 

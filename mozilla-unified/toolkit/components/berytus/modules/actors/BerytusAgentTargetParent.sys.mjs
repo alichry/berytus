@@ -32,6 +32,9 @@ export class BerytusAgentTargetParent extends JSWindowActorParent {
         const result = await fn.apply(target, [requestContext, requestArgs]);
         return result;
     }
+    didDestroy() {
+        console.debug(`BerytusAgentTargetParent::didDestroy()`);
+    }
     async receiveMessage(msg) {
         try {
             return (await this.#processMessage(msg));

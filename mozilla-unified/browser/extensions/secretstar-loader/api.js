@@ -6,22 +6,56 @@
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
-    AddonManager: "resource://gre/modules/AddonManager.sys.mjs"
+    AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+    ExtensionParent: "resource://gre/modules/ExtensionParent.sys.mjs",
+    setTimeout: "resource://gre/modules/Timer.sys.mjs"
 });
+
+Object.defineProperties(lazy, {
+    browserActionFor: {
+        get() {
+            return lazy.ExtensionParent.apiManager.global.browserActionFor;
+        },
+    },
+});
+
+const ssPath = Services.dirsvc.get("GreD", Ci.nsIFile);
+ssPath.appendRelativePath("browser/berytus/secretstar@alichry/")
+
+let loaded = false;
 
 this.ssLoader = class extends ExtensionAPI {
     getAPI(context) {
         return {
             ssLoader: {
                 async load() {
-                    console.debug("Loading Secret*");
-                    const extensionDirURL = "resource://builtin-addons/secretstar/";
-                    const filePath = Services.io.getProtocolHandler("resource").resolveURI(
-                        Services.io.newURI(extensionDirURL)
-                    )
-                    const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-                    file.initWithPath(filePath.substring('file://'.length));
-                    await lazy.AddonManager.installTemporaryAddon(file);
+                    if (loaded) {
+                        console.debug("Secret* already loaded; refusing to re-load");
+                        return;
+                    }
+                    console.debug("Loading Secret* at", ssPath.path);
+                    if (!(await IOUtils.exists(ssPath.path))) {
+                        console.error("Secret* directory was not found.");
+                        return;
+                    }
+                    await lazy.AddonManager.installTemporaryAddon(ssPath);
+                    loaded = true;
+                    lazy.setTimeout(() => {
+                        try {
+                            const ssExt = lazy.ExtensionParent.GlobalManager.getExtension("secretstar@alichry");
+                            if (!ssExt) {
+                                return;
+                            }
+                            const wd = Services.wm.getMostRecentBrowserWindow();
+                            if (!wd) {
+                                return;
+                            }
+                            const ba = lazy.browserActionFor(ssExt);
+                            ba.openPopup(wd);
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }, 3000);
                 }
             }
 

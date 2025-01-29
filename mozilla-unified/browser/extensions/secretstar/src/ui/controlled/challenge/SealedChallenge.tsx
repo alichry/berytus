@@ -99,7 +99,7 @@ export default function SealedChallenge() {
     return <RespondToMessageView challengeType={challenge.type}>
         <Notice
             type="info"
-            text={`Challenge sealed successfully 🎉`}
+            text={`Challenge sealed 🎉`}
         />
         { error ? (
             <Notice

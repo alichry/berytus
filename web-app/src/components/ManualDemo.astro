@@ -545,10 +545,22 @@ $ ./mach run
                         </template>
                         <template x-for="{ id, value } in state?.credentialFields">
                             <div>
+                                <dialog x-ref="dialog" class="border-2 border-black px-4 py-4">
+                                    <p class="mb-0.5 font-bold" x-text="'Field #' + id" />
+                                    <textarea
+                                        x-text="value"
+                                        rows="5"
+                                        cols="50"
+                                        class="w-full p-[0.5rem] my-4 text-sm border border-black whitespace-pre wrap" />
+                                    <form method="dialog" class="mt-4">
+                                        <button class="border border-black p-4">OK</button>
+                                    </form>
+                                </dialog>
                                 <i class="text-base text-slate-400" x-text="`${id}`"></i>
                                 <p
-                                    class="text-base text-slate-700"
+                                    class="text-base text-slate-700 truncate !whitespace-pre max-w-24 max-h-8 cursor-pointer"
                                     x-text="value"
+                                    x-on:click="$refs.dialog.open = true"
                                 ></p>
                             </div>
                         </template>
@@ -617,11 +629,28 @@ $ ./mach run
                     class='mx-auto'
                     :code="$store.stepWalker.code"
                     :title="$store.stepWalker.selected.label + '->' + $store.stepWalker.step"
+                    :notice="$store.stepWalker.selected.description"
                 >
                     <div class="flex flex-row">
+                        <select
+                            x-show="!$store.stepWalker.started"
+                            class="text-black px-3 rounded py-2"
+                            x-on:change="$store.stepWalker.select(Number(event.target.value))">
+                            <template
+                                x-for="(handler, index) in $store.stepWalker.items"
+                                :key="handler.label">
+                                <option
+                                    :value="index"
+                                    x-text="handler.label"
+                                    :selected="index === $store.stepWalker.selectedIndex"
+                                ></option>
+                            </template>
+                        </select>
                         <div class="flex-1"></div>
-                        <input type="checkbox" id="pauseBw" name="pauseBw" checked>
-                        <label for="pauseBw" class="ml-1.5 text-slate-700"> Pause between steps</label><br>
+                        <div>
+                            <input type="checkbox" id="pauseBw" name="pauseBw" checked>
+                            <label for="pauseBw" class="ml-1.5 text-slate-700"> Pause between steps</label><br>
+                        </div>
                     </div>
                     <div class="mt-2 mx-auto w-fit">
                         <Button

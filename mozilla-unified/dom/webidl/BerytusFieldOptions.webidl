@@ -105,6 +105,11 @@ dictionary BerytusKeyFieldOptions : BerytusBaseFieldOptions {
      * Otherwise, it SHOULD be rejected. It is an array of
      * COSEAlgorithmIdentifier to allow the specification of
      * a signing algorithm, and an encryption algorithm.
+     *
+     * TODO(berytus): 29/01/2025 - Switch to SubtleCrypto's
+     * AlgorithmIdentifier format. This would facilitate generation
+     * of specific key types that can be used for different algorithms,
+     * e.g. an RSA key for both RSA-OAEP and RSASSA-PKCS1-v1_5
      */
     //required sequence<COSEAlgorithmIdentifier>     alg;
     required COSEAlgorithmIdentifier     alg;

@@ -1423,6 +1423,12 @@
           {
             "type": "string",
             "enum": [
+              "PublicKeyMismatch"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
               "InvalidSignature"
             ]
           },

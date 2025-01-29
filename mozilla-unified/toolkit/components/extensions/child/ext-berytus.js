@@ -59,11 +59,13 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPI {
         context.callOnClose({
             close: () => {
                 this.listeners = null;
+                console.debug("ext-berytus(child)->context.callOnClose()");
             }
         });
         return {
             berytus: {
                 registerRequestHandler: async (handler) => {
+                    console.debug(`ext-berytus(child)::registerRequestHandler(${this.extension.id}, listeners: ${!!this.listeners}, registered: ${!!this.extensionRegistered})`);
                     if (this.listeners) {
                         throw new ExtensionError(
                             "Cannot register another handler! Please make sure you call unregister before registering again."

@@ -9,8 +9,10 @@
 /coverage
 
 # production
-/build
-/build.*
+#/build
+#/build.*
+# Note(berytus): Include the above in the git source
+# until we develop a mozbuild step for Secret*
 
 # misc
 .DS_Store

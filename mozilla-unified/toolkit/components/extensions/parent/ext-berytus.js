@@ -97,7 +97,7 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
     this.#initLiaisonHandler();
     extension.callOnClose({
       close() {
-
+        console.debug("ext-berytus(parent)->extension.callOnClose()");
       }
     });
     console.debug(`ext-berytus(parent)::constructor(${this.extension.id})`);
@@ -253,6 +253,12 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
   }
 
   getAPI(context) {
+    context.callOnClose({
+      close: () => {
+        console.debug("ext-berytus(parent)->context.callOnClose()");
+      }
+    });
+
     /**
      * @type {Record<string, any>}
      */
@@ -296,7 +302,16 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
         register: () => {
           console.log("ext-berytus(parent)::register(" + this.extension.id + ")");
           if (liaison.isManagerRegistered(this.extension.id)) {
-            throw new Error('Extension already registered; cannot register.');
+            /**
+             * Note(berytus): 29/01/2025 - It seems that the child's ExtensionAPI
+             * instance can get reconstructed at some point in the future.
+             * This results in its internal state to be reset. Therefore,
+             * the child would call the parent's register() method, despite
+             * the secret manager being registered with the Liaison already.
+             * The below ereases the manager to facilitate re-registration.
+             */
+            console.log(`ext-berytus(parent)::register(${this.extension.id}): ereasing manager to re-register.`);
+            liaison.ereaseManager(this.extension.id);
           }
           const { name, icons } = this.extension.manifest;
           liaison.registerManager(
@@ -315,7 +330,7 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
         },
         unregister: () => {
           if (!liaison.isManagerRegistered(this.extension.id)) {
-            throw new Error('Extension is not registered; cannot unregister.');
+            return;
           }
           liaison.ereaseManager(this.extension.id);
         },

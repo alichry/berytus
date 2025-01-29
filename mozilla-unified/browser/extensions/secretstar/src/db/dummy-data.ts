@@ -1,7 +1,7 @@
 import { Account, Session, db } from "@root/db/db";
 import { randomPassword } from "@root/utils";
 import { EBerytusChallengeType, EBerytusFieldType, ELoginUserIntent, EMetadataStatus, EOperationStatus, EOperationType } from "@berytus/enums";
-import { EBerytusIdentificationChallengeMessageName, EBerytusPasswordChallengeMessageName } from "@berytus/types-extd";
+import { EBerytusDigitalSignatureChallengeMessageName, EBerytusIdentificationChallengeMessageName, EBerytusPasswordChallengeMessageName } from "@berytus/types-extd";
 
 export const Accounts: Account[] = [
     {
@@ -2081,6 +2081,197 @@ const _sessions: Array<PhaseEntry> = [
           }
         }
       }
+    },
+    {
+      "phase": "AccountAuthentication_AbortChallenge",
+      "session": {
+        "id": "{a8f3ebd2-abbc-40f6-8589-2fbbca172c5b}",
+        "requests": [
+          {
+            "id": "{29e0c41c-635f-40ba-8caa-4e97b8872bb6}",
+            "type": "Login_ApproveOperation"
+          },
+          {
+            "id": "{8bf8c868-71ca-4c21-9f96-edae4d2fc3ca}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{1201f2d5-7174-4efc-a5b5-f1011db28298}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{6813d1ba-7cca-499d-99c1-d8b6041f9414}",
+            "type": "AccountAuthentication_CloseChallenge"
+          },
+          {
+            "id": "{e6b61ab7-863c-4301-8e36-fff002abe90c}",
+            "type": "AccountAuthentication_ApproveChallengeRequest"
+          },
+          {
+            "id": "{317af8ab-dc2b-4b2b-b1f1-4848cb214e04}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{d73ea9af-7fef-487b-b6d8-75209e2a6946}",
+            "type": "AccountAuthentication_RespondToChallengeMessage"
+          },
+          {
+            "id": "{ddfcb487-f51f-48f5-b621-382e86c3215a}",
+            "type": "AccountAuthentication_AbortChallenge"
+          }
+        ],
+        "channel": {
+          "id": "{c62e23e8-fe4d-4ead-a8a6-1d6dc660697a}",
+          "constraints": {
+            "enableEndToEndEncryption": false,
+            "account": {
+              "category": "Customer",
+              "schemaVersion": 3
+            }
+          },
+          "webAppActor": {
+            "originalUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            },
+            "currentUri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "scmActor": {
+            "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+          }
+        },
+        "operation": {
+          "intent": "PendingDeclaration" as ELoginUserIntent,
+          "requestedUserAttributes": [
+            {
+              "id": "name",
+              "required": true
+            },
+            {
+              "id": "picture",
+              "required": false
+            },
+            {
+              "id": "gender",
+              "required": true
+            },
+            {
+              "id": "birthdate",
+              "required": true
+            },
+            {
+              "id": "address",
+              "required": true
+            }
+          ],
+          "fields": {},
+          "challenges": {},
+          "id": "{a8f3ebd2-abbc-40f6-8589-2fbbca172c5b}",
+          "type": "PendingDeclaration" as EOperationType,
+          "status": "Pending" as EOperationStatus,
+          "state": {}
+        },
+        "context": {
+          "channel": {
+            "id": "{c62e23e8-fe4d-4ead-a8a6-1d6dc660697a}",
+            "constraints": {
+              "enableEndToEndEncryption": false,
+              "account": {
+                "category": "Customer",
+                "schemaVersion": 3
+              }
+            },
+            "webAppActor": {
+              "originalUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              },
+              "currentUri": {
+                "uri": "http://localhost:4321/",
+                "scheme": "http",
+                "hostname": "localhost",
+                "port": 4321,
+                "path": "/"
+              }
+            },
+            "scmActor": {
+              "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
+            }
+          },
+          "document": {
+            "id": 2,
+            "uri": {
+              "uri": "http://localhost:4321/",
+              "scheme": "http",
+              "hostname": "localhost",
+              "port": 4321,
+              "path": "/"
+            }
+          },
+          "request": {
+            "id": "{29e0c41c-635f-40ba-8caa-4e97b8872bb6}",
+            "type": "Login_ApproveOperation"
+          }
+        },
+        "metadata": {
+          "version": 3,
+          "status": "Pending" as EMetadataStatus,
+          "category": "Customer",
+          "changePassUrl": ""
+        },
+        "version": 6,
+        "selectedAccountId": "h6rx-8u37-v4yt-htkk",
+        "challenges": {
+          "id": {
+            "id": "id",
+            "type": "Identification" as EBerytusChallengeType.Identification,
+            "parameters": null,
+            "messages": {
+              "GetIdentityFields": {
+                "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
+                "payload": [
+                  "username"
+                ]
+              }
+            },
+            "closed": true
+          },
+          "ds": {
+            "id": "ds",
+            "type": "DigitalSignature" as EBerytusChallengeType.DigitalSignature,
+            "parameters": null,
+            "messages": {
+              "SelectKey": {
+                "name": "SelectKey" as EBerytusDigitalSignatureChallengeMessageName.SelectKey,
+                "payload": "key"
+              },
+              "SignNonce": {
+                "name": "SignNonce" as EBerytusDigitalSignatureChallengeMessageName.SignNonce,
+                "payload": "tXQxH5FHpjMagGXMM0sedKGnanhxgtcqTZy5qKrHRo4jU2R3sKd8/MJ8ozf4i2l4r3sAEa3lZitsu9scA2dpXQ=="
+              }
+            },
+            "dsState": {
+              "privateKey": "-----BEGIN PRIVATE KEY-----\n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\neo/1tGU42HKFSaLunC9rHP5cyfk4vW0D\n-----END PRIVATE KEY-----",
+              "signedMessage": "-----BEGIN CUSTOM SIGNATURE FORMAT -----\nVNBTyOJETIfLR/3aLeUI8eRiwlqtmCZzxYwd+yaCkAWWO8cLa52MRNX7m5uPwONY\nKdcFhWuA006ZFYuXRbe16IuL4j9wpAr4b3uc5n8mCgHv5G46Qiva9XQP/oMKVSjQ\nwPGLEq9uDrsGvZwlTCsNBw5Pek9pyHrLODJOmCOlEKt3IaNMYQKf8SoZXjhrLK0d\nHXvYygH/kOXUL81fynF5c3I8bH9mGpNZ1dxQztA4rG0S6mmD21KkF1RcfA0l7zv6\nr3nht9/v0vXTblYhyebD02JMSsYes0VtNpKDbyZcKzf0JP4b6PDn6Lg36np1TWLl\ncqiRRa22PPkWnbilmQOGZESpKupdGDWrXuqiAvxip4v/pMAmfAO6zqHj7WfrulbG\ngDNFULmbwXdhsyUd4MkithtD2zZB7/NZfQEDZQ880U6qzErBYGWA75Sw6kH7wXGz\nahDOn8u5h9B/akz6tSLRGreAbEzgxAmcio2FdB1XsXKvBVgYlarXGUBtYrHlF0r1\nP+ZQwRk1aME873K9PvjqBDUdq8LDm35Y9M5Fu70dnojyUufEDKQJ33fGj4Wqveyb\nbz1GwoB5e8y+TLk0nYDea7nvUKJ+jzpd9HzxEzfNcEqiHCN4lG5bkOkIDkDRKyQ5\nqQRdqRQ3YZ9ndaKSRUViw2w67opWI3WBRWr03tBafe0=\n----END CUSTOM SIGNATURE FORMAT -----",
+              "nonce": "tXQxH5FHpjMagGXMM0sedKGnanhxgtcqTZy5qKrHRo4jU2R3sKd8/MJ8ozf4i2l4r3sAEa3lZitsu9scA2dpXQ=="
+            },
+            "closed": true,
+            "abortionReasonCode": "InvalidSignature"
+          }
+        }
+      }
     }
 ]
 //_sessions.save = _sessions.putPrivateKey;
@@ -2184,7 +2375,7 @@ export const SimulationUrls = Sessions.map((entry, i) => {
       throw new Error("unknown phase: " + phase);
     }
     return {
-        phase: phases[i],
+        phase,
         sessionId: sess.id,
         url
     };

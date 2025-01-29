@@ -23,7 +23,7 @@ export class PasswordHandler implements IFieldHandler {
         const salt = randomBytes(16);
         const key = await scrypt(
             password,
-            salt,
+            new Uint8Array(salt),
             64
         ) as Buffer;
         return {
@@ -36,7 +36,7 @@ export class PasswordHandler implements IFieldHandler {
         const salt = Buffer.from(storedPassword.salt, 'hex');
         const key = await scrypt(
             passedPassword,
-            salt,
+            new Uint8Array(salt),
             64
         ) as Buffer;
         return key.toString('hex') === storedPassword.hash;

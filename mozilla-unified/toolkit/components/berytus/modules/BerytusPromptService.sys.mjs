@@ -90,6 +90,7 @@ class Prompter {
                 newItem.getElementsByClassName("berytus-secret-manager-list-item-label-secondary")[0].textContent = manager.id;
                 const spinner = newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-spinner-icon")[0];
                 spinner.removeAttribute('hidden');
+                newRadio.setAttribute('disabled', "true"); // disable until credentialsMetadata resolves
                 Promise.resolve(credentialsMetadata)
                     .then((metadata) => {
                     atLeastOneManagerCanBeSelected = true;
@@ -97,6 +98,7 @@ class Prompter {
                     nbAccountElement.textContent = String(metadata);
                     spinner.setAttribute('hidden', "true");
                     newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-nb-accounts-container")[0].removeAttribute("hidden");
+                    newRadio.removeAttribute('disabled');
                 })
                     .catch((err) => {
                     const warningIconElement = newItem.getElementsByClassName("berytus-secret-manager-list-item-metadata-error-icon")[0];
@@ -104,9 +106,10 @@ class Prompter {
                     spinner.setAttribute('hidden', "true");
                     warningIconElement.removeAttribute("hidden");
                     newItem.classList.add('metadata-error');
-                    newRadio.setAttribute('disabled', "true");
                 })
-                    .finally(() => updateSelectButton());
+                    .finally(() => {
+                    updateSelectButton();
+                });
                 listBox.append(newItem);
             }
             const options = {

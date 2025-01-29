@@ -1,5 +1,5 @@
---- dom/bindings/Bindings.conf.orig	2024-10-31 21:28:22
-+++ dom/bindings/Bindings.conf	2025-01-24 19:06:38
+--- dom/bindings/Bindings.conf.orig	2025-01-27 22:09:43
++++ dom/bindings/Bindings.conf	2025-01-29 17:08:05
 @@ -79,8 +79,48 @@
  'BatteryManager': {
      'nativeType': 'mozilla::dom::battery::BatteryManager',
@@ -19,7 +19,7 @@
 +},
 +
 +'BerytusDigitalSignatureChallenge': {
-+    'implicitJSContext': [ 'selectKey', 'signNonce', 'abortWithInvalidSignatureError' ],
++    'implicitJSContext': [ 'selectKey', 'signNonce', 'abortWithPublicKeyMismatchError', 'abortWithInvalidSignatureError' ],
 +},
 +
 +'BerytusAccountCreationOperation': {

@@ -138,6 +138,7 @@ class Prompter {
                     "berytus-secret-manager-list-item-metadata-spinner-icon"
                 )[0];
                 spinner.removeAttribute('hidden');
+                newRadio.setAttribute('disabled', "true"); // disable until credentialsMetadata resolves
                 Promise.resolve(credentialsMetadata)
                     .then((metadata) => {
                         atLeastOneManagerCanBeSelected = true;
@@ -149,6 +150,7 @@ class Prompter {
                         newItem.getElementsByClassName(
                             "berytus-secret-manager-list-item-metadata-nb-accounts-container"
                         )[0].removeAttribute("hidden");
+                        newRadio.removeAttribute('disabled');
                     })
                     .catch((err) => {
                         const warningIconElement = newItem.getElementsByClassName(
@@ -160,9 +162,10 @@ class Prompter {
                         spinner.setAttribute('hidden', "true");
                         warningIconElement.removeAttribute("hidden");
                         newItem.classList.add('metadata-error');
-                        newRadio.setAttribute('disabled', "true");
                     })
-                    .finally(() => updateSelectButton())
+                    .finally(() => {
+                        updateSelectButton()
+                    })
                 listBox.append(newItem);
             }
 

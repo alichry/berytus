@@ -98,6 +98,7 @@ export class StepWalker extends Selector<HandlerInfo> implements IStepWalker {
             this.setItems(this._handlers);
             this._setHandler(this._handlers[0]);
         }
+        this.started = false;
         this.restarting = false;
     }
 

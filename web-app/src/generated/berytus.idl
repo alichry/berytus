@@ -154,37 +154,7 @@ interface BerytusAccountAuthenticationOperation : BerytusLoginOperation {
     Promise<undefined> finish();
 };
 
-BerytusAccountAuthenticationOperation includes BerytusAccountMetadata;
-
-/**
- * Work In Progress: Enums for challenge messages.
- * These will be moved to separate files once we introduce interfaces
- * for each challenge type.
- */
-
-enum BerytusIdentificationChallengeMessageName {
-    "GetIdentityFields"
-};
-
-enum BerytusPasswordChallengeMessageName {
-    "GetPasswordFields"
-};
-
-enum BerytusSecureRemotePasswordChallengeMessageName {
-    "SelectSecurePasswordField",
-    "ExchangePublicKeys",
-    "ComputeClientProof",
-    "VerifyServerProof"
-};
-
-enum BerytusDigitalSignatureChallengeMessageName {
-    "GetPublicKey",
-    "SignNonce"
-};
-
-enum BerytusForeignIdentityOtpChallengeMessageName {
-    "GetOtp"
-};[SecureContext, Exposed=(Window)]
+BerytusAccountAuthenticationOperation includes BerytusAccountMetadata;[SecureContext, Exposed=(Window)]
 interface BerytusAccountCreationOperation : BerytusLoginOperation {
 
     /**
@@ -992,6 +962,7 @@ enum BerytusChallengeAbortionCode {
   "IdentityDoesNotExists",
   "IncorrectPassword",
   "InvalidProof",
+  "PublicKeyMismatch",
   "InvalidSignature",
   "IncorrectOtp"
 };
@@ -1088,6 +1059,10 @@ interface BerytusDigitalSignatureChallenge : BerytusChallenge {
   Promise<BerytusChallengeSignNonceMessageResponse> signNonce(
     (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) nonce
   );
+
+  [Throws]
+  Promise<undefined> abortWithPublicKeyMismatchError();
+
   [Throws]
   Promise<undefined> abortWithInvalidSignatureError();
 };
@@ -1212,3 +1187,33 @@ interface BerytusOffChannelOtpChallenge : BerytusChallenge {
 // TODO(berytus): field Ids specifiied in
 // getOtp, getPasswordFields, getIdentityFields
 // should be defined in the parameters of the challenge.
+
+/**
+ * Work In Progress: Enums for challenge messages.
+ * These will be moved to separate files once we introduce interfaces
+ * for each challenge type.
+ */
+
+enum BerytusIdentificationChallengeMessageName {
+    "GetIdentityFields"
+};
+
+enum BerytusPasswordChallengeMessageName {
+    "GetPasswordFields"
+};
+
+enum BerytusSecureRemotePasswordChallengeMessageName {
+    "SelectSecurePassword",
+    "ExchangePublicKeys",
+    "ComputeClientProof",
+    "VerifyServerProof"
+};
+
+enum BerytusDigitalSignatureChallengeMessageName {
+    "SelectKey",
+    "SignNonce"
+};
+
+enum BerytusOffChannelOtpChallengeMessageName {
+    "GetOtp"
+};

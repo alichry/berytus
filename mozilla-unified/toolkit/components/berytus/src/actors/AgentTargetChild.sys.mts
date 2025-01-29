@@ -12,6 +12,10 @@ export class BerytusAgentTargetChild extends JSWindowActorChild {
         );
     }
 
+    didDestroy() {
+        console.debug(`BerytusAgentTargetChild::didDestroy()`);
+    }
+
     sendQuery(aName: string, aData: unknown) {
         const { contentWindow } = this;
         return this.wrapPromise(
@@ -21,7 +25,21 @@ export class BerytusAgentTargetChild extends JSWindowActorChild {
                         resolve(Cu.cloneInto(result, contentWindow));
                     },
                     err => {
-                        reject(Cu.cloneInto(err, contentWindow));
+                        let clonedErr;
+                        try {
+                            clonedErr = Cu.cloneInto(err, contentWindow);
+                        } catch (cloneIntoErr) {
+                            console.warn("BerytusAgentTargetChild::sendQuery()->reject(): Unable to clone rejection value; see error cloning error below.");
+                            console.error(cloneIntoErr);
+                            console.warn("BerytusAgentTargetChild::sendQuery()->reject(): Rejection value:");
+                            console.error(err);
+                            reject({
+                                result: Cr.NS_BINDING_ABORTED,
+                                message: "Exception occurred during request processing; unable to clone rejection value."
+                            });
+                            return;
+                        }
+                        reject(clonedErr);
                     }
                 );
             })

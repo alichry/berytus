@@ -2,6 +2,7 @@ import { AccountDefAuthChallenge, EChallengeType } from "@root/backend/db/models
 import { PasswordChallengeHandler } from "./PasswordChallengeHandler";
 import { AuthSession } from "@root/backend/db/models/AuthSession";
 import { AbstractChallengeHandler } from "./AbstractChallengeHandler";
+import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler";
 
 export const initiateChallenge = async (
     sessionId: number,
@@ -38,13 +39,12 @@ export const loadChallenge = async (
 }
 
 const getHandlerCtor = (challengeType: EChallengeType) => {
-    let handlerCtor;
     switch (challengeType) {
         case EChallengeType.Password:
-            handlerCtor = PasswordChallengeHandler;
-            break;
+            return PasswordChallengeHandler;
+        case EChallengeType.DigitalSignature:
+            return DigitalSignatureChallengeHandler;
         default:
             throw new Error("Could not determine challenge handler");
     }
-    return handlerCtor;
 }

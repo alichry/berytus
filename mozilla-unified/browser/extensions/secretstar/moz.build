@@ -8,13 +8,13 @@ DEFINES["MOZ_APP_VERSION"] = CONFIG["MOZ_APP_VERSION"]
 DEFINES["MOZ_APP_MAXVERSION"] = CONFIG["MOZ_APP_MAXVERSION"]
 
 with Files("**"):
-    BUG_COMPONENT = ("BuiltInAddons", "Secret*")
+    BUG_COMPONENT = ("Berytus", "Secret*")
 
-FINAL_TARGET_FILES.features["secretstar@alichry"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"] += [
     "manifest.json"
 ]
 
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build"] += [
 	"build/asset-manifest.json",
 	"build/favicon.ico",
 	"build/index.html",
@@ -27,19 +27,20 @@ FINAL_TARGET_FILES.features["secretstar@alichry"]["build"] += [
 	"build/manifest.json",
 	"build/robots.txt",
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build/static"] += [
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static/css"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build/static/css"] += [
 	"build/static/css/main.css",
 	"build/static/css/main.css.map",
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static/js"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build/static/js"] += [
 	"build/static/js/main.js",
+	"build/static/js/main.js.LICENSE.txt",
 	"build/static/js/main.js.map",
 	"build/static/js/web-vitals.chunk.js",
 	"build/static/js/web-vitals.chunk.js.map",
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static/media"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build/static/media"] += [
 	"build/static/media/authRealmSpinner.f961bb349de205aa9eb3.gif",
 	"build/static/media/Inter-Black.83d81b169bedf85385f2.ttf",
 	"build/static/media/Inter-Bold.0eaf807b1cf0eceabe0f.ttf",
@@ -57,7 +58,7 @@ FINAL_TARGET_FILES.features["secretstar@alichry"]["build/static/media"] += [
 	"build/static/media/MPLUS1p-Regular.d7322c05ec935f9da53f.ttf",
 	"build/static/media/MPLUS1p-Thin.44b1fef53ab3fb532f42.ttf",
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build.worker"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build.worker"] += [
 	"build.worker/asset-manifest.json",
 	"build.worker/favicon.ico",
 	"build.worker/index.html",
@@ -70,15 +71,15 @@ FINAL_TARGET_FILES.features["secretstar@alichry"]["build.worker"] += [
 	"build.worker/manifest.json",
 	"build.worker/robots.txt",
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build.worker/static"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build.worker/static"] += [
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["build.worker/static/js"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["build.worker/static/js"] += [
 	"build.worker/static/js/dexie-lib.js",
 	"build.worker/static/js/dexie-lib.js.map",
 	"build.worker/static/js/main.js",
 	"build.worker/static/js/main.js.map",
 ]
-FINAL_TARGET_FILES.features["secretstar@alichry"]["public"] += [
+FINAL_TARGET_FILES.berytus["secretstar@alichry"]["public"] += [
 	"public/favicon.ico",
 	"public/index.html",
 	"public/logo16.png",

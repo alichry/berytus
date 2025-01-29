@@ -35,11 +35,6 @@ declare global {
 	}
 	interface BerytusAccountAuthenticationOperation extends BerytusAccountMetadata {
 	}
-	type BerytusIdentificationChallengeMessageName = "GetIdentityFields";
-	type BerytusPasswordChallengeMessageName = "GetPasswordFields";
-	type BerytusSecureRemotePasswordChallengeMessageName = "SelectSecurePasswordField" | "ExchangePublicKeys" | "ComputeClientProof" | "VerifyServerProof";
-	type BerytusDigitalSignatureChallengeMessageName = "GetPublicKey" | "SignNonce";
-	type BerytusForeignIdentityOtpChallengeMessageName = "GetOtp";
 	interface BerytusAccountCreationOperation extends BerytusLoginOperation {
 		readonly intent: "Register";
 	    readonly newborn: boolean;
@@ -237,7 +232,7 @@ declare global {
 	interface BerytusWebAppActor {
 	}
 	type BerytusChallengeType = "Identification" | "DigitalSignature" | "Password" | "SecureRemotePassword" | "OffChannelOtp";
-	type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "InvalidSignature" | "IncorrectOtp";
+	type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "PublicKeyMismatch" | "InvalidSignature" | "IncorrectOtp";
 	type BerytusChallengeId = string;
 	interface BerytusChallenge {
 	    readonly id: BerytusChallengeId;
@@ -276,6 +271,7 @@ declare global {
 	    new (id: string);
 	    selectKey(keyFieldId: string): Promise<BerytusChallengeSelectKeyMessageResponse>;
 	    signNonce(nonce: ArrayBuffer | ArrayBufferView | BerytusEncryptedPacket): Promise<BerytusChallengeSignNonceMessageResponse>;
+	    abortWithPublicKeyMismatchError(): Promise<undefined>;
 	    abortWithInvalidSignatureError(): Promise<undefined>;
 	}
 	interface BerytusChallengeSelectSecurePasswordMessageResponse {
@@ -309,6 +305,11 @@ declare global {
 	    getOtp(foreignIdentityFieldId: string): Promise<BerytusChallengeGetOtpMessageResponse>;
 	    abortWithIncorrectOtpError(): Promise<undefined>;
 	}
+	type BerytusIdentificationChallengeMessageName = "GetIdentityFields";
+	type BerytusPasswordChallengeMessageName = "GetPasswordFields";
+	type BerytusSecureRemotePasswordChallengeMessageName = "SelectSecurePassword" | "ExchangePublicKeys" | "ComputeClientProof" | "VerifyServerProof";
+	type BerytusDigitalSignatureChallengeMessageName = "SelectKey" | "SignNonce";
+	type BerytusOffChannelOtpChallengeMessageName = "GetOtp";
 	declare var BerytusAccountAuthenticationOperation: BerytusAccountAuthenticationOperation;
 	declare var BerytusAccountCreationOperation: BerytusAccountCreationOperation;
 	declare var BerytusAnonymousWebAppActor: BerytusAnonymousWebAppActor;

@@ -65,7 +65,7 @@ export default function Form({ accountId, keyFieldId, className, seamless, onSub
         <div>
             {
                 keyField ? <p className="text-sm mb-4">
-                    The web application requested the stored public key.
+                    The web application requested the stored public key. Send public key?
                 </p> : null
             }
             { errors.find(e => !!e) ? (

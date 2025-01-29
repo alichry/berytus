@@ -34,6 +34,10 @@ public:
   already_AddRefed<Promise> SignNonce(JSContext* aCx,
                                       const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aNonce,
                                       ErrorResult& aRv);
+  already_AddRefed<Promise> AbortWithPublicKeyMismatchError(
+      JSContext* aCx,
+      ErrorResult& aRv
+  );
   already_AddRefed<Promise> AbortWithInvalidSignatureError(
       JSContext* aCx,
       ErrorResult& aRv

@@ -267,7 +267,7 @@ export interface BerytusChallengeMessage {
     response: any;
 }
 type BerytusChallengeType = "Identification" | "DigitalSignature" | "Password" | "SecureRemotePassword" | "OffChannelOtp";
-type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "InvalidSignature" | "IncorrectOtp";
+type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "PublicKeyMismatch" | "InvalidSignature" | "IncorrectOtp";
 type BerytusChallengeId = string;
 export interface BerytusChallenge {
     readonly id: BerytusChallengeId;
@@ -315,6 +315,11 @@ export interface BerytusChallengeGetOtpMessageResponse {
 }
 export interface BerytusOffChannelOtpChallenge extends BerytusChallenge {
 }
+type BerytusIdentificationChallengeMessageName = "GetIdentityFields";
+type BerytusPasswordChallengeMessageName = "GetPasswordFields";
+type BerytusSecureRemotePasswordChallengeMessageName = "SelectSecurePassword" | "ExchangePublicKeys" | "ComputeClientProof" | "VerifyServerProof";
+type BerytusDigitalSignatureChallengeMessageName = "SelectKey" | "SignNonce";
+type BerytusOffChannelOtpChallengeMessageName = "GetOtp";
 export enum EBerytusFieldType {
 	Identity = "Identity",
 	ForeignIdentity = "ForeignIdentity",

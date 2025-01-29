@@ -127,7 +127,7 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         return body.exists;
     }
 
-    async createAccount(fields: { id: string; value: string }[], userAttributes: Record<string, string>): Promise<void> {
+    async createAccount(fields: CreateBody["fields"], userAttributes: Record<string, string>): Promise<void> {
         // for (const field of this.operation!.fields.values()) {
         //     fields.push({
         //         id: field.id,

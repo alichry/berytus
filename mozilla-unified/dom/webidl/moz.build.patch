@@ -1,5 +1,5 @@
---- dom/webidl/moz.build.orig	2024-10-31 21:28:22
-+++ dom/webidl/moz.build	2025-01-04 23:02:01
+--- dom/webidl/moz.build.orig	2025-01-27 22:09:43
++++ dom/webidl/moz.build	2025-01-27 22:09:43
 @@ -454,6 +454,33 @@
      "BasicCardPayment.webidl",
      "BatteryManager.webidl",

@@ -10,7 +10,7 @@ export type AuthChallengeMessageName =
     BerytusPasswordChallengeMessageName |
     BerytusSecureRemotePasswordChallengeMessageName |
     BerytusDigitalSignatureChallengeMessageName |
-    BerytusForeignIdentityOtpChallengeMessageName;
+    BerytusOffChannelOtpChallengeMessageName;
 
 const ValidMessages: Record<
     EChallengeType,
@@ -18,8 +18,8 @@ const ValidMessages: Record<
 > = {
     "Password": ["GetPasswordFields"],
     "SecureRemotePassword": ["ExchangePublicKeys", "ComputeClientProof", "VerifyServerProof"],
-    "DigitalSignature": ["GetPublicKey", 'SignNonce'],
-    "ForeignIdentityOtp": ['GetOtp']
+    "DigitalSignature": ["SelectKey", 'SignNonce'],
+    "OffChannelOtp": ['GetOtp']
 }
 
 export type ChallengeMessageStatus = "Ok" | `Error:${string}` | null;

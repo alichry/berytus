@@ -11,8 +11,9 @@ import { ERejectionCode, EOperationType, EMetadataStatus, RequestType } from "@b
 import type { PreliminaryRequestContext } from "@berytus/types";
 import { userAttributesLabels } from "@root/ui/utils/userAttributesLabels";
 import { stringifyArrayBufferOrEncryptedPacket, stringifyEncryptedPacket } from "./field-utils";
-import { setPageActionUrlInTab } from "./pageAction-utils";
 import { openPageActionPopupIfNecessary } from "./pageAction-popup-fix";
+
+console.debug("secretstar(bg): loaded");
 
 const plainContext = (context: PreliminaryRequestContext) => {
     return {
@@ -25,25 +26,25 @@ async function printSessionForSimiluationPrep(
     phase: RequestType | `${RequestType}:${string}`,
     sessionId: string
 ) {
-    const session = await getSessionRecord(sessionId);
-    console.log('simulate:', JSON.stringify({
-        phase, session
-    }, null, 2));
+    // const session = await getSessionRecord(sessionId);
+    // console.log('simulate:', JSON.stringify({
+    //     phase, session
+    // }, null, 2));
 }
 
 async function printSessionWithChannelForSimulationPrep(
     phase: RequestType,
     sessionId: string
 ) {
-    const session = await getSessionRecord(sessionId);
-    const channel = await db.channel.get(session.channel.id);
-    if (! channel) {
-        throw new Error('Cant find channel to print simulation prep');
-    }
-    console.log('simulate', phase, JSON.stringify({
-        session,
-        channel
-    }, null, 2));
+    // const session = await getSessionRecord(sessionId);
+    // const channel = await db.channel.get(session.channel.id);
+    // if (! channel) {
+    //     throw new Error('Cant find channel to print simulation prep');
+    // }
+    // console.log('simulate', phase, JSON.stringify({
+    //     session,
+    //     channel
+    // }, null, 2));
 }
 
 async function showUi(

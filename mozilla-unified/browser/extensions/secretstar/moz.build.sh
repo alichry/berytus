@@ -14,13 +14,10 @@ MOZBUILD="\
 DEFINES[\"MOZ_APP_VERSION\"] = CONFIG[\"MOZ_APP_VERSION\"]
 DEFINES[\"MOZ_APP_MAXVERSION\"] = CONFIG[\"MOZ_APP_MAXVERSION\"]
 
-
-JAR_MANIFESTS += [\"jar.mn\"]
-
 with Files(\"**\"):
-    BUG_COMPONENT = (\"BuiltInAddons\", \"Secret*\")
+    BUG_COMPONENT = (\"Berytus\", \"Secret*\")
 
-FINAL_TARGET_FILES.features[\"secretstar@alichry\"] += [
+FINAL_TARGET_FILES.berytus[\"secretstar@alichry\"] += [
     \"manifest.json\"
 ]
 "
@@ -33,7 +30,7 @@ listEntries() {
         echo "Missing dir" >&2
         return 1
     fi
-    echo "FINAL_TARGET_FILES.features[\"secretstar@alichry\"][\"${dir}\"] += ["
+    echo "FINAL_TARGET_FILES.berytus[\"secretstar@alichry\"][\"${dir}\"] += ["
     find "$dir" -type f -maxdepth 1 | sort -f | sed -E 's/^(.*)$/\t"\1",/g;'
     echo "]"
     find "$dir" -type d -maxdepth 1 -not -path "$dir" | while IFS= read subdir; do

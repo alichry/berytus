@@ -57,7 +57,7 @@ export default function AbortedChallenge() {
             setError(new Error('Bad session. Could not find challenge id: ' + challengeId));
             return;
         }
-        if (challenge.abortionReasonCode) {
+        if (! challenge.abortionReasonCode) {
             // challenge not yet updated. We wait till its update so we can
             // get the latest request (and resolve it).
             return;

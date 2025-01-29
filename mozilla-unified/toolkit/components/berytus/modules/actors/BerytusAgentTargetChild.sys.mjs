@@ -8,13 +8,31 @@ export class BerytusAgentTargetChild extends JSWindowActorChild {
     wrapPromise(promise) {
         return new this.contentWindow.Promise((resolve, reject) => promise.then(resolve, reject));
     }
+    didDestroy() {
+        console.debug(`BerytusAgentTargetChild::didDestroy()`);
+    }
     sendQuery(aName, aData) {
         const { contentWindow } = this;
         return this.wrapPromise(new Promise((resolve, reject) => {
             super.sendQuery(aName, aData).then(result => {
                 resolve(Cu.cloneInto(result, contentWindow));
             }, err => {
-                reject(Cu.cloneInto(err, contentWindow));
+                let clonedErr;
+                try {
+                    clonedErr = Cu.cloneInto(err, contentWindow);
+                }
+                catch (cloneIntoErr) {
+                    console.warn("BerytusAgentTargetChild::sendQuery()->reject(): Unable to clone rejection value; see error cloning error below.");
+                    console.error(cloneIntoErr);
+                    console.warn("BerytusAgentTargetChild::sendQuery()->reject(): Rejection value:");
+                    console.error(err);
+                    reject({
+                        result: Cr.NS_BINDING_ABORTED,
+                        message: "Exception occurred during request processing; unable to clone rejection value."
+                    });
+                    return;
+                }
+                reject(clonedErr);
             });
         }));
     }

@@ -1,5 +1,5 @@
---- browser/base/content/popup-notifications.inc.orig	2024-10-31 21:28:22
-+++ browser/base/content/popup-notifications.inc	2024-10-31 21:28:22
+--- browser/base/content/popup-notifications.inc.orig	2025-01-27 22:09:43
++++ browser/base/content/popup-notifications.inc	2025-01-29 18:24:58
 @@ -153,6 +153,42 @@
          <label id="canvas-permissions-prompt-warning"/>
        </popupnotificationcontent>
@@ -29,7 +29,7 @@
 +          </div>
 +          <div class="berytus-secret-manager-list-item-stretch-till-end" />
 +          <div class="berytus-secret-manager-list-item-metadata">
-+            <html:img class="berytus-secret-manager-list-item-metadata-spinner-icon" src="chrome://content/global/icons/berytusSpinner.gif" />
++            <html:img class="berytus-secret-manager-list-item-metadata-spinner-icon" src="chrome://global/content/icons/berytusSpinner.gif" />
 +            <html:img class="berytus-secret-manager-list-item-metadata-error-icon" src="chrome://global/skin/icons/warning.svg" hidden="true" />
 +            <div class="berytus-secret-manager-list-item-metadata-nb-accounts-container" hidden="true">
 +              <html:img class="berytus-secret-manager-list-item-metadata-nb-accounts-icon" src="chrome://browser/skin/fxa/avatar-empty.svg" /> <!-- or chrome://browser/skin/fxa/avatar-empty.svg -->
