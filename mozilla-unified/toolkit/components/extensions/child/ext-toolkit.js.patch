@@ -1,5 +1,5 @@
---- toolkit/components/extensions/child/ext-toolkit.js.orig	2025-01-27 22:09:43
-+++ toolkit/components/extensions/child/ext-toolkit.js	2025-01-27 22:09:43
+--- toolkit/components/extensions/child/ext-toolkit.js.orig	2025-01-29 21:06:25
++++ toolkit/components/extensions/child/ext-toolkit.js	2025-01-29 21:06:25
 @@ -16,6 +16,11 @@
        ["runtime", "getBackgroundPage"],
      ],

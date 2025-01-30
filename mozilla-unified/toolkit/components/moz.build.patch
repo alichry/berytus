@@ -1,5 +1,5 @@
---- toolkit/components/moz.build.orig	2025-01-27 22:09:43
-+++ toolkit/components/moz.build	2025-01-27 22:09:43
+--- toolkit/components/moz.build.orig	2025-01-29 21:06:24
++++ toolkit/components/moz.build	2025-01-29 21:06:24
 @@ -20,6 +20,7 @@
      "apppicker",
      "asyncshutdown",

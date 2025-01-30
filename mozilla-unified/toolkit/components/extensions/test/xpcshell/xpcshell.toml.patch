@@ -1,5 +1,5 @@
---- toolkit/components/extensions/test/xpcshell/xpcshell.toml.orig	2025-01-27 22:09:43
-+++ toolkit/components/extensions/test/xpcshell/xpcshell.toml	2025-01-27 22:09:43
+--- toolkit/components/extensions/test/xpcshell/xpcshell.toml.orig	2025-01-29 21:06:25
++++ toolkit/components/extensions/test/xpcshell/xpcshell.toml	2025-01-29 21:06:25
 @@ -62,6 +62,8 @@
  
  ["test_csp_validator.js"]

@@ -7,6 +7,7 @@
 #include "mozilla/dom/BerytusDigitalSignatureChallenge.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/berytus/AgentProxyUtils.h"
+#include "mozilla/dom/ToJSValue.h"
 
 namespace mozilla::dom {
 

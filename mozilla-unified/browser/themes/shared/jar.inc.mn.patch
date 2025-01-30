@@ -1,5 +1,5 @@
---- browser/themes/shared/jar.inc.mn.orig	2025-01-27 22:09:43
-+++ browser/themes/shared/jar.inc.mn	2025-01-27 22:09:43
+--- browser/themes/shared/jar.inc.mn.orig	2025-01-29 21:06:25
++++ browser/themes/shared/jar.inc.mn	2025-01-29 21:06:25
 @@ -20,6 +20,7 @@
    skin/classic/browser/browser-shared.css                      (../shared/browser-shared.css)
    skin/classic/browser/formautofill-notification.css           (../shared/formautofill-notification.css)

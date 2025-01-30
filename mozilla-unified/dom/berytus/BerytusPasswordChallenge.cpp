@@ -5,6 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusPasswordChallenge.h"
+#include "mozilla/dom/ToJSValue.h"
 
 namespace mozilla::dom {
 

@@ -2,6 +2,9 @@
 // import Editor from './Editor';
 import { Image } from 'astro:assets';
 import NightlyPng from '../nightly.png';
+import MacOsPng from "../macos.png";
+import WindowsSvg from "../windows.svg";
+import LinuxPng from "../linux.jpg";
 import SecretstarPng from '../secretstar-192.png';
 import Button from './Button.astro';
 import CodeBlock from './CodeBlock.astro';
@@ -156,13 +159,8 @@ login();
             </p>
             <ul class="text-slate-800 mt-3 list-disc">
                 <li>
-                    <a href="https://code.berytus.io/?dir=workspace" target="_blank">
-                        Source code (web)
-                    </a>
-                </li>
-                <li>
-                    <a href="https://code.berytus.io/?dir=compressed" target="_blank">
-                        Source code (zip)
+                    <a href="https://github.com/alichry/berytus/tree/main/mozilla-unified" target="_blank">
+                        Source code
                     </a>
                 </li>
             </ul>
@@ -178,13 +176,8 @@ login();
             </p>
             <ul class="text-slate-800 mt-3 list-disc">
             <li>
-                <a href="https://code.berytus.io/?dir=workspace/secretstar" target="_blank">
-                    Source code (web)
-                </a>
-            </li>
-            <li>
-                <a href="https://code.berytus.io/?dir=compressed" target="_blank">
-                    Source code (zip)
+                <a href="https://github.com/alichry/berytus/tree/main/mozilla-unified/browser/extensions/secretstar" target="_blank">
+                    Source code
                 </a>
             </li>
         </ul>
@@ -197,58 +190,55 @@ login();
         <p class="text-slate-800">
             The quickest way to get started is to download the
             packaged Secret* extension and our extended Firefox browser
-            binary. Unfortunately, we do not have the packaged
-            browser binary for Windows. Windows users should
-            build it from the source code. If you are compiling
+            binary. If you are compiling
             it yourself instead of downloading the packaged
             browser binary, follow the build instructions below.
-            Otherwise, skip to the installation instructions.
+            Otherwise, skip to the download instructions.
         </p>
         <hr class="mt-4 mb-4" />
         <div class="flex flex-row gap-4 flex-wrap justify-between">
-            <Button class="text-base pb-2">
-                <a
-                    class="no-underline"
-                    href="https://code.berytus.io/?dir=release/secretstar"
-                    target="_blank"
-                >
-                    <Image
-                        src={SecretstarPng}
-                        alt="Secret*"
-                        class="w-[24px] inline mr-1"
-                    />
-                    All platforms
-                </a>
-
+            <a
+                class="no-underline cursor-not-allowed"
+                href="##TODO(berytus): Insert binary link"
+                target="_blank"
+            >
+            <Button class="text-base pb-2 cursor-not-allowed" disabled title="coming soon">
+                <Image
+                    src={WindowsSvg}
+                    alt="Firefox Nightly"
+                    class="w-[24px] inline mr-1"
+                />
+                <i class="not-italic">Windows</i>
             </Button>
-            <Button class="text-base pb-2">
-                <a
-                    class="no-underline"
-                    href="https://code.berytus.io/?dir=release/berytus-firefox/mac"
-                    target="_blank"
-                >
+            </a>
+            <a
+                class="no-underline"
+                href="##TODO(berytus): Insert binary link"
+                target="_blank"
+            >
+                <Button class="text-base pb-2">
                     <Image
-                        src={NightlyPng}
+                        src={MacOsPng}
                         alt="Firefox Nightly"
-                        class="w-[24px] inline mr-1"
+                        class="w-[19px] inline mr-1 mb-0.5"
                     />
-                    Mac
-                </a>
-            </Button>
-            <Button class="text-base pb-2 text-sm">
-                <a
-                    class="no-underline"
-                    href="https://code.berytus.io/?dir=release/berytus-firefox/linux-x86_64"
-                    target="_blank"
-                >
+                    <i class="not-italic">MacOS</i>
+                </Button>
+            </a>
+            <a
+                class="no-underline cursor-not-allowed"
+                href="#TODO(berytus): Insert binary link"
+                target="_blank"
+            >
+                <Button class="text-base pb-2 text-sm cursor-not-allowed" disabled title="coming soon">
                     <Image
-                        src={NightlyPng}
+                        src={LinuxPng}
                         alt="Firefox Nightly"
-                        class="w-[24px] inline mr-1"
+                        class="w-[20px] inline mr-1"
                     />
-                        Linux (x86_64)
-                </a>
-            </Button>
+                    <i class="not-italic">Linux (x86_64)</i>
+                </Button>
+            </a>
         </div>
         <details class="mt-4">
             <summary class="font-medium text-lg text-slate-700">
@@ -256,92 +246,41 @@ login();
             </summary>
             <ul class="list-decimal ml-4 mt-2 text-slate-800 [&>li]:mt-1">
                 <li>
-                    Install the necessary system dependencies.
-                    <ul class="list-disc ml-4 mt-2 text-slate-800 [&>li]:mt-1">
-                        <li>clang</li>
-                        <li>rust</li>
-                        <li>nasm</li>
-                        <li>python3.8</li>
-                        <li>Node.js</li>
-                        <li>
-                            Typescript (globally)
-                            <span class="cursor-default border-2 p-0.5" title="This is not needed for the official mozilla repository, but typescript is used in an external build step we introduced when building the Berytus Core API.">&#63;</span>
-                        </li>
-                        <li>
-                            pcre2grep
-                            <span class="cursor-default border-2 p-0.5" title="This is not needed for the official mozilla repository, but pcre2grep is used in an external build step we introduced when building the Berytus Core API.">&#63;</span>
-                        </li>
-                        <li><a href="https://github.com/mozilla/sccache">sccache</a></li>
-                    </ul>
+                    Head to the official <a target="_blank" class="underline cursor-pointer" href="https://firefox-source-docs.mozilla.org/setup/index.html">Firefox docs</a>
+                    and follow the instructions to download the Mozilla codebase and bootstrap your machine.
                 </li>
                 <li>
-                    Install the other necessary system dependencies using the official mozilla
-                    system
-                    <a href="https://firefox-source-docs.mozilla.org/setup/linux_build.html">
-                        bootstrap
-                    </a> tool.
-                    Follow the instructions provided in the official mozilla documentation
-                    pages to bootstrap your machine. For linux, the commands are:
+                    Use the Berytus's <a href="https://github.com/alichry/berytus/tree/main/port" class="underline" target="_blank">port</a> tool to copy the Berytus source code in your
+                    Mozilla codebase director:
                     <code class="text-xs whitespace-pre-line">
-$ python3 -m pip install --user mercurial
-$ curl https://hg.mozilla.org/mozilla-central/raw-file/default/python/mozboot/bin/bootstrap.py -O
-# Run the bootstrap script. You can halt the script
-# when you are prompted to choose whether to download
-# the artifacts or not and for which platform.
-$ python3 bootstrap.py
-# Install further dependencies in the configure command.
-$ ./mach configure
+                        $ ./port export /path/to/mozilla-unified
                     </code>
-                    You can disregard or remove the <code class="text-xs">mozilla-unified</code>
-                    directory now.
                 </li>
                 <li>
-                    Now, your system should be configured with the necessary dependencies.
-                    Download the source code of Firefox + Berytus using the links
-                    under the 'Project artifacts' section at the top of the page.
-                </li>
-                <li>Extract the contents of the zip file</li>
-                <li>
-                    Open a terminal and <code class="text-xs">cd</code>
-                    into the directory containing the source code.
-                </li>
-                <li>
-                    Run the following commands:
+                    Add the below mozconfig file into your mozilla-unified
+                    directory:
                     <code class="text-xs whitespace-pre-line">
-# Install JS dependencies for core API and build it
-$ cd toolkit/components/authrealm
-$ npm install
-$ npm run build:rollup
-# Note, if the build fails because of an out of
-# memory error, use the following command instead:
-$ NODE_OPTIONS="--max-old-space-size=4096" npm run build:rollup
-# Our rollup build process is inefficient.
-$ cd ../../../ # return to the root directory
-
-# Optional: Install JS dependencies for Secret* and build it
-$ cd secretstar
-$ npm install
-$ npm run build
-$ cd ../ # return to the root directory.
-
-# Configure build options
+                        # Configure build options
 $ cat &lt;&lt;EOF &gt; ./mozconfig
     # mozilla build config
     ac_add_options --with-ccache=sccache
     ac_add_options --disable-bootstrap
+    # if you wish to enable debugging, uncomment the below
+    #ac_add_options --enable-debug-js-modules
+    #ac_add_options --enable-debug
 EOF
-
-# Run the clobber in case it cleans up ~/.mozbuild
-# from any potential artifacts produced by mozilla-unified.
-# Don't run ./mach clobber everytime you want to
-# re-build the browser. Just this time.
-$ ./mach clobber
-
-# Finally, build the browser.
-$ ./mach build
-
-# After the build completes, run the browser
-$ ./mach run
+                    </code>
+                </li>
+                <li>
+                    Build firefox:
+                    <code class="text-xs whitespace-pre-line">
+                        $ ./mach build
+                    </code>
+                </li>
+                <li>
+                    After the build completes, run the browser
+                    <code class="text-xs whitespace-pre-line">
+                        $ ./mach run
                     </code>
                 </li>
             </ul>
@@ -349,12 +288,15 @@ $ ./mach run
         <hr class="my-2" />
         <details class="mt-4">
             <summary class="font-medium text-lg text-slate-700">
-                Installation instructions
+                Download instructions
             </summary>
+            <p class="text-slate-800 mt-2 block">
+                If you wish to skip building Firefox, you can download
+                the packaged Firefox from the download links provided above.
+                Simply choose your Operating System (Mac or Linux (x86_64))
+                and follow the instructions below.
+            </p>
             <ul class="list-disc ml-4 mt-2 text-slate-800 [&>li]:mt-1">
-                <li>
-                    Secret* - extract the zip contents into a desired directory.
-                </li>
                 <li>
                     Browser/MacOS - mount the disk image as you normally
                     do for any installer and drag the firefox nightly icon into
@@ -375,25 +317,10 @@ $ ./mach run
             </summary>
             <ul class="list-decimal ml-6 mt-2 text-slate-800 [&>li]:mt-1">
                 <li>
-                    Open the installed firefox + berytus browser.
-                <li>
-                    In the address bar, navigate to <code>about:debugging</code>
+                    Open the downloaded/compiled browser.
                 </li>
                 <li>
-                    Press on 'This Nightly' on the left-hand bar.
-                </li>
-                <li>
-                    Under Temporary Extensions, click on 'Load Temporary Add-on...'
-                </li>
-                <li>
-                    In the file browser, navigate to the directory where you
-                    extracted sectret* into. Select manifest.json in that directory.
-                </li>
-                <li>
-                    Click on the extension/add-on icon located at the top-right side of the browser.
-                </li>
-                <li>
-                    Click on Secret* to open the pop up page.
+                    A few seconds after startup, Secret* would popup automatically.
                 </li>
                 <li>
                     Now, to set up the secret manager, click on the bouncing ID card button.
@@ -414,61 +341,8 @@ $ ./mach run
             <p class="text-slate-800 mt-2 block">
                 ✅ Your secret manager is now configured and the
                 browser your running supports the Berytus API.
-                Navigate to this web page to start experimenting
-                <code class="text-sm" x-text="window.document.URL"></code>
+                Navigate to the bottom of this web page to start experimenting.
             </p>
-        </details>
-        <hr class="my-2" />
-        <details class="mt-4">
-            <summary class="font-medium text-lg text-slate-700">
-                Simulation instructions
-            </summary>
-            <p class="text-slate-800 mt-2 block">
-                Make sure you ran the launch instructions to open the browser and load the Secret* extension.
-                The simulation would show you a running example of most WebIDL API we have streamlined.
-            </p>
-            <ul class="list-decimal ml-4 mt-2 text-slate-800 [&>li]:mt-1">
-                <li>
-                    Click on the extension/add-on icon located at the top-right side of the browser.
-                </li>
-                <li>
-                    Click on Secret* to open the pop up page.
-                </li>
-                <li>
-                    Click on the top-right button. It will open a new tab.
-                </li>
-            </ul>
-            <p class="text-slate-800 mt-2 block">
-                In the newly opened tab you can click on 'Continue with AuthRealm'
-                to start an authentication or registration session. Note,
-                the framework is called 'AuthRealm' here because it was the original
-                name. Berytus is what we are sticking with and it is used for the second version
-                of our WebIDL API.
-            </p>
-        </details>
-        <hr class="my-2" />
-        <details class="mt-3">
-            <summary class="font-medium text-lg text-slate-700">
-                Open Source roadmap
-            </summary>
-            <p class="text-slate-800 mt-2 block">
-                Berytus is on its way to GitHub 🏃‍♂️ There are a few housekeeping tasks
-                we need to care of before creating a public repository. Here are a few:
-            </p>
-            <ul class="list-disc ml-4 mt-2 text-slate-800 [&>li]:mt-1">
-                <li>
-                    Separate the Berytus code in a standalone repository, detached from Mozilla Unified.
-                    We aim to provide tools to port the Berytus modules into any Mozilla Unified project.
-                    This would make it easy to port Berytus to other Firefox-based browsers.
-                </li>
-                <li>
-                    Significantly reduce the dependence on XPIDL interfaces, e.g., by using primitives in method arguments
-                    instead of specialised objects/interfaces holding a subset of the necessary parameters.
-                </li>
-                <li>
-                    Delete deadcode and refactor where necessary.
-                </li>
-            </ul>
         </details>
     </div>
 
@@ -614,7 +488,7 @@ $ ./mach run
                 class="max-w-xl mx-auto"
             >
                 Make sure you download/compile the lastest release
-                of Berytus/Firefox and Secret* before running the code below.
+                of Berytus/Firefox before running the code below.
             </Notice>
             <div
                 x-show="! $store.stepWalker.finished && $store.stepWalker.ready"

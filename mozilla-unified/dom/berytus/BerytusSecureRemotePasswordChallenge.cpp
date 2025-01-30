@@ -9,6 +9,7 @@
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/Base64.h"
 #include "mozilla/dom/BerytusChallengeBinding.h"
+#include "mozilla/dom/ToJSValue.h"
 
 namespace mozilla::dom {
 

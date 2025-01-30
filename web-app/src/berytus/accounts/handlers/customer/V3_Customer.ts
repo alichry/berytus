@@ -403,6 +403,10 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
                             omitPadding: false
                         })
                 )
+                const res= await this.authHandler.finish();
+                res.userAttributes.forEach(u => {
+                    this.loginState.userAttributes[u.id] = u.value;
+                });
                 return true;
             } catch (e) {
                 if (e instanceof AuthIncorrectResponseError) {
