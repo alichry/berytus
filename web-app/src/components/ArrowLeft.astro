@@ -1,0 +1,17 @@
+---
+import arrowLeftSvg from './svg/arrow-left.svg?raw';
+interface Props extends astroHTML.JSX.ButtonHTMLAttributes {
+    class?: string;
+}
+const { class: className, ...otherProps } = Astro.props;
+
+---
+<button
+    class:list={[
+        "h-fit rounded-xl p-2 border-4 border-sky-400 hover:bg-teal-100 hover:cursor-pointer flex items-center content-center",
+        className
+    ]}
+    {...otherProps}
+>
+    <Fragment set:html={arrowLeftSvg} />
+</button>

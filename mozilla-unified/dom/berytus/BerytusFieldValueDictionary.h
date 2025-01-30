@@ -1,0 +1,48 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim:set ts=2 sw=2 sts=2 et cindent: */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#ifndef DOM_BERYTUSFIELDVALUEDICTIONARY_H_
+#define DOM_BERYTUSFIELDVALUEDICTIONARY_H_
+
+#include "mozilla/dom/BerytusFieldBinding.h"
+#include "mozilla/dom/BindingDeclarations.h"
+#include "nsCycleCollectionParticipant.h"
+#include "nsWrapperCache.h"
+#include "nsIGlobalObject.h"
+
+namespace mozilla::dom {
+
+class BerytusFieldValueDictionary : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
+                                    public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
+{
+public:
+  NS_DECL_CYCLE_COLLECTING_ISUPPORTS
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusFieldValueDictionary)
+
+public:
+  BerytusFieldValueDictionary(nsIGlobalObject* aGlobal);
+
+  virtual BerytusFieldType Type() = 0;
+  bool IsForField(const BerytusFieldType& aType);
+
+  virtual void ToJSON(JSContext* aCx,
+                      JS::MutableHandle<JS::Value> aRetVal,
+                      ErrorResult& aRv) = 0;
+
+protected:
+  virtual ~BerytusFieldValueDictionary();
+  nsCOMPtr<nsIGlobalObject> mGlobal;
+  
+public:
+  // This should return something that eventually allows finding a
+  // path to the global this object is associated with.  Most simply,
+  // returning an actual global works.
+  nsIGlobalObject* GetParentObject() const;
+};
+
+} // namespace mozilla::dom
+
+#endif // DOM_BERYTUSFIELDVALUEDICTIONARY_H_

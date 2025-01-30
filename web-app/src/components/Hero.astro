@@ -1,0 +1,125 @@
+---
+import appSvg from './svg/app.svg?raw'
+import webPmSvg from './svg/web-pm.svg?raw';
+import scrollSvg from './svg/scroll.svg?raw';
+import idSvg from './svg/id.svg?raw';
+import govSvg from './svg/gov.svg?raw';
+import githubSvg from './svg/github-white.svg?raw';
+import ConnectingLine from './ConnectingLine.astro';
+import Benefit from './Benefit.astro';
+import Library from '../literature/Library';
+import BenefitList from './BenefitList.astro';
+import SectionTitle from './SectionTitle.astro';
+import References from './References.astro';
+
+interface Props {
+    class?: string
+}
+const { class: className } = Astro.props;
+
+---
+<div class:list={["bg-slate-900 px-8 pt-8 pb-12 pr-10", className]}>
+    <div class="flex flex-row mb-0.5">
+        <div class="content-center">
+            <div class="cursor-pointer border-b border-white flex flex-row gap-1">
+                <Fragment set:html={scrollSvg} />
+                <a
+                    href="https://arxiv.org/abs/2407.07205"
+                    class="no-underline"
+                    target="_blank"
+                >
+                ePrint</a>
+            </div>
+        </div>
+        <div class="flex-1">
+            <p class="font-bold text-3xl text-center">Berytus:</p>
+        </div>
+        <div class="content-center">
+            <div class="cursor-pointer border-b border-white flex flex-row gap-1">
+                <Fragment set:html={githubSvg} />
+                <a
+                    href="https://github.com/alichry/berytus"
+                    class="no-underline"
+                    target="_blank"
+                >
+                GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <p class="font-medium text-xl text-center">
+        A Secure Governance Framework for Web User
+    </p>
+    <p class="font-medium text-xl mb-4 text-center">
+        Authentication through Password Managers
+    </p>
+    <div class="text-center mt-2 mb-3">
+        <p class="font-medium">Ali Cherry, Konstantinos Barmpis, Siamak Shahandashti</p>
+        <p class="">University of York, York, United Kingdom</p>
+        <code>{"{ali.cherry,konstantinos.barmpis,siamak.shahandashti}@york.ac.uk"}</code>
+    </div>
+    <SectionTitle title='Overview' />
+    <div class="flex flex-row gap-2 mb-8">
+        <div class="w-[6rem] h-[6rem]">
+            <Fragment set:html={appSvg} />
+            <p class="text-center font-medium pr-1">Web App</p>
+        </div>
+        <ConnectingLine class="flex-1 mb-3 ml-1" />
+        <div class="w-[6rem] h-[6rem]">
+            <Fragment set:html={govSvg} />
+            <p class="text-center font-medium pr-1">Berytus API</p>
+        </div>
+        <ConnectingLine class="flex-1 mb-3" />
+        <div class="mt-2">
+            <div class="flex flex-row">
+                <div class="w-[5rem] h-[5rem]">
+                    <Fragment set:html={idSvg} />
+                </div>
+                <div class="w-[5rem] h-[5rem]">
+                    <Fragment set:html={webPmSvg} />
+                </div>
+            </div>
+            <p class="text-center font-medium pt-2">Secret Manager</p>
+        </div>
+
+    </div>
+    <p class="text-base mb-4">
+        To effectively mediate between web applications and secret managers,
+        we propose Berytus, a web governance framework for web authentication
+        through embedded Secret Managers.
+        As an orchestrator, Berytus sits between the web application frontend
+        and the Secret Manager, operating natively in the browser. Berytus
+        introduces two APIs, a Web API for web apps
+        and a WebExtensions API for secret managers; both of which
+        are used to facilitate a structured communication flow
+        between web apps and secret managers.
+    </p>
+    <p class="text-base mb-8">
+        With this positioning of Berytus, secret manager extensions can register
+        as secret management tools through the Berytus WebExtensions API.
+        At the other end, web applications can interact with the Berytus Web API to initiate
+        an account-related operation (e.g. authentication).
+
+        Inter alia, Berytus
+        (a) tracks installed secret managers,
+        (b) prompts for secret manager selection and
+        (c) ensures conformity with the spec.
+    </p>
+    <!-- <p class="text-base mb-8 ">
+        Password Managers have been serving as the tools to increase users' security,
+        through the use of strong passwords, while relieving them from the associated costly cognitive
+        effort. Currently, HTML Autofill and the Credential Management API are the two proposed and implemented
+        models revolving around software-based password management for the web.
+        HTML Autofill is the primary approach for Password Managers to fill passwords on websites.
+        With the prevelance of asynchronous JavaScript data submission, e.g. the Fetch API
+        {Library.cite('noauthor_using_nodate')}, input field detection
+        Second, the Credential Management API
+        {Library.cite('west_credential_2019')} is a W3C Working Draft
+        that provides a simple mechanism to store and retrieve user credentials into and from
+        the browser. It enables programmatic access to user credentials when the web application prefers
+        asynchronous JavaScipt credential transmission instead of HTML form submission.
+    </p> -->
+    <BenefitList />
+    <References class='mt-12' />
+</div>
+

@@ -1,0 +1,26 @@
+---
+import Library from "../literature/Library";
+import Benefit from "./Benefit.astro";
+// This should be rendered on the server-side,
+// or prerendered since I don't want the Library data
+// (our references) to be in the exposed.
+export const prerender = true;
+---
+
+<div class="flex flex-col gap-6">
+    <Benefit
+        title="Unified Secret Management (platform-agnostic)"
+        text={`Embedded Password Managers can now directly register with the user agent using the WebExtensions API, harmonizing multiple Password Manager usage ${Library.cite('oesch_it_2022', 'stobert_expert_2015')} through the use of secret manager selection prompts.`} />
+    <!-- <Benefit
+        title="Secure Credential Mapping"
+        text={`By leveraging web app authentication for a shared key exchange, app-level eavesdroppers abusing the DOM ${Library.cite('stock_protecting_2014', 'silver_password_2014', 'oesch_that_2020')} or Monkey Patching can no longer steal credentials.`} /> -->
+    <Benefit
+        title="Key-based Credential Mapping"
+        text={`Web apps can assume ownership of cryptographic public keys (Ed25519), eliminating the troublesome domain-based credential mapping ${Library.cite('carr_revisiting_2020', 'oesch_emperors_2021', 'huaman_they_2021', 'blanchou_password_2013')}.`} />
+    <Benefit
+        title="App-level E-2-E Encryption"
+        text={`Berytus faciliates elliptic curve Diffie–Hellman key exchange using Curve25519, a.k.a X25519, between the secret manager and the web app to establish a shared secret for symmetric data encryption. App-level eavesdroppers abusing the DOM ${Library.cite('stock_protecting_2014', 'silver_password_2014', 'oesch_that_2020')} or Monkey Patching can no longer steal credentials.`} />
+    <Benefit
+        title="Challenge-based Authentication"
+        text={`Web applications can now initiate one-or-more authentication challenges instead of exclusively retrieving independent credentials ${Library.cite('west_credential_2019')}.`} />
+</div>

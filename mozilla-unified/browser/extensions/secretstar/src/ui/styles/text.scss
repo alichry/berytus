@@ -1,0 +1,42 @@
+@import './vars.scss';
+
+.sectionText {
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 30px;
+
+    color: #FFF3F3;
+}
+
+.middleText {
+    align-items: center;
+    text-align: center;
+}
+
+.text14 {
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 21px;
+    color: #FFF3F3;
+}
+.text16 {
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    color: #FFF3F3;
+}
+
+.text18 {
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 27px;
+    color: #FFF3F3;
+}

@@ -1,0 +1,52 @@
+---
+import SliderCircle, { ECircleState } from './SliderCircle.astro';
+
+interface Props {
+    class?: string;
+    items: string[];
+    current: string;
+}
+
+const { items, current, class: className } = Astro.props;
+
+const currentIndex = items.indexOf(current);
+if (currentIndex === -1) {
+    throw new Error('Slider current position is not in the list!');
+}
+
+---
+<div class={className}>
+    <div class:list={["flex flex-row gap-2"]}>
+        {
+            items.map((item, i) => (
+                <>
+                    <div>
+                        <SliderCircle
+                            state={
+                                i === currentIndex
+                                ? ECircleState.Active
+                                : i < currentIndex
+                                ? ECircleState.Finished
+                                : ECircleState.Next}
+                        />
+                    </div>
+                    { i < items.length - 1 ? (
+                        <div
+                            class="h-[0.1rem] w-full mt-3.5 border-2 bg-slate-600"
+                        >
+                        </div>
+                    ) : null}
+    
+                </>
+            ))
+        }
+    </div>
+    <div class="flex flex-row justify-between">
+        {
+            items.map(item => (
+                <p class="text-slate-600 text-sm">{item}</p>
+            ))
+        }
+    </div>
+
+</div>

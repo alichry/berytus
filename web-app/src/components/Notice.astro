@@ -1,0 +1,45 @@
+---
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { faCircleInfo, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import faCircleInfoSvg from './svg/faCircleInfo.svg?raw';
+import faCircleXMarkSvg from './svg/faCircleXMark.svg?raw';
+
+export interface Props extends astroHTML.JSX.HTMLAttributes {
+    class?: string;
+    type?: "error" | "info";
+    color?: "red" | "green";
+}
+
+const cssColors = {
+    "info": "fill-teal-300",
+    "error": "fill-red-400"
+}
+const icons = {
+    "info": faCircleInfoSvg,
+    "error" : faCircleXMarkSvg
+}
+
+const { class: className, type = "info", color,  ...otherProps } = Astro.props;
+---
+
+<div
+    class:list={[
+        "text-sm flex px-3 py-3 rounded bg-gray-600 flex-row gap-3 items-center font-bold",
+        className
+    ]}
+    {...otherProps}
+>
+    <div class:list={[
+        cssColors[type],
+        "w-8"
+    ]}>
+        <Fragment set:html={icons[type]} />
+    </div>
+    <!-- <FontAwesomeIcon
+        icon={icons[type]}
+        size="lg"
+        color="white"
+        className={cn(iconColors[type])}
+    /> -->
+    <slot />
+</div>

@@ -1,0 +1,6 @@
+.rowWithBorder {
+    border-bottom: 1px solid #dfdfdf;
+}
+.rowWithBorder:last-child {
+    border-bottom: initial;
+}

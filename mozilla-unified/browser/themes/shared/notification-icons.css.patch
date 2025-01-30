@@ -1,0 +1,13 @@
+--- browser/themes/shared/notification-icons.css.orig	2025-01-29 21:06:25
++++ browser/themes/shared/notification-icons.css	2025-01-29 21:06:25
+@@ -196,6 +196,10 @@
+ #identity-credential-notification-icon,
+ #credential-chooser-notification-icon {
+   list-style-image: url(chrome://browser/skin/login.svg);
++}
++
++#berytus-notification-icon {
++  list-style-image: url(chrome://browser/skin/berytus-login.svg);
+ }
+ 
+ #webRTC-previewVideo {

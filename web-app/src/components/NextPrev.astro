@@ -1,0 +1,17 @@
+---
+interface Props extends astroHTML.JSX.ButtonHTMLAttributes {
+    dir: "next" | "prev";
+}
+const { dir, class: className, ...otherProps } = Astro.props;
+---
+
+<button
+    class:list={[
+        className,
+        "w-16 h-16 pb-1.5 text-4xl text-center rounded-full bg-sky-800 text-white",
+        dir === "next" ? "pl-1 " : "-pl-1"
+    ]}
+    {...otherProps}
+>
+    { dir === "next" ? '>' : '<'}
+</button>

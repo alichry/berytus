@@ -1,0 +1,28 @@
+---
+import Library from "../literature/Library";
+
+interface Props {
+    class?: string;
+}
+
+const { class: className } = Astro.props;
+const references = Library.getCitedReferences();
+---
+
+<div class:list={[className, ""]}>
+    <details class="flex flex-col gap-4">
+        <summary class="mb-8 text-xl text-center">References</summary>
+        {references.map(({ index, citation }) => (
+        <div class="flex flex-row gap-4">
+            <p>[{ index }]</p>
+            <Fragment set:html={
+                (citation as any).format('bibliography', {
+                    format: 'html',
+                    template: 'ieee'
+                })
+            } />
+        </div>
+    ))}
+    </details>
+
+</div>

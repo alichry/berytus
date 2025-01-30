@@ -1,0 +1,113 @@
+---
+import macButtonsSvg from './svg/mac-buttons.svg?raw';
+
+interface Props {
+    ':code': string;
+    ':title': string;
+    ':notice'?: string;
+    class?: string;
+}
+
+const { class: className } = Astro.props;
+let { ':code': xCode, ':title': xTitle, ':notice': xNotice } = Astro.props;
+---
+
+<style>
+    .blockContainer {
+        cursor: default;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        /* background-color: rgb(15 23 42); */
+        background-color: #282c34;
+        padding-left: 12px;
+        /* padding-top: 48px; */
+        padding-top: 12px;
+        font-family: Hack, monospace !important;
+        font-size: 14px;
+        line-height: 145%;
+        user-select: none;
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
+    }
+</style>
+<script>
+    import Alpine from "alpinejs";
+    import {EditorView, basicSetup, minimalSetup} from "codemirror"
+    import { EditorState } from "@codemirror/state"
+    import {oneDark} from "@codemirror/theme-one-dark"
+    import {javascript} from "@codemirror/lang-javascript"
+
+    const view = new EditorView({
+        extensions: [
+            EditorState.readOnly.of(true),
+            minimalSetup,
+            javascript(),
+            oneDark,
+        ],
+        parent: document.getElementById('block') as Element,
+    });
+
+    function computeHeight(code: string): number {
+        // 89px per line
+        // 129.8px for the createChannel block text container
+        // 5/6 lines. 21.633 px per line.
+        // add 48 + 18 px for y-padding
+        // 251.6px for 11/12 lines
+        return (code.split('\n').length * 21.55 + 48 + 18);
+    }
+
+    function updateCodeMirrorDoc(code: string) {
+        // const tx = view.state.update({ changes: [
+        //     { from: 0, insert: Text.of(code.split("\n")) }
+        // ]});
+        // view.dispatch(tx);
+
+        view.dispatch({
+            changes: [
+                { from: 0, to: view.state.doc.length, insert: code }
+            ]
+        })
+        // view.update([tx0, tx1]);
+    }
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('codeblock2', () => ({
+            code: "",
+            // width: 443,
+            width: 600,
+            height: 186,
+            setCode(newCode: string) {
+                if (! newCode) { newCode = ""; }
+                updateCodeMirrorDoc(newCode);
+                this.code = newCode;
+                this.height = computeHeight(this.code);
+            }
+        }))
+    });
+
+</script>
+<div
+    x-data={`codeblock2`}
+    x-init={`
+        setCode(${xCode});
+        $watch('${xCode}', c => { setCode(c); });
+    `}
+    class:list={[className, "w-full"]}
+>
+    <div class="blockContainer">
+        <div>
+            <div class="flex flex-row">
+                <Fragment set:html={macButtonsSvg} />
+                <p x-text={xTitle} class="flex-1 text-center leading-none pr-4 italic text-gray-300"></p>
+            </div>
+            { xNotice ? (
+                <p x-text={xNotice} class="bg-blue-800 mt-3 -ml-3 text-xs text-white py-0.5 text-center"></p>
+            ) : null}
+        </div>
+        <div id="block"></div>
+    </div>
+    <div class="mt-1" />
+    <slot />
+</div>
+

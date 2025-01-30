@@ -1,0 +1,9 @@
+$topBarBottomMargin: 24px;
+
+.container {
+    width: 100vw; // the body's max-width is smaller than html's width. When 100vw, it guarantees the line/border bottom extends all the way
+    border-bottom: 0.7px solid #FFFFFF;
+    display: flex;
+    flex-direction: row;
+    margin-bottom: $topBarBottomMargin;
+}

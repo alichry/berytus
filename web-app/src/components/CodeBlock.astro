@@ -1,0 +1,68 @@
+---
+interface Props {
+    ':code': string;
+    class?: string;
+    ':width'?: string;
+    ':height'?: string;
+}
+
+// width: 443px; height: 186px;
+const { class: className, ':width': xWidth = "'443px'", ':height': xHeight = "'186px'" } = Astro.props;
+let { ':code': xCode } = Astro.props;
+//const baseCodeBlockUrl = 'https://brt-carbon.vercel.app/embed?bg=rgba%28255%2C255%2C255%2C0%29&t=night-owl&wt=none&l=javascript&width=680&ds=false&dsyoff=0px&dsblur=0px&wc=true&wa=true&pv=0px&ph=0px&ln=false&fl=1&fm=Hack&fs=14px&lh=133%25&si=false&es=2x&wm=false&code=';
+const baseCodeBlockUrl = 'https://brt-carbon.vercel.app/embed?bg=rgba%28171%2C184%2C195%2C0%29&t=night-owl&wt=none&l=javascript&width=500&ds=false&dsyoff=20px&dsblur=68px&wc=true&wa=false&pv=0px&ph=0px&ln=false&fl=1&fm=Hack&fs=14px&lh=145%25&si=false&es=2x&wm=false&code=';
+---
+
+<style>
+    iframe {
+        width: 100%;
+        transform: scale(1);
+        overflow: hidden;;
+    }
+</style>
+
+<div
+    x-data={`{
+        code: ${xCode},
+        width: ${xWidth},
+        height: ${xHeight},
+        getUrl() {
+            const url = new URL('${baseCodeBlockUrl}');
+            url.searchParams.set('width', this.width.slice(0, this.width.length - 2));
+            url.searchParams.set('code',  encodeURIComponent(this.code))
+            return url.href;
+        }
+    }`}
+    x-init={`
+        $watch('${xCode}', c => { code = c; });
+        $watch('${xWidth}', c => { width = c; });
+        $watch('${xHeight}', c => { height = c; });
+    `}
+    x-bind:style="`width: ${width};`"
+    class:list={[className]}
+>
+    <!-- x-bind:style={`'width: ' + ${xWidth} + ';'`} -->
+    <!-- src={`https://brt-carbon.vercel.app/embed?bg=rgba%28255%2C255%2C255%2C0%29&t=night-owl&wt=none&l=javascript&width=680&ds=false&dsyoff=0px&dsblur=0px&wc=true&wa=true&pv=0px&ph=0px&ln=false&fl=1&fm=Hack&fs=14px&lh=133%25&si=false&es=2x&wm=false&code=${encodedCode}`} -->
+    <!-- set opacity to 1 and blur to 0px -->
+
+    <iframe
+        x-bind:src={'getUrl()'}
+        x-bind:style="`height: ${height}; width: ${width};`"
+        class="rounded mx-auto"
+        allowfullscreen
+        sandbox="allow-scripts allow-same-origin">
+    </iframe>
+    <!-- https://brt-carbon.vercel.app/?bg=rgba%28171%2C+184%2C+195%2C+1%29&t=seti&wt=none&l=javascript&width=637&ds=true&dsyoff=20px&dsblur=68px&wc=true&wa=false&pv=56px&ph=56px&ln=false&fl=1&fm=Hack&fs=14px&lh=133%25&si=false&es=2x&wm=false&code=const%2520x%2520%253D%25201%250A -->
+
+    <!-- <div
+        class:list={[
+            "-mt-[1px] h-[2rem] w-[0.1rem] border-2 self-center border-[#011627]",
+            "mx-auto"
+        ]}
+    ></div> -->
+    <div class="mt-4" />
+    <div class="mx-auto w-fit">
+        <slot />
+    </div>
+</div>
+

@@ -1,0 +1,86 @@
+@import './vars.scss';
+@import './Input.module.scss';
+
+.button {
+    //all: unset;
+    cursor: pointer;
+    user-select: none;
+
+    //min-width: 121px; // why min-width?
+    min-height: 37px;
+    border-radius: 8px;
+
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 21px;
+
+    align-items: center;
+    text-align: center;
+    color: #FFFFFF;
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+}
+
+.inputButtonAfterBorderStyle {
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: calc($inputBorderRadius + 1px);
+    border-bottom-right-radius: calc($inputBorderRadius + 1px);
+}
+
+.button:not(:disabled):active {
+    //@extend .purpleButton, :hover;
+    //box-shadow: 0 5px #666;
+    transform: translateY(2px);
+}
+
+.inputButtonAfterBorderStyle:not(:disabled):active {
+    transform: none;
+}
+
+.button:disabled {
+    background-color: #b5b5b5 !important;
+    color: black !important;
+}
+
+.purpleButton {
+    @extend .button;
+    background-color: #5308F3;
+}
+
+.purpleButton:hover {
+    background-color: #260078;
+}
+
+.tealButton {
+    @extend .button;
+    background-color: #0f766e; // teal-700
+}
+.tealButton:hover {
+    background-color: #115e59; // teal-800
+}
+
+.redButton {
+    @extend .button;
+    background-color: #8C0000;
+}
+
+.redButton:hover {
+    background-color: #4b0202;
+}
+
+.blueButton {
+    @extend .button;
+    background-color: #1d4ed8;
+}
+
+.blueButton:hover {
+    background-color: #1e40af;
+}
+
+.xsSize {
+    font-size: 0.75rem;
+    min-height: 20px;
+}

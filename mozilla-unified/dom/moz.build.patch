@@ -1,0 +1,10 @@
+--- dom/moz.build.orig	2025-01-29 21:06:24
++++ dom/moz.build	2025-01-29 21:06:24
+@@ -27,6 +27,7 @@
+     "abort",
+     "animation",
+     "base",
++    "berytus",
+     "bindings",
+     "battery",
+     "cache",

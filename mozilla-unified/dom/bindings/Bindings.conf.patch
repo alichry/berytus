@@ -1,0 +1,51 @@
+--- dom/bindings/Bindings.conf.orig	2025-01-29 21:06:25
++++ dom/bindings/Bindings.conf	2025-01-29 21:06:25
+@@ -79,8 +79,48 @@
+ 'BatteryManager': {
+     'nativeType': 'mozilla::dom::battery::BatteryManager',
+     'headerFile': 'BatteryManager.h'
++},
++
++'BerytusAccountAuthenticationOperation': {
++    'implicitJSContext': ['challenge']
++},
++
++'BerytusChallenge': {
++    'implicitJSContext': ['send', 'abort', 'seal', 'abortWithUserInterruptError', 'abortWithGenericWebAppFailureError']
++},
++
++'BerytusChannel': {
++    'implicitJSContext': [ 'create', 'login' ],
++},
++
++'BerytusDigitalSignatureChallenge': {
++    'implicitJSContext': [ 'selectKey', 'signNonce', 'abortWithPublicKeyMismatchError', 'abortWithInvalidSignatureError' ],
++},
++
++'BerytusAccountCreationOperation': {
++    'implicitJSContext': [ 'addFields', 'rejectAndReviseFields', 'setUserAttributes' ],
++},
++
++'BerytusField': {
++    'implicitJSContext': [ 'value' ],
+ },
+ 
++'BerytusIdentificationChallenge': {
++    'implicitJSContext': ['getIdentityFields', 'abortWithIdentityDoesNotExistsError']
++},
++
++'BerytusOffChannelOtpChallenge': {
++    'implicitJSContext': ['getOtp', 'abortWithIncorrectOtpError']
++},
++
++'BerytusPasswordChallenge': {
++    'implicitJSContext': [ 'getPasswordFields', 'abortWithIncorrectPasswordError' ],
++},
++
++'BerytusSecureRemotePasswordChallenge': {
++    'implicitJSContext': [ 'selectSecurePassword', 'exchangePublicKeys', 'computeClientProof', 'verifyServerProof', 'abortWithInvalidProofError' ],
++},
++
+ 'Blob': {
+     'implicitJSContext': [ 'stream' ],
+ },

@@ -1,0 +1,18 @@
+---
+interface Props {
+    class?: string;
+    title: string;
+    text: string;
+}
+
+const { class: className, title, text } = Astro.props;
+---
+<!-- max-w-[42rem]  -->
+<div class:list={["rounded border-white border-2 py-4 px-6 ", className]}>
+    <ul class="list-disc">
+        <li class="text-lg ml-3 font-bold mr-2">
+            { title } —
+            <span class="font-normal text-base">{ text }</span>
+        </li>
+    </ul>
+</div>

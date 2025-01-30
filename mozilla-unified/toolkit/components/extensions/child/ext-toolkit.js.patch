@@ -1,0 +1,14 @@
+--- toolkit/components/extensions/child/ext-toolkit.js.orig	2025-01-29 21:06:25
++++ toolkit/components/extensions/child/ext-toolkit.js	2025-01-29 21:06:25
+@@ -16,6 +16,11 @@
+       ["runtime", "getBackgroundPage"],
+     ],
+   },
++  berytus: {
++    url: "chrome://extensions/content/child/ext-berytus.js",
++    scopes: ["addon_child"],
++    paths: [["berytus"]],
++  },
+   contentScripts: {
+     url: "chrome://extensions/content/child/ext-contentScripts.js",
+     scopes: ["addon_child"],

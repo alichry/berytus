@@ -1,0 +1,10 @@
+--- toolkit/components/moz.build.orig	2025-01-29 21:06:24
++++ toolkit/components/moz.build	2025-01-29 21:06:24
+@@ -20,6 +20,7 @@
+     "apppicker",
+     "asyncshutdown",
+     "backgroundhangmonitor",
++    "berytus",
+     "bitsdownload",
+     "browser",
+     "cascade_bloom_filter",

@@ -1,0 +1,12 @@
+{
+  "files": {
+    "main.js": "./static/js/main.js",
+    "dexie-lib.js": "./static/js/dexie-lib.js",
+    "index.html": "./index.html",
+    "main.js.map": "./static/js/main.js.map",
+    "dexie-lib.js.map": "./static/js/dexie-lib.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.js"
+  ]
+}

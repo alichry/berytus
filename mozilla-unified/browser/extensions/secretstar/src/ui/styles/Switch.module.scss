@@ -1,0 +1,73 @@
+$radius: 1rem;
+$height: 24px;
+
+// #8f86a3
+$switchColor: #7f44fd;
+$uncheckedSwitchColor: gray;
+//$switchHoverColor: #6e00d5;
+$switchHoverColor: #7f44fd;
+
+$checkedColor: rgb(225, 234, 252);
+$uncheckedColor: rgb(0, 28, 48);
+
+// $switchColor: #8f86a3;
+
+// $checkedColor: #7f44fd;
+// $uncheckedColor: rgb(0, 28, 48);
+
+.switchContainer {
+    display: block;
+    max-width: 50px;
+    height: $height;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.checkbox {
+    all: unset;
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 100%;
+    border-radius: $radius;
+}
+
+.switch::after {
+    width: 18px;
+    display: block;
+    height: 18px;
+    border-radius: 50%;
+
+    margin-left: calc(46px - 18px - 4px);
+    margin-top: 3px;
+    content: "";
+
+    background-color: $uncheckedColor;
+    transition: transform 0.1s;
+}
+
+.switchContainer .checkbox ~ .switch {
+    background-color: $uncheckedSwitchColor;
+}
+.switchContainer .checkbox:checked ~ .switch {
+    background-color: $switchColor;
+}
+.switchContainer .checkbox:checked ~ .switch::after {
+    transform:  translateX(-(46px - 18px - 4px) + 4px);
+    background-color: $checkedColor;
+}
+
+.switchContainer:hover .checkbox ~ .switch {
+    background-color: $switchHoverColor;
+    opacity: 0.8;
+}

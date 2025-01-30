@@ -1,0 +1,56 @@
+@import './vars.scss';
+
+.container {
+    display: flex;
+    flex-direction: row;
+}
+
+.leftContainer {
+    flex: 3;
+    margin-left: 28px;
+    margin-right: 28px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.rightContainer {
+    flex: 2;
+    margin-left: 28px;
+    margin-right: 28px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.savedAccountsContainer {
+    border-radius: 10px;
+    background-color: #870049;
+    min-height: 134px;
+    max-height: 154px;
+    width: 100%;
+    overflow: auto;
+}
+
+.savedAccountRow {
+    font-family: $mplus1p;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 21px;
+
+    align-items: center;
+    text-align: center;
+
+    color: #FFFFFF;
+}
+
+.savedAccountRow:hover {
+    background-color: #260078;
+}
+.button80 {
+    width: 80%;
+}

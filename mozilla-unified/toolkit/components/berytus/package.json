@@ -1,0 +1,22 @@
+{
+  "author": "Ali Cherry",
+  "name": "berytus",
+  "type": "module",
+  "scripts": {
+    "prebuild:rm": "test -d ./modules && rm -r ./modules/* || true",
+    "prebuild:generate-webidl-types": "./build/webidl/gen-webidl-ts.sh",
+    "prebuild:generate-requesthandler": "node --loader ts-node/esm ./build/request-handler/generate.ts",
+    "prebuild:produce-ts-compiler-paths": "node --loader ts-node/esm ./build/paths/produce-ts-compiler-paths.ts",
+    "prebuild:produce-ts-import-map": "node --loader ts-node/esm ./build/paths/produce-ts-import-map.ts",
+    "prebuild": "npm run prebuild:rm && npm run prebuild:generate-webidl-types && npm run prebuild:produce-ts-compiler-paths && npm run prebuild:produce-ts-import-map && npm run prebuild:generate-requesthandler",
+    "build": "tsc",
+    "postbuild": "npm run postbuild:tailor-build",
+    "postbuild:tailor-build": "node --loader ts-node/esm ./build/modules/tailor-build.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "ts-morph": "^23.0.0",
+    "ts-node": "^10.9.2",
+    "webidl-dts-gen": "1.7.0"
+  }
+}

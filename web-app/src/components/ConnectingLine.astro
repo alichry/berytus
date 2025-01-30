@@ -1,0 +1,22 @@
+---
+interface Props {
+    class?: string;
+}
+const { class: className } = Astro.props;
+
+---
+<!--
+x-data={`{
+    className: "${cn("h-[0.1rem] self-center bg-slate-100 max-w-36", className)}"
+}`}
+x-bind:class="className"
+-->
+<div
+
+    class:list={[
+        "h-[0.1rem] self-center bg-slate-100 max-w-36 min-w-4",
+        className
+    ]}
+>
+
+</div>

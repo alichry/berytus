@@ -1,0 +1,33 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    "src/**/*.ts", "test/",
+  ],
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@root/*": [
+        "./src/*"
+      ],
+      "@test/*": [
+        "./test/*"
+      ],
+      "@pages/*": [
+        "./pages/*"
+      ],
+      "@components/*": [
+        "./src/components/*"
+      ],
+      "@svg/*": [
+        "./src/svg/*"
+      ],
+      "@utils/*": [
+        "./src/utils/*"
+      ]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "useDefineForClassFields": false
+  }
+}

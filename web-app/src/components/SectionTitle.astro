@@ -1,0 +1,16 @@
+---
+import DashedLine from './DashedLine.astro';
+
+interface Props {
+    title: string;
+    class?: string;
+}
+
+const { title, class: className } = Astro.props;
+
+---
+<div class:list={[className, "flex flex-row gap-4 my-4"]}>
+    <p class="font-medium text-2xl text-blue-50 ">{ title }</p>
+    <!-- <div class="h-[0.1rem] self-center bg-slate-600 flex-1"></div> -->
+    <DashedLine />
+</div>

@@ -1,0 +1,87 @@
+# -*- Mode: python; indent-tabs-mode: nil; tab-width: 40 -*-
+# vim: set filetype=python:
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+#TEST_DIRS += ["tests"]
+
+EXPORTS.mozilla.dom += [
+    "BerytusAccount.h",
+    "BerytusAccountAuthenticationOperation.h",
+    "BerytusAccountCreationOperation.h",
+    "BerytusAccountMetadata.h",
+    "BerytusAnonymousWebAppActor.h",
+    "BerytusBuffer.h",
+    "BerytusChallenge.h",
+    "BerytusChallengeMap.h",
+    "BerytusChallengeParameters.h",
+    "BerytusChannel.h",
+    "BerytusCryptoWebAppActor.h",
+    "BerytusDigitalSignatureChallenge.h",
+    "BerytusEncryptedPacket.h",
+    "BerytusField.h",
+    "BerytusFieldMap.h",
+    "BerytusFieldValueDictionary.h",
+    "BerytusForeignIdentityField.h",
+    "BerytusIdentificationChallenge.h",
+    "BerytusIdentityField.h",
+    "BerytusKeyAgreementParameters.h",
+    "BerytusKeyField.h",
+    "BerytusKeyFieldValue.h",
+    "BerytusLoginOperation.h",
+    "BerytusOffChannelOtpChallenge.h",
+    "BerytusPasswordChallenge.h",
+    "BerytusPasswordField.h",
+    "BerytusSecretManagerActor.h",
+    "BerytusSecurePasswordField.h",
+    "BerytusSecurePasswordFieldValue.h",
+    "BerytusSecureRemotePasswordChallenge.h",
+    "BerytusSharedKeyField.h",
+    "BerytusSharedKeyFieldValue.h",
+    "BerytusUserAttribute.h",
+    "BerytusUserAttributeMap.h",
+    "BerytusWebAppActor.h",
+]
+
+UNIFIED_SOURCES += [
+    "BerytusAccount.cpp",
+    "BerytusAccountAuthenticationOperation.cpp",
+    "BerytusAccountCreationOperation.cpp",
+    "BerytusAccountMetadata.cpp",
+    "BerytusAnonymousWebAppActor.cpp",
+    "BerytusBuffer.cpp",
+    "BerytusChallenge.cpp",
+    "BerytusChallengeMap.cpp",
+    "BerytusChallengeParameters.cpp",
+    "BerytusChannel.cpp",
+    "BerytusCryptoWebAppActor.cpp",
+    "BerytusDigitalSignatureChallenge.cpp",
+    "BerytusEncryptedPacket.cpp",
+    "BerytusField.cpp",
+    "BerytusFieldMap.cpp",
+    "BerytusFieldValueDictionary.cpp",
+    "BerytusForeignIdentityField.cpp",
+    "BerytusIdentificationChallenge.cpp",
+    "BerytusIdentityField.cpp",
+    "BerytusKeyAgreementParameters.cpp",
+    "BerytusKeyField.cpp",
+    "BerytusKeyFieldValue.cpp",
+    "BerytusLoginOperation.cpp",
+    "BerytusOffChannelOtpChallenge.cpp",
+    "BerytusPasswordChallenge.cpp",
+    "BerytusPasswordField.cpp",
+    "BerytusSecretManagerActor.cpp",
+    "BerytusSecurePasswordField.cpp",
+    "BerytusSecurePasswordFieldValue.cpp",
+    "BerytusSecureRemotePasswordChallenge.cpp",
+    "BerytusSharedKeyField.cpp",
+    "BerytusSharedKeyFieldValue.cpp",
+    "BerytusUserAttribute.cpp",
+    "BerytusUserAttributeMap.cpp",
+    "BerytusWebAppActor.cpp",
+]
+
+include("/ipc/chromium/chromium-config.mozbuild")
+
+FINAL_LIBRARY = "xul"

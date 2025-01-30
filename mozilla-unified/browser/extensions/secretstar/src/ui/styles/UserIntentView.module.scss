@@ -1,0 +1,11 @@
+@import './vars.scss';
+
+.topContainer {
+    border-bottom: 0.7px solid #FFFFFF;
+    display: flex;
+    flex-direction: row;
+}
+
+.bottomContainer {
+    margin-top: 8px;
+}

@@ -1,0 +1,11 @@
+--- toolkit/components/extensions/test/xpcshell/xpcshell.toml.orig	2025-01-29 21:06:25
++++ toolkit/components/extensions/test/xpcshell/xpcshell.toml	2025-01-29 21:06:25
+@@ -62,6 +62,8 @@
+ 
+ ["test_csp_validator.js"]
+ 
++["test_ext_berytus.js"]
++
+ ["test_ext_clear_cached_resources.js"]
+ 
+ ["test_ext_contexts.js"]

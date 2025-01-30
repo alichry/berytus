@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@root/*": ["./src/*"],
+        "@styles/*": ["./src/ui/styles/*"],
+        "@props/*": ["./src/ui/props/*"],
+        "@components/*": ["./src/ui/components/*"],
+        "@controlled/*": ["./src/ui/controlled/*"],
+        "@ui-utils/*": ["./src/ui/utils/*"],
+        "@berytus/types": ["../../../toolkit/components/berytus/src/types"],
+        "@berytus/enums": ["../../../toolkit/components/berytus/src/enums"],
+        "@berytus/types-extd": ["../../../toolkit/components/berytus/src/generated/berytus.web.d.ts"]
+      }
+    }
+  }

@@ -1,0 +1,34 @@
+.iconContainer {
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.iconSubmitted {
+    display: block;
+    color: #5eead4; // teal-300
+}
+.iconError {
+    // hidden by default
+    display: none;
+    color: #f43f5e; // rose-500
+    
+}
+
+.input:invalid ~ .iconContainer .iconSubmitted {
+    // we hide the submitted icon
+    // even if the React prop submitted is
+    // true. This is a good indication
+    // that something is wrong when
+    // the input is invalid and the
+    // passed prop submitted is true.
+    display: none;
+}
+.input:invalid ~ .iconContainer .iconError {
+    display: block;
+}
+
+.input:valid:placeholder-shown ~ .iconContainer .iconSubmitted {
+    display: none;
+}

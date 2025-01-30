@@ -1,0 +1,15 @@
+@import "./TopBar.module.scss";
+@import "./Logo.module.scss";
+
+$topBarHeight: calc($topBarBottomMargin + $logoContainerHeight);
+$remainingHeight: calc(100vh - $topBarHeight);
+
+// not in use
+// .fixedContainer {
+//     position: absolute;
+//     top: 50;
+// }
+
+.loading {
+    height: $topBarHeight;
+}

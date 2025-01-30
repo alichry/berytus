@@ -1,0 +1,72 @@
+---
+import Button from "./Button.astro";
+import Input from "./Input.astro";
+import ShiftRight from "./ShiftRight.astro";
+
+interface Props {
+    class?: string;
+    ':class'?: string;
+}
+
+const { class: className, ":class": apClass } = Astro.props;
+
+---
+
+<form
+    class:list={[className, "flex flex-col gap-4"]}
+    x-bind:class={apClass}
+    x-data="registerForm"
+    @submit.prevent="submit"
+>
+    <Input
+        label="Email address"
+        name="email"
+        type="email"
+        x-model="input.email"
+        fullWidth
+    />
+    <Input
+        label="Password"
+        name="password"
+        type="password"
+        x-model="input.password"
+        fullWidth
+    />
+    <Input
+        label="First name"
+        name="firstName"
+        x-model="input.firstName"
+        fullWidth
+    />
+    <Input
+        label="Last name"
+        name="lastName"
+        x-model="input.lastName"
+        fullWidth
+    />
+
+    <ShiftRight class="mb-4">
+        <Button>Register</Button>
+    </ShiftRight>
+
+</form>
+
+<script>
+    import Alpine from "alpinejs"
+    Alpine.data('registerForm', () => ({
+        input: {},
+        async submit() {
+            console.log(this.input);
+            // so here we should submit the data to the API
+            const res = await fetch('register', {
+                method: "POST",
+                body: JSON.stringify({
+                    email: this.input.email,
+                    password: this.input.password,
+                    firstName: this.input.firstName,
+                    lastName: this.input.lastName
+                })
+            });
+        }
+    }))
+</script>

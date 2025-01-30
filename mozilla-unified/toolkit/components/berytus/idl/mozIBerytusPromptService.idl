@@ -1,0 +1,22 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#include "nsISupports.idl"
+#include "nsIPropertyBag.idl"
+#include "mozIDOMWindow.idl"
+
+[scriptable, uuid(90210cbf-0996-4d69-b1fa-d569680404e0)]
+interface mozIBerytusPromptService : nsISupports {
+
+    Promise promptUsingPopupNotification(
+        in mozIDOMWindow innerWindow,
+        in AString args_webAppCryptoActor,
+        in Array<AString> args_channelConstraints_secretManagerPublicKey,
+        in boolean args_channelConstraints_enableEndToEndEncryption,
+        in AString args_accountConstraints_category,
+        in uint32_t args_accountConstraints_schemaVersion,
+        in nsIPropertyBag args_accountConstraints_identity
+    );
+};
+

@@ -1,0 +1,12 @@
+@import './Input.module.scss';
+$errorBorderColor: #b91c1c; // from SuperInput.module.scss. Can't import since this and the above define .input
+
+.textArea {
+    @extend .input;
+    height: 100%;
+    width: 100%;
+}
+
+.textArea:invalid[dirty=""] {
+    border-color: $errorBorderColor;
+}

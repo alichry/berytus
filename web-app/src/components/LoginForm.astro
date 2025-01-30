@@ -1,0 +1,23 @@
+---
+import Button from "./Button.astro";
+import Input from "./Input.astro";
+import ShiftRight from "./ShiftRight.astro";
+
+interface Props {
+    class?: string;
+    ':class'?: string;
+}
+
+const { class: className, ":class": apClass } = Astro.props;
+---
+
+<form class:list={[className, "flex flex-col gap-4"]} x-bind:class={apClass}>
+    <Input
+        label="Email address"
+        type="email"
+        fullWidth
+    />
+    <ShiftRight class="mb-4">
+        <Button>Next</Button>
+    </ShiftRight>
+</form>

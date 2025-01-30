@@ -1,0 +1,5 @@
+$invalidInput: '.input:invalid[dirty=""], .input:invalid[data-dirty="1"]';
+$invalidInputPlaceholder: '.input:invalid[dirty=""]::placeholder, .input:invalid[data-dirty="1"]::placeholder';
+$invalidInputPlaceholderShown: '.input:invalid:placeholder-shown[dirty=""], .input:invalid:placeholder-shown[data-dirty="1"]';
+
+$errorBorderColor: #b91c1c;

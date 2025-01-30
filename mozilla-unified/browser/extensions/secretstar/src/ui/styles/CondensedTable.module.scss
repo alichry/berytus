@@ -1,0 +1,60 @@
+$borderRadius: 8px;
+$tableBgColor: #fff;
+$evenRowColor: #c0c0c0; // rows start at 1
+
+.tableContainer {
+    border-collapse: collapse;
+    background-color: $tableBgColor;
+    border-radius: $borderRadius;
+}
+.noBorderRadius {
+    border-radius: initial;
+}
+
+// BRTTODO: This seems to be unused. remove
+.rowEven {
+    background-color: #e6e6e6;
+}
+
+.tableContainer thead tr {
+    border-bottom: 1px solid $evenRowColor;
+}
+
+.tableContainer td, .tableContainer th {
+    //border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+    padding-left: 1rem;
+}
+
+.tableContainer tr:nth-child(even) > td {
+    background-color: #dddddd;
+    //border-right-color: #c0c0c0;
+}
+.tableContainer tr:last-child > td {
+    border-bottom-left-radius: $borderRadius;
+    border-bottom-right-radius: $borderRadius;
+    //border-right-color: inherit;
+}
+
+
+/* To make .tableContainer border-radius active instead of being overriden */
+.tableContainer tr:first-child *:first-child {
+    border-left: initial;
+    border-top: initial;
+}
+.tableContainer tr:first-child *:last-child {
+    border-right: initial;
+    border-top: initial;
+}
+// TODO: Prehaps replace *:first or *:last with > td and apply
+// all of the required border properties at once
+.tableContainer tr:last-child *:first-child {
+    border-left: initial;
+    border-bottom: initial;
+}
+.tableContainer tr:last-child *:last-child {
+    border-right: initial;
+    border-bottom: initial;
+}
+
