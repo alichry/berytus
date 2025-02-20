@@ -202,14 +202,14 @@ login();
                 href="##TODO(berytus): Insert binary link"
                 target="_blank"
             >
-            <Button class="text-base pb-2 cursor-not-allowed" disabled title="coming soon">
-                <Image
-                    src={WindowsSvg}
-                    alt="Firefox Nightly"
-                    class="w-[24px] inline mr-1"
-                />
-                <i class="not-italic">Windows</i>
-            </Button>
+                <Button class="text-base pb-2 cursor-not-allowed" disabled title="coming soon">
+                    <Image
+                        src={WindowsSvg}
+                        alt="Firefox Nightly"
+                        class="w-[19px] inline mr-1"
+                    />
+                    <i class="not-italic">Windows</i>
+                </Button>
             </a>
             <a
                 class="no-underline"
@@ -234,7 +234,7 @@ login();
                     <Image
                         src={LinuxPng}
                         alt="Firefox Nightly"
-                        class="w-[20px] inline mr-1"
+                        class="w-[24px] inline mr-1"
                     />
                     <i class="not-italic">Linux (x86_64)</i>
                 </Button>
@@ -311,7 +311,7 @@ EOF
             </ul>
         </details>
         <hr class="my-2" />
-        <details class="mt-3">
+        <details class="mt-4">
             <summary class="font-medium text-lg text-slate-700">
                 Launch instructions
             </summary>
@@ -343,6 +343,39 @@ EOF
                 browser your running supports the Berytus API.
                 Navigate to the bottom of this web page to start experimenting.
             </p>
+        </details>
+        <hr class="my-2" />
+        <details class="mt-3">
+            <summary class="font-medium text-lg text-slate-700">
+                Open Source Roadmap
+            </summary>
+            <p class="text-slate-800 mt-2 block">
+                There has been, in some sense, three development iterations
+                of Berytus. Berytus v0.2 has been rewritten from its previous
+                iteration that heavily relied on XPCOM to execute JavaScript
+                in the browser chrome. This was not performant, and Berytus
+                v0.2 eradicated such heavy dependency on XPCOM.
+            </p>
+            <p class="text-slate-800 mt-2 block">
+                We aim to implement the features below within 8 months.
+                We will be pushing incremental updates as time goes by.
+            </p>
+            <ul class="list-disc ml-6 mt-2 text-slate-800 [&>li]:mt-1">
+                <li>
+                    (Core): Authentication of Web App Ed25519 keys using website certificates.
+                </li>
+                <li>
+                    (Core): Ensure only at most 1 channel can be active within a browser context.
+                </li>
+                <li>
+                    (Secret*): Adapt implementation to support encrypted field data and encrypted user attributes.
+                </li>
+                <li>
+                    (Core/Liaison): Bind request handlers to BrowsingContexts using WeakMap. This would ensure
+                    the implementation of SequentialRequestHandler is applicable on a browsing context level
+                    instead of on a global level.
+                </li>
+            </ul>
         </details>
     </div>
 
