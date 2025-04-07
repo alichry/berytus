@@ -27,9 +27,10 @@
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusAccountAuthenticationOperation.h"
 #include "mozilla/dom/BerytusAccountCreationOperation.h"
+#include "nsTHashSet.h"
+#include "nsTHashMap.h"
 
 namespace mozilla::dom {
-
 
 NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusChannel, (mGlobal, mWebAppActor, mSecretManagerActor, mKeyAgreementParams, mAgent), (mCachedConstraints))
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusChannel)
@@ -38,6 +39,23 @@ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusChannel)
   NS_WRAPPERCACHE_INTERFACE_MAP_ENTRY
   NS_INTERFACE_MAP_ENTRY(nsISupports)
 NS_INTERFACE_MAP_END
+
+/**
+ * A few notes regarding the "at most one channel
+ * is active under a browsing context/window" implementation:
+ * AFAIK, present Firefox design enables a child process to
+ * manage multiple browsing contexts. Thus, within each child process,
+ * we maintain a set of inner window ids where channels are active
+ * or in the process of being created. If one process manages one
+ * browsing context/window, there would not be a need for a set.
+ *
+ * Also, NOTE(berytus): We assume that in the case when an
+ * inner window is destroyed, any BerytusChannel instance should
+ * have been deconstructed a priori. Otherwise, an observer for
+ * destruction of deleted inner windows should be setup to 
+ * clean up entries from the set. TODO(berytus): Verify the above.
+ */
+nsTHashSet<uint64_t> BerytusChannel::mRegisteredWindows = nsTHashSet<uint64_t>();
 
 BerytusChannel::BerytusChannel(
   nsIGlobalObject* aGlobal,
@@ -58,11 +76,17 @@ BerytusChannel::BerytusChannel(
   nsIDToCString uuidString(nsID::GenerateUUID());
   mId.Assign(NS_ConvertUTF8toUTF16(uuidString.get()));
   mozilla::HoldJSObjects(this);
+  MOZ_ASSERT(aGlobal);
+  nsPIDOMWindowInner* inner = aGlobal->GetAsInnerWindow();
+  MOZ_ASSERT(inner);
+  MOZ_ASSERT(!CanRegisterInWindow(inner));
+  mInnerWindowId = inner->WindowID();
 }
 
 BerytusChannel::~BerytusChannel()
 {
   mozilla::DropJSObjects(this);
+  UnregisterInWindow(mInnerWindowId);
 }
 
 JSObject*
@@ -137,19 +161,74 @@ berytus::AgentProxy& BerytusChannel::Agent() const {
   return *mAgent;
 }
 
+bool BerytusChannel::RegisterInWindow(nsPIDOMWindowInner* aInner) {
+  MOZ_ASSERT(aInner);
+  if (mRegisteredWindows.Contains(aInner->WindowID())) {
+    return false;
+  }
+  mRegisteredWindows.Insert(aInner->WindowID());
+  return true;
+}
+
+void BerytusChannel::UnregisterInWindow(const uint64_t& aInnerWindowId) {
+  mRegisteredWindows.Remove(aInnerWindowId);
+}
+
+bool BerytusChannel::CanRegisterInWindow(nsPIDOMWindowInner* aInner) {
+  // NOTE(berytus): Assuming only the main thread can construct objects.
+  return !mRegisteredWindows.Contains(aInner->WindowID());
+}
+
+
 already_AddRefed<Promise> BerytusChannel::Create(
-    const GlobalObject& aGlobal,
-    JSContext* aCx,
-    const BerytusChannelOptions& aOptions,
-    ErrorResult& aRv) {
-  nsresult rv;
+  const GlobalObject& aGlobal,
+  JSContext* aCx,
+  const BerytusChannelOptions& aOptions,
+  ErrorResult& aRv) {
+  return CreateGuard(aGlobal, aCx, aOptions, aRv);
+}
+
+already_AddRefed<Promise> BerytusChannel::CreateGuard(
+  const GlobalObject& aGlobal,
+  JSContext* aCx,
+  const BerytusChannelOptions& aOptions,
+  ErrorResult& aRv) {
   nsCOMPtr<nsIGlobalObject> nsGlobal =
       do_QueryInterface(aGlobal.GetAsSupports());
   if (NS_WARN_IF(!nsGlobal)) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-  RefPtr<Promise> outPromise = Promise::Create(nsGlobal, aRv);
+  nsPIDOMWindowInner* innerWindow = nsGlobal->GetAsInnerWindow();
+  if (NS_WARN_IF(!innerWindow)) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return nullptr;
+  }
+  if (!CanRegisterInWindow(innerWindow)) {
+    aRv.ThrowInvalidStateError("Channel cannot be created as another one is active in the same window.");
+    return nullptr;
+  }
+  uint64_t innWinId = innerWindow->WindowID();
+  MOZ_ASSERT(RegisterInWindow(innerWindow));
+  RefPtr<Promise> res = CreateInner(nsGlobal, aCx, aOptions, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    UnregisterInWindow(innWinId);
+    return nullptr;
+  }
+  res->AddCallbacksWithCycleCollectedArgs([](JSContext* aCx, JS::Handle<JS::Value> aValue, ErrorResult& aRv){},
+                               [innWinId](JSContext* aCx, JS::Handle<JS::Value> aValue, ErrorResult& aRv) {
+      BerytusChannel::UnregisterInWindow(innWinId);
+    });
+  return res.forget();
+}
+
+already_AddRefed<Promise> BerytusChannel::CreateInner(
+    const nsCOMPtr<nsIGlobalObject>& aGlobal,
+    JSContext* aCx,
+    const BerytusChannelOptions& aOptions,
+    ErrorResult& aRv) {
+  nsresult rv;
+  RefPtr<Promise> outPromise = Promise::Create(aGlobal, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
@@ -160,7 +239,7 @@ already_AddRefed<Promise> BerytusChannel::Create(
     aRv.Throw(rv);
     return nullptr;
   }
-  nsPIDOMWindowInner* inner = nsGlobal->GetAsInnerWindow();
+  nsPIDOMWindowInner* inner = aGlobal->GetAsInnerWindow();
   if (NS_WARN_IF(!inner)) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
@@ -278,7 +357,7 @@ already_AddRefed<Promise> BerytusChannel::Create(
     FromJSVal(aCx, aValue, fr);
     outPromise->MaybeReject(fr.ToErrorResult());
   };
-  selectPromise->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsGlobal);
+  selectPromise->AddCallbacksWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), aGlobal);
   return outPromise.forget();
 }
 
@@ -305,6 +384,7 @@ already_AddRefed<Promise> BerytusChannel::Close(ErrorResult& aRv)
     GetCurrentSerialEventTarget(), __func__,
     [outPromise, this](void* aIgnore) {
       mActive = false;
+      UnregisterInWindow(mInnerWindowId);
       mAgent->Disable();
       outPromise->MaybeResolveWithUndefined();
     }, [outPromise](const berytus::Failure& aRs) {

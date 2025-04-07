@@ -1,5 +1,5 @@
---- toolkit/components/extensions/jar.mn.orig	2025-01-29 21:06:25
-+++ toolkit/components/extensions/jar.mn	2025-01-29 21:06:25
+--- toolkit/components/extensions/jar.mn.orig	2025-04-07 19:18:13
++++ toolkit/components/extensions/jar.mn	2025-04-07 19:18:13
 @@ -10,6 +10,7 @@
      content/extensions/parent/ext-activityLog.js (parent/ext-activityLog.js)
      content/extensions/parent/ext-alarms.js (parent/ext-alarms.js)

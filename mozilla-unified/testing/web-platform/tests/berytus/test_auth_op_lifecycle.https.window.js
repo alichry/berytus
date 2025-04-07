@@ -34,10 +34,10 @@ promise_test(async (t) => {
     const { operation, channel } = await operationCtx();
     await operation.finish();
     const challenge = new BerytusIdentificationChallenge("identification");
-    const prom = operation.createChallenge(challenge);
+    const prom = operation.challenge(challenge);
     await promise_rejects_dom(
         t, 'InvalidStateError', Promise.race([prom, Promise.resolve()]),
-        'createChallenge should have returned an already-rejected promise.');
+        'challenge() should have returned an already-rejected promise.');
 
     await channel.close();
 }, "BerytusAccountAuthenticationOperation disables creation of challenges after closure.");

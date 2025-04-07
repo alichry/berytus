@@ -27,7 +27,7 @@ promise_test(async () => {
     const { operation, channel } = await operationCtx();
     const challenge = new BerytusIdentificationChallenge('identification');
     assert_equals(challenge.active, false);
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
     assert_equals(challenge.active, true);
     assert_equals(operation.challenges.get('identification'), challenge);
     const { response } = await challenge.getIdentityFields(["username"]);
@@ -43,7 +43,7 @@ promise_test(async () => {
     const { operation, channel } = await operationCtx();
     const challenge = new BerytusOffChannelOtpChallenge('otp');
     assert_equals(challenge.active, false);
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
     assert_equals(challenge.active, true);
     assert_equals(operation.challenges.get('otp'), challenge);
     const { response } = await challenge.getOtp("email");
@@ -57,7 +57,7 @@ promise_test(async () => {
     const { operation, channel } = await operationCtx();
     const challenge = new BerytusPasswordChallenge('password');
     assert_equals(challenge.active, false);
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
     assert_equals(challenge.active, true);
     assert_equals(operation.challenges.get('password'), challenge);
     const { response } = await challenge.getPasswordFields(["password"]);
@@ -73,7 +73,7 @@ promise_test(async () => {
     const { operation, channel } = await operationCtx();
     const challenge = new BerytusDigitalSignatureChallenge('signature');
     assert_equals(challenge.active, false);
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
     assert_equals(operation.challenges.get('signature'), challenge);
     assert_equals(challenge.active, true);
 
@@ -99,7 +99,7 @@ promise_test(async () => {
     const { operation, channel } = await operationCtx();
     const challenge = new BerytusSecureRemotePasswordChallenge('srp');
     assert_equals(challenge.active, false);
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
     assert_equals(operation.challenges.get('srp'), challenge);
     assert_equals(challenge.active, true);
 
@@ -127,7 +127,7 @@ promise_test(async () => {
 promise_test(async () => {
     const { operation, channel } = await operationCtx();
     const challenge = new BerytusSecureRemotePasswordChallenge('srp');
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
 
     var { response } = await challenge.selectSecurePassword("securePassword");
     assert_equals(typeof response, 'string');
@@ -154,7 +154,7 @@ promise_test(async () => {
     const challenge = new BerytusSecureRemotePasswordChallenge('srp', {
         encoding: "None"
     });
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
 
     var { response } = await challenge.selectSecurePassword("securePassword");
     assert_equals(typeof response, 'string');
@@ -185,7 +185,7 @@ promise_test(async () => {
     const challenge = new BerytusSecureRemotePasswordChallenge('srp', {
         encoding: "Hex"
     });
-    await operation.createChallenge(challenge);
+    await operation.challenge(challenge);
 
     var { response } = await challenge.selectSecurePassword("securePassword");
     assert_equals(typeof response, 'string');

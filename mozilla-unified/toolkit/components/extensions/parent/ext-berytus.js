@@ -22,6 +22,8 @@ const { liaison } = ChromeUtils.importESModule(
   "resource://gre/modules/BerytusLiaison.sys.mjs"
 );
 
+const isInTest = Services.env.get("MOZ_TEST_BERYTUS_WEBEXT");
+
 function findTabByInnerWindowId(innerWindowId) {
   // TODO(berytus): From ext-authRealm: use windowTracker.browserWindows() iterator
   const chromeWindows = Services.wm.getEnumerator("navigator:browser");
@@ -187,9 +189,11 @@ this.berytus = class BerytusExtensionAPI extends ExtensionAPIPersistent {
       cx.response.reject("GeneralError2");
       return;
     }
-    const nativeTab = findTabByInnerWindowId(cx.document.id);
-    const tabId = tabTracker.getId(nativeTab);
-    cx.document.id = tabId; // replace innerWindowId with tabId.
+    if (!isInTest) { // Note(berytus): The below throws an exception in an XPC shell.
+      const nativeTab = findTabByInnerWindowId(cx.document.id);
+      const tabId = tabTracker.getId(nativeTab);
+      cx.document.id = tabId; // replace innerWindowId with tabId.
+    }
     this.#requests[cx.request.id] = {
       ...cx,
       response: {

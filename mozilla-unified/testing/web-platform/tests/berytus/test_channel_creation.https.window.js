@@ -48,4 +48,41 @@ promise_test(async () => {
     assert_equals(channel.webApp, actor);
     assert_not_equals(channel.constraints, constraints);
     assert_deep_equals(channel.constraints, constraints);
+    assert_equals(channel.active, true);
+    await channel.close();
+    assert_equals(channel.active, false);
 }, "BerytusChannel correctly stores properties");
+
+promise_test(async (t) => {
+    const actor = new BerytusAnonymousWebAppActor();
+    const channelProm = BerytusChannel.create({
+        webApp: actor
+    });
+    await promise_rejects_dom(
+        t,
+        'InvalidStateError',
+        Promise.race([
+            BerytusChannel.create({
+                webApp: actor
+            }),
+            Promise.resolve()
+        ])
+    )
+    const channel = await channelProm;
+    await promise_rejects_dom(
+        t,
+        'InvalidStateError',
+        Promise.race([
+            BerytusChannel.create({
+                webApp: actor
+            }),
+            Promise.resolve()
+        ])
+    )
+    await channel.close();
+    // create another channel, this should succeed as the other
+    // one has been closed.
+    await BerytusChannel.create({
+        webApp: actor
+    });
+}, "BerytusChannel rejects creation request when an existing channel is active");

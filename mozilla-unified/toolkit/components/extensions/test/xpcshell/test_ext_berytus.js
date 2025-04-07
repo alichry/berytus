@@ -9,6 +9,8 @@ const { liaison } = ChromeUtils.importESModule(
   "resource://gre/modules/BerytusLiaison.sys.mjs"
 );
 
+Services.env.set("MOZ_TEST_BERYTUS_WEBEXT", "1");
+
 function backgroundFunction() {
   return function () {
     class ManagerRequestHandler {
@@ -23,7 +25,7 @@ function backgroundFunction() {
       approveOperation = (context, args) => {
         throw new Error('Method not implemented.');
       }
-      closeOpeation = (context) => {
+      closeOperation = (context) => {
         throw new Error('Method not implemented.');
       }
       getRecordMetadata = (context) => {
@@ -49,6 +51,9 @@ function backgroundFunction() {
         throw new Error('Method not implemented.');
       }
       getUserAttributes = (context) => {
+        throw new Error('Method not implemented.');
+      }
+      updateUserAttributes = (context, args) => {
         throw new Error('Method not implemented.');
       }
       addField = (context, args) => {
@@ -179,7 +184,18 @@ add_task(async function test_berytus_handler_getSigningKey() {
   Assert.equal(liaison.isManagerRegistered(extension.id), true);
   Assert.equal(
     await liaison.getRequestHandler(extension.id).manager.getSigningKey(
-      { document: { id: 4 } },
+      {
+        document: {
+          id: 4,
+          uri: {
+            uri: "https://example.tld/login",
+            scheme: "https:",
+            hostname: "example.tld",
+            port: 443,
+            path: "/login"
+          }
+        }
+      },
       {
         webAppActor: {
           originalUri: {

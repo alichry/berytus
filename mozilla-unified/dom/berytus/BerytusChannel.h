@@ -10,6 +10,7 @@
 #include "js/TypeDecls.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/ExtensionPolicyService.h"
 #include "mozilla/dom/BerytusChannelBinding.h"
 #include "mozilla/dom/BerytusLoginOperation.h"
 #include "mozilla/dom/BindingDeclarations.h"
@@ -42,6 +43,7 @@ public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(BerytusChannel)
 
+
   using LoginPromise = MozPromise<RefPtr<BerytusLoginOperation>, berytus::Failure, true>;
 protected:
   BerytusChannel(
@@ -63,6 +65,19 @@ protected:
   RefPtr<mozilla::berytus::OwnedAgentProxy> mAgent;
 
   bool mActive = true;
+private:
+  uint64_t mInnerWindowId;
+
+  static bool RegisterInWindow(nsPIDOMWindowInner* aInner);
+  static bool CanRegisterInWindow(nsPIDOMWindowInner* aInner);
+  static void UnregisterInWindow(const uint64_t& aInnerWindowId);
+  static nsTHashSet<uint64_t> mRegisteredWindows;
+
+  static // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
+  already_AddRefed<Promise> CreateInner(const nsCOMPtr<nsIGlobalObject>& aGlobal, JSContext* aCx, const BerytusChannelOptions& options, ErrorResult& aRv);
+  static // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
+  already_AddRefed<Promise> CreateGuard(const GlobalObject& global, JSContext* aCx, const BerytusChannelOptions& options, ErrorResult& aRv);
+
 public:
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

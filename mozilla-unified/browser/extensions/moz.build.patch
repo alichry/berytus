@@ -1,5 +1,5 @@
---- browser/extensions/moz.build.orig	2025-01-29 21:06:25
-+++ browser/extensions/moz.build	2025-01-29 21:06:25
+--- browser/extensions/moz.build.orig	2025-04-07 19:18:13
++++ browser/extensions/moz.build	2025-04-07 19:18:13
 @@ -7,6 +7,8 @@
  DIRS += [
      "formautofill",

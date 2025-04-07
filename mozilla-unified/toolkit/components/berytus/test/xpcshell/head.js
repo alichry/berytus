@@ -95,7 +95,16 @@ const sampleRequests = {
     getCredentialsMetadata() {
         return {
             context: {
-                document: { id: 4 }
+                document: {
+                    id: 4,
+                    uri: {
+                        uri: "https://example.tld/login",
+                        scheme: "https:",
+                        hostname: "example.tld",
+                        port: 443,
+                        path: "/login"
+                    }
+                }
             },
             args: {
                 webAppActor: originActor(),
@@ -107,7 +116,16 @@ const sampleRequests = {
     addField() {
         return {
             context: {
-                document: { id: 4 },
+                document: {
+                    id: 4,
+                    uri: {
+                        uri: "https://example.tld/login",
+                        scheme: "https:",
+                        hostname: "example.tld",
+                        port: 443,
+                        path: "/login"
+                    }
+                },
                 channel: {
                     id: "123",
                     constraints: {
@@ -122,7 +140,11 @@ const sampleRequests = {
                     id: "456",
                     type: "Registration",
                     status: "Pending",
-                    state: {}
+                    state: {},
+                    challenges: {},
+                    fields: {},
+                    requestedUserAttributes: [],
+                    intent: "Register"
                 }
             },
             args: {

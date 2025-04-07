@@ -1,4 +1,7 @@
 #!/bin/sh
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 set -e
 
@@ -250,6 +253,17 @@ cpAllBerytusFiles() {
     done
 }
 
+addImportChangeset() {
+    local mozsrc
+    local mozdest
+    mozsrc="$1"
+    mozdest="$2"
+    (
+        cd "$mozsrc"
+        hg log -r . | sed -E '/^(user|summary):/d'
+    ) > "$mozdest/import-changeset.txt"
+}
+
 importAllMozillaFiles() {
     local mozsrc
     local mozdest
@@ -282,6 +296,7 @@ importBerytus() {
     syncAllBerytusDirs "$mozsrc" "$mozdest"
     importAllMozillaFiles "$mozsrc" "$mozdest"
     cpAllBerytusFiles "$mozsrc" "$mozdest"
+    addImportChangeset "$mozsrc" "$mozdest"
 }
 
 exportBerytus() {

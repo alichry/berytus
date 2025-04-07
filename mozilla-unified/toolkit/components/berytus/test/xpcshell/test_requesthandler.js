@@ -29,9 +29,11 @@ add_task(async function test_calls_requesthandler() {
         }
     );
     liaison.registerManager(
-        "alichry@sample-manager",
-        "SampleManager",
-        1,
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1
+        },
         handlerProxy
     );
     const publicHandler = liaison.getRequestHandler(
@@ -59,9 +61,11 @@ add_task(async function test_noconcurrent_requests() {
         }
     );
     liaison.registerManager(
-        "alichry@sample-manager",
-        "SampleManager",
-        1,
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1
+        },
         handlerProxy
     );
     const publicHandler = liaison.getRequestHandler(
@@ -102,9 +106,11 @@ add_task(async function test_handle_unexcepted_exception() {
         }
     );
     liaison.registerManager(
-        "alichry@sample-manager",
-        "SampleManager",
-        1,
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1
+        },
         handlerProxy
     );
     const publicHandler = liaison.getRequestHandler(
@@ -130,9 +136,11 @@ add_task(async function test_handle_invalid_input() {
         }
     );
     liaison.registerManager(
-        "alichry@sample-manager",
-        "SampleManager",
-        1,
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1
+        },
         handlerProxy
     );
     const publicHandler = liaison.getRequestHandler(
@@ -164,9 +172,11 @@ add_task(async function test_handle_invalid_output() {
         }
     );
     liaison.registerManager(
-        "alichry@sample-manager",
-        "SampleManager",
-        1,
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1
+        },
         handlerProxy
     );
     const publicHandler = liaison.getRequestHandler(
@@ -190,30 +200,28 @@ add_task(async function test_handle_invalid_output_addFields() {
     const promises = [];
     const handlerProxy = createRequestHandlerProxy(
         async(group, method, cx, args) => {
-            const { field } = sampleRequests.addField().args;
+            /**
+             * @type {import("../../src/types").AddFieldArgs}
+             */
+            const { field } = args;
             Assert.equal(field.value, null);
             promises.push(
                 Assert.rejects(
-                    cx.response.resolve(field),
-                    /property "value" must not be null/i
+                    cx.response.resolve(null),
+                    /Value must not be null/i
                 ).then(() => Assert.rejects(
-                    cx.response.resolve({
-                        ...field,
-                        type: "ForeignIdentity",
-                        options: {
-                            private: false,
-                            kind: "EmailAddress"
-                        }
-                    }),
-                    /property "type" did not equal "Identity"/i
+                    cx.response.resolve(field),
+                    /Value must either/i
                 ))
             )
         }
     );
     liaison.registerManager(
-        "alichry@sample-manager",
-        "SampleManager",
-        1,
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1,
+        },
         handlerProxy
     );
     const publicHandler = liaison.getRequestHandler(
@@ -228,3 +236,7 @@ add_task(async function test_handle_invalid_output_addFields() {
     await Promise.all(promises);
     liaison.ereaseManager("alichry@sample-manager");
 });
+
+// TODO(berytus): Add test that the request handler
+// can solve addFields with null when the web app dictates
+// a field value.

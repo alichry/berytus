@@ -51,7 +51,7 @@ class Liaison {
         if (typeof name !== "string" || name.trim().length === 0) {
             throw new Error(
                 `Cannot register manager for id "${id}". `
-                + `Passed name (${String(name)}) is invalid.`
+                + `Passed Name (${String(name)}) is invalid.`
             );
         }
         if (!(type in ESecretManagerType)) {

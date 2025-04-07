@@ -80,6 +80,7 @@ export interface OperationMetadata {
      * State about the operation, e.g.:
      * { fields:  [BerytusIdentityField, ...], ... }
      */
+    // TODO(berytus): This is currently unused.
     state: OperationState;
 }
 
