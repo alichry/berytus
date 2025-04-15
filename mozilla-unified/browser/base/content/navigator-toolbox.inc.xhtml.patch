@@ -1,5 +1,5 @@
---- browser/base/content/navigator-toolbox.inc.xhtml.orig	2025-04-07 19:18:13
-+++ browser/base/content/navigator-toolbox.inc.xhtml	2025-04-07 19:18:13
+--- browser/base/content/navigator-toolbox.inc.xhtml.orig	2025-04-10 17:31:15
++++ browser/base/content/navigator-toolbox.inc.xhtml	2025-04-10 17:31:15
 @@ -283,6 +283,8 @@
                         data-l10n-id="urlbar-web-authn-anchor"/>
                  <image id="identity-credential-notification-icon" class="notification-anchor-icon" role="button"

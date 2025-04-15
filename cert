@@ -1,0 +1,94 @@
+#!/bin/sh
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+set -e
+
+# generate a berytus signing key
+openssl genpkey \
+    -algorithm ed25519 \
+    -out example.berytus.privkey.pem
+openssl pkey \
+    -in example.berytus.privkey.pem \
+    -pubout -out example.berytus.pubkey.pem
+
+# generate the certificate subject key
+openssl genrsa -out example.tls.privkey.pem 4096
+openssl rsa -in example.tls.privkey.pem -pubout \
+    -out example.tls.pubkey.pem
+openssl pkey -pubin -inform pem \
+    -in example.tls.pubkey.pem \
+    -pubout -outform der \
+    > example.tls.pubkey.der
+
+includes=""
+entries=""
+i=1
+for pubkey in *.berytus.pubkey.pem
+do
+    privkey="$(basename "$pubkey" .pubkey.pem).privkey.pem"
+    spki_b64="$(openssl pkey -pubin -inform pem -in "$pubkey" \
+                -pubout -outform der | base64)"
+    # Signing the subject key DER digest using 
+    # the berytus key
+    subject_sig="$(openssl pkeyutl -sign -rawin -inkey "$privkey" \
+                   -in example.tls.pubkey.der | base64)"
+    entryName="berytus_allowlist_entry${i}"
+    entry="[$entryName]
+key=UTF8STRING:${spki_b64}
+sksig=UTF8STRING:${subject_sig}
+url=UTF8STRING:*
+"
+    entries="$entries
+$entry"
+    include="key${i}=SEQUENCE:${entryName}"
+    if [ -z "$includes" ]; then
+        includes="$include"
+    else
+        includes="$includes
+$include"
+    fi
+    i=$(( i + 1))
+done
+
+# create configuration file, specifying
+# the berytus extension
+cat <<EOF > openssl.cnf
+[req]
+req_extensions = v3_exts
+
+[v3_exts]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+1.2.3.4.22.11.23=ASN1:SEQUENCE:berytus_extension_format
+
+[alt_names]
+DNS.1 = example.tld
+DNS.2 = www.example.tld
+
+[berytus_extension_format]
+$includes
+
+$entries
+EOF
+
+
+# create the certificate signing request
+openssl req \
+    -new -key example.tls.privkey.pem \
+    -config openssl.cnf \
+    -subj '/C=UK/CN=Example/' \
+    -out  example.tls.csr
+
+# This where the CA would validate the CSR,
+# checking each specified berytus key and its
+# subject key signature.
+
+# create the self-signed certificate
+openssl x509 -req -in ./example.tls.csr \
+    -out example.tls.crt \
+    -key example.tls.privkey.pem \
+    -sha256 -days 365 \
+    -copy_extensions=copyall

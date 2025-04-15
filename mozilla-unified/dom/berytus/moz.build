@@ -4,8 +4,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#TEST_DIRS += ["tests"]
-
 EXPORTS.mozilla.dom += [
     "BerytusAccount.h",
     "BerytusAccountAuthenticationOperation.h",
@@ -42,6 +40,7 @@ EXPORTS.mozilla.dom += [
     "BerytusUserAttribute.h",
     "BerytusUserAttributeMap.h",
     "BerytusWebAppActor.h",
+    "BerytusX509Extension.h"
 ]
 
 UNIFIED_SOURCES += [
@@ -80,6 +79,17 @@ UNIFIED_SOURCES += [
     "BerytusUserAttribute.cpp",
     "BerytusUserAttributeMap.cpp",
     "BerytusWebAppActor.cpp",
+    "BerytusX509Extension.cpp"
+]
+
+USE_LIBS += [
+    "nss"
+]
+
+LOCAL_INCLUDES += ['/security/nss/lib/certdb']
+
+TEST_DIRS += [
+    "tests/gtest"
 ]
 
 include("/ipc/chromium/chromium-config.mozbuild")
