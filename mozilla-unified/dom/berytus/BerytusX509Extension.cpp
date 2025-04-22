@@ -21,6 +21,8 @@
 #include "nsTArray.h"
 #include "seccomon.h"
 
+static mozilla::LazyLogModule sLogger("berytus_x509");
+
 namespace mozilla::berytus {
 
 const nsCString PartIterator::mEmptyPart = nsCString();
@@ -80,7 +82,8 @@ nsresult PartIterator::Traverse(const uint32_t& aPos,
 
 nsresult CompareParts(const nsCString& aSearchString,
                       const nsCString& aCandidateString,
-                      char delimiter,
+                      const char& aDelimiter,
+                      const bool& aIgnoreTrailingWildcardIfCandidateConsumed,
                       bool& aRv) {
   nsresult res;
   if (NS_WARN_IF(aSearchString.IsEmpty())) {
@@ -94,8 +97,8 @@ nsresult CompareParts(const nsCString& aSearchString,
     aRv = true;
     return NS_OK;
   }
-  PartIterator searchItr(aSearchString, delimiter);
-  PartIterator candidateItr(aCandidateString, delimiter);
+  PartIterator searchItr(aSearchString, aDelimiter);
+  PartIterator candidateItr(aCandidateString, aDelimiter);
   bool freezeSearch = false;
   while (!candidateItr.Finished()) {
     res = candidateItr.Next();
@@ -171,18 +174,34 @@ nsresult CompareParts(const nsCString& aSearchString,
     NS_ENSURE_SUCCESS(res, res);
     MOZ_ASSERT(nextSearchPart.Equals(searchItr.Current()));
   }
+  MOZ_ASSERT(candidateItr.Finished());
   if (!searchItr.Finished()) {
     // e.g. [0] = "/abc/def/*/ghi"
     //                      ^ we are here (unfinished)
     //      or even:
     //      [0] = "/abc/def/*/"
-    //                       ^ we are here (unfinished)
+    //                      ^ we are here (unfinished)
     //      [1] = "/abc/def/123/456/xyz"
     //                                 ^ we are here (finished)
+    if (aIgnoreTrailingWildcardIfCandidateConsumed) {
+      res = searchItr.Next();
+      NS_ENSURE_SUCCESS(res, res);
+      if (searchItr.Finished() && searchItr.Current().Equals("*")) {
+        // e.g. [0] = "/app/a/*"
+        //                    ^ we are here (finished)
+        //      [1] = "/abc/a"
+        //                  ^ we are here (finished)
+        aRv = true;
+        return NS_OK;
+      }
+      // NOTE(berytus): The below instance would fail, even if
+      // aIgnoreTrailingWildcardIfCandidateConsumed was set:
+      //      [0] = "/app/a/*/*"
+      //      [1] = "/app/a"
+    }
     aRv = false;
     return NS_OK;
   }
-  MOZ_ASSERT(candidateItr.Finished());
   aRv = true;
   return NS_OK;
 }
@@ -258,16 +277,32 @@ BerytusX509Extension::GetAllowlist() const {
 
 nsresult BerytusX509Extension::IsAllowed(const nsCString& aSpki, nsIURI* aUrl,
                                          bool& aRv) const {
+  auto logUrl = aUrl->GetSpecOrDefault();
+  MOZ_LOG(sLogger, LogLevel::Info,
+         ("BerytusX509Extension::IsAllowed(): Checking (%.*s, %.*s) against %d entries\n",
+          (int) logUrl.Length(), logUrl.Data(),
+          (int) aSpki.Length(), aSpki.Data(),
+          (int) mAllowlist.Length()));
   nsresult res;
   for (const auto& entry : mAllowlist) {
-    res = entry->Matches(aSpki, aUrl, aRv);
+    bool matched;
+    res = entry->Matches(aSpki, aUrl, matched);
     if (NS_WARN_IF(NS_FAILED(res))) {
       return res;
     }
-    if (aRv) {
+    if (matched) {
+      MOZ_LOG(sLogger, LogLevel::Info,
+              ("BerytusX509Extension::IsAllowed(): Allowed (%.*s, %.*s)\n",
+                (int) logUrl.Length(), logUrl.Data(),
+                (int) aSpki.Length(), aSpki.Data()));
+      aRv = true;
       return NS_OK;
     }
   }
+  MOZ_LOG(sLogger, LogLevel::Info,
+          ("BerytusX509Extension::IsAllowed(): NotAllowed (%.*s, %.*s)\n",
+          (int) logUrl.Length(), logUrl.Data(),
+          (int) aSpki.Length(), aSpki.Data()));
   aRv = false;
   return NS_OK;
 }
@@ -305,11 +340,17 @@ already_AddRefed<BerytusX509Extension> BerytusX509Extension::Create(
 
   extension = FindBerytusExtension(aCert);
   if (!extension) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("BerytusX509Extension::Create(): No Berytus X509 "
+             "extension was found."));
     aRv = NS_ERROR_FILE_NOT_FOUND;
     goto cleanup;
   }
   MOZ_ASSERT(extension->value.len > 0);
   MOZ_ASSERT(extension->value.data);
+  MOZ_LOG(sLogger, LogLevel::Info,
+          ("BerytusX509Extension::Create(): A Berytus X509 "
+           "extension was found!"));
 
   arena = PORT_NewArena(DER_DEFAULT_CHUNKSIZE);
 
@@ -324,7 +365,9 @@ already_AddRefed<BerytusX509Extension> BerytusX509Extension::Create(
     goto cleanup;
   }
 
-  status = SEC_QuickDERDecodeItem(arena, allowlist, AllowlistTemplate,
+  status = SEC_QuickDERDecodeItem(arena,
+                                  allowlist,
+                                  AllowlistTemplate,
                                   &extension->value);
   if (NS_WARN_IF(status == SECFailure)) {
     aRv = NS_ERROR_FAILURE;
@@ -334,11 +377,20 @@ already_AddRefed<BerytusX509Extension> BerytusX509Extension::Create(
   entries = allowlist->mEntries;
   while (entries != nullptr && *entries != nullptr) {
     entry = *entries;
+    MOZ_LOG(sLogger, LogLevel::Info,
+           ("BerytusX509Extension::Create(): Entry.URL = %.*s; "
+            "Entry.SPKI = %.*s; "
+            "Entry.SKSig = %.*s\n",
+            (int)entry->mUrl.len, (char*)entry->mUrl.data,
+            (int)entry->mKey.len, (char*)entry->mKey.data,
+            (int)entry->mSksig.len, (char*)entry->mSksig.data));
     RefPtr<BerytusX509Extension::SigningKeyEntry::Url> url =
         BerytusX509Extension::SigningKeyEntry::Url::Create(
             nsCString((char*)entry->mUrl.data, entry->mUrl.len), aRv);
     if (aRv == NS_ERROR_INVALID_ARG) {
-      // TODO(berytus): Here, log a warning about the invalid cert ext
+      MOZ_LOG(sLogger, LogLevel::Warning,
+             ("BerytusX509Extension::Create(): Invalid allowlist "
+              "encountered; Reason: Bad URL."));
       goto cleanup;
     }
     if (NS_WARN_IF(NS_FAILED(aRv))) {
@@ -387,9 +439,19 @@ nsresult BerytusX509Extension::SigningKeyEntry::SigningKeyEntry::Matches(
     const nsCString& aSpki, nsIURI* aUrl, bool& aRv) const {
   MOZ_ASSERT(aUrl);
   if (!mSpki.Equals(aSpki)) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("SigningKeyEntry::Matches(): NoMatch "
+             "aSPKI (%.*s) against mSPKI (%.*s)\n",
+             (int) aSpki.Length(), aSpki.Data(),
+             (int) mSpki.Length(), mSpki.Data()));
     aRv = false;
     return NS_OK;
   }
+  MOZ_LOG(sLogger, LogLevel::Info,
+          ("SigningKeyEntry::Matches(): Matched "
+           "aSPKI (%.*s) against mSPKI (%.*s)\n",
+           (int) aSpki.Length(), aSpki.Data(),
+           (int) mSpki.Length(), mSpki.Data()));
   return mUrl->Matches(aUrl, aRv);
 }
 
@@ -412,82 +474,12 @@ BerytusX509Extension::SigningKeyEntry::SigningKeyEntry::Url::Url(
 
 BerytusX509Extension::SigningKeyEntry::SigningKeyEntry::Url::~Url() {}
 
-bool ComparePartsStrict(const nsCString& searchString,
-                  const nsCString& candidateString, char delimiter = '.') {
-  if (searchString.IsEmpty()) {
-    MOZ_ASSERT_UNREACHABLE("Search string must not be empty");
-    return false;
-  }
-  if (candidateString.IsEmpty()) {
-    MOZ_ASSERT_UNREACHABLE("Candidate string must not be empty");
-    return false;
-  }
-  if (searchString.CharAt(searchString.Length() - 1) == delimiter) {
-    MOZ_ASSERT_UNREACHABLE("Search string must not end with {delimiter}");
-    return false;
-  }
-  if (candidateString.CharAt(candidateString.Length() - 1) == delimiter) {
-    MOZ_ASSERT_UNREACHABLE("Candidate string must not end with {delimiter}");
-    return false;
-  }
-  if (searchString.Equals("*")) {
-    return true;
-  }
-  uint64_t s1 = 0, s2 = 0, e1 = 0, e2 = 0;
-  while (s1 < searchString.Length() && s2 < candidateString.Length()) {
-    if (searchString.CharAt(s1) == delimiter) {
-      MOZ_ASSERT_UNREACHABLE(
-          "Search string part sohuld not begin with {delimiter}; expected "
-          "caller to provide valid parts.");
-      return false;
-    }
-    if (candidateString.CharAt(s2) == delimiter) {
-      MOZ_ASSERT_UNREACHABLE(
-          "Candidate string part sohuld not begin with a {dellimiter}; "
-          "expected caller to provide valid parts.");
-      return false;
-    }
-    e1 = s1;
-    e2 = s2;
-    while (e1 + 1 < searchString.Length() &&
-           searchString.CharAt(e1 + 1) != delimiter) {
-      e1++;
-    }
-    while (e2 + 1 < candidateString.Length() &&
-           candidateString.CharAt(e2 + 1) != delimiter) {
-      e2++;
-    }
-    const nsACString& searchPart = Substring(searchString, s1, e1);
-    const nsACString& candidatePart = Substring(candidateString, s2, e2);
-    if (!searchPart.Equals("*") && !searchPart.Equals(candidatePart)) {
-      return false;
-    }
-    // we need to move to the next part.
-    // e1, e2 points to either
-    //  (1) the end of the string
-    //  (2) the end of the part which should leave at least two characters ahead
-    // Moreover, if (1) is not reached, (2) is guaranteed since the last char
-    // has been checked not to be a {delimiter} (see head of this impl); i.e.,
-    // during traversal, we would have stopped when the next character is a
-    // {delimiter}, and it surely is not the last character.
-    unsigned char searchConsumed = e1 == searchString.Length() - 1;
-    unsigned char candidateConsumed = e2 == candidateString.Length() - 1;
-    if ((searchConsumed ^ candidateConsumed) == 1) {
-      // one has been consumed while the other did not.
-      return false;
-    }
-    // both have not been consummed yet with both having at least 2 chars left
-    // OR
-    // both have been consumed.
-    s1 = e1 + 2;
-    s2 = e2 + 2;
-  }
-  return true;
-}
-
 nsresult BerytusX509Extension::SigningKeyEntry::Url::Matches(nsIURI* aUrl,
                                                              bool& aRv) const {
   MOZ_ASSERT(aUrl);
+  auto logAUrl = aUrl->GetSpecOrDefault();
+  auto logMUrl = nsCString(*this);
+
   nsCString candidateScheme, candidateHost, candidateFilePath;
   int32_t candidatePort;
   nsresult res;
@@ -508,26 +500,63 @@ nsresult BerytusX509Extension::SigningKeyEntry::Url::Matches(nsIURI* aUrl,
     return res;
   }
   if (!candidateScheme.Equals(mScheme)) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("SigningKeyEntry::Url::Matches(): "
+             "NoMatch[Scheme(%.*s, %.*s)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             (int) candidateScheme.Length(), candidateScheme.Data(),
+             (int) mScheme.Length(), mScheme.Data(),
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
     aRv = false;
     return NS_OK;
   }
   if (candidatePort != mPort) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("SigningKeyEntry::Url::Matches(): "
+             "NoMatch[Port(%d, %d)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             candidatePort,
+             mPort,
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
     aRv = false;
     return NS_OK;
   }
   bool matched;
-  res = berytus::CompareParts(mHostname, candidateHost, '.', matched);
+  res = berytus::CompareParts(mHostname, candidateHost, '.', false, matched);
   NS_ENSURE_SUCCESS(res, res);
   if (!matched) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("SigningKeyEntry::Url::Matches(): "
+             "NoMatch[Hostname(%.*s, %.*s)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             (int) candidateHost.Length(), candidateHost.Data(),
+             (int) mHostname.Length(), mHostname.Data(),
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
     aRv = false;
     return NS_OK;
   }
-  res = berytus::CompareParts(mFilePath, candidateFilePath, '/', matched);
+  res = berytus::CompareParts(mFilePath, candidateFilePath, '/', true, matched);
   NS_ENSURE_SUCCESS(res, res);
   if (!matched) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("SigningKeyEntry::Url::Matches(): "
+             "NoMatch[FilePath(%.*s, %.*s)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             (int) candidateFilePath.Length(), candidateFilePath.Data(),
+             (int) mFilePath.Length(), mFilePath.Data(),
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
     aRv = false;
     return NS_OK;
   }
+  MOZ_LOG(sLogger, LogLevel::Info,
+          ("SigningKeyEntry::Url::Matches(): "
+           "Matched aUrl (%.*s) against mUrl (%.*s)\n",
+           (int) logAUrl.Length(), logAUrl.Data(),
+           (int) logMUrl.Length(), logMUrl.Data()));
   aRv = true;
   return NS_OK;
 }
@@ -550,7 +579,7 @@ BerytusX509Extension::SigningKeyEntry::Url::Create(const nsCString& aUrl,
   NS_ENSURE_SUCCESS(aRv, nullptr);
 
   MOZ_ASSERT(parsedUri);
-  if (!parsedUri->SchemeIs("https:")) {
+  if (!parsedUri->SchemeIs("https")) {
     aRv = NS_ERROR_INVALID_ARG;
     return nullptr;
   }

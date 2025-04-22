@@ -24,7 +24,8 @@ namespace berytus {
  */
 nsresult CompareParts(const nsCString& aSearchString,
                       const nsCString& aCandidateString,
-                      char delimiter,
+                      const char& aDelimiter,
+                      const bool& aIgnoreTrailingWildcardIfCandidateConsumed,
                       bool& aRv);
 /**
  * Examples:
@@ -101,7 +102,7 @@ public:
         return out;
       }
     protected:
-      constexpr static const nsLiteralCString mScheme = "https:"_ns;
+      constexpr static const nsLiteralCString mScheme = "https"_ns;
       const nsCString mHostname;
       const int mPort;
       const nsCString mFilePath;

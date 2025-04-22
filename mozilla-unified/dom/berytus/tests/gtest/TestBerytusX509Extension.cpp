@@ -20,6 +20,7 @@ TEST(BerytusX509Extension, TestComparePartsBasicMatch)
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -32,12 +33,14 @@ TEST(BerytusX509Extension, TestComparePartsAtHead1stCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "Abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("Abc/123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -50,12 +53,14 @@ TEST(BerytusX509Extension, TestComparePartsAtHead2ndCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "aBc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("aBc/123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -68,12 +73,14 @@ TEST(BerytusX509Extension, TestComparePartsHead3rdCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "abC/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abC/123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -86,12 +93,14 @@ TEST(BerytusX509Extension, TestComparePartsAtBody1stCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/def"_ns,
                                       "abc/Def"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/Def"_ns,
                                       "abc/def"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -104,12 +113,14 @@ TEST(BerytusX509Extension, TestComparePartsAtBody2ndCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/dEf"_ns,
                                       "abc/def"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/def"_ns,
                                       "abc/dEf"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -122,12 +133,14 @@ TEST(BerytusX509Extension, TestComparePartsAtBody3rdCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/deF"_ns,
                                       "abc/def"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/def"_ns,
                                       "abc/deF"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -140,12 +153,14 @@ TEST(BerytusX509Extension, TestComparePartsAtTail1stCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/def/hij"_ns,
                                       "abc/def/Hij"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/def/Hij"_ns,
                                       "abc/def/hij"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -158,12 +173,14 @@ TEST(BerytusX509Extension, TestComparePartsAtTail2ndCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/def/hij"_ns,
                                       "abc/def/hIj"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/def/hIj"_ns,
                                       "abc/def/hij"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -176,12 +193,14 @@ TEST(BerytusX509Extension, TestComparePartsAtTail3rdCharNoMatch)
   rv = mozilla::berytus::CompareParts("abc/def/hij"_ns,
                                       "abc/def/hiJ"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/def/hiJ"_ns,
                                       "abc/def/hij"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -194,6 +213,7 @@ TEST(BerytusX509Extension, TestComparePartsLeadingDelimMatch)
   rv = mozilla::berytus::CompareParts("/abc/123"_ns,
                                       "/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -206,12 +226,14 @@ TEST(BerytusX509Extension, TestComparePartsLeadingDelimNoMatch)
   rv = mozilla::berytus::CompareParts("/abc/123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -224,6 +246,7 @@ TEST(BerytusX509Extension, TestComparePartsTrailingDelimMatch)
   rv = mozilla::berytus::CompareParts("abc/123/"_ns,
                                       "abc/123/"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -236,12 +259,14 @@ TEST(BerytusX509Extension, TestComparePartsTrailingDelimNoMatch)
   rv = mozilla::berytus::CompareParts("/abc/123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -254,6 +279,7 @@ TEST(BerytusX509Extension, TestComparePartsLeadingTrailingDelimMatch)
   rv = mozilla::berytus::CompareParts("/abc/123/"_ns,
                                       "/abc/123/"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -266,12 +292,14 @@ TEST(BerytusX509Extension, TestComparePartsLeadingTrailingDelimNoMatch)
   rv = mozilla::berytus::CompareParts("/abc/123"_ns,
                                       "abc/123/"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/123/"_ns,
                                       "/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -284,6 +312,7 @@ TEST(BerytusX509Extension, TestComparePartsBlanksMatch)
   rv = mozilla::berytus::CompareParts("///abc///123///"_ns,
                                       "///abc///123///"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -296,6 +325,7 @@ TEST(BerytusX509Extension, TestComparePartsBlanksAtHeadMatch)
   rv = mozilla::berytus::CompareParts("///abc/123"_ns,
                                       "///abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -308,6 +338,7 @@ TEST(BerytusX509Extension, TestComparePartsBlanksAtMiidMatch)
   rv = mozilla::berytus::CompareParts("abc///123"_ns,
                                       "abc///123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -320,6 +351,7 @@ TEST(BerytusX509Extension, TestComparePartsBlanksAtTailMatch)
   rv = mozilla::berytus::CompareParts("abc/123///"_ns,
                                       "abc/123///"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -332,12 +364,14 @@ TEST(BerytusX509Extension, TestComparePartsBlanksAtHeadNoMatch)
   rv = mozilla::berytus::CompareParts("//abc/123"_ns,
                                       "/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("/abc/123"_ns,
                                       "//abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -349,12 +383,14 @@ TEST(BerytusX509Extension, TestComparePartsBlanksAtBodyNoMatch)
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "abc//123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc//123"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -367,12 +403,14 @@ TEST(BerytusX509Extension, TestComparePartsBlanksAtTailNoMatch)
   rv = mozilla::berytus::CompareParts("abc/123"_ns,
                                       "abc/123//"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("abc/123//"_ns,
                                       "abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -385,6 +423,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtHeadWithEmptyMatch)
   rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -397,6 +436,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtHeadMatch)
   rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "xyz/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -409,12 +449,14 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtHeadNoMatch)
   rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "xyz/hij/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "xyz/hij/abc"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -427,6 +469,7 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtHeadMatch)
   rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -439,24 +482,28 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtHeadWithBlanksAtHeadMa
   rv = mozilla::berytus::CompareParts("/*/abc/123"_ns,
                                       "/xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
   rv = mozilla::berytus::CompareParts("///*/abc/123"_ns,
                                       "///xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
     rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "///xyz///hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
   rv = mozilla::berytus::CompareParts("/*/abc/123"_ns,
                                       "///xyz///hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -469,12 +516,14 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtHeadWithBlanksAtHeadNoMatch
   rv = mozilla::berytus::CompareParts("/*/abc/123"_ns,
                                       "xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("//*/abc/123"_ns,
                                       "/xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -487,12 +536,14 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtHeadWithBlanksAtBodyMa
   rv = mozilla::berytus::CompareParts("*/123"_ns,
                                       "xyz///abc///123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
   rv = mozilla::berytus::CompareParts("*/abc///123"_ns,
                                       "xyz///abc///123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -505,12 +556,14 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtHeadWithBlanksAtBodyNo
   rv = mozilla::berytus::CompareParts("*/abc/123"_ns,
                                       "xyz///abC/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("*/abC/123"_ns,
                                       "xyz///abc///123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -524,6 +577,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtBodyWithEmptyMatch)
   rv = mozilla::berytus::CompareParts("abc/*/123"_ns,
                                       "abc//123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -536,6 +590,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtBodyMatch)
   rv = mozilla::berytus::CompareParts("xyz/*/123"_ns,
                                       "xyz/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -548,12 +603,14 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtBodyNoMatch)
   rv = mozilla::berytus::CompareParts("xyz/*/abc/123"_ns,
                                       "xyz/hij/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("xyz/*/abc/123"_ns,
                                       "xyz/hij/abc"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -566,6 +623,7 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtBodyMatch)
   rv = mozilla::berytus::CompareParts("xyz/*/123"_ns,
                                       "xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -578,12 +636,14 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtBodyWithBlanksAtBodyMa
   rv = mozilla::berytus::CompareParts("xyz/*/123"_ns,
                                       "xyz///abc///123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
   rv = mozilla::berytus::CompareParts("xyz/*/123"_ns,
                                       "xyz///abc///123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -596,12 +656,14 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtBodyWithBlanksAtBodyNo
   rv = mozilla::berytus::CompareParts("xyz/*/abc"_ns,
                                       "xyz///123/abC"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
   rv = mozilla::berytus::CompareParts("xyz/*/abC"_ns,
                                       "xyz///123///abc"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -615,6 +677,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtTailWithEmptyMatch)
   rv = mozilla::berytus::CompareParts("abc/123/*"_ns,
                                       "abc/123/"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -627,6 +690,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtTailWithEmptyNoMatch)
   rv = mozilla::berytus::CompareParts("abc/123/*/"_ns,
                                       "abc/123/"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -639,6 +703,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtTailMatch)
   rv = mozilla::berytus::CompareParts("xyz/123/*"_ns,
                                       "xyz/123/abc"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -651,6 +716,7 @@ TEST(BerytusX509Extension, TestComparePartsWildcardAtTailNoMatch)
   rv = mozilla::berytus::CompareParts("xyz/hij/abc/*"_ns,
                                       "xyz/hij/abc"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_FALSE(matched);
@@ -663,6 +729,7 @@ TEST(BerytusX509Extension, TestComparePartsMultiWildcardAtTailMatch)
   rv = mozilla::berytus::CompareParts("xyz/hjk/*"_ns,
                                       "xyz/hjk/abc/123"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
@@ -676,15 +743,56 @@ TEST(BerytusX509Extension,
   rv = mozilla::berytus::CompareParts("xyz/abc/123/*"_ns,
                                       "xyz/abc/123//"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
   rv = mozilla::berytus::CompareParts("xyz/abc/123/*"_ns,
                                       "xyz/abc/123///"_ns,
                                       '/',
+                                      false,
                                       matched);
   ASSERT_TRUE(NS_SUCCEEDED(rv));
   ASSERT_TRUE(matched);
+}
+
+TEST(BerytusX509Extension, TestComparePartsWithoutIgnoreTrailingOptNoMatch)
+{
+  nsresult rv;
+  bool matched;
+  rv = mozilla::berytus::CompareParts("/app/a/*"_ns,
+                                      "/app/a"_ns,
+                                      '/',
+                                      false,
+                                      matched);
+  ASSERT_TRUE(NS_SUCCEEDED(rv));
+  ASSERT_FALSE(matched);
+}
+
+TEST(BerytusX509Extension, TestComparePartsWithIgnoreTrailingOptMatch)
+{
+  nsresult rv;
+  bool matched;
+  rv = mozilla::berytus::CompareParts("/app/a/*"_ns,
+                                      "/app/a"_ns,
+                                      '/',
+                                      true,
+                                      matched);
+  ASSERT_TRUE(NS_SUCCEEDED(rv));
+  ASSERT_TRUE(matched);
+}
+
+TEST(BerytusX509Extension, TestComparePartsWithIgnoreTrailingOptNoMatch)
+{
+  nsresult rv;
+  bool matched;
+  rv = mozilla::berytus::CompareParts("/app/a/*/*"_ns,
+                                      "/app/a"_ns,
+                                      '/',
+                                      true,
+                                      matched);
+  ASSERT_TRUE(NS_SUCCEEDED(rv));
+  ASSERT_FALSE(matched);
 }
 
 TEST(BerytusX509Extension, TestFromCertificate)
