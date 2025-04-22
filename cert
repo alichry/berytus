@@ -3,7 +3,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+# Example:
 # ./cert -a localhost -a 127.0.0.1 -k https://localhost/app/a/* -k https://localhost/app/b/* playground/server
+# Now that you have a self-signed certificate with the Berytus X509 extension,
+# you can leverage the playground environment that enables you to
+# navigate to any path and invoke Berytus using an interactive JavaScript console.
+# $ cd playground
+# $ npm i
+# $ npm run start
 
 set -e
 

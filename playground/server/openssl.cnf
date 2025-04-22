@@ -1,0 +1,28 @@
+[req]
+req_extensions = v3_exts
+
+[v3_exts]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+1.2.3.4.22.11.23=ASN1:SEQUENCE:berytus_extension
+
+[alt_names]
+DNS.0 = localhost
+DNS.1 = 127.0.0.1
+
+[berytus_extension]
+Entry.0=SEQUENCE:berytus_allowlist_entry_0
+Entry.1=SEQUENCE:berytus_allowlist_entry_1
+
+
+[berytus_allowlist_entry_0]
+key=UTF8STRING:MCowBQYDK2VwAyEAoIHnUKGRWjtc8yIBBTmWAoQ2S/j/Lg2WxhY717m16nA=
+sksig=UTF8STRING:Njs8wum0cRySHwDMWSKNqM9EqNqiMHpeb9NJYNKI2TC+YzrZ1b4DU47xlmT6tCwwaqiooHgVysQ1xjxoXLAaAA==
+url=UTF8STRING:https://localhost/app/a/*
+
+[berytus_allowlist_entry_1]
+key=UTF8STRING:MCowBQYDK2VwAyEAyQXkGNRuM16dg/zigBFJA/pGPYL1YoJlsC7isOuzEcQ=
+sksig=UTF8STRING:PfoF0/HXD9aoFshwG75IfrPcTkNoB73AKCR1OJMyyvt2xWQsFkykJu1DU4yudJlSLLwr2gdP/jBd4FqVvxU+Dg==
+url=UTF8STRING:https://localhost/app/b/*
+
