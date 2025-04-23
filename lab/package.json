@@ -2,7 +2,7 @@
   "scripts": {
     "build": "astro build",
     "prestart": "test -d ./dist || npm run build",
-    "start": "SERVER_KEY_PATH=./server/subj.privkey.pem SERVER_CERT_PATH=./server/subj.cert.pem astro preview --port 443"
+    "start": "/bin/sh -c 'set -o allexport; source .env; astro preview --port $PORT'"
   },
   "dependencies": {
     "@alichry/jsconsole": "^3.0.2",

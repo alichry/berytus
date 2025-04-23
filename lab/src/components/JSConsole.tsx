@@ -8,7 +8,7 @@ interface Props {
     className?: string;
 }
 
-export default function JSPlaygrounds({ className }: Props) {
+export default function JSConsole({ className }: Props) {
     return (
         <div className={className}>
             <Root environment="top-level" defaultTheme="dark" />
