@@ -4,7 +4,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/dom/BerytusChannel.h"
 #include "BerytusCryptoWebAppActor.h"
 #include "BerytusSecretManagerActor.h"
 #include "js/PropertyAndElement.h"
@@ -19,16 +18,21 @@
 #include "mozilla/dom/BerytusChannelBinding.h"
 #include "mozilla/dom/BerytusLoginOperation.h"
 #include "mozilla/dom/BerytusWebAppActor.h"
+#include "mozilla/dom/BerytusX509Extension.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/Promise-inl.h" /* Needed for AddCallbacksWithCycleCollectedArgs */
 #include "mozilla/dom/RootedDictionary.h"
+#include "nsCOMPtr.h"
+#include "nsDebug.h"
 #include "nsHashPropertyBag.h"
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusAccountAuthenticationOperation.h"
 #include "mozilla/dom/BerytusAccountCreationOperation.h"
+#include "nsString.h"
 #include "nsTHashSet.h"
 #include "nsTHashMap.h"
+#include "mozilla/dom/Document.h" // inner->GetDoc()
 
 namespace mozilla::dom {
 
@@ -62,6 +66,7 @@ BerytusChannel::BerytusChannel(
   BerytusChannelConstraints&& aConstraints,
   const RefPtr<BerytusWebAppActor>& aWebAppActor,
   const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
+  const RefPtr<BerytusX509Extension>& aCertExt,
   const RefPtr<BerytusKeyAgreementParameters>& aKeyAgreementParams,
   const RefPtr<mozilla::berytus::OwnedAgentProxy>& aAgent
 ) : mGlobal(aGlobal),
@@ -70,6 +75,7 @@ BerytusChannel::BerytusChannel(
     mConstraints(std::move(aConstraints)),
     mWebAppActor(aWebAppActor),
     mSecretManagerActor(aSecretManagerActor),
+    mCertExtension(aCertExt),
     mKeyAgreementParams(aKeyAgreementParams),
     mAgent(aAgent)
 {
@@ -124,7 +130,6 @@ void BerytusChannel::GetConstraints(
 const BerytusChannelConstraints& BerytusChannel::Constraints() const {
   return mConstraints;
 }
-
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
 already_AddRefed<BerytusWebAppActor> BerytusChannel::WebApp() const
@@ -248,8 +253,26 @@ already_AddRefed<Promise> BerytusChannel::CreateInner(
   Promise* selectPromise;
   nsCOMPtr<nsIWritablePropertyBag2> identity = new nsHashPropertyBag();
   nsString webAppEd25519Key;
+  RefPtr<BerytusX509Extension> certExt = nullptr;
   if (aOptions.mWebApp->Type() == BerytusWebAppActorType::CryptoActor) {
     static_cast<BerytusCryptoWebAppActor*>(aOptions.mWebApp.get())->GetEd25519Key(webAppEd25519Key);
+    certExt = BerytusX509Extension::Create(inner, rv);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      aRv.ThrowInvalidStateError("Error processing certificate extension");
+      return nullptr;
+    }
+    bool isAllowed;
+    rv = certExt->IsAllowed(NS_ConvertUTF16toUTF8(webAppEd25519Key),
+                             inner->GetDoc()->GetOriginalURI(),
+                             isAllowed);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      aRv.ThrowInvalidStateError("Error processing certificate extension");
+      return nullptr;
+    }
+    if (!isAllowed) {
+      aRv.ThrowNotAllowedError("Web app signing key cannot be used in this document.");
+      return nullptr;
+    }
   }
   if (aOptions.mConstraints.WasPassed() &&
       aOptions.mConstraints.Value().mAccount.WasPassed() &&
@@ -302,6 +325,7 @@ already_AddRefed<Promise> BerytusChannel::CreateInner(
   }
   auto onResolve = [outPromise,
                               webAppActor = RefPtr<BerytusWebAppActor>(aOptions.mWebApp),
+                              certExt,
                               constraintsJs](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal)  {
@@ -328,7 +352,7 @@ already_AddRefed<Promise> BerytusChannel::CreateInner(
     prom->Then(
       //aGlobal->SerialEventTarget(),
       GetCurrentSerialEventTarget(), __func__,
-      [outPromise, aGlobal, aCx, webAppActor, proxy, constraintsJs](const nsString& scmEd25519Key) {
+      [outPromise, aGlobal, aCx, webAppActor, certExt, proxy, constraintsJs](const nsString& scmEd25519Key) {
         RootedDictionary<BerytusChannelConstraints> ct(aCx); // RootingCx()
         {
           JSAutoRealm ar(aCx, aGlobal->GetGlobalJSObject());
@@ -342,6 +366,7 @@ already_AddRefed<Promise> BerytusChannel::CreateInner(
           std::move(ct),
           webAppActor,
           new BerytusSecretManagerActor(aGlobal, scmEd25519Key),
+          certExt,
           nullptr,
           proxy
         );

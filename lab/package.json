@@ -1,0 +1,25 @@
+{
+  "scripts": {
+    "build": "astro build",
+    "prestart": "test -d ./dist || npm run build",
+    "start": "/bin/sh -c 'set -o allexport; source .env; astro preview --port $PORT'"
+  },
+  "dependencies": {
+    "@alichry/jsconsole": "^3.0.2",
+    "@astrojs/node": "^9.2.0",
+    "@astrojs/react": "^4.2.4",
+    "@peculiar/x509": "^1.12.3",
+    "@tailwindcss/vite": "^4.1.4",
+    "asn1.js": "^5.4.1",
+    "astro": "^5.7.1",
+    "express": "^5.1.0",
+    "preact": "^10.26.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "htmlparser2": "^10.0.0"
+  }
+}

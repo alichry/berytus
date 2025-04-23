@@ -1,0 +1,290 @@
+#!/bin/bash
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+# Example:
+# ./cert -a localhost -a 127.0.0.1 -k https://localhost/app/a/* -k https://localhost/app/b/* lab/server
+
+set -e
+
+usage="X509+Berytus self-signed certificate producer usage:
+
+    cert -a DOMAIN [-a DOMAIN{2}] [...] [-a DOMAIN{N}] \\
+         -k KEY_ENTRY [-k KEY_ENTRY{2}] [...] [-k KEY_ENTRY{N}] \\
+         OUT_DIR
+
+Where:
+    DOMAIN          A fully-qualified domain name to be added
+                    to the SubjectAltName.
+
+    KEY_ENTRY       A Berytus signing key entry. The entry is
+                    a space-separated tuple of 1 or 2 elements.
+                    The first element (required) is a URL pattern,
+                    and is used to specify on which endpoints the,
+                    key could be used. For a catch-all URL, specify
+                    '\*' without quotes. The second element (optional)
+                    can be used to specify the desired Ed25519 key
+                    to use for this key. The value of this element
+                    should be a file path to the private key (PEM).
+                    If no file path was passed, an Ed25519 key would
+                    be generated.
+
+    OUT_DIR         The directory to place all the produced files in.
+"
+
+printUsage() {
+    echo "$usage" >&2
+}
+
+maxshift () {
+    # $1 - the desired shift
+    # $2 - the "$#" of the caller
+    desired="${1}"
+    nargs="${2}"
+    if [ -z "${desired}" ]; then
+        echo "Error: maxshift - desired is not defined or empty" >&2
+        return 1
+    fi
+    if [ -z "${nargs}" ]; then
+        echo "Error: maxshift - nargs is not defiend or empty" >&2
+        return 1
+    fi
+    if [ "${desired}" -gt "${nargs}" ]; then
+        echo "${nargs}"
+    else
+        echo "${desired}"
+    fi
+}
+
+valcl() {
+    # $@ -> the cl
+    # @out domains
+    # @out input_entries_urls
+    # @out input_entries_keys
+    # @out out_dir
+    if [ "$1" = "-h" -o "$1" = "--help" ]; then
+        printUsage
+        exit 0
+    fi
+    domains=()
+    input_entries_urls=()
+    input_entries_keys=()
+    out_dir=""
+    while [ "$#" -gt 0 ]
+    do
+        if [ "$#" -eq 1 ]; then
+            out_dir="$1"
+            shift 1
+        fi
+        case "$1" in
+            -h|--help)
+                printUsage
+                exit 0
+                ;;
+            -a)
+                domains+=("$2")
+                shift `maxshift 2 "$#"`
+                ;;
+            -k)
+                url="$2"
+                key="$3"
+                if [ -z "$4" ]; then
+                    key=""
+                fi
+                if [ "$key" == "-a" ] || [ "$key" == "-k" ] || [ "$key" == "-h" ] || [ "$key" == "--help" ]; then
+                    key=""
+                fi
+                if [ -z "$key" ]; then
+                    input_entries_urls+=("$url")
+                    input_entries_keys+=("")
+                    shift `maxshift 2 "$#"`
+                else
+                    key="$(realpath "$key")"
+                    input_entries_urls+=("$url")
+                    input_entries_keys+=("$key")
+                    shift `maxshift 3 "$#"`
+                fi
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    # shellcheck disable=SC2128
+    if [ -z "$domains" ]; then
+        echo "Error: missing domain entries, make sure to add at least one domain using -a" >&2
+        printUsage
+        return 1
+    fi
+    if [[ ${#input_entries_urls[@]} -eq 0 ]]; then
+        echo "Error: missing key entries, make sure to add at least one key entry using -k" >&2
+        printUsage
+        return 1
+    fi
+    if [ -z "$out_dir" ]; then
+        echo "Error: missing output directory, make sure to specify the output directory as the last command argument" >&2
+        printUsage
+        return 1
+    fi
+
+}
+
+genSubjectKey() {
+    if [ -z "$out_dir" ]; then
+        echo "Error: \$out_dir not set." >&2
+        return 1
+    fi
+    # generate the certificate subject key
+    subjectPrivKey="$out_dir/subj.privkey.pem"
+    subjectPubKey="$out_dir/subj.pubkey.pem"
+    subjectPubKeyDer="$out_dir/subj.pubkey.der"
+    openssl genrsa -out "$subjectPrivKey" 4096
+    openssl rsa -in "$subjectPrivKey" -pubout \
+        -out "$subjectPubKey"
+    openssl pkey -pubin -inform pem \
+        -in "$subjectPubKey" \
+        -pubout -outform der \
+        > "${subjectPubKeyDer}"
+}
+
+createCsr() {
+    if [ -z "$out_dir" ]; then
+        echo "Error: \$out_dir not set." >&2
+        return 1
+    fi
+    if [ -z "$domains" ]; then
+        echo "Error: \$domains not set." >&2
+        return 1
+    fi
+    if [ -z "${input_entries_urls[*]}" ]; then
+        echo "Error: \$input_entries_urls not set." >&2
+        return 1
+    fi
+    if [ -z "${input_entries_keys[*]}" ]; then
+        echo "Error: \$input_entries_keys '${input_entries_keys[*]}' not set." >&2
+        return 1
+    fi
+    if [ -z "$subjectPubKeyDer" ]; then
+        echo "Error: \$subjectPubKeyDer not set." >&2
+        return 1
+    fi
+    if [ -z "$subjectPrivKey" ]; then
+        echo "Error: \$subjectPrivKey not set." >&2
+        return 1
+    fi
+
+    dns_includes=""
+    allowlist_includes=""
+    sections=""
+
+    for (( i=0; i<${#domains[@]}; i++ ));
+    do
+        domain="${domains[$i]}"
+        include="DNS.$i = $domain"
+        if [ -z "$dns_includes" ]; then
+            dns_includes="$include"
+        else
+            dns_includes="$dns_includes
+$include"
+        fi
+    done
+
+    for (( i=0; i<${#input_entries_urls[@]}; i++ ));
+    do
+        url="${input_entries_urls[$i]}"
+        privkey_src="${input_entries_keys[$i]}"
+        privkey="$out_dir/berytus.$i.privkey.pem"
+        if [ -n "$privkey_src" ]; then
+            if [ ! -f "$privkey_src" ]; then
+                echo "Error: key file not found ($privkey)" >&2
+                return 1
+            fi
+            cp "$privkey_src" "$privkey"
+        else
+            # generate a berytus signing key
+            openssl genpkey \
+                -algorithm ed25519 \
+                -out "$privkey"
+        fi
+        openssl pkey -in "$privkey" \
+            -pubout -out "$out_dir/berytus.$i.pubkey.pem"
+        spki_b64="$(openssl pkey \
+                        -in "$privkey" \
+                        -pubout -outform der | base64)"
+        # Signing the subject key DER digest using
+        # the berytus key
+        subject_sig="$(openssl pkeyutl -sign -rawin -inkey "$privkey" \
+                            -in "$subjectPubKeyDer" | base64)"
+        sectionName="berytus_allowlist_entry_${i}"
+        section="[$sectionName]
+key=UTF8STRING:${spki_b64}
+sksig=UTF8STRING:${subject_sig}
+url=UTF8STRING:${url}
+"
+        sections="$sections
+$section"
+        include="Entry.${i}=SEQUENCE:${sectionName}"
+        if [ -z "$allowlist_includes" ]; then
+            allowlist_includes="$include"
+        else
+            allowlist_includes="$allowlist_includes
+$include"
+        fi
+    done
+
+    # create configuration file, specifying
+    # the berytus extension
+    openssl_cnf="$out_dir/openssl.cnf"
+    cat <<EOF > "$openssl_cnf"
+[req]
+req_extensions = v3_exts
+
+[v3_exts]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+1.2.3.4.22.11.23=ASN1:SEQUENCE:berytus_extension
+
+[alt_names]
+$dns_includes
+
+[berytus_extension]
+$allowlist_includes
+
+$sections
+EOF
+    subjectCsr="$out_dir/subj.csr.pem"
+    # create the certificate signing request
+    openssl req \
+        -new -key "$subjectPrivKey" \
+        -config "$openssl_cnf" \
+        -subj '/C=UK/CN=Example/' \
+        -out "$subjectCsr"
+}
+
+signCsr() {
+    if [ -z "$subjectCsr" ]; then
+        echo "Error: \$subjectCsr not set." >&2
+        return 1
+    fi
+    if [ -z "$subjectPrivKey" ]; then
+        echo "Error: \$subjectPrivKey not set." >&2
+        return 1
+    fi
+    subjectCert="$out_dir/subj.cert.pem"
+    openssl x509 -req -in "$subjectCsr" \
+        -out "$subjectCert" \
+        -key "$subjectPrivKey" \
+        -sha256 -days 365 \
+        -copy_extensions=copyall
+}
+
+run() {
+    genSubjectKey
+    createCsr
+    signCsr
+}
+
+valcl "$@"
+run

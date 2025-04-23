@@ -1,0 +1,15 @@
+---
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import JSConsole from "../components/JSConsole";
+import ServerInfo from "../components/ServerInfo.astro";
+import SiteLayout from "../layouts/SiteLayout.astro";
+---
+<SiteLayout>
+    <div id="root" class="flex flex-row flex-wrap">
+        <ServerInfo class:list={"server-container h-screen"} server:defer />
+        <JSConsole client:only="react" className="flex-1 h-screen" />
+    </div>
+</SiteLayout>

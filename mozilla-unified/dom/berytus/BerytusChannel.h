@@ -22,6 +22,7 @@
 #include "mozilla/berytus/AgentProxy.h" // AgentProxy
 #include "mozilla/dom/BerytusKeyAgreementParameters.h"
 #include "mozilla/dom/BerytusSecretManagerActor.h"
+#include "mozilla/dom/BerytusX509Extension.h"
 
 namespace mozilla {
 namespace dom {
@@ -51,6 +52,7 @@ protected:
     BerytusChannelConstraints&& aConstraints,
     const RefPtr<BerytusWebAppActor>& aWebAppActor,
     const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
+    const RefPtr<BerytusX509Extension>& aCertExtension, // can be a nullptr
     const RefPtr<BerytusKeyAgreementParameters>& aKeyAgreementParams, // can be a nullptr
     const RefPtr<mozilla::berytus::OwnedAgentProxy>& aAgent
   );
@@ -61,6 +63,7 @@ protected:
   BerytusChannelConstraints mConstraints;
   RefPtr<BerytusWebAppActor> mWebAppActor;
   RefPtr<BerytusSecretManagerActor> mSecretManagerActor;
+  RefPtr<BerytusX509Extension> mCertExtension;
   RefPtr<BerytusKeyAgreementParameters> mKeyAgreementParams; // can be a nullptr
   RefPtr<mozilla::berytus::OwnedAgentProxy> mAgent;
 
