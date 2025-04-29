@@ -1,5 +1,5 @@
 --- dom/bindings/Bindings.conf.orig	2025-04-10 17:31:15
-+++ dom/bindings/Bindings.conf	2025-04-10 17:31:15
++++ dom/bindings/Bindings.conf	2025-04-29 17:44:17
 @@ -79,8 +79,48 @@
  'BatteryManager': {
      'nativeType': 'mozilla::dom::battery::BatteryManager',

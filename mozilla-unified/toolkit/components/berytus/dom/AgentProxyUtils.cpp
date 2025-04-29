@@ -231,18 +231,18 @@ void Utils_nsURIToUriParams(nsIURI* aSrcURI, UriParams& aOut) {
 }
 
 nsresult
-Utils_WebAppActorToVariant(const RefPtr<dom::BerytusWebAppActor>& aActor,
+Utils_WebAppActorToVariant(const RefPtr<const dom::BerytusWebAppActor>& aActor,
                            SafeVariant<berytus::CryptoActor, berytus::OriginActor>& aRetVal) {
   if (aActor->Type() == dom::BerytusWebAppActorType::CryptoActor) {
     CryptoActor sActor = CryptoActor();
-    static_cast<dom::BerytusCryptoWebAppActor*>(aActor.get())
+    static_cast<const dom::BerytusCryptoWebAppActor*>(aActor.get())
       ->GetEd25519Key(sActor.mEd25519Key);
     aRetVal.Init(std::move(sActor));
     return NS_OK;
   }
   nsresult rv;
   OriginActor sActor;
-  auto* anonActor = static_cast<dom::BerytusAnonymousWebAppActor*>(aActor.get());
+  auto* anonActor = static_cast<const dom::BerytusAnonymousWebAppActor*>(aActor.get());
   nsIURI* originalURI = anonActor->GetOriginalURI(rv);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;

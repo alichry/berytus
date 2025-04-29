@@ -67,7 +67,7 @@ nsresult Utils_RequestContextWithLoginOperationMetadata(
 
 void Utils_nsURIToUriParams(nsIURI* aSrcURI, UriParams& aOut);
 
-nsresult Utils_WebAppActorToVariant(const RefPtr<mozilla::dom::BerytusWebAppActor>& aActor,
+nsresult Utils_WebAppActorToVariant(const RefPtr<const mozilla::dom::BerytusWebAppActor>& aActor,
                                     SafeVariant<berytus::CryptoActor, berytus::OriginActor>& aRetVal);
 
 template <typename ...T>

@@ -16,6 +16,7 @@
 #include "mozilla/RefPtr.h"
 #include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusChannelBinding.h"
+#include "mozilla/dom/BerytusKeyAgreementParameters.h"
 #include "mozilla/dom/BerytusLoginOperation.h"
 #include "mozilla/dom/BerytusWebAppActor.h"
 #include "mozilla/dom/BerytusX509Extension.h"
@@ -138,9 +139,14 @@ already_AddRefed<BerytusWebAppActor> BerytusChannel::WebApp() const
   return do_AddRef(mWebAppActor);
 }
 
-BerytusWebAppActor* BerytusChannel::GetWebAppActor() const {
+const BerytusWebAppActor* BerytusChannel::GetWebAppActor() const {
   MOZ_ASSERT(mWebAppActor);
   return mWebAppActor;
+}
+
+const BerytusSecretManagerActor* BerytusChannel::GetSecretManagerActor() const {
+  MOZ_ASSERT(mSecretManagerActor);
+  return mSecretManagerActor;
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
@@ -438,10 +444,17 @@ already_AddRefed<Promise> BerytusChannel::Login(JSContext* aCx, const BerytusOnb
   return outPromise.forget();
 }
 
-already_AddRefed<Promise> BerytusChannel::PrepareKeyAgreementParameters(const nsAString& webAppX25519PublicKey, ErrorResult& aRv)
+already_AddRefed<Promise> BerytusChannel::PrepareKeyAgreementParameters(
+    const nsAString& aWebAppX25519PublicKey,
+    ErrorResult& aRv)
 {
-  MOZ_ASSERT(false, "BerytusChannel::PrepareKeyAgreementParameters");
-  return nullptr;
+  RefPtr<Promise> outPromise = Promise::Create(mGlobal, aRv);
+  NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
+  RefPtr<BerytusKeyAgreementParameters> pams = BerytusKeyAgreementParameters::Create(this, aRv);
+  NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
+  pams->GetExchange()->SetWebApp(aWebAppX25519PublicKey);
+  outPromise->MaybeResolve(pams);
+  return outPromise.forget();
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).

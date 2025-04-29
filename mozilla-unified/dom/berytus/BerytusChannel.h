@@ -93,7 +93,9 @@ public:
 
   berytus::AgentProxy& Agent() const;
 
-  BerytusWebAppActor* GetWebAppActor() const;
+  const BerytusWebAppActor* GetWebAppActor() const;
+
+  const BerytusSecretManagerActor* GetSecretManagerActor() const;
 
   const BerytusChannelConstraints& Constraints() const;
 
