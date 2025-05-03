@@ -350,7 +350,7 @@ bool JSONArrayWriter::Value(const T& aValue) {
 
 
 // Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusKeyAgreementParameters, mGlobal, mSession, mExchange, mDerivation, mGeneration)
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusKeyAgreementParameters, mGlobal, mAuthentication, mSession, mExchange, mDerivation, mGeneration)
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusKeyAgreementParameters)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusKeyAgreementParameters)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusKeyAgreementParameters)
@@ -550,10 +550,9 @@ void SupportsToDictionary::ToDictionary(JSContext* aCx,
   aValue.setObjectOrNull(mCachedDictionary);
 }
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED(Fingerprint, SupportsToDictionary)
 NS_IMPL_ADDREF_INHERITED(Fingerprint, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Fingerprint, SupportsToDictionary)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Fingerprint)
+NS_INTERFACE_MAP_BEGIN(Fingerprint)
 NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 Fingerprint::Fingerprint(
@@ -828,11 +827,9 @@ void ToCanonicalJSON(const RefPtr<Session>& aValue, nsString& aJson, ErrorResult
   NS_ENSURE_TRUE_VOID(writer.End());
 }
 
-
-NS_IMPL_CYCLE_COLLECTION_INHERITED(Authentication, SupportsToDictionary)
 NS_IMPL_ADDREF_INHERITED(Authentication, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Authentication, SupportsToDictionary)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Authentication)
+NS_INTERFACE_MAP_BEGIN(Authentication)
 NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 Authentication::Authentication(
@@ -902,10 +899,9 @@ void ToCanonicalJSON(const RefPtr<Authentication>& aValue, nsString& aJson, Erro
   NS_ENSURE_TRUE_VOID(writer.End());
 }
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED(Exchange, SupportsToDictionary)
 NS_IMPL_ADDREF_INHERITED(Exchange, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Exchange, SupportsToDictionary)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Exchange)
+NS_INTERFACE_MAP_BEGIN(Exchange)
 NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 Exchange::Exchange(nsIGlobalObject* aGlobal) : SupportsToDictionary(aGlobal) {}
@@ -982,10 +978,9 @@ void ToCanonicalJSON(const RefPtr<Exchange>& aValue, nsString& aJson, ErrorResul
   NS_ENSURE_TRUE_VOID(writer.End());
 }
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED(Derivation, SupportsToDictionary)
 NS_IMPL_ADDREF_INHERITED(Derivation, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Derivation, SupportsToDictionary)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Derivation)
+NS_INTERFACE_MAP_BEGIN(Derivation)
 NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 CryptoBuffer Derivation::mInfo;
@@ -1033,7 +1028,7 @@ void Derivation::CacheDictionary(JSContext* aCx,
 
   RootedDictionary<BerytusKeyDerivationParams> dict(aCx);
   dict.mName.Assign(mName);
-  dict.mHash.SetAsString().Assign(mHash);
+  dict.mHash.Assign(mHash);
   JS::Rooted<JSObject*> saltAbObj(aCx, mSalt.ToArrayBuffer(aCx, aRv));
   NS_ENSURE_TRUE_VOID(!aRv.Failed());
   MOZ_ASSERT(saltAbObj);
@@ -1086,10 +1081,9 @@ void ToCanonicalJSON(const RefPtr<Derivation>& aValue, nsString& aJson, ErrorRes
   NS_ENSURE_TRUE_VOID(writer.End());
 }
 
-NS_IMPL_CYCLE_COLLECTION_INHERITED(Generation, SupportsToDictionary)
 NS_IMPL_ADDREF_INHERITED(Generation, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Generation, SupportsToDictionary)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Generation)
+NS_INTERFACE_MAP_BEGIN(Generation)
 NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 Generation::Generation(

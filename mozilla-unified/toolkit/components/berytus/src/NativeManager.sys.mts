@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { IUnderlyingRequestHandler, AbortChallengeArgs, AddFieldArgs, ApproveChallengeRequestArgs, ApproveOperationArgs, ELoginUserIntent, ApproveTransitionToAuthOpArgs, ChallengeMessageResponse, CloseChallengeArgs, CredentialsMetadata, EnableEndToEndEncryptionArgs, GenerateKeyExchangeParametersArgs, GetCredentialsMetadataArgs, GetSigningKeyArgs, PartialKeyExchangeParametersFromScm, PreliminaryRequestContext, RecordMetadata, RejectFieldValueArgs, RequestContext, RequestContextWithOperation, RequestHandler, RespondToChallengeMessageArgs, UpdateMetadataArgs, ResponseContext, UpdateUserAttributesArgs, RequestContextWithLoginOperation, EMetadataStatus } from './types';
+import type { IUnderlyingRequestHandler, AbortChallengeArgs, AddFieldArgs, ApproveChallengeRequestArgs, ApproveOperationArgs, ELoginUserIntent, ApproveTransitionToAuthOpArgs, ChallengeMessageResponse, CloseChallengeArgs, CredentialsMetadata, GenerateKeyExchangeParametersArgs, GetCredentialsMetadataArgs, CreateChannelArgs, PartialKeyExchangeParametersFromScm, PreliminaryRequestContext, RecordMetadata, RejectFieldValueArgs, RequestContext, RequestContextWithOperation, RequestHandler, RespondToChallengeMessageArgs, UpdateMetadataArgs, ResponseContext, UpdateUserAttributesArgs, RequestContextWithLoginOperation, EMetadataStatus, SignKeyAgreementParametersArgs, GetSigningKeyArgs, VerifySignedKeyExchangeParametersArgs } from './types';
 
 type ManagerRequests = IUnderlyingRequestHandler['manager'];
 type LoginRequests = IUnderlyingRequestHandler['login'];
@@ -47,10 +47,20 @@ class LoginRequestHandler implements LoginRequests {
 }
 
 class ChannelRequestHandler implements ChannelRequests {
-    generateKeyExchangeParameters(context: RequestContext & ResponseContext<'channel', 'generateKeyExchangeParameters'>, args: GenerateKeyExchangeParametersArgs): void {
+    createChannel(context: PreliminaryRequestContext & ResponseContext<'channel', 'createChannel'>, args: CreateChannelArgs): void {
+        // priv: MC4CAQAwBQYDK2VwBCIEINceTfVAd0DzkZKmfmGurcoljjOPm6Ix9CTNBXLcWt3b
+        context.response.resolve();
+    }
+    generateX25519Key(context: RequestContext & ResponseContext<'channel', 'generateX25519Key'>): void {
         throw new Error('Method not implemented.');
     }
-    enableEndToEndEncryption(context: RequestContext & ResponseContext<'channel', 'enableEndToEndEncryption'>, args: EnableEndToEndEncryptionArgs): void {
+    signKeyExchangeParameters(context: RequestContext & ResponseContext<'channel', 'signKeyExchangeParameters'>, args: SignKeyAgreementParametersArgs): void {
+        throw new Error('Method not implemented.');
+    }
+    verifySignedKeyExchangeParameters(context: RequestContext & ResponseContext<'channel', 'verifySignedKeyExchangeParameters'>, args: VerifySignedKeyExchangeParametersArgs): void {
+        throw new Error('Method not implemented.');
+    }
+    enableEndToEndEncryption(context: RequestContext & ResponseContext<'channel', 'enableEndToEndEncryption'>): void {
         throw new Error('Method not implemented.');
     }
     closeChannel(context: RequestContext & ResponseContext<'channel', 'closeChannel'>): void {

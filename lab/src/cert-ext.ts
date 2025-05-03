@@ -8,7 +8,7 @@ import asn1 from "asn1.js";
 
 const BerytusExtOID = "1.2.3.4.22.11.23";
 
-const Entry = asn1.define('Entry', function() {
+const ASN1Entry = asn1.define('Entry', function() {
     this.seq().obj(
         this.key('spki').utf8str(),
         this.key('sksig').utf8str(),
@@ -16,11 +16,21 @@ const Entry = asn1.define('Entry', function() {
     );
 });
 
-const Allowlist = asn1.define('Allowlist', function() {
-    this.key("entries").seqof(Entry);
+const ASN1Allowlist = asn1.define('Allowlist', function() {
+    this.key("entries").seqof(ASN1Entry);
 });
 
-export const parseExt = async (certPath = 'server/subj.cert.pem') => {
+interface Entry {
+    spki: string;
+    sksig: string;
+    url: string;
+}
+
+type Allowlist = Entry[];
+
+export const parseExt = async (
+    certPath = 'server/subj.cert.pem'
+): Promise<Allowlist> => {
     const pem = await fs.readFile(certPath, 'utf8');
     const cert = new X509Certificate(pem);
     const ext = cert.extensions.find(e => e.type === BerytusExtOID);
@@ -28,6 +38,6 @@ export const parseExt = async (certPath = 'server/subj.cert.pem') => {
     if (!ext) {
         return null;
     }
-    const decoded = Allowlist.decode(Buffer.from(ext.value), 'der');
+    const decoded = ASN1Allowlist.decode(Buffer.from(ext.value), 'der');
     return decoded;
 }

@@ -34,6 +34,9 @@ namespace mozilla::dom {
   class BerytusKeyField;
   class BerytusSharedKeyField;
   class BerytusChannel;
+
+  struct BerytusChannelConstraints;
+  class BerytusSecretManagerActor;
 }
 
 namespace mozilla::berytus {
@@ -42,6 +45,14 @@ namespace mozilla::berytus {
 nsresult Utils_DocumentMetadata(nsIGlobalObject* aGlobal, berytus::DocumentMetadata& aRv);
 [[nodiscard]]
 nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal, const RefPtr<const dom::BerytusChannel>& aChannel, berytus::ChannelMetadata& aRetVal);
+[[nodiscard]]
+nsresult Utils_ChannelMetadata(
+    nsIGlobalObject* aGlobal,
+    const nsString& aChannelId,
+    const mozilla::dom::BerytusChannelConstraints& aCts,
+    const RefPtr<const dom::BerytusWebAppActor>& aWebAppActor,
+    const RefPtr<const mozilla::dom::BerytusSecretManagerActor>& aScmActor,
+    berytus::ChannelMetadata& aRetVal);
 void Utils_OperationMetadata(const RefPtr<const dom::BerytusLoginOperation>& aOperation, berytus::OperationMetadata& aRv);
 void Utils_LoginOperationMetadata(const RefPtr<const dom::BerytusLoginOperation>& aOperation, const dom::BerytusAccount* aAccount, berytus::LoginOperationMetadata& aRetVal);
 

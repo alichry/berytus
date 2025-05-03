@@ -100,9 +100,9 @@ export class IsolatedRequestHandler {
             },
         };
         this.channel = {
-            async generateKeyExchangeParameters(context, args) {
+            async createChannel(context, args) {
                 try {
-                    await self.preCall("channel", "generateKeyExchangeParameters", { context, args });
+                    await self.preCall("channel", "createChannel", { context, args });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -112,7 +112,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "generateKeyExchangeParameters", { context, args }, val);
+                                await self.preResolve("channel", "createChannel", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -122,7 +122,7 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "generateKeyExchangeParameters", { context, args }, val);
+                                await self.preReject("channel", "createChannel", { context, args }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -133,19 +133,19 @@ export class IsolatedRequestHandler {
                     }
                 };
                 try {
-                    await self.#impl.channel.generateKeyExchangeParameters({
+                    await self.#impl.channel.createChannel({
                         ...context,
                         ...wrappedResponseCtx
                     }, args);
                 }
                 catch (e) {
-                    self.handleUnexpectedException("channel", "generateKeyExchangeParameters", context.response, e);
+                    self.handleUnexpectedException("channel", "createChannel", context.response, e);
                     return;
                 }
             },
-            async enableEndToEndEncryption(context, args) {
+            async generateX25519Key(context) {
                 try {
-                    await self.preCall("channel", "enableEndToEndEncryption", { context, args });
+                    await self.preCall("channel", "generateX25519Key", { context });
                 }
                 catch (e) {
                     context.response.reject(e);
@@ -155,7 +155,7 @@ export class IsolatedRequestHandler {
                     response: {
                         async resolve(val) {
                             try {
-                                await self.preResolve("channel", "enableEndToEndEncryption", { context, args }, val);
+                                await self.preResolve("channel", "generateX25519Key", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -165,7 +165,136 @@ export class IsolatedRequestHandler {
                         },
                         async reject(val) {
                             try {
-                                await self.preReject("channel", "enableEndToEndEncryption", { context, args }, val);
+                                await self.preReject("channel", "generateX25519Key", { context }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
+                            context.response.reject(val);
+                        }
+                    }
+                };
+                try {
+                    await self.#impl.channel.generateX25519Key({
+                        ...context,
+                        ...wrappedResponseCtx
+                    });
+                }
+                catch (e) {
+                    self.handleUnexpectedException("channel", "generateX25519Key", context.response, e);
+                    return;
+                }
+            },
+            async signKeyExchangeParameters(context, args) {
+                try {
+                    await self.preCall("channel", "signKeyExchangeParameters", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
+                const wrappedResponseCtx = {
+                    response: {
+                        async resolve(val) {
+                            try {
+                                await self.preResolve("channel", "signKeyExchangeParameters", { context, args }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw new Error(e.reason || "ResolutionFailure");
+                            }
+                            context.response.resolve(val);
+                        },
+                        async reject(val) {
+                            try {
+                                await self.preReject("channel", "signKeyExchangeParameters", { context, args }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
+                            context.response.reject(val);
+                        }
+                    }
+                };
+                try {
+                    await self.#impl.channel.signKeyExchangeParameters({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("channel", "signKeyExchangeParameters", context.response, e);
+                    return;
+                }
+            },
+            async verifySignedKeyExchangeParameters(context, args) {
+                try {
+                    await self.preCall("channel", "verifySignedKeyExchangeParameters", { context, args });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
+                const wrappedResponseCtx = {
+                    response: {
+                        async resolve(val) {
+                            try {
+                                await self.preResolve("channel", "verifySignedKeyExchangeParameters", { context, args }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw new Error(e.reason || "ResolutionFailure");
+                            }
+                            context.response.resolve(val);
+                        },
+                        async reject(val) {
+                            try {
+                                await self.preReject("channel", "verifySignedKeyExchangeParameters", { context, args }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw e;
+                            }
+                            context.response.reject(val);
+                        }
+                    }
+                };
+                try {
+                    await self.#impl.channel.verifySignedKeyExchangeParameters({
+                        ...context,
+                        ...wrappedResponseCtx
+                    }, args);
+                }
+                catch (e) {
+                    self.handleUnexpectedException("channel", "verifySignedKeyExchangeParameters", context.response, e);
+                    return;
+                }
+            },
+            async enableEndToEndEncryption(context) {
+                try {
+                    await self.preCall("channel", "enableEndToEndEncryption", { context });
+                }
+                catch (e) {
+                    context.response.reject(e);
+                    return;
+                }
+                const wrappedResponseCtx = {
+                    response: {
+                        async resolve(val) {
+                            try {
+                                await self.preResolve("channel", "enableEndToEndEncryption", { context }, val);
+                            }
+                            catch (e) {
+                                context.response.reject(e);
+                                throw new Error(e.reason || "ResolutionFailure");
+                            }
+                            context.response.resolve(val);
+                        },
+                        async reject(val) {
+                            try {
+                                await self.preReject("channel", "enableEndToEndEncryption", { context }, val);
                             }
                             catch (e) {
                                 context.response.reject(e);
@@ -179,7 +308,7 @@ export class IsolatedRequestHandler {
                     await self.#impl.channel.enableEndToEndEncryption({
                         ...context,
                         ...wrappedResponseCtx
-                    }, args);
+                    });
                 }
                 catch (e) {
                     self.handleUnexpectedException("channel", "enableEndToEndEncryption", context.response, e);
@@ -1367,7 +1496,7 @@ export class PublicRequestHandler {
             },
         };
         this.channel = {
-            generateKeyExchangeParameters(context, args) {
+            createChannel(context, args) {
                 return new Promise((_resolve, _reject) => {
                     const responseCtx = {
                         response: {
@@ -1382,17 +1511,92 @@ export class PublicRequestHandler {
                     const requestCtx = {
                         request: {
                             id: uuid(),
-                            type: "Channel_GenerateKeyExchangeParameters"
+                            type: "Channel_CreateChannel"
                         }
                     };
-                    self.#impl.channel.generateKeyExchangeParameters({
+                    self.#impl.channel.createChannel({
                         ...context,
                         ...responseCtx,
                         ...requestCtx
                     }, args);
                 });
             },
-            enableEndToEndEncryption(context, args) {
+            generateX25519Key(context) {
+                return new Promise((_resolve, _reject) => {
+                    const responseCtx = {
+                        response: {
+                            resolve(val) {
+                                _resolve(val);
+                            },
+                            reject(val) {
+                                _reject(val);
+                            }
+                        }
+                    };
+                    const requestCtx = {
+                        request: {
+                            id: uuid(),
+                            type: "Channel_GenerateX25519Key"
+                        }
+                    };
+                    self.#impl.channel.generateX25519Key({
+                        ...context,
+                        ...responseCtx,
+                        ...requestCtx
+                    });
+                });
+            },
+            signKeyExchangeParameters(context, args) {
+                return new Promise((_resolve, _reject) => {
+                    const responseCtx = {
+                        response: {
+                            resolve(val) {
+                                _resolve(val);
+                            },
+                            reject(val) {
+                                _reject(val);
+                            }
+                        }
+                    };
+                    const requestCtx = {
+                        request: {
+                            id: uuid(),
+                            type: "Channel_SignKeyExchangeParameters"
+                        }
+                    };
+                    self.#impl.channel.signKeyExchangeParameters({
+                        ...context,
+                        ...responseCtx,
+                        ...requestCtx
+                    }, args);
+                });
+            },
+            verifySignedKeyExchangeParameters(context, args) {
+                return new Promise((_resolve, _reject) => {
+                    const responseCtx = {
+                        response: {
+                            resolve(val) {
+                                _resolve(val);
+                            },
+                            reject(val) {
+                                _reject(val);
+                            }
+                        }
+                    };
+                    const requestCtx = {
+                        request: {
+                            id: uuid(),
+                            type: "Channel_VerifySignedKeyExchangeParameters"
+                        }
+                    };
+                    self.#impl.channel.verifySignedKeyExchangeParameters({
+                        ...context,
+                        ...responseCtx,
+                        ...requestCtx
+                    }, args);
+                });
+            },
+            enableEndToEndEncryption(context) {
                 return new Promise((_resolve, _reject) => {
                     const responseCtx = {
                         response: {
@@ -1414,7 +1618,7 @@ export class PublicRequestHandler {
                         ...context,
                         ...responseCtx,
                         ...requestCtx
-                    }, args);
+                    });
                 });
             },
             closeChannel(context) {

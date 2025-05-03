@@ -10,8 +10,8 @@ dictionary BerytusKeyExchangePartyPublicKeys {
 };
 
 [GenerateInit, GenerateConversionToJS]
-dictionary BerytusKeyExchangeAuthentication : BerytusKeyExchangePartyPublicKeys {
-    required DOMString name; // Ed25519
+dictionary BerytusKeyExchangeAuthentication {
+    required DOMString name; // -> Ed25519
     required BerytusKeyExchangePartyPublicKeys public;
 };
 
@@ -22,10 +22,18 @@ dictionary BerytusKeyExchangeParams {
 };
 
 [GenerateInit, GenerateConversionToJS]
-dictionary BerytusKeyDerivationParams : HkdfParams {};
+dictionary BerytusKeyDerivationParams /*: HkdfParams */ {
+    required DOMString name; // -> HKDF
+    required DOMString hash; // -> SHA-256
+    required BufferSource salt;
+    required BufferSource info;
+};
 
 [GenerateInit, GenerateConversionToJS]
-dictionary BerytusKeyGenParams : AesKeyGenParams {};
+dictionary BerytusKeyGenParams /*: AesKeyGenParams */ {
+    required DOMString name; // -> AES-GCM
+    required [EnforceRange] unsigned short length;
+};
 
 /**
  * The session fingerprint is produced by
@@ -36,6 +44,8 @@ dictionary BerytusKeyExchangeSessionFingerprint {
     required DOMString hash; // -> SHA-256
     required DOMString version;
     /**
+     * This a work in progress; make no evaluation.
+     *
      * Alternatively, we can streamline a flow where the browser
      * sends the salt to a signed URL, therefore concealing the salt
      * from the client-side.

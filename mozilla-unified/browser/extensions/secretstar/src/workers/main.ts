@@ -5,10 +5,10 @@ import { getSessionRecord, openWindowOrRedirectTab } from "./session-utils";
 import { url } from "./paths";
 import { randomPassword } from "@root/utils";
 import { PAGECONTEXT_POPUP } from "@root/pagecontext";
-import { ab2base64 } from "@root/key-utils";
-import { Channel } from "@root/db/Channel";
+import { ab2base64, base64ToArrayBuffer } from "@root/key-utils";
+import { Channel, isChannelE2EReady } from "@root/db/Channel";
 import { ERejectionCode, EOperationType, EMetadataStatus, RequestType } from "@berytus/enums";
-import type { PreliminaryRequestContext } from "@berytus/types";
+import type { KeyAgreementParameters, PreliminaryRequestContext } from "@berytus/types";
 import { userAttributesLabels } from "@root/ui/utils/userAttributesLabels";
 import { stringifyArrayBufferOrEncryptedPacket, stringifyEncryptedPacket } from "./field-utils";
 import { openPageActionPopupIfNecessary } from "./pageAction-popup-fix";
@@ -72,20 +72,23 @@ async function showUi(
 browser.berytus.registerRequestHandler({
     manager: {
         async getSigningKey(context, args): Promise<void> {
-            const publicKey = "BRTTODO:SCMEd25519PublicKey";
-            const privateKey = "BRTTODO:SCMEd25519PrivateKey";
-            // BRTTODO: Move base channel creation { id: channelId }
-            // once we have approveChannel()
-            await db.channel.add({
-                id: "BRTTODO:ChannelID" + Math.floor(Math.random() * 1000),
-                webAppEd25519Key: "ed25519Key" in args.webAppActor
-                    ? args.webAppActor.ed25519Key
-                    : undefined,
-                scmEd25519Key: {
-                    publicKey,
-                    privateKey
-                }
-            });
+            const keys = await db.signingKeys.toArray();
+            if (keys.length > 0) {
+                context.response.resolve(keys[0].public);
+                return;
+            }
+            const keyPair = await window.crypto.subtle.generateKey(
+                "Ed25519",
+                true,
+                ['sign', 'verify']
+            ) as CryptoKeyPair;
+            const publicKey = ab2base64(
+                await window.crypto.subtle.exportKey("spki", keyPair.publicKey)
+            );
+            await db.signingKeys.add({
+                public: publicKey,
+                private: await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey)
+            })
             context.response.resolve(publicKey);
         },
         async getCredentialsMetadata(context, args): Promise<void> {
@@ -98,84 +101,189 @@ browser.berytus.registerRequestHandler({
         },
     },
     channel: {
-        async generateKeyExchangeParameters(context, args): Promise<void> {
+        async createChannel(context, args) {
+            const key = await db.signingKeys.get(args.channel.scmActor.ed25519Key);
+            if (! key) {
+                throw new Error(
+                    'Unable to find signing key '
+                    + args.channel.scmActor.ed25519Key
+                );
+            }
+            await db.channel.add({
+                id: args.channel.id,
+                scmEd25519: key,
+                webAppEd25519Pub: "ed25519Key" in args.channel.webAppActor
+                    ? args.channel.webAppActor.ed25519Key
+                    : undefined,
+                e2eeActvie: false
+            });
+            context.response.resolve();
+        },
+        async generateX25519Key(context) {
             const channel = await db.channel.get(context.channel.id);
             if (! channel) {
                 throw new Error('Unable to find channel by id ' + context.channel.id);
             }
-            if (! channel.scmEd25519Key) {
-                throw new Error('Expecting our scm ed25519Key to have been genenrated');
+            if (channel.scmX25519) {
+                throw new Error("Expecting our scm x25519 key to be unset; got otherwise.");
             }
-            if (! channel.webAppEd25519Key) {
-                throw new Error('Expecting webapp ed25519Key to have been given previously');
-            }
-            const salt = new Uint8Array(32);
-            const info = new Uint8Array(16);
-            window.crypto.getRandomValues(salt);
-            window.crypto.getRandomValues(info);
-            // generate X25519Key
             const scmX25519Key = await window.crypto.subtle.generateKey(
-                {
-                  name: "X25519",
-                },
+                "X25519",
                 true,
                 ["deriveKey"],
-              ) as CryptoKeyPair;
-            const params = {
-                aesKeyLength: 256,
-                hkdfHash: "SHA-256",
-                hkdfSalt: salt.buffer,
-                hkdfInfo: info.buffer,
-            };
-            const change: Pick<Channel, 'scmX25519Key' | 'webAppX25519Key' | 'params'> = {
-                webAppX25519Key: args.paramsDraft.webAppX25519Key,
-                params: {
-                    aesKeyLength: params.aesKeyLength,
-                    hkdfHash: params.hkdfHash,
-                    hkdfSalt: ab2base64(params.hkdfSalt),
-                    hkdfInfo: ab2base64(params.hkdfInfo)
-                },
-                scmX25519Key: {
-                    privateKey: ab2base64(
-                        await window.crypto.subtle.exportKey("pkcs8", scmX25519Key.privateKey)
-                    ),
-                    publicKey: ab2base64(
-                        await window.crypto.subtle.exportKey("spki", scmX25519Key.publicKey)
-                    )
-                },
+            ) as CryptoKeyPair;
+            const b64Spki = ab2base64(
+                await window.crypto.subtle.exportKey("spki", scmX25519Key.publicKey)
+            );
+            const change: Pick<Channel, 'scmX25519'> = {
+                scmX25519: {
+                    private: await window.crypto.subtle.exportKey("pkcs8", scmX25519Key.privateKey),
+                    public: b64Spki
+                }
             };
             await db.channel.update(channel, change);
-            context.response.resolve(
-                {
-                    ...params,
-                    scmX25519Key: ab2base64(
-                        await window.crypto.subtle.exportKey("raw", scmX25519Key.publicKey)
-                    )
-                }
-            );
+            context.response.resolve({
+                public: b64Spki
+            });
         },
-        async enableEndToEndEncryption(context, args): Promise<void> {
-            let window: chrome.windows.Window | undefined = undefined;
-            const relativePath = `enable-e2e/${context.channel.id}/${context.request.id}/${context.request.type}`;
-            if (MODE === MODE_EXTERNAL_WINDOW) {
-                window = await openWindow(relativePath);
-            } else {
-                openPageActionPopupIfNecessary(
-                    { requestId: context.request.id, tabId: context.document.id },
-                    url(relativePath, PAGECONTEXT_POPUP)
-                );
-            }
+        async verifySignedKeyExchangeParameters(context, args): Promise<void> {
             const channel = await db.channel.get(context.channel.id);
             if (! channel) {
-                throw new Error('Expecting channel to be created');
+                throw new Error('Unable to find channel by id ' + context.channel.id);
             }
-            if (channel.webAppSignature) {
-                throw new Error('Expecting web app signature to be unset, i.e. not set previously.');
+            if (! channel.scmEd25519) {
+                throw new Error('Expecting our scm Ed25519 to be set; got otherwise.');
             }
-            const change: Pick<Channel, 'webAppSignature'> = {
-                webAppSignature: ab2base64(args.webAppPacketSignature)
+            if (! channel.scmX25519) {
+                throw new Error('Expecting our scm X25519 to be set; got otherwise.');
+            }
+            if (channel.keyAgreement) {
+                throw new Error('Expecting key agreement parameters to be unset; got otherwise.');
+            }
+            if (! channel.webAppEd25519Pub) {
+                throw new Error('Expecting channel to have a crypto web app actor set; got otherwise.');
+            }
+            const parameters: KeyAgreementParameters = (() => {
+                const obj = JSON.parse(args.canonicalJson);
+                obj.session.fingerprint.salt =
+                    new Uint8Array(obj.session.fingerprint.salt).buffer;
+                obj.session.fingerprint.value =
+                    new Uint8Array(obj.session.fingerprint.value).buffer;
+                obj.derivation.salt =
+                    new Uint8Array(obj.derivation.salt).buffer;
+                obj.derivation.info =
+                    new Uint8Array(obj.derivation.info).buffer;
+                return obj;
+            })();
+            if (parameters.authentication.public.scm !== channel.scmEd25519.public) {
+                throw new Error("Crypto scm actor mismatch");
+            }
+            if (parameters.authentication.public.webApp !== channel.webAppEd25519Pub) {
+                throw new Error("Crypto web app actor mismatch");
+            }
+            if (parameters.exchange.public.scm !== channel.scmX25519.public) {
+
+                throw new Error("Scm X25519 mismatch");
+            }
+            const webAppKey = await crypto.subtle.importKey(
+                'spki',
+                base64ToArrayBuffer(parameters.authentication.public.webApp),
+                'Ed25519',
+                false,
+                ['verify']
+            );
+            const data = new TextEncoder().encode(args.canonicalJson);
+            const valid = await crypto.subtle.verify(
+                'Ed25519',
+                webAppKey,
+                args.webAppSignature,
+                data
+            );
+            if (! valid) {
+                context.response.reject(ERejectionCode.GeneralError);
+                return;
+            }
+            const change: Pick<Channel, 'keyAgreement'> = {
+                keyAgreement: {
+                    parameters,
+                    signatures: {
+                        canonicalJson: args.canonicalJson,
+                        webAppSignature: args.webAppSignature
+                    },
+                }
             };
             await db.channel.update(channel, change);
+            context.response.resolve();
+        },
+        async signKeyExchangeParameters(context, args) {
+            const channel = await db.channel.get(context.channel.id);
+            if (! channel) {
+                throw new Error('Unable to find channel by id ' + context.channel.id);
+            }
+            if (! channel.scmEd25519) {
+                throw new Error('Expecting our scm ed25519Key to have been genenrated');
+            }
+            if (! channel.scmX25519) {
+                throw new Error('Expecting our scm scmX25519 to have been genenrated');
+            }
+            if (! channel.webAppEd25519Pub) {
+                throw new Error('Expecting web app ed25519 to have been given previously');
+            }
+            if (! channel.keyAgreement) {
+                throw new Error('Expecting key agreement parameters to be set; got otherwise.');
+            }
+            if (channel.keyAgreement.signatures.scmSignature) {
+                throw new Error('Expecting our scm signature to be unset; got otherwise.');
+            }
+            if (channel.keyAgreement.signatures.canonicalJson !== args.canonicalJson) {
+                throw new Error('Expecting our stored key agreement JSON to match what was provided; got otherwise.');
+            }
+            const ed25519Key = await window.crypto.subtle.importKey(
+                'pkcs8',
+                channel.scmEd25519.private,
+                "Ed25519",
+                false,
+                ['sign']
+            );
+            const scmSignature = await window.crypto.subtle.sign(
+                "Ed25519",
+                ed25519Key,
+                new TextEncoder().encode(args.canonicalJson)
+            );
+            await db.channel.update(channel, {
+                'keyAgreement.signatures.scmSignature': scmSignature
+            });
+            context.response.resolve({
+                scmSignature
+            });
+        },
+        async enableEndToEndEncryption(context): Promise<void> {
+            // TODO(berytus): It seems showUi depends on a session id
+            // (the operation id) retrieved from approveOperation.
+            // Once we refactor showUi to accept a channel id instead,
+            // we can consider showing a UI fo enableE2EE
+            // let window: chrome.windows.Window | undefined = undefined;
+            // const relativePath = `enable-e2e/${context.channel.id}/${context.request.id}/${context.request.type}`;
+            // if (MODE === MODE_EXTERNAL_WINDOW) {
+            //     window = await openWindow(relativePath);
+            // } else {
+            //     openPageActionPopupIfNecessary(
+            //         { requestId: context.request.id, tabId: context.document.id },
+            //         url(relativePath, PAGECONTEXT_POPUP)
+            //     );
+            // }
+            const channel = await db.channel.get(context.channel.id);
+            if (! channel) {
+                throw new Error('Expecting channel to be created; got otherwise.');
+            }
+            if (! isChannelE2EReady(channel)) {
+                throw new Error('Expecting channel to be E2E ready; got otherwise.');
+            }
+            const change: Pick<Channel, 'e2eeActvie'> = {
+                e2eeActvie: true
+            };
+            await db.channel.update(channel.id, change);
+            context.response.resolve();
         },
         closeChannel: function (context): void {
             context.response.resolve();

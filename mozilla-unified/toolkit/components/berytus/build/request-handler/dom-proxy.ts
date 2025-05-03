@@ -1671,8 +1671,16 @@ abstract class TypedMember {
 }
 
 class ArgumentMember extends TypedMember {
+    isConst: boolean;
+    constructor(type: IType, member: MemberSymbol, isConst = false) {
+        super(type, member);
+        this.isConst = isConst;
+    }
     toString(): string {
-        return this.type.atArgument() + ' ' + this.member.atArgument();
+        return (this.isConst ? `const ` : '')
+            + this.type.atArgument()
+            + ' '
+            + this.member.atArgument();
     }
 }
 
@@ -3004,7 +3012,7 @@ export const generateDomProxy = async () => {
 
     const typeIterator = h.typeIterator();
     let item = typeIterator.next();
-    let parameters: Array<TypedMember> = [];
+    let parameters: Array<ArgumentMember> = [];
     while (! item.done) {
         const {
             parsedType,
@@ -3017,7 +3025,8 @@ export const generateDomProxy = async () => {
         if (source === "parameter") {
             const typedMember = new ArgumentMember(
                 type,
-                new MemberSymbol(paramName)
+                new MemberSymbol(paramName),
+                true
             );
             parameters.push(typedMember);
         }

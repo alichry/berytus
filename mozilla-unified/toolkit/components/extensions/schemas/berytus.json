@@ -217,6 +217,19 @@
         }
       },
       {
+        "id": "CreateChannelArgs",
+        "type": "object",
+        "properties": {
+          "channel": {
+            "$ref": "ChannelMetadata"
+          }
+        }
+      },
+      {
+        "id": "ChannelCreateChannelResult",
+        "type": "any"
+      },
+      {
         "id": "RequestContext",
         "type": "object",
         "properties": {
@@ -235,108 +248,63 @@
         }
       },
       {
-        "id": "InitialKeyExchangeParametersDraft",
+        "id": "GenerateX25519KeyResult",
         "type": "object",
         "properties": {
-          "channelId": {
-            "type": "string"
-          },
-          "webAppX25519Key": {
+          "public": {
             "type": "string"
           }
         }
       },
       {
-        "id": "GenerateKeyExchangeParametersArgs",
+        "id": "ChannelGenerateX25519KeyResult",
+        "$ref": "GenerateX25519KeyResult"
+      },
+      {
+        "id": "SignKeyAgreementParametersArgs",
         "type": "object",
         "properties": {
-          "paramsDraft": {
-            "$ref": "InitialKeyExchangeParametersDraft"
+          "canonicalJson": {
+            "type": "string"
           }
         }
       },
       {
-        "id": "PartialKeyExchangeParametersFromScm",
+        "id": "SignKeyAgreementParametersResult",
         "type": "object",
         "properties": {
-          "scmX25519Key": {
-            "type": "string"
-          },
-          "hkdfHash": {
-            "type": "string"
-          },
-          "hkdfSalt": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
-          },
-          "hkdfInfo": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
-          },
-          "aesKeyLength": {
-            "type": "number"
-          }
-        }
-      },
-      {
-        "id": "ChannelGenerateKeyExchangeParametersResult",
-        "$ref": "PartialKeyExchangeParametersFromScm"
-      },
-      {
-        "id": "KeyExchangeParameters",
-        "type": "object",
-        "properties": {
-          "packet": {
-            "type": "string"
-          },
-          "channelId": {
-            "type": "string"
-          },
-          "webAppX25519Key": {
-            "type": "string"
-          },
-          "scmX25519Key": {
-            "type": "string"
-          },
-          "hkdfHash": {
-            "type": "string"
-          },
-          "hkdfSalt": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
-          },
-          "hkdfInfo": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
-          },
-          "aesKeyLength": {
-            "type": "number"
-          }
-        }
-      },
-      {
-        "id": "EnableEndToEndEncryptionArgs",
-        "type": "object",
-        "properties": {
-          "params": {
-            "$ref": "KeyExchangeParameters"
-          },
-          "webAppPacketSignature": {
+          "scmSignature": {
             "type": "object",
             "isInstanceOf": "ArrayBuffer",
             "additionalProperties": true
           }
         }
+      },
+      {
+        "id": "ChannelSignKeyExchangeParametersResult",
+        "$ref": "SignKeyAgreementParametersResult"
+      },
+      {
+        "id": "VerifySignedKeyExchangeParametersArgs",
+        "type": "object",
+        "properties": {
+          "canonicalJson": {
+            "type": "string"
+          },
+          "webAppSignature": {
+            "type": "object",
+            "isInstanceOf": "ArrayBuffer",
+            "additionalProperties": true
+          }
+        }
+      },
+      {
+        "id": "ChannelVerifySignedKeyExchangeParametersResult",
+        "type": "any"
       },
       {
         "id": "ChannelEnableEndToEndEncryptionResult",
-        "type": "object",
-        "isInstanceOf": "ArrayBuffer",
-        "additionalProperties": true
+        "type": "any"
       },
       {
         "id": "ChannelCloseChannelResult",
@@ -1939,7 +1907,29 @@
         "id": "ChannelRequestHandler",
         "type": "object",
         "properties": {
-          "generateKeyExchangeParameters": {
+          "createChannel": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "PreliminaryRequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "CreateChannelArgs"
+              }
+            ]
+          },
+          "generateX25519Key": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContext"
+              }
+            ]
+          },
+          "signKeyExchangeParameters": {
             "type": "function",
             "parameters": [
               {
@@ -1948,7 +1938,20 @@
               },
               {
                 "name": "args",
-                "$ref": "GenerateKeyExchangeParametersArgs"
+                "$ref": "SignKeyAgreementParametersArgs"
+              }
+            ]
+          },
+          "verifySignedKeyExchangeParameters": {
+            "type": "function",
+            "parameters": [
+              {
+                "name": "context",
+                "$ref": "RequestContext"
+              },
+              {
+                "name": "args",
+                "$ref": "VerifySignedKeyExchangeParametersArgs"
               }
             ]
           },
@@ -1958,10 +1961,6 @@
               {
                 "name": "context",
                 "$ref": "RequestContext"
-              },
-              {
-                "name": "args",
-                "$ref": "EnableEndToEndEncryptionArgs"
               }
             ]
           },

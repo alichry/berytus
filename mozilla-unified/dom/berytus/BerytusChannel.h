@@ -41,6 +41,8 @@ class BerytusChannel final : public nsISupports /* or NonRefcountedDOMObject if 
                              public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
 {
 public:
+  using CreationPromise = MozPromise<RefPtr<BerytusChannel>, berytus::Failure, true>;
+
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(BerytusChannel)
 
@@ -49,6 +51,7 @@ public:
 protected:
   BerytusChannel(
     nsIGlobalObject* aGlobal,
+    const nsString& aChannelId,
     BerytusChannelConstraints&& aConstraints,
     const RefPtr<BerytusWebAppActor>& aWebAppActor,
     const RefPtr<BerytusSecretManagerActor>& aSecretManagerActor,
@@ -91,6 +94,8 @@ public:
 
   bool Active() const;
 
+  const nsString& ID() const;
+
   berytus::AgentProxy& Agent() const;
 
   const BerytusWebAppActor* GetWebAppActor() const;
@@ -124,10 +129,26 @@ public:
   already_AddRefed<Promise> Login(JSContext* aCx, const BerytusOnboardingOptions& aOptions, ErrorResult& aRv);
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
-  already_AddRefed<Promise> PrepareKeyAgreementParameters(const nsAString& webAppX25519PublicKey, ErrorResult& aRv);
+  already_AddRefed<Promise> PrepareKeyAgreementParameters(
+      const nsAString& webAppX25519PublicKey,
+      ErrorResult& aRv);
+
+  already_AddRefed<Promise> ExchangeKeyAgreementSignatures(
+      JSContext* aCx,
+      const ArrayBuffer& aKeyAgreementSignature,
+      ErrorResult& aRv);
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
-  already_AddRefed<Promise> EnableEndToEndEncryption(const ArrayBuffer& keyAgreementSignature, ErrorResult& aRv);
+  already_AddRefed<Promise> EnableEndToEndEncryption(ErrorResult& aRv);
+private:
+  static RefPtr<CreationPromise> CreateForScm(
+    nsIGlobalObject* aGlobal,
+    JSContext* aCx,
+    const nsString& aSecretManagerId,
+    const RefPtr<BerytusWebAppActor>& aWebAppActor,
+    JS::PersistentRooted<JS::Value> aConstraints,
+    const RefPtr<BerytusX509Extension>& aCertExt
+  );
 };
 
 } // namespace mozilla::dom

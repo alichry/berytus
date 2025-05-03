@@ -20,10 +20,9 @@ in the top-level directory of this repository. For example:
 ```sh
 npm install
 ```
-(2) Run the server. You might need root privileges
-as the web server runs on port 443.
+(2) Run the server and its privileged proxy
 ```sh
-npm run start || sudo npm run start
+npm run start
 ```
 (3) Using our extended Firefox browser,
 navigate to the lab using the endpoint provided by

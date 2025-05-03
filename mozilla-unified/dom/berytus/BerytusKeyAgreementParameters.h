@@ -48,10 +48,6 @@ public:
     JS::Heap<JSObject*> mCachedDictionary;
   }; // class SupportsToDictionary
 
-  class SupportsToCanonicalJSON {
-    virtual void ToCanonicalJSON(nsString& aJson, ErrorResult& aRv) const;
-  };
-
   class Session final : public SupportsToDictionary {
   public:
     NS_DECL_ISUPPORTS_INHERITED
@@ -60,7 +56,6 @@ public:
     class Fingerprint final : public SupportsToDictionary {
     public:
       NS_DECL_ISUPPORTS_INHERITED
-      NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Fingerprint, SupportsToDictionary)
 
       static already_AddRefed<Fingerprint> Create(
           const RefPtr<const BerytusChannel>& aChannel,
@@ -106,7 +101,6 @@ public:
   class Authentication final : public SupportsToDictionary {
   public:
     NS_DECL_ISUPPORTS_INHERITED
-    NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Authentication, SupportsToDictionary)
 
     Authentication(nsIGlobalObject* aGlobal,
                    const nsString& aWebApp,
@@ -126,7 +120,6 @@ public:
   class Exchange final : public SupportsToDictionary {
   public:
     NS_DECL_ISUPPORTS_INHERITED
-    NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Exchange, SupportsToDictionary)
 
     Exchange(nsIGlobalObject* aGlobal);
     Exchange(nsIGlobalObject* aGlobal,
@@ -149,7 +142,6 @@ public:
   class Derivation final : public SupportsToDictionary {
   public:
     NS_DECL_ISUPPORTS_INHERITED
-    NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Derivation, SupportsToDictionary)
 
     static already_AddRefed<Derivation> Create(
         nsIGlobalObject* aGlobal,
@@ -172,7 +164,6 @@ public:
   class Generation final : public SupportsToDictionary {
   public:
     NS_DECL_ISUPPORTS_INHERITED
-    NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Generation, SupportsToDictionary)
 
     Generation(nsIGlobalObject* aGlobal);
     const nsLiteralString& GetName();

@@ -21,7 +21,7 @@ export default function EnableE2E() {
             if (! channel) {
                 throw new Error('Where is the channel?');
             }
-            if (! channel.webAppSignature) {
+            if (! channel.keyAgreement?.signatures.webAppSignature) {
                 return;
             }
             return { session, channel };
