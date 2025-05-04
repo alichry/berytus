@@ -35,23 +35,35 @@ public:
     NS_DECL_CYCLE_COLLECTING_ISUPPORTS
     NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(SupportsToDictionary)
 
-    SupportsToDictionary(nsIGlobalObject* aGlobal);
     void ToDictionary(JSContext* aCx,
                       JS::MutableHandle<JS::Value> aValue,
                       ErrorResult& aRv);
   protected:
+    // Adapted from ReadableStream.h:
+    // If one extends SupportsToDictionary with another cycle collectable class,
+    // calling HoldJSObjects and DropJSObjects should happen using 'this' of
+    // that extending class. And in that case Explicit should be passed to the
+    // constructor of SupportsToDictionary so that it doesn't make those calls.
+    // See also https://bugzilla.mozilla.org/show_bug.cgi?id=1801214.
+    enum class HoldDropJSObjectsCaller { Implicit, Explicit };
+
+    SupportsToDictionary(nsIGlobalObject* aGlobal,
+                         HoldDropJSObjectsCaller aHoldDropCaller = HoldDropJSObjectsCaller::Implicit);
     virtual ~SupportsToDictionary();
     void ClearCachedDictionary();
     virtual void CacheDictionary(JSContext* aCx,
                                  ErrorResult& aRv) = 0;
     nsCOMPtr<nsIGlobalObject> mGlobal;
     JS::Heap<JSObject*> mCachedDictionary;
+  private:
+    HoldDropJSObjectsCaller mHoldDropCaller;
   }; // class SupportsToDictionary
 
   class Session final : public SupportsToDictionary {
   public:
     NS_DECL_ISUPPORTS_INHERITED
     NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Session, SupportsToDictionary)
+    //NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(Session, SupportsToDictionary)
 
     class Fingerprint final : public SupportsToDictionary {
     public:
@@ -155,7 +167,7 @@ public:
   protected:
     Derivation(nsIGlobalObject* aGlobal, CryptoBuffer&& aSalt);
     ~Derivation();
-    constexpr static nsLiteralString mName = u"HDKF"_ns; //WEBCRYPTO_ALG_HKDF
+    constexpr static nsLiteralString mName = u"HKDF"_ns; //WEBCRYPTO_ALG_HKDF
     constexpr static nsLiteralString mHash = u"SHA-256"_ns; //WEBCRYPTO_ALG_SHA256
     CryptoBuffer mSalt;
     static CryptoBuffer mInfo;
@@ -173,7 +185,7 @@ public:
   protected:
     ~Generation();
     constexpr static nsLiteralString mName = u"AES-GCM"_ns; //WEBCRYPTO_ALG_AES_GCM
-    constexpr static uint16_t mLength = 16;
+    constexpr static uint16_t mLength = 256;
   }; // class Generation
   
 protected:

@@ -255,7 +255,7 @@ void ToCanonicalJSON(const CryptoBuffer& aValue, nsString& aJson, ErrorResult& a
   for (size_t i = 0; i < aValue.Length(); i++) {
     NS_ENSURE_TRUE_VOID(writer.Value(aValue.ElementAt(i)));
   }
-  writer.End();
+  NS_ENSURE_TRUE_VOID(writer.End());
 }
 
 JSONStructWriter::JSONStructWriter(nsString& aJson,
@@ -526,13 +526,19 @@ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(SupportsToDictionary)
 NS_INTERFACE_MAP_END
 
 SupportsToDictionary::SupportsToDictionary(
-    nsIGlobalObject* aGlobal) : mGlobal(aGlobal),
-                                                mCachedDictionary(nullptr) {
-  mozilla::HoldJSObjects(this);
+    nsIGlobalObject* aGlobal,
+    HoldDropJSObjectsCaller aHoldDropCaller) : mGlobal(aGlobal),
+                                               mCachedDictionary(nullptr),
+                                               mHoldDropCaller(aHoldDropCaller) {
+  if (mHoldDropCaller == HoldDropJSObjectsCaller::Implicit) {
+    mozilla::HoldJSObjects(this);
+  }
 }
 
 SupportsToDictionary::~SupportsToDictionary() {
-  mozilla::DropJSObjects(this);
+  if (mHoldDropCaller == HoldDropJSObjectsCaller::Implicit) {
+    mozilla::DropJSObjects(this);
+  }
 }
 
 void SupportsToDictionary::ClearCachedDictionary() {
@@ -734,6 +740,7 @@ void ToCanonicalJSON(const RefPtr<Fingerprint>& aValue, nsString& aJson, ErrorRe
 }
 
 NS_IMPL_CYCLE_COLLECTION_INHERITED(Session, SupportsToDictionary, mFingerprint)
+//NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(Session, SupportsToDictionary, (mFingerprint), ())
 NS_IMPL_ADDREF_INHERITED(Session, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Session, SupportsToDictionary)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Session)
@@ -743,12 +750,16 @@ Session::Session(
     nsIGlobalObject* aGlobal,
     const nsString& aId,
     const std::time_t& aTimestamp,
-    const RefPtr<Fingerprint>& aFingerprint) : SupportsToDictionary(aGlobal),
+    const RefPtr<Fingerprint>& aFingerprint) : SupportsToDictionary(aGlobal, HoldDropJSObjectsCaller::Explicit),
                                                mId(aId),
                                                mTimestamp(aTimestamp),
-                                               mFingerprint(aFingerprint) {}
+                                               mFingerprint(aFingerprint) {
+  mozilla::HoldJSObjects(this);
+}
 
-Session::~Session() {}
+Session::~Session() {
+  mozilla::DropJSObjects(this);
+}
 
 already_AddRefed<Session> Session::Create(
     const RefPtr<const BerytusChannel>& aChannel,

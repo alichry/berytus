@@ -32,7 +32,7 @@ dictionary BerytusKeyDerivationParams /*: HkdfParams */ {
 [GenerateInit, GenerateConversionToJS]
 dictionary BerytusKeyGenParams /*: AesKeyGenParams */ {
     required DOMString name; // -> AES-GCM
-    required [EnforceRange] unsigned short length;
+    required [EnforceRange] unsigned short length; // -> 256
 };
 
 /**

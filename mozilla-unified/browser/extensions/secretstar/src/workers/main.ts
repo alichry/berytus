@@ -279,8 +279,44 @@ browser.berytus.registerRequestHandler({
             if (! isChannelE2EReady(channel)) {
                 throw new Error('Expecting channel to be E2E ready; got otherwise.');
             }
-            const change: Pick<Channel, 'e2eeActvie'> = {
-                e2eeActvie: true
+            const webAppKey = await crypto.subtle.importKey(
+                'spki',
+                // @ts-ignore: NOTE(berytus): Firefox only
+                Uint8Array.fromBase64(channel.keyAgreement.parameters.exchange.public.webApp),
+                'X25519',
+                false,
+                []
+            );
+            const scmKey = await window.crypto.subtle.importKey(
+                'pkcs8',
+                channel.scmX25519.private,
+                "X25519",
+                false,
+                ['deriveKey']
+            );
+            const sharedKey = await crypto.subtle.deriveKey(
+                {
+                    name: "X25519",
+                    public: webAppKey
+                },
+                scmKey,
+                'HKDF',
+                false,
+                ['deriveKey']
+            );
+            const encryptionKey = await crypto.subtle.deriveKey(
+                channel.keyAgreement.parameters.derivation,
+                sharedKey,
+                channel.keyAgreement.parameters.generation,
+                true,
+                ['encrypt', 'decrypt']
+            );
+            const change: Pick<Channel, 'e2eeActvie' | 'e2eeKey'> = {
+                e2eeActvie: true,
+                e2eeKey: await window.crypto.subtle.exportKey(
+                    "raw",
+                    encryptionKey
+                )
             };
             await db.channel.update(channel.id, change);
             context.response.resolve();

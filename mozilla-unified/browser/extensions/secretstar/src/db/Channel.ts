@@ -18,9 +18,9 @@ export interface Channel {
             webAppSignature: ArrayBuffer;
             scmSignature?: ArrayBuffer;
         };
-        encryptionKey?: ArrayBuffer;
     };
     e2eeActvie: boolean;
+    e2eeKey?: ArrayBuffer;
 }
 
 interface E2EReadyChannel extends Channel {
@@ -32,6 +32,7 @@ interface E2EReadyChannel extends Channel {
 
 export interface E2EChannel extends E2EReadyChannel {
     e2eeActvie: true;
+    e2eeKey: ArrayBuffer;
 }
 
 export function isChannelE2EReady(channel: Channel): channel is E2EReadyChannel {
@@ -40,6 +41,5 @@ export function isChannelE2EReady(channel: Channel): channel is E2EReadyChannel 
         channel.webAppEd25519Pub &&
         channel.keyAgreement &&
         channel.keyAgreement.signatures.webAppSignature &&
-        channel.keyAgreement.signatures.scmSignature &&
-        channel.keyAgreement.encryptionKey);
+        channel.keyAgreement.signatures.scmSignature);
 }

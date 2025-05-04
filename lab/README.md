@@ -67,3 +67,16 @@ Acceptance of an assumed crypto web app actor.
 The provided key is defined in the first entry
 of the allowlist and the web page's URL matches
 that of the entry.
+
+### Performing a key exchange
+The interactive console also includes macros that invoke
+the Berytus API and the Web Crypto API. To perform a key exchange with the help of macros:
+1. Create a channel using `:channel:create <signingKeyEntry>`, e.g. `:channel:create 1`.
+2. Prepare key agreement, sign it, verify the manager's counterpart, and derive agreed key using `:channel:e2e`.
+
+You can now encrypt/decrypt data using an agreed symmetric key, e.g.:
+```
+:channel:e2e:encrypt new TextEncoder().encode("Hi!")
+:channel:e2e:decrypt iv encrypted
+new TextDecoder().decode(decrypted); /* <-- prints "Hi!" */
+```
