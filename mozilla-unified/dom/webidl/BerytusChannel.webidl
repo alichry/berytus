@@ -206,13 +206,10 @@ interface BerytusChannel {
     Promise<BerytusKeyAgreementParameters> prepareKeyAgreementParameters(
         DOMString webAppX25519PublicKey
     );
-
-    /**
-     * @param keyAgreementSignature the signature data of the string
-     *  created by BerytusKeyAgreementParameters.toJSON()
-     */
-    // [Throws]
-    // Promise<DOMString> enableEndToEndEncryption(
-    //     ArrayBuffer keyAgreementSignature
-    // );
+    [Throws]
+    Promise<ArrayBuffer> exchangeKeyAgreementSignatures(
+        ArrayBuffer webAppSignature
+    );
+    [Throws]
+    Promise<undefined> enableEndToEndEncryption();
 };

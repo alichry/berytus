@@ -34,10 +34,20 @@ class LoginRequestHandler {
     }
 }
 class ChannelRequestHandler {
-    generateKeyExchangeParameters(context, args) {
+    createChannel(context, args) {
+        // priv: MC4CAQAwBQYDK2VwBCIEINceTfVAd0DzkZKmfmGurcoljjOPm6Ix9CTNBXLcWt3b
+        context.response.resolve();
+    }
+    generateX25519Key(context) {
         throw new Error('Method not implemented.');
     }
-    enableEndToEndEncryption(context, args) {
+    signKeyExchangeParameters(context, args) {
+        throw new Error('Method not implemented.');
+    }
+    verifySignedKeyExchangeParameters(context, args) {
+        throw new Error('Method not implemented.');
+    }
+    enableEndToEndEncryption(context) {
         throw new Error('Method not implemented.');
     }
     closeChannel(context) {

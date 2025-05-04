@@ -1844,6 +1844,69 @@ bool ToJSVal<ChannelMetadata>(JSContext* aCx, const ChannelMetadata& aValue, JS:
 }
 
 template<>
+bool JSValIs<CreateChannelArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<ChannelMetadata>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<CreateChannelArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, CreateChannelArgs& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channel", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<ChannelMetadata>(aCx, propVal, aRv.mChannel)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<CreateChannelArgs>(JSContext* aCx, const CreateChannelArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<ChannelMetadata>(aCx, aValue.mChannel, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channel", memberVal0))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
+
+template<>
 bool JSValIs<RequestContext>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
@@ -1936,7 +1999,7 @@ bool ToJSVal<RequestContext>(JSContext* aCx, const RequestContext& aValue, JS::M
 }
 
 template<>
-bool JSValIs<InitialKeyExchangeParametersDraft>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool JSValIs<GenerateX25519KeyResult>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -1945,19 +2008,7 @@ bool JSValIs<InitialKeyExchangeParametersDraft>(JSContext *aCx, const JS::Handle
   bool isValid = false;
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "public", &propVal))) {
     return false;
   }
   if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
@@ -1974,25 +2025,17 @@ bool JSValIs<InitialKeyExchangeParametersDraft>(JSContext *aCx, const JS::Handle
 
 }
 template<>
-bool FromJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv) {
+bool FromJSVal<GenerateX25519KeyResult>(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateX25519KeyResult& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "public", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mChannelId)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mWebAppX25519Key)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mPublic)))) {
     return false;
   }
   
@@ -2000,26 +2043,16 @@ bool FromJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, JS::Handle<JS:
 }
             
 template<>
-bool ToJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ToJSVal<GenerateX25519KeyResult>(JSContext* aCx, const GenerateX25519KeyResult& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mChannelId, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mPublic, &memberVal0)))) {
     return false;
   }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channelId", memberVal0))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal1(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mWebAppX25519Key, &memberVal1)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppX25519Key", memberVal1))) {
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "public", memberVal0))) {
     return false;
   }
   
@@ -2027,8 +2060,9 @@ bool ToJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, const InitialKey
   return true;
 }
 
+
 template<>
-bool JSValIs<GenerateKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool JSValIs<SignKeyAgreementParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2037,10 +2071,10 @@ bool JSValIs<GenerateKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle
   bool isValid = false;
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "paramsDraft", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "canonicalJson", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIs<InitialKeyExchangeParametersDraft>(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -2054,17 +2088,17 @@ bool JSValIs<GenerateKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle
 
 }
 template<>
-bool FromJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateKeyExchangeParametersArgs& aRv) {
+bool FromJSVal<SignKeyAgreementParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, SignKeyAgreementParametersArgs& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "paramsDraft", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "canonicalJson", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(FromJSVal<InitialKeyExchangeParametersDraft>(aCx, propVal, aRv.mParamsDraft)))) {
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mCanonicalJson)))) {
     return false;
   }
   
@@ -2072,16 +2106,16 @@ bool FromJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, JS::Handle<JS:
 }
             
 template<>
-bool ToJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, const GenerateKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ToJSVal<SignKeyAgreementParametersArgs>(JSContext* aCx, const SignKeyAgreementParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ToJSVal<InitialKeyExchangeParametersDraft>(aCx, aValue.mParamsDraft, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mCanonicalJson, &memberVal0)))) {
     return false;
   }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "paramsDraft", memberVal0))) {
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "canonicalJson", memberVal0))) {
     return false;
   }
   
@@ -2130,7 +2164,7 @@ bool ToJSVal<ArrayBuffer>(JSContext* aCx, const ArrayBuffer& aValue, JS::Mutable
   return true;
 }
 template<>
-bool JSValIs<PartialKeyExchangeParametersFromScm>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+bool JSValIs<SignKeyAgreementParametersResult>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
   if (!aValue.isObject()) {
     aRv = false;
     return true;
@@ -2139,474 +2173,7 @@ bool JSValIs<PartialKeyExchangeParametersFromScm>(JSContext *aCx, const JS::Hand
   bool isValid = false;
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-template<>
-bool FromJSVal<PartialKeyExchangeParametersFromScm>(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mScmX25519Key)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mHkdfHash)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfSalt)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfInfo)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mAesKeyLength)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-template<>
-bool ToJSVal<PartialKeyExchangeParametersFromScm>(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mScmX25519Key, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmX25519Key", memberVal0))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal1(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mHkdfHash, &memberVal1)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfHash", memberVal1))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal2(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfSalt, &memberVal2)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfSalt", memberVal2))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal3(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfInfo, &memberVal3)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfInfo", memberVal3))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal4(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mAesKeyLength, &memberVal4)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "aesKeyLength", memberVal4))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-
-template<>
-bool JSValIs<KeyExchangeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "packet", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<double>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-  aRv = true;
-  return true;
-
-
-}
-template<>
-bool FromJSVal<KeyExchangeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv) {
-  if (NS_WARN_IF(!aValue.isObject())) {
-    return false;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "packet", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mPacket)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "channelId", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mChannelId)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mWebAppX25519Key)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmX25519Key", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mScmX25519Key)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfHash", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mHkdfHash)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfSalt", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfSalt)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "hkdfInfo", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mHkdfInfo)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "aesKeyLength", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<double>(aCx, propVal, aRv.mAesKeyLength)))) {
-    return false;
-  }
-  
-  return true;
-}
-            
-template<>
-bool ToJSVal<KeyExchangeParameters>(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv) {
-  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-
-  
-  JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mPacket, &memberVal0)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "packet", memberVal0))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal1(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mChannelId, &memberVal1)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "channelId", memberVal1))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal2(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mWebAppX25519Key, &memberVal2)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppX25519Key", memberVal2))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal3(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mScmX25519Key, &memberVal3)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmX25519Key", memberVal3))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal4(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mHkdfHash, &memberVal4)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfHash", memberVal4))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal5(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfSalt, &memberVal5)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfSalt", memberVal5))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal6(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mHkdfInfo, &memberVal6)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "hkdfInfo", memberVal6))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal7(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<double>(aCx, aValue.mAesKeyLength, &memberVal7)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "aesKeyLength", memberVal7))) {
-    return false;
-  }
-  
-  aRv.setObject(*obj);
-  return true;
-}
-
-template<>
-bool JSValIs<EnableEndToEndEncryptionArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  if (!aValue.isObject()) {
-    aRv = false;
-    return true;
-  }
-  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool isValid = false;
-  JS::Rooted<JS::Value> propVal(aCx);
-  
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "params", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(JSValIs<KeyExchangeParameters>(aCx, propVal, isValid)))) {
-    return false;
-  }
-  if (!isValid) {
-    aRv = false;
-    return true;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppPacketSignature", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmSignature", &propVal))) {
     return false;
   }
   if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
@@ -2623,25 +2190,17 @@ bool JSValIs<EnableEndToEndEncryptionArgs>(JSContext *aCx, const JS::Handle<JS::
 
 }
 template<>
-bool FromJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv) {
+bool FromJSVal<SignKeyAgreementParametersResult>(JSContext* aCx, JS::Handle<JS::Value> aValue, SignKeyAgreementParametersResult& aRv) {
   if (NS_WARN_IF(!aValue.isObject())) {
     return false;
   }
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
   JS::Rooted<JS::Value> propVal(aCx);
   
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "params", &propVal))) {
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "scmSignature", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(FromJSVal<KeyExchangeParameters>(aCx, propVal, aRv.mParams)))) {
-    return false;
-  }
-  
-
-  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppPacketSignature", &propVal))) {
-    return false;
-  }
-  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mWebAppPacketSignature)))) {
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mScmSignature)))) {
     return false;
   }
   
@@ -2649,32 +2208,116 @@ bool FromJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, JS::Handle<JS::Valu
 }
             
 template<>
-bool ToJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+bool ToJSVal<SignKeyAgreementParametersResult>(JSContext* aCx, const SignKeyAgreementParametersResult& aValue, JS::MutableHandle<JS::Value> aRv) {
   JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
   
-  if (NS_WARN_IF(!(ToJSVal<KeyExchangeParameters>(aCx, aValue.mParams, &memberVal0)))) {
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mScmSignature, &memberVal0)))) {
     return false;
   }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "params", memberVal0))) {
-    return false;
-  }
-  
-
-  JS::Rooted<JS::Value> memberVal1(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mWebAppPacketSignature, &memberVal1)))) {
-    return false;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppPacketSignature", memberVal1))) {
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmSignature", memberVal0))) {
     return false;
   }
   
   aRv.setObject(*obj);
   return true;
 }
+
+
+template<>
+bool JSValIs<VerifySignedKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
+  if (!aValue.isObject()) {
+    aRv = false;
+    return true;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  bool isValid = false;
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "canonicalJson", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<nsString>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppSignature", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
+  aRv = true;
+  return true;
+
+
+}
+template<>
+bool FromJSVal<VerifySignedKeyExchangeParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, VerifySignedKeyExchangeParametersArgs& aRv) {
+  if (NS_WARN_IF(!aValue.isObject())) {
+    return false;
+  }
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+  JS::Rooted<JS::Value> propVal(aCx);
+  
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "canonicalJson", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<nsString>(aCx, propVal, aRv.mCanonicalJson)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "webAppSignature", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mWebAppSignature)))) {
+    return false;
+  }
+  
+  return true;
+}
+            
+template<>
+bool ToJSVal<VerifySignedKeyExchangeParametersArgs>(JSContext* aCx, const VerifySignedKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv) {
+  JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
+
+  
+  JS::Rooted<JS::Value> memberVal0(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<nsString>(aCx, aValue.mCanonicalJson, &memberVal0)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "canonicalJson", memberVal0))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal1(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mWebAppSignature, &memberVal1)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "webAppSignature", memberVal1))) {
+    return false;
+  }
+  
+  aRv.setObject(*obj);
+  return true;
+}
+
 
 
 
@@ -15315,7 +14958,7 @@ bool ToJSVal<SafeVariant<BerytusChallengeGetIdentityFieldsMessageResponse, Beryt
 }
 
 
-RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs) {
+RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(const PreliminaryRequestContext& aContext, const GetSigningKeyArgs& aArgs) {
   RefPtr<ManagerGetSigningKeyResult::Private> outPromise = new ManagerGetSigningKeyResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15363,7 +15006,7 @@ RefPtr<ManagerGetSigningKeyResult> AgentProxy::Manager_GetSigningKey(Preliminary
   }
   return outPromise;
 }
-RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs) {
+RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMetadata(const PreliminaryRequestContext& aContext, const GetCredentialsMetadataArgs& aArgs) {
   RefPtr<ManagerGetCredentialsMetadataResult::Private> outPromise = new ManagerGetCredentialsMetadataResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15411,15 +15054,15 @@ RefPtr<ManagerGetCredentialsMetadataResult> AgentProxy::Manager_GetCredentialsMe
   }
   return outPromise;
 }
-RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs) {
-  RefPtr<ChannelGenerateKeyExchangeParametersResult::Private> outPromise = new ChannelGenerateKeyExchangeParametersResult::Private(__func__);
+RefPtr<ChannelCreateChannelResult> AgentProxy::Channel_CreateChannel(const PreliminaryRequestContext& aContext, const CreateChannelArgs& aArgs) {
+  RefPtr<ChannelCreateChannelResult::Private> outPromise = new ChannelCreateChannelResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
 
   ErrorResult err;
   RefPtr<dom::Promise> prom = CallSendQuery(cx,
                                             u"channel"_ns,
-                                            u"generateKeyExchangeParameters"_ns,
+                                            u"createChannel"_ns,
                                             aContext,
                                             &aArgs,
                                             err);
@@ -15430,20 +15073,15 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_GenerateKeyExchangeParameters:onResolve()"));
-    PartialKeyExchangeParametersFromScm out;
-    if (NS_WARN_IF(!(FromJSVal<PartialKeyExchangeParametersFromScm>(aCx, aValue, out)))) {
-      outPromise->Reject(Failure(), __func__);
-    } else {
-      outPromise->Resolve(std::move(out), __func__);
-    }
-    
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_CreateChannel:onResolve()"));
+    void* out = nullptr;
+    outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                      ErrorResult& aRv,
                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_GenerateKeyExchangeParameters:onReject()"));
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_CreateChannel:onReject()"));
     Failure fr;
     FromJSVal(aCx, aValue, fr);
     outPromise->Reject(std::move(fr), __func__);
@@ -15459,15 +15097,63 @@ RefPtr<ChannelGenerateKeyExchangeParametersResult> AgentProxy::Channel_GenerateK
   }
   return outPromise;
 }
-RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs) {
-  RefPtr<ChannelEnableEndToEndEncryptionResult::Private> outPromise = new ChannelEnableEndToEndEncryptionResult::Private(__func__);
+RefPtr<ChannelGenerateX25519KeyResult> AgentProxy::Channel_GenerateX25519Key(const RequestContext& aContext) {
+  RefPtr<ChannelGenerateX25519KeyResult::Private> outPromise = new ChannelGenerateX25519KeyResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
 
   ErrorResult err;
   RefPtr<dom::Promise> prom = CallSendQuery(cx,
                                             u"channel"_ns,
-                                            u"enableEndToEndEncryption"_ns,
+                                            u"generateX25519Key"_ns,
+                                            aContext,
+                                            static_cast<PreliminaryRequestContext*>(nullptr),
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
+    return outPromise;
+  }
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_GenerateX25519Key:onResolve()"));
+    GenerateX25519KeyResult out;
+    if (NS_WARN_IF(!(FromJSVal<GenerateX25519KeyResult>(aCx, aValue, out)))) {
+      outPromise->Reject(Failure(), __func__);
+    } else {
+      outPromise->Resolve(std::move(out), __func__);
+    }
+    
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_GenerateX25519Key:onReject()"));
+    Failure fr;
+    FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+  };
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
+  }
+  return outPromise;
+}
+RefPtr<ChannelSignKeyExchangeParametersResult> AgentProxy::Channel_SignKeyExchangeParameters(const RequestContext& aContext, const SignKeyAgreementParametersArgs& aArgs) {
+  RefPtr<ChannelSignKeyExchangeParametersResult::Private> outPromise = new ChannelSignKeyExchangeParametersResult::Private(__func__);
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
+
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"channel"_ns,
+                                            u"signKeyExchangeParameters"_ns,
                                             aContext,
                                             &aArgs,
                                             err);
@@ -15478,14 +15164,100 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
   auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
                       ErrorResult& aRv,
                       const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_EnableEndToEndEncryption:onResolve()"));
-    ArrayBuffer out;
-    if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, aValue, out)))) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_SignKeyExchangeParameters:onResolve()"));
+    SignKeyAgreementParametersResult out;
+    if (NS_WARN_IF(!(FromJSVal<SignKeyAgreementParametersResult>(aCx, aValue, out)))) {
       outPromise->Reject(Failure(), __func__);
     } else {
       outPromise->Resolve(std::move(out), __func__);
     }
     
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_SignKeyExchangeParameters:onReject()"));
+    Failure fr;
+    FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+  };
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
+  }
+  return outPromise;
+}
+RefPtr<ChannelVerifySignedKeyExchangeParametersResult> AgentProxy::Channel_VerifySignedKeyExchangeParameters(const RequestContext& aContext, const VerifySignedKeyExchangeParametersArgs& aArgs) {
+  RefPtr<ChannelVerifySignedKeyExchangeParametersResult::Private> outPromise = new ChannelVerifySignedKeyExchangeParametersResult::Private(__func__);
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
+
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"channel"_ns,
+                                            u"verifySignedKeyExchangeParameters"_ns,
+                                            aContext,
+                                            &aArgs,
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
+    return outPromise;
+  }
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_VerifySignedKeyExchangeParameters:onResolve()"));
+    void* out = nullptr;
+    outPromise->Resolve(out, __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+  };
+  auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                     ErrorResult& aRv,
+                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_VerifySignedKeyExchangeParameters:onReject()"));
+    Failure fr;
+    FromJSVal(aCx, aValue, fr);
+    outPromise->Reject(std::move(fr), __func__);
+    return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+  };
+  Result<RefPtr<dom::Promise>, nsresult> thenRes =
+    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
+  if (NS_WARN_IF(thenRes.isErr())) {
+    outPromise->Reject(Failure(), __func__);
+  } else {
+    MOZ_ASSERT(thenRes.unwrap());
+    prom->AppendNativeHandler(new MozPromiseRejectWithBerytusFailureOnDestruction(outPromise, __func__));
+  }
+  return outPromise;
+}
+RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEndEncryption(const RequestContext& aContext) {
+  RefPtr<ChannelEnableEndToEndEncryptionResult::Private> outPromise = new ChannelEnableEndToEndEncryptionResult::Private(__func__);
+  dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
+  JSContext* cx = aes.cx();
+
+  ErrorResult err;
+  RefPtr<dom::Promise> prom = CallSendQuery(cx,
+                                            u"channel"_ns,
+                                            u"enableEndToEndEncryption"_ns,
+                                            aContext,
+                                            static_cast<PreliminaryRequestContext*>(nullptr),
+                                            err);
+  if (NS_WARN_IF(err.Failed())) {
+    outPromise->Reject(Failure(err.StealNSResult()), __func__);
+    return outPromise;
+  }
+  auto onResolve = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
+                      ErrorResult& aRv,
+                      const nsCOMPtr<nsIGlobalObject>& aGlobal) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Channel_EnableEndToEndEncryption:onResolve()"));
+    void* out = nullptr;
+    outPromise->Resolve(out, __func__);
     return dom::Promise::CreateResolvedWithUndefined(aGlobal, aRv);
   };
   auto onReject = [outPromise](JSContext* aCx, JS::Handle<JS::Value> aValue,
@@ -15507,7 +15279,7 @@ RefPtr<ChannelEnableEndToEndEncryptionResult> AgentProxy::Channel_EnableEndToEnd
   }
   return outPromise;
 }
-RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContext& aContext) {
+RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(const RequestContext& aContext) {
   RefPtr<ChannelCloseChannelResult::Private> outPromise = new ChannelCloseChannelResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15550,7 +15322,7 @@ RefPtr<ChannelCloseChannelResult> AgentProxy::Channel_CloseChannel(RequestContex
   }
   return outPromise;
 }
-RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs) {
+RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(const RequestContext& aContext, const ApproveOperationArgs& aArgs) {
   RefPtr<LoginApproveOperationResult::Private> outPromise = new LoginApproveOperationResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15598,7 +15370,7 @@ RefPtr<LoginApproveOperationResult> AgentProxy::Login_ApproveOperation(RequestCo
   }
   return outPromise;
 }
-RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContextWithOperation& aContext) {
+RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(const RequestContextWithOperation& aContext) {
   RefPtr<LoginCloseOperationResult::Private> outPromise = new LoginCloseOperationResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15641,7 +15413,7 @@ RefPtr<LoginCloseOperationResult> AgentProxy::Login_CloseOperation(RequestContex
   }
   return outPromise;
 }
-RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(RequestContextWithOperation& aContext) {
+RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(const RequestContextWithOperation& aContext) {
   RefPtr<LoginGetRecordMetadataResult::Private> outPromise = new LoginGetRecordMetadataResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15689,7 +15461,7 @@ RefPtr<LoginGetRecordMetadataResult> AgentProxy::Login_GetRecordMetadata(Request
   }
   return outPromise;
 }
-RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs) {
+RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(const RequestContextWithOperation& aContext, const UpdateMetadataArgs& aArgs) {
   RefPtr<LoginUpdateMetadataResult::Private> outPromise = new LoginUpdateMetadataResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15732,7 +15504,7 @@ RefPtr<LoginUpdateMetadataResult> AgentProxy::Login_UpdateMetadata(RequestContex
   }
   return outPromise;
 }
-RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs) {
+RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreation_ApproveTransitionToAuthOp(const RequestContextWithOperation& aContext, const ApproveTransitionToAuthOpArgs& aArgs) {
   RefPtr<AccountCreationApproveTransitionToAuthOpResult::Private> outPromise = new AccountCreationApproveTransitionToAuthOpResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15775,7 +15547,7 @@ RefPtr<AccountCreationApproveTransitionToAuthOpResult> AgentProxy::AccountCreati
   }
   return outPromise;
 }
-RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(RequestContextWithLoginOperation& aContext) {
+RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUserAttributes(const RequestContextWithLoginOperation& aContext) {
   RefPtr<AccountCreationGetUserAttributesResult::Private> outPromise = new AccountCreationGetUserAttributesResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15823,7 +15595,7 @@ RefPtr<AccountCreationGetUserAttributesResult> AgentProxy::AccountCreation_GetUs
   }
   return outPromise;
 }
-RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_UpdateUserAttributes(RequestContextWithOperation& aContext, UpdateUserAttributesArgs& aArgs) {
+RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_UpdateUserAttributes(const RequestContextWithOperation& aContext, const UpdateUserAttributesArgs& aArgs) {
   RefPtr<AccountCreationUpdateUserAttributesResult::Private> outPromise = new AccountCreationUpdateUserAttributesResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15866,7 +15638,7 @@ RefPtr<AccountCreationUpdateUserAttributesResult> AgentProxy::AccountCreation_Up
   }
   return outPromise;
 }
-RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(RequestContextWithLoginOperation& aContext, AddFieldArgs& aArgs) {
+RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(const RequestContextWithLoginOperation& aContext, const AddFieldArgs& aArgs) {
   RefPtr<AccountCreationAddFieldResult::Private> outPromise = new AccountCreationAddFieldResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15914,7 +15686,7 @@ RefPtr<AccountCreationAddFieldResult> AgentProxy::AccountCreation_AddField(Reque
   }
   return outPromise;
 }
-RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_RejectFieldValue(RequestContextWithLoginOperation& aContext, RejectFieldValueArgs& aArgs) {
+RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_RejectFieldValue(const RequestContextWithLoginOperation& aContext, const RejectFieldValueArgs& aArgs) {
   RefPtr<AccountCreationRejectFieldValueResult::Private> outPromise = new AccountCreationRejectFieldValueResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -15962,7 +15734,7 @@ RefPtr<AccountCreationRejectFieldValueResult> AgentProxy::AccountCreation_Reject
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs) {
+RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAuthentication_ApproveChallengeRequest(const RequestContextWithOperation& aContext, const ApproveChallengeRequestArgs& aArgs) {
   RefPtr<AccountAuthenticationApproveChallengeRequestResult::Private> outPromise = new AccountAuthenticationApproveChallengeRequestResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -16005,7 +15777,7 @@ RefPtr<AccountAuthenticationApproveChallengeRequestResult> AgentProxy::AccountAu
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs) {
+RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthentication_AbortChallenge(const RequestContextWithOperation& aContext, const AbortChallengeArgs& aArgs) {
   RefPtr<AccountAuthenticationAbortChallengeResult::Private> outPromise = new AccountAuthenticationAbortChallengeResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -16048,7 +15820,7 @@ RefPtr<AccountAuthenticationAbortChallengeResult> AgentProxy::AccountAuthenticat
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs) {
+RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthentication_CloseChallenge(const RequestContextWithOperation& aContext, const CloseChallengeArgs& aArgs) {
   RefPtr<AccountAuthenticationCloseChallengeResult::Private> outPromise = new AccountAuthenticationCloseChallengeResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();
@@ -16091,7 +15863,7 @@ RefPtr<AccountAuthenticationCloseChallengeResult> AgentProxy::AccountAuthenticat
   }
   return outPromise;
 }
-RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::AccountAuthentication_RespondToChallengeMessage(RequestContextWithLoginOperation& aContext, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aArgs) {
+RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AgentProxy::AccountAuthentication_RespondToChallengeMessage(const RequestContextWithLoginOperation& aContext, const SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aArgs) {
   RefPtr<AccountAuthenticationRespondToChallengeMessageResult::Private> outPromise = new AccountAuthenticationRespondToChallengeMessageResult::Private(__func__);
   dom::AutoEntryScript aes(mGlobal, "AgentProxy messaging interface");
   JSContext* cx = aes.cx();

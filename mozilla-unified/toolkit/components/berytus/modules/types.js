@@ -21,6 +21,7 @@ export var ELoginUserIntent;
     ELoginUserIntent["Authenticate"] = "Authenticate";
     ELoginUserIntent["Register"] = "Register";
 })(ELoginUserIntent || (ELoginUserIntent = {}));
+;
 var EChallengeType;
 (function (EChallengeType) {
     EChallengeType["Identification"] = "Identification";
@@ -77,5 +78,6 @@ export var EMetadataStatus;
     EMetadataStatus["Created"] = "Created";
     EMetadataStatus["Retired"] = "Retired";
 })(EMetadataStatus || (EMetadataStatus = {}));
+;
 ;
 ;

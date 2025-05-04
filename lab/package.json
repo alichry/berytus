@@ -1,11 +1,15 @@
 {
   "scripts": {
     "build": "astro build",
-    "prestart": "test -d ./dist || npm run build",
-    "start": "/bin/sh -c 'set -o allexport; source .env; astro preview --port $PORT'"
+    "proxy": "/bin/sh -c 'set -o allexport; source .env; echo \"You might be prompted to enter your password in 3 seconds\"; sleep 3; echo \"Starting (sudo) socat proxy $PROXY_PORT --> $LISTEN_PORT\"; sudo socat tcp-listen:$PROXY_PORT,reuseaddr,fork tcp:localhost:$LISTEN_PORT'",
+    "dev:server": "/bin/sh -c 'set -o allexport; source .env; astro dev --port $LISTEN_PORT < /dev/null'",
+    "start:server": "/bin/sh -c 'set -o allexport; source .env; astro preview --port $LISTEN_PORT'",
+    "dev": "npm-run-all -l -n --parallel dev:server proxy",
+    "start": "npm-run-all -l -n --parallel start:server proxy",
+    "prestart": "test -d ./dist || npm run build"
   },
   "dependencies": {
-    "@alichry/jsconsole": "^3.0.2",
+    "@alichry/jsconsole": "github:alichry/jsconsole#main",
     "@astrojs/node": "^9.2.0",
     "@astrojs/react": "^4.2.4",
     "@peculiar/x509": "^1.12.3",
@@ -20,6 +24,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.1",
-    "htmlparser2": "^10.0.0"
+    "htmlparser2": "^10.0.0",
+    "npm-run-all": "^4.1.5"
   }
 }

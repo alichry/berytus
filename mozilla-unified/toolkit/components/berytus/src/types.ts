@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValue, BerytusFieldValueUnion, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.d.ts";
+import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValue, BerytusFieldValueUnion, BerytusKeyDerivationParams, BerytusKeyExchangeAuthentication, BerytusKeyExchangeParams, BerytusKeyExchangeSession, BerytusKeyGenParams, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.d.ts";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -27,7 +27,7 @@ export interface ChannelMetadata {
     id: string;
     constraints: ChannelConstraints;
     webAppActor: WebAppActor;
-    scmActor: CryptoActor; /* retrieved from getSigningKey */
+    scmActor: CryptoActor; /* retrieved from getSigningKey() */
 }
 
 export interface UriParams {
@@ -131,6 +131,10 @@ export enum ELoginUserIntent {
 }
 
 export type WebAppActor = CryptoActor | OriginActor;
+
+export interface GenerateX25519KeyResult {
+    public: string;
+};
 
 export interface InitialKeyExchangeParametersDraft {
     readonly channelId: string; // provided by Berytus
@@ -280,18 +284,46 @@ export interface RecordMetadata {
 }
 
 /* Request Arguments */
-export type GetSigningKeyArgs = { webAppActor: WebAppActor }
 export type GetCredentialsMetadataArgs = {
     webAppActor: WebAppActor,
     channelConstraints: ChannelConstraints,
     accountConstraints: AccountConstraints
 };
+export type GetSigningKeyArgs = {
+    webAppActor: WebAppActor;
+};
+export type GetSigningKeyResult = string;
+
+export type CreateChannelArgs = {
+    channel: ChannelMetadata;
+};
+
+export interface KeyAgreementParameters {
+    authentication: BerytusKeyExchangeAuthentication;
+    session: BerytusKeyExchangeSession;
+    exchange: BerytusKeyExchangeParams;
+    derivation: BerytusKeyDerivationParams;
+    generation: BerytusKeyGenParams;
+};
+export type SignKeyAgreementParametersArgs = {
+    /**
+     * CanonicalJSON-stringified KeyAgreementParameters
+     */
+    canonicalJson: string;
+}
+export type SignKeyAgreementParametersResult = {
+    scmSignature: ArrayBuffer;
+}
+
 export type GenerateKeyExchangeParametersArgs = {
     paramsDraft: InitialKeyExchangeParametersDraft
 }
-export type EnableEndToEndEncryptionArgs = {
-    params: KeyExchangeParameters,
-    webAppPacketSignature: ArrayBuffer
+export type VerifySignedKeyExchangeParametersArgs = {
+    /**
+     * CanonicalJSON-stringified KeyAgreementParameters
+     */
+    canonicalJson: string;
+    webAppSignature: ArrayBuffer;
 }
 export type ApproveOperationArgs = {
     operation: LoginOperationMetadata
@@ -352,21 +384,27 @@ export interface RequestHandler {
         getSigningKey(
             context: PreliminaryRequestContext,
             args: GetSigningKeyArgs
-        ): string;
+        ): GetSigningKeyResult;
         getCredentialsMetadata(
             context: PreliminaryRequestContext,
             args: GetCredentialsMetadataArgs
         ): CredentialsMetadata;
     };
     channel: {
-        generateKeyExchangeParameters(
+        createChannel(
+            context: PreliminaryRequestContext,
+            args: CreateChannelArgs
+        ): void;
+        generateX25519Key(context: RequestContext): GenerateX25519KeyResult;
+        signKeyExchangeParameters(
             context: RequestContext,
-            args: GenerateKeyExchangeParametersArgs
-        ): PartialKeyExchangeParametersFromScm;
-        enableEndToEndEncryption(
+            args: SignKeyAgreementParametersArgs
+        ): SignKeyAgreementParametersResult;
+        verifySignedKeyExchangeParameters(
             context: RequestContext,
-            args: EnableEndToEndEncryptionArgs
-        ): ArrayBuffer;
+            args: VerifySignedKeyExchangeParametersArgs
+        ): void;
+        enableEndToEndEncryption(context: RequestContext): void;
         closeChannel(context: RequestContext): void;
     };
     /**

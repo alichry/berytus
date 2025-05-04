@@ -6,6 +6,11 @@ import { ModuleMap } from './esm-import-map.index';
 
 export { };
 
+/**
+ * NOTE(berytus): Mozilla has developed typescript
+ * typings for gecko internals; e.g., see lib.gecko.dom.d.ts
+ * in tools/@types
+ */
 
 declare global {
     /* mozIDOMWindow */

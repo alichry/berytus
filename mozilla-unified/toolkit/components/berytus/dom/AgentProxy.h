@@ -397,6 +397,25 @@ template<>
 bool FromJSVal<ChannelMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, ChannelMetadata& aRv);
 template<>
 bool ToJSVal<ChannelMetadata>(JSContext* aCx, const ChannelMetadata& aValue, JS::MutableHandle<JS::Value> aRv);
+struct CreateChannelArgs {
+  ChannelMetadata mChannel;
+  CreateChannelArgs() = default;
+  CreateChannelArgs(ChannelMetadata&& aChannel) : mChannel(std::move(aChannel)) {}
+  CreateChannelArgs(CreateChannelArgs&& aOther) : mChannel(std::move(aOther.mChannel))  {}
+  CreateChannelArgs& operator=(CreateChannelArgs&& aOther) {
+    mChannel = std::move(aOther.mChannel);
+    return *this;
+  }
+  
+  ~CreateChannelArgs() {}
+};
+template<>
+bool JSValIs<CreateChannelArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<CreateChannelArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, CreateChannelArgs& aRv);
+template<>
+bool ToJSVal<CreateChannelArgs>(JSContext* aCx, const CreateChannelArgs& aValue, JS::MutableHandle<JS::Value> aRv);
+using ChannelCreateChannelResult = MozPromise<void*, Failure, true>;
 struct RequestContext {
   ChannelMetadata mChannel;
   DocumentMetadata mDocument;
@@ -417,109 +436,83 @@ template<>
 bool FromJSVal<RequestContext>(JSContext* aCx, JS::Handle<JS::Value> aValue, RequestContext& aRv);
 template<>
 bool ToJSVal<RequestContext>(JSContext* aCx, const RequestContext& aValue, JS::MutableHandle<JS::Value> aRv);
-struct InitialKeyExchangeParametersDraft {
-  nsString mChannelId;
-  nsString mWebAppX25519Key;
-  InitialKeyExchangeParametersDraft() = default;
-  InitialKeyExchangeParametersDraft(nsString&& aChannelId, nsString&& aWebAppX25519Key) : mChannelId(std::move(aChannelId)), mWebAppX25519Key(std::move(aWebAppX25519Key)) {}
-  InitialKeyExchangeParametersDraft(InitialKeyExchangeParametersDraft&& aOther) : mChannelId(std::move(aOther.mChannelId)), mWebAppX25519Key(std::move(aOther.mWebAppX25519Key))  {}
-  InitialKeyExchangeParametersDraft& operator=(InitialKeyExchangeParametersDraft&& aOther) {
-    mChannelId = std::move(aOther.mChannelId);
-  mWebAppX25519Key = std::move(aOther.mWebAppX25519Key);
+struct GenerateX25519KeyResult {
+  nsString mPublic;
+  GenerateX25519KeyResult() = default;
+  GenerateX25519KeyResult(nsString&& aPublic) : mPublic(std::move(aPublic)) {}
+  GenerateX25519KeyResult(GenerateX25519KeyResult&& aOther) : mPublic(std::move(aOther.mPublic))  {}
+  GenerateX25519KeyResult& operator=(GenerateX25519KeyResult&& aOther) {
+    mPublic = std::move(aOther.mPublic);
     return *this;
   }
   
-  ~InitialKeyExchangeParametersDraft() {}
+  ~GenerateX25519KeyResult() {}
 };
 template<>
-bool JSValIs<InitialKeyExchangeParametersDraft>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool JSValIs<GenerateX25519KeyResult>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
-bool FromJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, JS::Handle<JS::Value> aValue, InitialKeyExchangeParametersDraft& aRv);
+bool FromJSVal<GenerateX25519KeyResult>(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateX25519KeyResult& aRv);
 template<>
-bool ToJSVal<InitialKeyExchangeParametersDraft>(JSContext* aCx, const InitialKeyExchangeParametersDraft& aValue, JS::MutableHandle<JS::Value> aRv);
-struct GenerateKeyExchangeParametersArgs {
-  InitialKeyExchangeParametersDraft mParamsDraft;
-  GenerateKeyExchangeParametersArgs() = default;
-  GenerateKeyExchangeParametersArgs(InitialKeyExchangeParametersDraft&& aParamsDraft) : mParamsDraft(std::move(aParamsDraft)) {}
-  GenerateKeyExchangeParametersArgs(GenerateKeyExchangeParametersArgs&& aOther) : mParamsDraft(std::move(aOther.mParamsDraft))  {}
-  GenerateKeyExchangeParametersArgs& operator=(GenerateKeyExchangeParametersArgs&& aOther) {
-    mParamsDraft = std::move(aOther.mParamsDraft);
+bool ToJSVal<GenerateX25519KeyResult>(JSContext* aCx, const GenerateX25519KeyResult& aValue, JS::MutableHandle<JS::Value> aRv);
+using ChannelGenerateX25519KeyResult = MozPromise<GenerateX25519KeyResult, Failure, true>;
+struct SignKeyAgreementParametersArgs {
+  nsString mCanonicalJson;
+  SignKeyAgreementParametersArgs() = default;
+  SignKeyAgreementParametersArgs(nsString&& aCanonicalJson) : mCanonicalJson(std::move(aCanonicalJson)) {}
+  SignKeyAgreementParametersArgs(SignKeyAgreementParametersArgs&& aOther) : mCanonicalJson(std::move(aOther.mCanonicalJson))  {}
+  SignKeyAgreementParametersArgs& operator=(SignKeyAgreementParametersArgs&& aOther) {
+    mCanonicalJson = std::move(aOther.mCanonicalJson);
     return *this;
   }
   
-  ~GenerateKeyExchangeParametersArgs() {}
+  ~SignKeyAgreementParametersArgs() {}
 };
 template<>
-bool JSValIs<GenerateKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool JSValIs<SignKeyAgreementParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
-bool FromJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, GenerateKeyExchangeParametersArgs& aRv);
+bool FromJSVal<SignKeyAgreementParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, SignKeyAgreementParametersArgs& aRv);
 template<>
-bool ToJSVal<GenerateKeyExchangeParametersArgs>(JSContext* aCx, const GenerateKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv);
+bool ToJSVal<SignKeyAgreementParametersArgs>(JSContext* aCx, const SignKeyAgreementParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv);
 template<>
 bool JSValIs<ArrayBuffer>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
 bool FromJSVal<ArrayBuffer>(JSContext* aCx, JS::Handle<JS::Value> aValue, ArrayBuffer& aRv);
 template<>
 bool ToJSVal<ArrayBuffer>(JSContext* aCx, const ArrayBuffer& aValue, JS::MutableHandle<JS::Value> aRv);
-struct PartialKeyExchangeParametersFromScm {
-  nsString mScmX25519Key;
-  nsString mHkdfHash;
-  ArrayBuffer mHkdfSalt;
-  ArrayBuffer mHkdfInfo;
-  double mAesKeyLength;
-  PartialKeyExchangeParametersFromScm() = default;
-  PartialKeyExchangeParametersFromScm(nsString&& aScmX25519Key, nsString&& aHkdfHash, ArrayBuffer&& aHkdfSalt, ArrayBuffer&& aHkdfInfo, double&& aAesKeyLength) : mScmX25519Key(std::move(aScmX25519Key)), mHkdfHash(std::move(aHkdfHash)), mHkdfSalt(std::move(aHkdfSalt)), mHkdfInfo(std::move(aHkdfInfo)), mAesKeyLength(std::move(aAesKeyLength)) {}
-  PartialKeyExchangeParametersFromScm(PartialKeyExchangeParametersFromScm&& aOther) : mScmX25519Key(std::move(aOther.mScmX25519Key)), mHkdfHash(std::move(aOther.mHkdfHash)), mHkdfSalt(std::move(aOther.mHkdfSalt)), mHkdfInfo(std::move(aOther.mHkdfInfo)), mAesKeyLength(std::move(aOther.mAesKeyLength))  {}
+struct SignKeyAgreementParametersResult {
+  ArrayBuffer mScmSignature;
+  SignKeyAgreementParametersResult() = default;
+  SignKeyAgreementParametersResult(ArrayBuffer&& aScmSignature) : mScmSignature(std::move(aScmSignature)) {}
+  SignKeyAgreementParametersResult(SignKeyAgreementParametersResult&& aOther) : mScmSignature(std::move(aOther.mScmSignature))  {}
   
   
-  ~PartialKeyExchangeParametersFromScm() {}
+  ~SignKeyAgreementParametersResult() {}
 };
 template<>
-bool JSValIs<PartialKeyExchangeParametersFromScm>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool JSValIs<SignKeyAgreementParametersResult>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
-bool FromJSVal<PartialKeyExchangeParametersFromScm>(JSContext* aCx, JS::Handle<JS::Value> aValue, PartialKeyExchangeParametersFromScm& aRv);
+bool FromJSVal<SignKeyAgreementParametersResult>(JSContext* aCx, JS::Handle<JS::Value> aValue, SignKeyAgreementParametersResult& aRv);
 template<>
-bool ToJSVal<PartialKeyExchangeParametersFromScm>(JSContext* aCx, const PartialKeyExchangeParametersFromScm& aValue, JS::MutableHandle<JS::Value> aRv);
-using ChannelGenerateKeyExchangeParametersResult = MozPromise<PartialKeyExchangeParametersFromScm, Failure, true>;
-struct KeyExchangeParameters {
-  nsString mPacket;
-  nsString mChannelId;
-  nsString mWebAppX25519Key;
-  nsString mScmX25519Key;
-  nsString mHkdfHash;
-  ArrayBuffer mHkdfSalt;
-  ArrayBuffer mHkdfInfo;
-  double mAesKeyLength;
-  KeyExchangeParameters() = default;
-  KeyExchangeParameters(nsString&& aPacket, nsString&& aChannelId, nsString&& aWebAppX25519Key, nsString&& aScmX25519Key, nsString&& aHkdfHash, ArrayBuffer&& aHkdfSalt, ArrayBuffer&& aHkdfInfo, double&& aAesKeyLength) : mPacket(std::move(aPacket)), mChannelId(std::move(aChannelId)), mWebAppX25519Key(std::move(aWebAppX25519Key)), mScmX25519Key(std::move(aScmX25519Key)), mHkdfHash(std::move(aHkdfHash)), mHkdfSalt(std::move(aHkdfSalt)), mHkdfInfo(std::move(aHkdfInfo)), mAesKeyLength(std::move(aAesKeyLength)) {}
-  KeyExchangeParameters(KeyExchangeParameters&& aOther) : mPacket(std::move(aOther.mPacket)), mChannelId(std::move(aOther.mChannelId)), mWebAppX25519Key(std::move(aOther.mWebAppX25519Key)), mScmX25519Key(std::move(aOther.mScmX25519Key)), mHkdfHash(std::move(aOther.mHkdfHash)), mHkdfSalt(std::move(aOther.mHkdfSalt)), mHkdfInfo(std::move(aOther.mHkdfInfo)), mAesKeyLength(std::move(aOther.mAesKeyLength))  {}
+bool ToJSVal<SignKeyAgreementParametersResult>(JSContext* aCx, const SignKeyAgreementParametersResult& aValue, JS::MutableHandle<JS::Value> aRv);
+using ChannelSignKeyExchangeParametersResult = MozPromise<SignKeyAgreementParametersResult, Failure, true>;
+struct VerifySignedKeyExchangeParametersArgs {
+  nsString mCanonicalJson;
+  ArrayBuffer mWebAppSignature;
+  VerifySignedKeyExchangeParametersArgs() = default;
+  VerifySignedKeyExchangeParametersArgs(nsString&& aCanonicalJson, ArrayBuffer&& aWebAppSignature) : mCanonicalJson(std::move(aCanonicalJson)), mWebAppSignature(std::move(aWebAppSignature)) {}
+  VerifySignedKeyExchangeParametersArgs(VerifySignedKeyExchangeParametersArgs&& aOther) : mCanonicalJson(std::move(aOther.mCanonicalJson)), mWebAppSignature(std::move(aOther.mWebAppSignature))  {}
   
   
-  ~KeyExchangeParameters() {}
+  ~VerifySignedKeyExchangeParametersArgs() {}
 };
 template<>
-bool JSValIs<KeyExchangeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool JSValIs<VerifySignedKeyExchangeParametersArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
-bool FromJSVal<KeyExchangeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, KeyExchangeParameters& aRv);
+bool FromJSVal<VerifySignedKeyExchangeParametersArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, VerifySignedKeyExchangeParametersArgs& aRv);
 template<>
-bool ToJSVal<KeyExchangeParameters>(JSContext* aCx, const KeyExchangeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
-struct EnableEndToEndEncryptionArgs {
-  KeyExchangeParameters mParams;
-  ArrayBuffer mWebAppPacketSignature;
-  EnableEndToEndEncryptionArgs() = default;
-  EnableEndToEndEncryptionArgs(KeyExchangeParameters&& aParams, ArrayBuffer&& aWebAppPacketSignature) : mParams(std::move(aParams)), mWebAppPacketSignature(std::move(aWebAppPacketSignature)) {}
-  EnableEndToEndEncryptionArgs(EnableEndToEndEncryptionArgs&& aOther) : mParams(std::move(aOther.mParams)), mWebAppPacketSignature(std::move(aOther.mWebAppPacketSignature))  {}
-  
-  
-  ~EnableEndToEndEncryptionArgs() {}
-};
-template<>
-bool JSValIs<EnableEndToEndEncryptionArgs>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-template<>
-bool FromJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, JS::Handle<JS::Value> aValue, EnableEndToEndEncryptionArgs& aRv);
-template<>
-bool ToJSVal<EnableEndToEndEncryptionArgs>(JSContext* aCx, const EnableEndToEndEncryptionArgs& aValue, JS::MutableHandle<JS::Value> aRv);
-using ChannelEnableEndToEndEncryptionResult = MozPromise<ArrayBuffer, Failure, true>;
+bool ToJSVal<VerifySignedKeyExchangeParametersArgs>(JSContext* aCx, const VerifySignedKeyExchangeParametersArgs& aValue, JS::MutableHandle<JS::Value> aRv);
+using ChannelVerifySignedKeyExchangeParametersResult = MozPromise<void*, Failure, true>;
+using ChannelEnableEndToEndEncryptionResult = MozPromise<void*, Failure, true>;
 using ChannelCloseChannelResult = MozPromise<void*, Failure, true>;
 struct ELoginUserIntent {
   uint8_t mVal;
@@ -3530,24 +3523,27 @@ protected:
   bool mDisabled;
 
 public:
-  RefPtr<ManagerGetSigningKeyResult> Manager_GetSigningKey(PreliminaryRequestContext& aContext, GetSigningKeyArgs& aArgs);
-  RefPtr<ManagerGetCredentialsMetadataResult> Manager_GetCredentialsMetadata(PreliminaryRequestContext& aContext, GetCredentialsMetadataArgs& aArgs);
-  RefPtr<ChannelGenerateKeyExchangeParametersResult> Channel_GenerateKeyExchangeParameters(RequestContext& aContext, GenerateKeyExchangeParametersArgs& aArgs);
-  RefPtr<ChannelEnableEndToEndEncryptionResult> Channel_EnableEndToEndEncryption(RequestContext& aContext, EnableEndToEndEncryptionArgs& aArgs);
-  RefPtr<ChannelCloseChannelResult> Channel_CloseChannel(RequestContext& aContext);
-  RefPtr<LoginApproveOperationResult> Login_ApproveOperation(RequestContext& aContext, ApproveOperationArgs& aArgs);
-  RefPtr<LoginCloseOperationResult> Login_CloseOperation(RequestContextWithOperation& aContext);
-  RefPtr<LoginGetRecordMetadataResult> Login_GetRecordMetadata(RequestContextWithOperation& aContext);
-  RefPtr<LoginUpdateMetadataResult> Login_UpdateMetadata(RequestContextWithOperation& aContext, UpdateMetadataArgs& aArgs);
-  RefPtr<AccountCreationApproveTransitionToAuthOpResult> AccountCreation_ApproveTransitionToAuthOp(RequestContextWithOperation& aContext, ApproveTransitionToAuthOpArgs& aArgs);
-  RefPtr<AccountCreationGetUserAttributesResult> AccountCreation_GetUserAttributes(RequestContextWithLoginOperation& aContext);
-  RefPtr<AccountCreationUpdateUserAttributesResult> AccountCreation_UpdateUserAttributes(RequestContextWithOperation& aContext, UpdateUserAttributesArgs& aArgs);
-  RefPtr<AccountCreationAddFieldResult> AccountCreation_AddField(RequestContextWithLoginOperation& aContext, AddFieldArgs& aArgs);
-  RefPtr<AccountCreationRejectFieldValueResult> AccountCreation_RejectFieldValue(RequestContextWithLoginOperation& aContext, RejectFieldValueArgs& aArgs);
-  RefPtr<AccountAuthenticationApproveChallengeRequestResult> AccountAuthentication_ApproveChallengeRequest(RequestContextWithOperation& aContext, ApproveChallengeRequestArgs& aArgs);
-  RefPtr<AccountAuthenticationAbortChallengeResult> AccountAuthentication_AbortChallenge(RequestContextWithOperation& aContext, AbortChallengeArgs& aArgs);
-  RefPtr<AccountAuthenticationCloseChallengeResult> AccountAuthentication_CloseChallenge(RequestContextWithOperation& aContext, CloseChallengeArgs& aArgs);
-  RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AccountAuthentication_RespondToChallengeMessage(RequestContextWithLoginOperation& aContext, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aArgs);
+  RefPtr<ManagerGetSigningKeyResult> Manager_GetSigningKey(const PreliminaryRequestContext& aContext, const GetSigningKeyArgs& aArgs);
+  RefPtr<ManagerGetCredentialsMetadataResult> Manager_GetCredentialsMetadata(const PreliminaryRequestContext& aContext, const GetCredentialsMetadataArgs& aArgs);
+  RefPtr<ChannelCreateChannelResult> Channel_CreateChannel(const PreliminaryRequestContext& aContext, const CreateChannelArgs& aArgs);
+  RefPtr<ChannelGenerateX25519KeyResult> Channel_GenerateX25519Key(const RequestContext& aContext);
+  RefPtr<ChannelSignKeyExchangeParametersResult> Channel_SignKeyExchangeParameters(const RequestContext& aContext, const SignKeyAgreementParametersArgs& aArgs);
+  RefPtr<ChannelVerifySignedKeyExchangeParametersResult> Channel_VerifySignedKeyExchangeParameters(const RequestContext& aContext, const VerifySignedKeyExchangeParametersArgs& aArgs);
+  RefPtr<ChannelEnableEndToEndEncryptionResult> Channel_EnableEndToEndEncryption(const RequestContext& aContext);
+  RefPtr<ChannelCloseChannelResult> Channel_CloseChannel(const RequestContext& aContext);
+  RefPtr<LoginApproveOperationResult> Login_ApproveOperation(const RequestContext& aContext, const ApproveOperationArgs& aArgs);
+  RefPtr<LoginCloseOperationResult> Login_CloseOperation(const RequestContextWithOperation& aContext);
+  RefPtr<LoginGetRecordMetadataResult> Login_GetRecordMetadata(const RequestContextWithOperation& aContext);
+  RefPtr<LoginUpdateMetadataResult> Login_UpdateMetadata(const RequestContextWithOperation& aContext, const UpdateMetadataArgs& aArgs);
+  RefPtr<AccountCreationApproveTransitionToAuthOpResult> AccountCreation_ApproveTransitionToAuthOp(const RequestContextWithOperation& aContext, const ApproveTransitionToAuthOpArgs& aArgs);
+  RefPtr<AccountCreationGetUserAttributesResult> AccountCreation_GetUserAttributes(const RequestContextWithLoginOperation& aContext);
+  RefPtr<AccountCreationUpdateUserAttributesResult> AccountCreation_UpdateUserAttributes(const RequestContextWithOperation& aContext, const UpdateUserAttributesArgs& aArgs);
+  RefPtr<AccountCreationAddFieldResult> AccountCreation_AddField(const RequestContextWithLoginOperation& aContext, const AddFieldArgs& aArgs);
+  RefPtr<AccountCreationRejectFieldValueResult> AccountCreation_RejectFieldValue(const RequestContextWithLoginOperation& aContext, const RejectFieldValueArgs& aArgs);
+  RefPtr<AccountAuthenticationApproveChallengeRequestResult> AccountAuthentication_ApproveChallengeRequest(const RequestContextWithOperation& aContext, const ApproveChallengeRequestArgs& aArgs);
+  RefPtr<AccountAuthenticationAbortChallengeResult> AccountAuthentication_AbortChallenge(const RequestContextWithOperation& aContext, const AbortChallengeArgs& aArgs);
+  RefPtr<AccountAuthenticationCloseChallengeResult> AccountAuthentication_CloseChallenge(const RequestContextWithOperation& aContext, const CloseChallengeArgs& aArgs);
+  RefPtr<AccountAuthenticationRespondToChallengeMessageResult> AccountAuthentication_RespondToChallengeMessage(const RequestContextWithLoginOperation& aContext, const SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aArgs);
 
 };
 

@@ -14,6 +14,13 @@
         "strict": true,
         "esModuleInterop": true,
         "noErrorTruncation": true,
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        // NOTE(berytus): 30/04/2025 Mozilla has developed tsc typings
+        // under tools/@types. Types defined in ./index.d.ts are not
+        // currently consistent with those underr tools/@types.
+        // We specify ./node_modules/@types only to instruct tsc
+        // to not look for any ../**/@types directories.
+        // TODO(berytus): Possibly retire defined gecko types
+        "typeRoots": ["./node_modules/@types"]
     }
 }

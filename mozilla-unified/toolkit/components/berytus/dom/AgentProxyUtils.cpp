@@ -61,19 +61,32 @@ nsresult Utils_DocumentMetadata(nsIGlobalObject* aGlobal, berytus::DocumentMetad
 }
 
 nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal, const RefPtr<const dom::BerytusChannel>& aChannel, berytus::ChannelMetadata& aRetVal) {
-  const dom::BerytusChannelConstraints& cts = aChannel->Constraints();
-  aChannel->GetID(aRetVal.mId);
-  if (cts.mAccount.WasPassed()) {
+  return Utils_ChannelMetadata(aGlobal,
+                               aChannel->ID(),
+                               aChannel->Constraints(),
+                               aChannel->GetWebAppActor(),
+                               aChannel->GetSecretManagerActor(),
+                               aRetVal);
+}
+
+nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
+                               const nsString& aChannelId,
+                               const dom::BerytusChannelConstraints& aCts,
+                               const RefPtr<const dom::BerytusWebAppActor>& aWebAppActor,
+                               const RefPtr<const dom::BerytusSecretManagerActor>& aScmActor,
+                               berytus::ChannelMetadata& aRetVal) {
+  aRetVal.mId.Assign(aChannelId);
+  if (aCts.mAccount.WasPassed()) {
     aRetVal.mConstraints.mAccount.emplace();
-    if (cts.mAccount.Value().mCategory.WasPassed()) {
-      aRetVal.mConstraints.mAccount->mCategory.emplace(cts.mAccount.Value().mCategory.Value());
+    if (aCts.mAccount.Value().mCategory.WasPassed()) {
+      aRetVal.mConstraints.mAccount->mCategory.emplace(aCts.mAccount.Value().mCategory.Value());
     }
-    if (cts.mAccount.Value().mSchemaVersion.WasPassed()) {
-      aRetVal.mConstraints.mAccount->mSchemaVersion.emplace(cts.mAccount.Value().mSchemaVersion.Value());
+    if (aCts.mAccount.Value().mSchemaVersion.WasPassed()) {
+      aRetVal.mConstraints.mAccount->mSchemaVersion.emplace(aCts.mAccount.Value().mSchemaVersion.Value());
     }
-    if (cts.mAccount.Value().mIdentity.WasPassed()) {
+    if (aCts.mAccount.Value().mIdentity.WasPassed()) {
       aRetVal.mConstraints.mAccount->mIdentity.emplace();
-      for (const auto& identity : cts.mAccount.Value().mIdentity.Value().Entries()) {
+      for (const auto& identity : aCts.mAccount.Value().mIdentity.Value().Entries()) {
         PartialAccountIdentity entry;
         entry.mFieldId.Assign(identity.mKey);
         entry.mFieldValue.Assign(identity.mValue);
@@ -81,25 +94,23 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal, const RefPtr<const dom:
       }
     }
   }
-  if (cts.mEnableEndToEndEncryption.WasPassed()) {
+  if (aCts.mEnableEndToEndEncryption.WasPassed()) {
     aRetVal.mConstraints.mEnableEndToEndEncryption =
-      cts.mEnableEndToEndEncryption.Value();
+    aCts.mEnableEndToEndEncryption.Value();
   }
-  if (cts.mSecretManagerPublicKey.WasPassed()) {
+  if (aCts.mSecretManagerPublicKey.WasPassed()) {
     aRetVal.mConstraints.mSecretManagerPublicKey.emplace();
-    for (const auto& key : cts.mSecretManagerPublicKey.Value()) {
+    for (const auto& key : aCts.mSecretManagerPublicKey.Value()) {
       aRetVal.mConstraints.mSecretManagerPublicKey->AppendElement(nsString(key));
     }
   }
   nsresult rv;
-  rv = berytus::Utils_WebAppActorToVariant(aChannel->GetWebAppActor(), aRetVal.mWebAppActor);
+  rv = berytus::Utils_WebAppActorToVariant(aWebAppActor, aRetVal.mWebAppActor);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;
   }
   MOZ_ASSERT(aRetVal.mWebAppActor.Inited());
-  RefPtr<dom::BerytusSecretManagerActor> scmActor =
-    aChannel->GetSecretManager();
-  scmActor->GetEd25519Key(aRetVal.mScmActor.mEd25519Key);
+  aScmActor->GetEd25519Key(aRetVal.mScmActor.mEd25519Key);
   return NS_OK;
 }
 
@@ -231,18 +242,18 @@ void Utils_nsURIToUriParams(nsIURI* aSrcURI, UriParams& aOut) {
 }
 
 nsresult
-Utils_WebAppActorToVariant(const RefPtr<dom::BerytusWebAppActor>& aActor,
+Utils_WebAppActorToVariant(const RefPtr<const dom::BerytusWebAppActor>& aActor,
                            SafeVariant<berytus::CryptoActor, berytus::OriginActor>& aRetVal) {
   if (aActor->Type() == dom::BerytusWebAppActorType::CryptoActor) {
     CryptoActor sActor = CryptoActor();
-    static_cast<dom::BerytusCryptoWebAppActor*>(aActor.get())
+    static_cast<const dom::BerytusCryptoWebAppActor*>(aActor.get())
       ->GetEd25519Key(sActor.mEd25519Key);
     aRetVal.Init(std::move(sActor));
     return NS_OK;
   }
   nsresult rv;
   OriginActor sActor;
-  auto* anonActor = static_cast<dom::BerytusAnonymousWebAppActor*>(aActor.get());
+  auto* anonActor = static_cast<const dom::BerytusAnonymousWebAppActor*>(aActor.get());
   nsIURI* originalURI = anonActor->GetOriginalURI(rv);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;

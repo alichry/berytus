@@ -194,14 +194,45 @@ export interface BerytusIdentityField extends BerytusField {
     options: BerytusIdentityFieldOptions;
     value: nullOrstringOrBerytusEncryptedPacket;
 }
+export interface BerytusKeyExchangePartyPublicKeys {
+    scm: string;
+    webApp: string;
+}
+export interface BerytusKeyExchangeAuthentication {
+    name: string;
+    public: BerytusKeyExchangePartyPublicKeys;
+}
+export interface BerytusKeyExchangeParams {
+    name: string;
+    public: BerytusKeyExchangePartyPublicKeys;
+}
+export interface BerytusKeyDerivationParams {
+    name: string;
+    hash: string;
+    salt: BufferSource;
+    info: BufferSource;
+}
+export interface BerytusKeyGenParams {
+    name: string;
+    length: number;
+}
+export interface BerytusKeyExchangeSessionFingerprint {
+    hash: string;
+    version: string;
+    salt: BufferSource;
+    value: BufferSource;
+}
+export interface BerytusKeyExchangeSession {
+    id: string;
+    timestamp: number;
+    fingerprint: BerytusKeyExchangeSessionFingerprint;
+}
 export interface BerytusKeyAgreementParameters {
-    readonly sessionId: string;
-    readonly webAppX25519Key: string;
-    readonly scmX25519Key: string;
-    readonly hkdfHash: string;
-    readonly hkdfSalt: ArrayBuffer;
-    readonly hkdfInfo: ArrayBuffer;
-    readonly aesKeyLength: number;
+    readonly session: any;
+    readonly authentication: any;
+    readonly exchange: any;
+    readonly derivation: any;
+    readonly generation: any;
 }
 export interface BerytusKeyFieldValue extends BerytusFieldValueDictionary {
     readonly publicKey: ArrayBufferOrBerytusEncryptedPacket;

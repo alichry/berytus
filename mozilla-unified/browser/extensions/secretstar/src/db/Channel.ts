@@ -1,44 +1,45 @@
+import { KeyAgreementParameters } from "@berytus/types";
+
 export interface Channel {
     id: string;
-    webAppEd25519Key?: string;
-    scmEd25519Key?: {
-        publicKey: string; // base64 spki
-        privateKey: string; // base64 pkcs8
+    scmEd25519?: {
+        private: ArrayBuffer; // raw pkcs8
+        public: string; // base64 spki
     };
-    scmX25519Key?: {
-        publicKey: string; // base64 spki
-        privateKey: string; // base64 pkcs8
+    scmX25519?: {
+        private: ArrayBuffer; // raw pkcs8
+        public: string; // base64 spki
     };
-    webAppX25519Key?: string;
-    params?: {
-        hkdfHash: string; //hash name
-        hkdfSalt: string; // base64
-        hkdfInfo: string; // base64
-        aesKeyLength: number; // bits
+    webAppEd25519Pub?: string;
+    keyAgreement?: {
+        parameters: KeyAgreementParameters;
+        signatures: {
+            canonicalJson: string;
+            webAppSignature: ArrayBuffer;
+            scmSignature?: ArrayBuffer;
+        };
     };
-    webAppSignature?: string; // base64
-    scmSignature?: string; // base64
-    sharedKey?: ArrayBuffer
+    e2eeActvie: boolean;
+    e2eeKey?: ArrayBuffer;
 }
 
-interface E2EChannel extends Channel {
-    webAppEd25519Key: NonNullable<Channel['webAppEd25519Key']>;
-    scmEd25519Key: NonNullable<Channel['scmEd25519Key']>;
-    scmX25519Key: NonNullable<Channel['scmX25519Key']>;
-    webAppX25519Key: NonNullable<Channel['webAppX25519Key']>;
-    params: NonNullable<Channel['params']>;
-    webAppSignature?: NonNullable<Channel['webAppSignature']>;
-    scmSignature?: NonNullable<Channel['scmSignature']>;
-    sharedKey?: NonNullable<Channel['sharedKey']>;
+interface E2EReadyChannel extends Channel {
+    scmEd25519: NonNullable<Channel['scmEd25519']>;
+    scmX25519: NonNullable<Channel['scmX25519']>;
+    webAppEd25519Pub: NonNullable<Channel['webAppEd25519Pub']>;
+    keyAgreement: NonNullable<Channel['keyAgreement']>;
 }
 
-export function isChannelE2EReady(channel: Channel): channel is E2EChannel {
-    return !!(channel.params &&
-        channel.scmEd25519Key &&
-        channel.scmX25519Key &&
-        channel.webAppEd25519Key &&
-        channel.webAppX25519Key &&
-        channel.webAppSignature &&
-        channel.scmSignature &&
-        channel.sharedKey);
+export interface E2EChannel extends E2EReadyChannel {
+    e2eeActvie: true;
+    e2eeKey: ArrayBuffer;
+}
+
+export function isChannelE2EReady(channel: Channel): channel is E2EReadyChannel {
+    return !!(channel.scmEd25519 &&
+        channel.scmX25519 &&
+        channel.webAppEd25519Pub &&
+        channel.keyAgreement &&
+        channel.keyAgreement.signatures.webAppSignature &&
+        channel.keyAgreement.signatures.scmSignature);
 }

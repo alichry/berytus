@@ -7,6 +7,7 @@ import { WebApp } from './WebApp';
 import type { Request, FieldInfo, FieldValueRejectionReason, RecordMetadata, BerytusSendMessageUnion, PreliminaryRequestContext, BerytusChallengeInfoUnion, UserAttributeKey, WebAppActor, ChannelMetadata, LoginOperationMetadata, UriParams, RequestContext, RequestContextWithOperation, RequestContextWithLoginOperation } from '@berytus/types';
 import { EBerytusChallengeType } from "@berytus/enums";
 import { BerytusEncryptedPacket } from '@berytus/types-extd';
+import { SigningKey } from './SigningKey';
 
 export interface Field extends FieldInfo {
   value: string;
@@ -142,6 +143,7 @@ export class SecretDexie extends Dexie {
   identity!: Table<Identity>;
   picture!: Table<Picture>;
   channel!: Table<Channel>;
+  signingKeys!: Table<SigningKey>;
   webApp!: Table<WebApp>;
   pendingRequests!: Table<PendingRequest>;
   protected settings!: Table<Settings & { id: string }>;
@@ -156,7 +158,8 @@ export class SecretDexie extends Dexie {
       picture: 'filename',
       channel: 'id',
       webAppKey: '++id, ed25519Key',
-      pendingRequests: 'id'
+      pendingRequests: 'id',
+      signingKeys: 'public, private'
     });
     this.on('ready', async (dexieDb: Dexie) => {
       const db = dexieDb as SecretDexie;
