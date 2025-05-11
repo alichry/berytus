@@ -5,14 +5,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusUserAttribute.h"
-#include "BerytusEncryptedPacket.h"
 #include "ErrorList.h"
-#include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusUserAttributeBinding.h"
-#include "nsCycleCollectionParticipant.h"
 #include "mozilla/Base64.h"
-#include "nsStringFwd.h"
-#include "nsWrapperCache.h"
+#include "nsString.h"
+#include "mozilla/dom/BerytusEncryptedPacket.h"
 
 namespace mozilla::dom {
 
@@ -200,10 +197,10 @@ BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<nsString>::ValueE
   return BerytusUserAttributeValueEncodingType::None;
 }
 
-void BerytusUserAttributeImpl<nsString>::PopulateValueInJSON(JSONValueType& aRetVal,
-                                                     ErrorResult& aErr) const {
+void BerytusUserAttributeImpl<nsString>::PopulateValueInJSON(JSONValueType& aValue,
+                                                     ErrorResult& aRv) const {
   MOZ_ASSERT(mValue.IsString());
-  aRetVal.SetAsString().Assign(mValue.GetAsString());
+  aValue.Assign(mValue.GetAsString());
 }
 
 void BerytusUserAttributeImpl<nsString>::SetValueInternal(const nsString& aValue) {
@@ -241,8 +238,8 @@ BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<ArrayBuffer>::Val
   return BerytusUserAttributeValueEncodingType::Base64URLString;
 }
 
-void BerytusUserAttributeImpl<ArrayBuffer>::PopulateValueInJSON(JSONValueType& aRetVal,
-                                                          ErrorResult& aErr) const {
+void BerytusUserAttributeImpl<ArrayBuffer>::PopulateValueInJSON(JSONValueType& aValue,
+                                                          ErrorResult& aRv) const {
   MOZ_ASSERT(mValue.IsArrayBuffer());
   JS::AutoCheckCannotGC nogc;
   bool isShared;
@@ -254,10 +251,10 @@ void BerytusUserAttributeImpl<ArrayBuffer>::PopulateValueInJSON(JSONValueType& a
       length, data,
       Base64URLEncodePaddingPolicy::Omit, base64Url);
   if (NS_WARN_IF(NS_FAILED(res))) {
-    aErr.Throw(res);
+    aRv.Throw(res);
     return;
   }
-  aRetVal.SetAsString().Assign(NS_ConvertASCIItoUTF16(base64Url));
+  aValue.Assign(NS_ConvertASCIItoUTF16(base64Url));
 }
 
 NS_IMPL_ISUPPORTS_CYCLE_COLLECTION_INHERITED_0(BerytusUserAttributeImpl<BerytusEncryptedPacket>, BerytusUserAttribute)
@@ -284,16 +281,17 @@ void BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValueInternal(const Re
   mValue.SetAsBerytusEncryptedPacket() = aValue;
 }
 
-
 BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<BerytusEncryptedPacket>::ValueEncodingType() const {
   MOZ_ASSERT(mValue.IsBerytusEncryptedPacket());
   return BerytusUserAttributeValueEncodingType::EncryptedPacketJSON;
 }
 
-void BerytusUserAttributeImpl<BerytusEncryptedPacket>::PopulateValueInJSON(JSONValueType& aRetVal,
-                                                          ErrorResult& aErr) const {
+void BerytusUserAttributeImpl<BerytusEncryptedPacket>::PopulateValueInJSON(JSONValueType& aValue,
+                                                          ErrorResult& aRv) const {
   MOZ_ASSERT(mValue.IsBerytusEncryptedPacket());
-  mValue.GetAsBerytusEncryptedPacket()->ToJSON(aRetVal.SetAsBerytusEncryptedPacketJSON(), aErr);
+  nsCString utf8Val;
+  mValue.GetAsBerytusEncryptedPacket()->SerializeExposedToString(utf8Val, aRv);
+  aValue.Assign(NS_ConvertUTF8toUTF16(utf8Val));
 }
 
 } // namespace mozilla::dom

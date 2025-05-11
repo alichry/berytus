@@ -929,36 +929,17 @@
         ]
       },
       {
-        "id": "AesGcmParams",
-        "type": "object",
-        "properties": {
-          "iv": {
-            "$ref": "BufferSource"
-          },
-          "additionalData": {
-            "$ref": "BufferSource",
-            "optional": true
-          },
-          "tagLength": {
-            "type": "number",
-            "optional": true
-          },
-          "name": {
-            "type": "string"
-          }
-        }
-      },
-      {
         "id": "BerytusEncryptedPacket",
         "type": "object",
         "properties": {
-          "parameters": {
-            "$ref": "AesGcmParams"
+          "type": {
+            "type": "string",
+            "enum": [
+              "JWE"
+            ]
           },
-          "ciphertext": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
+          "value": {
+            "type": "string"
           }
         }
       },

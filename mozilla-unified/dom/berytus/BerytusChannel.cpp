@@ -519,7 +519,7 @@ already_AddRefed<Promise> BerytusChannel::Login(JSContext* aCx, const BerytusOnb
 }
 
 already_AddRefed<Promise> BerytusChannel::PrepareKeyAgreementParameters(
-    const nsAString& aWebAppX25519PublicKey,
+    const BerytusKeyAgreementInput& aInput,
     ErrorResult& aRv) {
   if (!mActive) {
     aRv.ThrowInvalidStateError("Channel already closed.");
@@ -540,16 +540,31 @@ already_AddRefed<Promise> BerytusChannel::PrepareKeyAgreementParameters(
     mAgent->Channel_GenerateX25519Key(reqCx);
   prom->Then(
     GetCurrentSerialEventTarget(), __func__,
-    [this, outPromise, webAppX25519Spki = nsString(aWebAppX25519PublicKey)](const berytus::GenerateX25519KeyResult& aGen) {
+    [this,
+     outPromise,
+     webAppX25519Spki = nsString(aInput.mPublic),
+     ciphEd = aInput.mCiphertextEndpoints.WasPassed() ? Optional<Sequence<nsString>>(aInput.mCiphertextEndpoints.Value()) : Optional<Sequence<nsString>>()
+    ](const berytus::GenerateX25519KeyResult& aGen) mutable {
       ErrorResult rv;
+      nsTArray<nsString> urls;
+      if (ciphEd.WasPassed()) {
+        for (const auto& url : ciphEd.Value()) {
+          if (NS_WARN_IF(!urls.AppendElement(url, fallible))) {
+            outPromise->MaybeRejectWithTypeError("Out of memory");
+            return;
+          }
+        }
+      }
       RefPtr<BerytusKeyAgreementParameters> pams =
-        BerytusKeyAgreementParameters::Create(this, rv);
+        BerytusKeyAgreementParameters::Create(this, 
+                                              webAppX25519Spki,
+                                              aGen.mPublic,
+                                              std::move(urls),
+                                              rv);
       if (NS_WARN_IF(rv.Failed())) {
         outPromise->MaybeReject(std::move(rv));
         return;
       }
-      pams->GetExchange()->SetWebApp(webAppX25519Spki);
-      pams->GetExchange()->SetScm(aGen.mPublic);
       mKeyAgreementParams = pams;
       outPromise->MaybeResolve(pams);
     },

@@ -1,0 +1,34 @@
+--- dom/fetch/Request.cpp.orig	2025-05-07 23:22:05
++++ dom/fetch/Request.cpp	2025-05-09 11:20:22
+@@ -7,6 +7,7 @@
+ #include "Request.h"
+ 
+ #include "js/Value.h"
++#include "mozilla/dom/BerytusEncryptedPacket.h"
+ #include "nsIURI.h"
+ #include "nsNetUtil.h"
+ #include "nsPIDOMWindow.h"
+@@ -427,10 +428,22 @@
+         aInit.mBody.Value();
+     if (!bodyInitNullable.IsNull()) {
+       const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
++      // Note(berytus): Lines 432-447 show how we process the fetch body,
++      // trying to unmask encrypted packets if request URL is signed.
++      fetch::OwningBodyInit maybeUnmaskedBodyInit;
++      nsCString reqUrl;
++      request->GetURL(reqUrl);
++      TryUnmaskBerytusEncryptedPacketInFetchBody(bodyInit,
++                                                 maybeUnmaskedBodyInit,
++                                                 reqUrl,
++                                                 aRv);
++      if (NS_WARN_IF(aRv.Failed())) {
++        return nullptr;
++      }
+       nsCOMPtr<nsIInputStream> stream;
+       nsAutoCString contentTypeWithCharset;
+       uint64_t contentLength = 0;
+-      aRv = ExtractByteStreamFromBody(bodyInit, getter_AddRefs(stream),
++      aRv = ExtractByteStreamFromBody(/* bodyInit */ maybeUnmaskedBodyInit, getter_AddRefs(stream),
+                                       contentTypeWithCharset, contentLength);
+       if (NS_WARN_IF(aRv.Failed())) {
+         return nullptr;

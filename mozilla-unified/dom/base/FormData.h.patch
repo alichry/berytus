@@ -1,0 +1,28 @@
+--- dom/base/FormData.h.orig	2025-05-07 23:22:20
++++ dom/base/FormData.h	2025-05-09 10:59:52
+@@ -25,6 +25,11 @@
+ class HTMLFormElement;
+ class GlobalObject;
+ 
++class OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
++namespace fetch {
++  using OwningBodyInit = OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
++}
++
+ class FormData final : public nsISupports,
+                        public HTMLFormSubmission,
+                        public nsWrapperCache {
+@@ -163,6 +168,13 @@
+   RefPtr<Element> mSubmitter;
+ 
+   nsTArray<FormDataTuple> mFormData;
++
++  friend void TryUnmaskBerytusEncryptedPacketInFetchBody(
++      const fetch::OwningBodyInit& aSrc,
++      fetch::OwningBodyInit& aDest,
++      const nsCString& aReqUrl,
++      ErrorResult& aRv
++  );
+ };
+ 
+ }  // namespace dom

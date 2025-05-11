@@ -130,7 +130,7 @@ public:
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<Promise> PrepareKeyAgreementParameters(
-      const nsAString& webAppX25519PublicKey,
+      const BerytusKeyAgreementInput& aInput,
       ErrorResult& aRv);
 
   already_AddRefed<Promise> ExchangeKeyAgreementSignatures(
@@ -149,6 +149,31 @@ private:
     JS::PersistentRooted<JS::Value> aConstraints,
     const RefPtr<BerytusX509Extension>& aCertExt
   );
+
+public:
+  class BaseAttachable {
+  public:
+    virtual bool Attached() const = 0;
+    virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) = 0;
+  protected:
+    BaseAttachable() = default;
+    virtual ~BaseAttachable() = default;
+  };
+  class Attachable : public BaseAttachable {
+  public:
+    virtual bool Attached() const override { return bool(mChannel); }
+    virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override {
+      if (!Attached()) {
+        aRv.ThrowInvalidStateError("Already attached");
+        return;
+      }
+      mChannel = aChannel;
+    }
+  protected:
+    Attachable() : mChannel(nullptr) {}
+    virtual ~Attachable() = default;
+    RefPtr<BerytusChannel> mChannel;
+  };
 };
 
 } // namespace mozilla::dom

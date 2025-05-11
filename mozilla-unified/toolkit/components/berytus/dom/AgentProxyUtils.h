@@ -17,8 +17,6 @@
 namespace mozilla::dom {
   class BerytusAccount;
   class BerytusEncryptedPacket;
-  class BerytusAesGcmParams_Impl;
-  class BerytusEncryptionParams_Impl;
   class BerytusLoginOperation;
   class BerytusWebAppActor;
   class BerytusBuffer;
@@ -89,8 +87,6 @@ bool Utils_ArrayBufferViewToSafeVariant(const ArrayBufferView& aBuf, SafeVariant
 namespace utils {
 
 using WebAppActorProxy = SafeVariant<berytus::CryptoActor, berytus::OriginActor>;
-using AesGcmParams_ImplProxy = berytus::AesGcmParams;
-using EncryptedPacketParametersProxy = decltype(berytus::BerytusEncryptedPacket::mParameters);
 using EncryptedPacketProxy = berytus::BerytusEncryptedPacket;
 using FieldProxy = decltype(berytus::AddFieldArgs::mField);
 using IdentityFieldProxy = berytus::BerytusIdentityField;
@@ -115,10 +111,6 @@ using ChallengeInfoUnionProxy = decltype(ApproveChallengeRequestArgs::mChallenge
 
 class FromProxy {
 public:
-  static dom::BerytusAesGcmParams_Impl* BerytusAesGcmParams_Impl(
-      const AesGcmParams_ImplProxy& aProxy, nsresult& aRv);
-  static dom::BerytusEncryptionParams_Impl* BerytusEncryptionParams_Impl(
-      const EncryptedPacketParametersProxy& aProxy, nsresult& aRv);
   static already_AddRefed<dom::BerytusEncryptedPacket> BerytusEncryptedPacket(
       nsIGlobalObject* aGlobal, const EncryptedPacketProxy& aProxy,
       nsresult& aRv);

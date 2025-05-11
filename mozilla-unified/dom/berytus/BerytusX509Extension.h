@@ -61,6 +61,42 @@ protected:
                     nsTDependentSubstring<char>& aSubRv,
                     uint32_t& aNextPosRv) const;
 };
+
+class UrlSearchExpression final : public nsISupports {
+public:
+  NS_DECL_ISUPPORTS
+
+  static already_AddRefed<UrlSearchExpression> Create(const nsCString& aUrl, nsresult& aRv);
+  nsresult Matches(nsIURI* aUrl, bool& aRv) const;
+
+  explicit operator nsCString() const {
+    if (mPort == -1 &&
+        mHostname.Equals("*") &&
+        mFilePath.Equals("/*")) {
+      return nsCString("*"_ns);
+    }
+    nsCString out;
+    out.Append(mScheme);
+    out.Append("//");
+    out.Append(mHostname);
+    if (mPort != -1) {
+      out.Append(":");
+      out.AppendInt(mPort);
+    }
+    out.Append(mFilePath);
+    return out;
+  }
+protected:
+  constexpr static const nsLiteralCString mScheme = "https"_ns;
+  const nsCString mHostname;
+  const int mPort;
+  const nsCString mFilePath;
+
+  UrlSearchExpression(nsCString&& aHostname,
+      const int& aPort,
+      nsCString&& aFilePath);
+  ~UrlSearchExpression();
+};
 }
 
 namespace dom {
@@ -77,54 +113,18 @@ public:
 
     nsresult Matches(const nsCString& aSpki, nsIURI* aUrl, bool& aRv) const;
 
-    class Url final : public nsISupports {
-    public:
-      NS_DECL_ISUPPORTS
-
-      static already_AddRefed<Url> Create(const nsCString& aUrl, nsresult& aRv);
-      nsresult Matches(nsIURI* aUrl, bool& aRv) const;
-
-      explicit operator nsCString() const {
-        if (mPort == -1 &&
-            mHostname.Equals("*") &&
-            mFilePath.Equals("/*")) {
-          return nsCString("*"_ns);
-        }
-        nsCString out;
-        out.Append(mScheme);
-        out.Append("//");
-        out.Append(mHostname);
-        if (mPort != -1) {
-          out.Append(":");
-          out.AppendInt(mPort);
-        }
-        out.Append(mFilePath);
-        return out;
-      }
-    protected:
-      constexpr static const nsLiteralCString mScheme = "https"_ns;
-      const nsCString mHostname;
-      const int mPort;
-      const nsCString mFilePath;
-
-      Url(nsCString&& aHostname,
-          const int& aPort,
-          nsCString&& aFilePath);
-      ~Url();
-    };
-
     SigningKeyEntry(nsCString&& aSpki,
                     nsCString&& aSkSig,
-                    RefPtr<Url>& aUrl);
+                    RefPtr<berytus::UrlSearchExpression>& aUrl);
 
     const nsCString& GetSpki();
     const nsCString& GetSkSig();
-    RefPtr<const Url> GetUrl();
+    RefPtr<const berytus::UrlSearchExpression> GetUrl();
 
   protected:
     const nsCString mSpki;
     const nsCString mSkSig;
-    RefPtr<Url> mUrl;
+    RefPtr<berytus::UrlSearchExpression> mUrl;
     ~SigningKeyEntry();
   };
 
