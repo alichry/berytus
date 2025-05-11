@@ -132,8 +132,10 @@ export interface BerytusEncryptedPacketJSON {
     ciphertext: Base64URLString;
 }
 export interface BerytusEncryptedPacket {
-    readonly parameters: AesGcmParams;
-    readonly ciphertext: ArrayBuffer;
+    type: "JWE";
+    value: string;
+}
+export interface BerytusJWEPacket extends BerytusEncryptedPacket {
 }
 type BerytusFieldType = "Identity" | "ForeignIdentity" | "Password" | "SecurePassword" | "ConsumablePassword" | "Key" | "SharedKey" | "Custom";
 type BerytusFieldRejectionReasonCode = string;

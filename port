@@ -27,6 +27,9 @@ MOZILLA_FILES="toolkit/components/moz.build
 dom/moz.build
 dom/webidl/moz.build
 dom/bindings/Bindings.conf
+dom/base/FormData.h
+dom/fetch/Request.cpp
+dom/file/Blob.h
 toolkit/modules/ActorManagerParent.sys.mjs
 browser/base/content/navigator-toolbox.inc.xhtml
 browser/base/content/popup-notifications.inc

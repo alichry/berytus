@@ -349,23 +349,27 @@ const deleteFunctions = async () => {
 }
 
 /**
- * WebIDL defines "object" as the type for packet's parameters.
- * This gets mapped to "any" by webidl-dts-gen which is no good.
+ * BerytusEncryptedPacket does not define any attributes.
+ * Therefore, the generator will not embed an appropriate
+ * placeholder for the JWE. We define one here and remove
+ * the inheritance from Blob.
  */
-const correctPacketParametersAttribute = async () => {
+const correctEncryptedPacketInterface = async () => {
     const typesFile = project.getSourceFileOrThrow(
         dtsFile
     );
     let dts: string = await readFile(dtsFile, { encoding: "utf8" });
     const intf = typesFile.getInterfaceOrThrow("BerytusEncryptedPacket");
     const origText = intf.getText();
-    const parameterType = intf.getConstructSignatures()[0].getParameters()[0].getType();
-    intf.getProperty("parameters")!.set({
-        name: "parameters",
-        type: parameterType.getAliasSymbol()?.getName()
-            || parameterType.getSymbol()?.getName()
+    intf.removeExtends(0); // we do not want it to inherit from Blob
+    intf.addProperty({
+        name: "type",
+        type: "\"JWE\"",
+    })
+    intf.addProperty({
+        name: "value",
+        type: "string"
     });
-
     dts = dts.replace(origText, intf.getText());
     await writeFile(
         dtsFile,
@@ -456,7 +460,7 @@ const generate = async () => {
     await ensureUnionsAreAliases(listFields());
     await generateFieldOptionsUnion();
     await ensureUnionsAreAliases(["BerytusUserAttributeDefinition"]);
-    await correctPacketParametersAttribute();
+    await correctEncryptedPacketInterface();
     await generateChallengeTypeEnum();
     await generateChallengeMessagingTypes();
     await deleteFunctions();

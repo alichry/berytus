@@ -11,18 +11,18 @@
 #include "js/Value.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/HoldDropJSObjects.h"
-#include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusEncryptedPacketBinding.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
-#include "mozilla/dom/RootedDictionary.h"
 #include "mozilla/dom/BerytusFieldValueDictionary.h"
+#include "nsString.h"
+#include "mozilla/dom/ToJSValue.h"
 
 namespace mozilla::dom {
 
 
 // Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusField, (mGlobal, mFieldValue), (mCachedOptions, mCachedJson))
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusField, (mGlobal, mFieldValue, mChannel), (mCachedOptions, mCachedJson))
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusField)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusField)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusField)
@@ -184,12 +184,11 @@ void BerytusField::AddValueToJSON(JSContext* aCx,
     }
     const auto& intVal = mFieldValue.Value();
     if (intVal.IsBerytusEncryptedPacket()) {
-      BerytusEncryptedPacketJSON packetJson;
-      intVal.GetAsBerytusEncryptedPacket()->ToJSON(packetJson, aRv);
-      if (NS_WARN_IF(aRv.Failed())) {
-        return;
-      }
-      if (NS_WARN_IF(!packetJson.ToObjectInternal(aCx, &value))) {
+      const auto& packet = intVal.GetAsBerytusEncryptedPacket();
+      const auto exposed = packet->Exposed();
+      const nsTDependentSubstring<char> exposedView((char*) exposed.data(),
+                                                    exposed.Length());
+      if (NS_WARN_IF(!ToJSValue(aCx, exposedView, &value))) {
         aRv.Throw(NS_ERROR_FAILURE);
         return;
       }
@@ -243,7 +242,12 @@ void BerytusField::SetValueImpl(JSContext* aCx,
     return;
   }
   if (aValue.Value().IsBerytusEncryptedPacket()) {
-    mFieldValue.SetValue().SetAsBerytusEncryptedPacket() = aValue.Value().GetAsBerytusEncryptedPacket();
+    const auto& packet = aValue.Value().GetAsBerytusEncryptedPacket();
+    if (mChannel) {
+      packet->Attach(mChannel, aRv);
+      NS_ENSURE_TRUE_VOID(!aRv.Failed());
+    }
+    mFieldValue.SetValue().SetAsBerytusEncryptedPacket() = packet;
     return;
   }
   if (aValue.Value().IsBerytusFieldValueDictionary()) {

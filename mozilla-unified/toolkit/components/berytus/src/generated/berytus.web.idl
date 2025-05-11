@@ -282,26 +282,12 @@ dictionary BerytusEncryptedPacketJSON {
 };
 
 [SecureContext, Exposed=(Window)]
-interface BerytusEncryptedPacket {
-    /**
-     * @type {BerytusEncryptionParams}
-     */
-    [Throws]
-    readonly attribute object parameters;
+interface BerytusEncryptedPacket : Blob {};
 
-    [SameObject, Throws]
-    readonly attribute ArrayBuffer ciphertext;
-
-    [Throws]
-    constructor(BerytusEncryptionParams algorithm, BufferSource ciphertext);
-
-    /**
-     * Return a serialisable JavaScript object that can be
-     * sent over HTTP. Mirrors `this` interface; however,
-     * ArrayBuffers are transformed into Base64 strings.
-     */
-    [Throws]
-    BerytusEncryptedPacketJSON toJSON();
+[SecureContext, Exposed=(Window)]
+interface BerytusJWEPacket : BerytusEncryptedPacket {
+  [Throws]
+  constructor(DOMString jweCompact);
 };enum BerytusFieldType {
   "Identity",
   "ForeignIdentity",
@@ -596,7 +582,7 @@ dictionary BerytusKeyDerivationParams /*: HkdfParams */ {
 [GenerateInit, GenerateConversionToJS]
 dictionary BerytusKeyGenParams /*: AesKeyGenParams */ {
     required DOMString name; // -> AES-GCM
-    required [EnforceRange] unsigned short length;
+    required [EnforceRange] unsigned short length; // -> 256
 };
 
 /**

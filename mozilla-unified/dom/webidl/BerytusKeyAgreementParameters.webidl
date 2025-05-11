@@ -60,6 +60,11 @@ dictionary BerytusKeyExchangeSession {
     required DOMString id;
     required unsigned long timestamp;
     required BerytusKeyExchangeSessionFingerprint fingerprint;
+    /**
+     * A list of URLs for which ciphertext would be transmitted to.
+     * TODO(berytus): Come up with a better name
+     */
+    sequence<DOMString> ciphertextUrls;
 };
 
 [SecureContext, Exposed=(Window)]
