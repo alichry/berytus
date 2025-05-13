@@ -252,9 +252,10 @@ var channel = await BerytusChannel.create({
         await app.onRun(`:generateKey:x25519 webAppX25519KeyPair`);
         await app.onRun(`:exportKey:spki:x25519 webAppX25519KeyPair.publicKey webAppX25519KeySpki`);
         await app.onRun(`\
-var params = await channel.prepareKeyAgreementParameters(
-    new Uint8Array(webAppX25519KeySpki).toBase64()
-);
+var params = await channel.prepareKeyAgreementParameters({
+    public: new Uint8Array(webAppX25519KeySpki).toBase64(),
+    unmaskAllowlist: ["https://localhost/*"]
+});
 var message = new TextEncoder().encode(params.toCanonicalJSON())`);
         await app.onRun(`\
 :sign:ed25519 message webAppEd25519Priv webAppSignedParams`);
@@ -275,17 +276,99 @@ await channel.enableEndToEndEncryption();`);
         await app.onRun(`:deriveKey:x25519:hkdf:aes-gcm webAppX25519KeyPair.privateKey scmX25519Key e2eeKey`);
     }),
     new InternalCommand({
-        id: 'channel:e2e:encrypt',
+        id: 'channel:e2e:encrypt:raw',
         description: "<data>"
     }, async function ({ args, context: { app }}) {
         await app.onRun(`var toEncrypt = ${args.join(' ')}`);
         await app.onRun(`:encrypt:aes-gcm+auth e2eeKey toEncrypt channel.keyAgreementParams.session.fingerprint.value`);
     }),
     new InternalCommand({
-        id: 'channel:e2e:decrypt',
+        id: 'channel:e2e:decrypt:raw',
         description: "[iv] [data]"
     }, async function ({ args: [iv, data], context: { app }}) {
         await app.onRun(`:decrypt:aes-gcm+auth e2eeKey ${iv} ${data} channel.keyAgreementParams.session.fingerprint.value`);
+    }),
+    new InternalCommand({
+        id: 'channel:e2e:encrypt:jwe',
+        description: '[data] [key] [returnVariable="jwe"]'
+    }, async function ({ args: [data, key, returnVariable="jwe"], context: { app }}) {
+        // e2eeKey
+        await app.onRun(`\
+var content = undefined;
+{
+    if (typeof ${data} === "string") {
+        const dataURL = window.parseDataURL(${data});
+        if (dataURL) {
+            const charset = dataURL.mimeType.parameters.get("charset");
+            if (charset && charset !== "utf-8") {
+                throw new Error("Refusing to encrypt data URL with a charset other than utf-8");
+            }
+            content = {
+                mimeType: dataURL.mimeType.toString(),
+                plaintext: dataURL.body
+            };
+        } else {
+            content = {
+                plaintext: new TextEncoder().encode(${data}),
+                mimeType: "text/plain;charset=utf-8"
+            };
+        }
+    } else if (
+        ${data} instanceof ArrayBuffer ||
+        ${data} instanceof SharedArrayBuffer
+    ) {
+        content = {
+            plaintext: new Uint8Array(${data}),
+            mimeType: "application/octet-stream"
+        };
+    } else if (ArrayBuffer.isView(${data})) {
+        content = {
+            plaintext: new Uint8Array(${data}.buffer),
+            mimeType: "application/octet-stream"
+        };
+    }
+}
+if (! content) {
+    throw new Error(\`Cannot encrypt unsupported data of '\${typeof ${data}}' type.\`);
+}
+var jweOp = new window.jose.CompactEncrypt(content.plaintext);
+var ${returnVariable} = await jweOp.setProtectedHeader({
+    alg: 'dir',
+    enc: 'A256GCM',
+    cty: content.mimeType,
+    typ: "JOSE"
+}).encrypt(e2eeKey)`);
+    }),
+    new InternalCommand({
+        id: 'channel:e2e:decrypt:jwe',
+        description: '[jwe] [returnVariable="decrypted"]'
+    }, async function ({ args: [jwe, returnVariable="decrypted"], context: { app }}) {
+        await app.onRun(`\
+var ${returnVariable} = await window.jose.compactDecrypt(${jwe}, e2eeKey)`);
+    }),
+    new InternalCommand({
+        id: 'channel:e2e:unmask',
+        description: '[body] [returnVariable="response"]'
+    }, async function ({ args: [body, returnVariable="resp"], context: { app }}) {
+        await app.onRun(`\
+var ${returnVariable} = await fetch('/unmask', { method: "POST", body: ${body} });
+`);
+    }),
+    new InternalCommand({
+        id: 'channel:e2e:unmask+decrypt',
+        description: '[body] [returnVariable="response"]'
+    }, async function ({ args: [body, returnVariable="plaintext"], context: { app }}) {
+        await app.onRun(`:channel:e2e:unmask ${body} unmaskedResp`);
+        await app.onRun(`var unmaskedJwe = await unmaskedResp.text()`);
+        await app.onRun(`:channel:e2e:decrypt:jwe unmaskedJwe decrypted`);
+        await app.onRun(`var ${returnVariable} = decrypted.plaintext`);
+        console.log(window["decrypted"]);
+    }),
+    new InternalCommand({
+        id: 'channel:e2e:encrypt+mask',
+        description: '[data] [returnVariable="jwePacket"]'
+    }, async function ({ args: [data, returnVariable="plaintext"], context: { app }}) {
+        console.log(`TODO(berytus): Once we implement masking of encrypted packets coming from web app.`);
     }),
 ];
 export interface Props {

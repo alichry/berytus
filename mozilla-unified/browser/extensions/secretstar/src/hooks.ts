@@ -8,6 +8,8 @@ import { PAGECONTEXT_POPUP } from "./pagecontext";
 import { Schema } from "yup";
 import type { WebAppActor, Request, RequestType, RequestHandlerFunctionReturnType } from "@berytus/types";
 import { ERejectionCode } from "@berytus/enums";
+import { Channel } from "./db/Channel";
+import JWEPacketCipherBox from "./crypto/JWEPacketBox";
 
 interface MaybeResult {
     sent: boolean;
@@ -21,24 +23,26 @@ type MaybeResolve<ER extends RequestType> =
 
 type MaybeReject = (reason: ERejectionCode) => MaybeResult;
 
-const resolveIf = (hasBeenProcessed: boolean, requestId: string, value: unknown): MaybeResult => {
+const resolveIf = (hasBeenProcessed: boolean, requestId: string, value: unknown | Promise<unknown>): MaybeResult => {
     if (hasBeenProcessed) {
         return {
             sent: false,
             promise: Promise.resolve()
         };
     }
-    const prom = browser.runtime.sendMessage({
-        type: "resolveRequest",
-        data: {
-            requestId,
-            value
-        }
-    }).catch(e => {
-        console.error("An error has occurre during browser.runtime.sendMessage('resolveRequest'):", e.message);
-        console.error(e);
-        throw e;
-    });
+    const prom = Promise.resolve(value)
+        .then(value => browser.runtime.sendMessage({
+            type: "resolveRequest",
+            data: {
+                requestId,
+                value
+            }
+        }))
+        .catch(e => {
+            console.error("An error has occurre during browser.runtime.sendMessage('resolveRequest'):", e.message);
+            console.error(e);
+            throw e;
+        });
     return {
         sent: true,
         promise: prom
@@ -50,6 +54,12 @@ const rejectIf = (hasBeenProcessed: boolean, requestId: string, value: unknown):
             sent: false,
             promise: Promise.resolve()
         };
+    }
+    if (value instanceof Promise) {
+        return {
+            sent: false,
+            promise: Promise.reject(new Error("rejectIf() does not accept Promise-wrapped values."))
+        }
     }
     const prom = browser.runtime.sendMessage({
         type: "rejectRequest",
@@ -108,19 +118,25 @@ interface UseRequestHook<ER extends RequestType> {
     error?: unknown;
 }
 
-interface UseRequestCallbacks {
+interface UseRequestOptions {
     onProcessed?(): void;
     onIgnored?(): void;
+    cipherbox?: JWEPacketCipherBox;
 }
 
 /**
+ * Note(berytus):
  * @note Make sure callbacks are memoised using useCallback;
  * otherwise, they will get invoked on each render if the
  * request has been processed or ignored.
  */
 export function useRequest<ER extends RequestType>(
     req: Request | undefined,
-    { onProcessed, onIgnored }: UseRequestCallbacks = {}
+    {
+        onProcessed,
+        onIgnored,
+        cipherbox
+    }: UseRequestOptions = {}
 ): UseRequestHook<ER> {
     const [processing, setProcessing] = useState<boolean>(false);
     const [processed, setProcessed] = useState<boolean>(false);
@@ -136,12 +152,20 @@ export function useRequest<ER extends RequestType>(
             return;
         }
         setMaybeResolve(
-            () => createMaybeFunction("resolve", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
+            () => {
+                const maybe = createMaybeFunction("resolve", processed, setProcessed, setIgnored, setProcessing, setError, req.id);
+                return (value: unknown) => {
+                    if (cipherbox) {
+                        return maybe(cipherbox.encrypt(value));
+                    }
+                    return maybe(value);
+                }
+            }
         );
         setMaybeReject(
             () => createMaybeFunction("reject", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
         );
-    }, [processed, req]);
+    }, [processed, req, cipherbox]);
     useEffect(() => {
         if (ignored) {
             if (! onIgnored) {
@@ -499,4 +523,34 @@ export function useTryOnce(enable: boolean | undefined, cb: () => Promise<boolea
         run();
     }, [enable, running, ...dependencies]);
     return { tried, error };
+}
+
+export function useCipherbox(channel?: Channel) {
+    const [box, setBox] = useState<JWEPacketCipherBox | undefined>(undefined);
+    const [loading, setLoading] = useState<boolean>(true);
+    useEffect(() => {
+        if (!channel) {
+            if (box !== undefined) {
+                setBox(undefined);
+            }
+            if (loading === false) {
+                setLoading(true);
+            }
+            return;
+        }
+        if (! channel.e2eeKey) {
+            setLoading(false);
+            setBox(undefined);
+            return;
+        }
+        setBox(new JWEPacketCipherBox({
+            key: channel.e2eeKey,
+            avoidReEncryption: true
+        }));
+        setLoading(false);
+    }, [channel]);
+    return {
+        loading,
+        cipherbox: box
+    };
 }

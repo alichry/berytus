@@ -943,11 +943,28 @@ const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
     Schemas: "resource://gre/modules/Schemas.sys.mjs"
 });
+const isPrelimContext = (context) => {
+    return typeof context === "object" &&
+        context !== null &&
+        "request" in context &&
+        typeof context.request === "object" &&
+        context.request !== null &&
+        "type" in context.request &&
+        typeof context.request.type === "string" &&
+        "id" in context.request &&
+        typeof context.request.id === "string";
+};
 const requestIs = (requestType, d) => {
-    return d.context.request.type === requestType;
+    if (isPrelimContext(d.context)) {
+        return d.context.request.type === requestType;
+    }
+    return false;
 };
 const inputIs = (requestType, input) => {
-    return input.context.request.type === requestType;
+    if (isPrelimContext(input.context)) {
+        return input.context.request.type === requestType;
+    }
+    return false;
 };
 /**
  * Implementation copied from Schemas.sys.mjs's Context
@@ -1265,6 +1282,95 @@ class FieldCreationHandler {
         }
     }
 }
+// TODO(berytus): Also reject requests containing encrypted packets
+// when channel e2ee is false.
+class E2EEMessagingValidator {
+    #isE2EEEnabled(ctx) {
+        return ctx.channel.e2eeEnabled;
+    }
+    #isEncrypted(valueOrDict) {
+        if (valueOrDict === null || valueOrDict === undefined) {
+            return true;
+        }
+        if (typeof valueOrDict !== "object") {
+            return false;
+        }
+        if ("type" in valueOrDict &&
+            valueOrDict.type === "JWE" &&
+            "value" in valueOrDict &&
+            typeof valueOrDict.value === "string") {
+            return true;
+        }
+        for (const key in valueOrDict) {
+            const isIt = this.#isEncrypted(valueOrDict[key]);
+            if (!isIt) {
+                return false;
+            }
+        }
+        return true;
+    }
+    async consume(group, method, input) {
+        const errorPrefix = `Malformed output passed from the request handler's `
+            + `${group}:${method} method.`;
+        if (inputIs("AccountCreation_AddField", input)) {
+            if (!this.#isE2EEEnabled(input.context)) {
+                return;
+            }
+            if (!this.#isEncrypted(input.args.field.value)) {
+                throw new ResolutionError(errorPrefix, "resolved value must be encrypted.");
+            }
+        }
+        if (inputIs("AccountCreation_RejectFieldValue", input)) {
+            if (!this.#isE2EEEnabled(input.context)) {
+                return;
+            }
+            if (undefined === input.args.optionalNewValue) {
+                return;
+            }
+            if (!this.#isEncrypted(input.args.optionalNewValue)) {
+                throw new ResolutionError(errorPrefix, "resolved value must be encrypted.");
+            }
+        }
+        if (inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
+            if (!this.#isE2EEEnabled(input.context)) {
+                return;
+            }
+            if (!this.#isEncrypted(input.args.payload)) {
+                throw new ResolutionError(errorPrefix, "resolved value must be encrypted.");
+            }
+        }
+    }
+    async rollback(group, method, input) { }
+    async digest(group, method, input, output) {
+        const errorPrefix = `Malformed output passed from the request handler's `
+            + `${group}:${method} method.`;
+        const data = {
+            context: input.context,
+            args: input.args,
+            output
+        };
+        if (requestIs("AccountCreation_AddField", data) ||
+            requestIs("AccountAuthentication_RespondToChallengeMessage", data) ||
+            requestIs("AccountCreation_RejectFieldValue", data)) {
+            if (!this.#isE2EEEnabled(data.context)) {
+                return;
+            }
+            if (!this.#isEncrypted(data.output)) {
+                throw new ResolutionError(errorPrefix, "resolved value must be encrypted.");
+            }
+        }
+        if (requestIs("AccountCreation_GetUserAttributes", data)) {
+            if (!this.#isE2EEEnabled(data.context)) {
+                return;
+            }
+            for (const attr of data.output) {
+                if (!this.#isEncrypted(attr.value)) {
+                    throw new ResolutionError(errorPrefix, "resolved value must be encrypted.");
+                }
+            }
+        }
+    }
+}
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema;
     #validators;
@@ -1272,7 +1378,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         // TODO(berytus): ensure impl is conformant
         super(impl);
         this.#validators = [];
-        this.#validators.push(new FieldIdValidator(), new ChallangeMessagingSequenceValidator(), new FieldCreationHandler());
+        this.#validators.push(new FieldIdValidator(), new ChallangeMessagingSequenceValidator(), new FieldCreationHandler(), new E2EEMessagingValidator());
     }
     #validateValue(typeEntry, value, message) {
         const { error } = typeEntry.normalize(value, new ValidationContext());

@@ -70,6 +70,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal, const RefPtr<const dom:
                                aChannel->Constraints(),
                                aChannel->GetWebAppActor(),
                                aChannel->GetSecretManagerActor(),
+                               aChannel->E2EEEnabled(),
                                aRetVal);
 }
 
@@ -78,6 +79,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
                                const dom::BerytusChannelConstraints& aCts,
                                const RefPtr<const dom::BerytusWebAppActor>& aWebAppActor,
                                const RefPtr<const dom::BerytusSecretManagerActor>& aScmActor,
+                               const bool aE2EEEnabled,
                                berytus::ChannelMetadata& aRetVal) {
   aRetVal.mId.Assign(aChannelId);
   if (aCts.mAccount.WasPassed()) {
@@ -115,6 +117,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
   }
   MOZ_ASSERT(aRetVal.mWebAppActor.Inited());
   aScmActor->GetEd25519Key(aRetVal.mScmActor.mEd25519Key);
+  aRetVal.mE2eeEnabled = aE2EEEnabled;
   return NS_OK;
 }
 

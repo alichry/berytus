@@ -91,12 +91,12 @@ public:
 
     static already_AddRefed<Session> Create(
         const RefPtr<const BerytusChannel>& aChannel,
-        nsTArray<nsString>&& aCiphertextUrls,
+        nsTArray<nsString>&& aUnmaskAllowlist,
         ErrorResult& aRv);
     const nsString& GetID() const;
     const std::time_t& GetTimestamp() const;
     const RefPtr<Fingerprint>& GetFingerprint() const;
-    Span<const nsString> GetCiphertextUrls() const;
+    Span<const nsString> GetUnmaskAllowlist() const;
 
     void CacheDictionary(JSContext* aCx,
                          ErrorResult& aRv) override;
@@ -105,12 +105,12 @@ public:
             const nsAString& aId,
             const std::time_t& aTimestamp,
             const RefPtr<Fingerprint>& aFingerprint,
-            nsTArray<nsString>&& aCiphertextUrls);
+            nsTArray<nsString>&& aUnmaskAllowlist);
     ~Session();
     nsString mId;
     std::time_t mTimestamp;
     RefPtr<Fingerprint> mFingerprint;
-    nsTArray<nsString> mCiphertextUrls;
+    nsTArray<nsString> mUnmaskAllowlist;
   }; // class Session
 
   class Authentication final : public SupportsToDictionary {
@@ -210,7 +210,7 @@ public:
       const RefPtr<BerytusChannel>& aChannel,
       const nsAString& aExchangeWebApp,
       const nsAString& aExchangeScm,
-      nsTArray<nsString>&& aCiphertextUrls,
+      nsTArray<nsString>&& aUnmaskAllowlist,
       ErrorResult& aRv);
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

@@ -58,7 +58,7 @@ protected:
                          Content&& aExposedContent,
                          const bool& aConceal);
   virtual ~BerytusEncryptedPacket();
-  nsCOMPtr<nsIGlobalObject> mGlobal;
+  nsIGlobalObject* mGlobal;
   Span<uint8_t> mExposedContent;
   bool mConcealed;
   nsTArray<nsCString> mUrlAllowlist;

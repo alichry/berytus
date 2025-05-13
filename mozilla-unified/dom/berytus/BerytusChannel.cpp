@@ -141,6 +141,10 @@ const BerytusChannelConstraints& BerytusChannel::Constraints() const {
   return mConstraints;
 }
 
+bool BerytusChannel::E2EEEnabled() const {
+  return mE2EE;
+}
+
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
 already_AddRefed<BerytusWebAppActor> BerytusChannel::WebApp() const
 {
@@ -424,6 +428,7 @@ RefPtr<BerytusChannel::CreationPromise> BerytusChannel::CreateForScm(
                                           ct,
                                           aWebAppActor,
                                           scmActor,
+                                          false,
                                           args.mChannel);
       if (NS_WARN_IF(NS_FAILED(rv))) {
         return CreationPromise::CreateAndReject(berytus::Failure(rv), __func__);
@@ -543,12 +548,12 @@ already_AddRefed<Promise> BerytusChannel::PrepareKeyAgreementParameters(
     [this,
      outPromise,
      webAppX25519Spki = nsString(aInput.mPublic),
-     ciphEd = aInput.mCiphertextEndpoints.WasPassed() ? Optional<Sequence<nsString>>(aInput.mCiphertextEndpoints.Value()) : Optional<Sequence<nsString>>()
+     unmaskList = aInput.mUnmaskAllowlist.WasPassed() ? Optional<Sequence<nsString>>(aInput.mUnmaskAllowlist.Value()) : Optional<Sequence<nsString>>()
     ](const berytus::GenerateX25519KeyResult& aGen) mutable {
       ErrorResult rv;
       nsTArray<nsString> urls;
-      if (ciphEd.WasPassed()) {
-        for (const auto& url : ciphEd.Value()) {
+      if (unmaskList.WasPassed()) {
+        for (const auto& url : unmaskList.Value()) {
           if (NS_WARN_IF(!urls.AppendElement(url, fallible))) {
             outPromise->MaybeRejectWithTypeError("Out of memory");
             return;
@@ -645,7 +650,8 @@ already_AddRefed<Promise> BerytusChannel::EnableEndToEndEncryption(ErrorResult& 
     mAgent->Channel_EnableEndToEndEncryption(reqCx);
   res->Then(
     GetCurrentSerialEventTarget(), __func__,
-    [outPromise](void*) {
+    [outPromise, this](void*) mutable {
+      mE2EE = true;
       outPromise->MaybeResolveWithUndefined();
     },
     [outPromise](const berytus::Failure& aFr) {

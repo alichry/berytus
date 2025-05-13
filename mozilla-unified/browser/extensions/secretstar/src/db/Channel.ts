@@ -20,7 +20,7 @@ export interface Channel {
         };
     };
     e2eeActvie: boolean;
-    e2eeKey?: ArrayBuffer;
+    e2eeKey?: CryptoKey;
 }
 
 interface E2EReadyChannel extends Channel {
@@ -32,7 +32,7 @@ interface E2EReadyChannel extends Channel {
 
 export interface E2EChannel extends E2EReadyChannel {
     e2eeActvie: true;
-    e2eeKey: ArrayBuffer;
+    e2eeKey: CryptoKey;
 }
 
 export function isChannelE2EReady(channel: Channel): channel is E2EReadyChannel {

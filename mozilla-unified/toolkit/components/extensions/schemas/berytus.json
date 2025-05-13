@@ -213,6 +213,9 @@
           },
           "scmActor": {
             "$ref": "CryptoActor"
+          },
+          "e2eeEnabled": {
+            "type": "boolean"
           }
         }
       },

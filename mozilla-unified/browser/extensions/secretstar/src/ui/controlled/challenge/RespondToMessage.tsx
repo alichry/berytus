@@ -98,6 +98,9 @@ export default function RespondToMessage({}: RespondToMessageProps) {
             setError(new Error('Submit called before all the goods have been loaded'));
             return false;
         }
+        if ("response" in value) {
+            // TODO(berytus): Encrypt each leaf value in value.response
+        }
         const { sent } = maybeResolve(value);
         if (! sent) {
             setError(new Error("Unable to resolve request; this request has been already resolved."));

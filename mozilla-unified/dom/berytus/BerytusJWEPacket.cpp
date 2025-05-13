@@ -5,8 +5,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusJWEPacket.h"
-#include <cstdint>
-#include "BerytusEncryptedPacket.h"
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BerytusEncryptedPacketBinding.h"

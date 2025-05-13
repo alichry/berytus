@@ -260,27 +260,6 @@ typedef (BerytusPlaintextSource or BerytusCiphertextSource) BerytusDataSource;
 
 typedef (DOMString or ArrayBuffer or BerytusEncryptedPacket) BerytusDataType;
 
-/**
- * See childs of Algorithm in SubtleCrypto.webidl; see
- * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#supported_algorithms
- */
-typedef AesGcmParams BerytusEncryptionParams;
-
-[GenerateConversionToJS]
-dictionary AesGcmParamsJSON : Algorithm {
-  required Base64URLString iv;
-  Base64URLString additionalData;
-  [EnforceRange] octet tagLength;
-};
-
-typedef AesGcmParamsJSON BerytusEncryptionParamsJSON;
-
-[GenerateConversionToJS]
-dictionary BerytusEncryptedPacketJSON {
-    required BerytusEncryptionParamsJSON parameters;
-    required Base64URLString ciphertext;
-};
-
 [SecureContext, Exposed=(Window)]
 interface BerytusEncryptedPacket : Blob {};
 
@@ -610,6 +589,11 @@ dictionary BerytusKeyExchangeSession {
     required DOMString id;
     required unsigned long timestamp;
     required BerytusKeyExchangeSessionFingerprint fingerprint;
+    /**
+     * A list of URLs for which ciphertext would be transmitted to.
+     * TODO(berytus): Come up with a better name
+     */
+    sequence<DOMString> unmaskAllowlist;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -770,7 +754,7 @@ dictionary BerytusUserAttributeJSON {
     DOMString info;
     DOMString mimeType;
     required BerytusUserAttributeValueEncodingType encoding;
-    required (DOMString /*or Base64URLString*/ or BerytusEncryptedPacketJSON) value;
+    required DOMString value;
 };
 
 [SecureContext, Exposed=(Window)]

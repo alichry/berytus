@@ -19,7 +19,7 @@
 
 namespace mozilla::dom {
 
-#define CONCEALED_HINT u"[BerytusJWEPacket.CONCEALED]"
+#define CONCEALED_HINT "[BerytusJWEPacket.CONCEALED]"
 
 template <>
 BerytusEncryptedPacket* TryDowncastBlob(Blob* aBlob) {
@@ -56,6 +56,7 @@ BerytusEncryptedPacket::BerytusEncryptedPacket(
             // TODO(berytus): Content type should always be application/jose
             aConceal ? u"application/jose"_ns : u"text/plain"_ns,
             RTPCallerType::Normal).take()),
+        mGlobal(aGlobal), /* mGlobal will live as long as it does under Blob */
         mExposedContent(Span<uint8_t>(aExposedContent.mBuf.release(), aExposedContent.mLen)),
         mConcealed(aConceal),
         mAttached(false) {
@@ -92,7 +93,7 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
     return;
   }
   MOZ_ASSERT(mUrlAllowlist.Length() == 0);
-  for (const auto& url : kap->GetSession()->GetCiphertextUrls()) {
+  for (const auto& url : kap->GetSession()->GetUnmaskAllowlist()) {
     if (NS_WARN_IF(!mUrlAllowlist.AppendElement(NS_ConvertUTF16toUTF8(url), fallible))) {
       aRv.ThrowTypeError("Out of memory");
       mUrlAllowlist.Clear();
@@ -128,7 +129,7 @@ already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(nsIURI* aReqUrl, ErrorResu
     return nullptr;
   }
   if (mUrlAllowlist.Length() == 0) {
-    // no allowlist defined, meaning we can unmask to any request url
+    // no allowlist defined, meaning we can unmask on any request url
     return UnmaskImpl(aRv);
   }
   for (const auto& urlEntry : mUrlAllowlist) {
