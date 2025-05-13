@@ -205,7 +205,160 @@ nsresult CompareParts(const nsCString& aSearchString,
   aRv = true;
   return NS_OK;
 }
+
+NS_IMPL_ISUPPORTS0(UrlSearchExpression)
+
+UrlSearchExpression::UrlSearchExpression(
+    nsCString&& aHostname, const int& aPort, nsCString&& aFilePath)
+    : mHostname(aHostname), mPort(aPort), mFilePath(aFilePath) {}
+
+UrlSearchExpression::~UrlSearchExpression() {}
+
+nsresult UrlSearchExpression::Matches(nsIURI* aUrl,
+                                      bool& aRv) const {
+  MOZ_ASSERT(aUrl);
+  auto logAUrl = aUrl->GetSpecOrDefault();
+  auto logMUrl = nsCString(*this);
+
+  nsCString candidateScheme, candidateHost, candidateFilePath;
+  int32_t candidatePort;
+  nsresult res;
+  res = aUrl->GetScheme(candidateScheme);
+  if (NS_WARN_IF(NS_FAILED(res))) {
+    return res;
+  }
+  res = aUrl->GetHost(candidateHost);
+  if (NS_WARN_IF(NS_FAILED(res))) {
+    return res;
+  }
+  res = aUrl->GetFilePath(candidateFilePath);
+  if (NS_WARN_IF(NS_FAILED(res))) {
+    return res;
+  }
+  res = aUrl->GetPort(&candidatePort);
+  if (NS_WARN_IF(NS_FAILED(res))) {
+    return res;
+  }
+  if (!candidateScheme.Equals(mScheme)) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("UrlSearchExpression::Matches(): "
+             "NoMatch[Scheme(%.*s, %.*s)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             (int) candidateScheme.Length(), candidateScheme.Data(),
+             (int) mScheme.Length(), mScheme.Data(),
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
+    aRv = false;
+    return NS_OK;
+  }
+  if (candidatePort != mPort) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("UrlSearchExpression::Matches(): "
+             "NoMatch[Port(%d, %d)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             candidatePort,
+             mPort,
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
+    aRv = false;
+    return NS_OK;
+  }
+  bool matched;
+  res = berytus::CompareParts(mHostname, candidateHost, '.', false, matched);
+  NS_ENSURE_SUCCESS(res, res);
+  if (!matched) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("SigningKeyEntry::Url::Matches(): "
+             "NoMatch[Hostname(%.*s, %.*s)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             (int) candidateHost.Length(), candidateHost.Data(),
+             (int) mHostname.Length(), mHostname.Data(),
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
+    aRv = false;
+    return NS_OK;
+  }
+  res = berytus::CompareParts(mFilePath, candidateFilePath, '/', true, matched);
+  NS_ENSURE_SUCCESS(res, res);
+  if (!matched) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("UrlSearchExpression::Matches(): "
+             "NoMatch[FilePath(%.*s, %.*s)] "
+             "aUrl (%.*s) against mUrl (%.*s)\n",
+             (int) candidateFilePath.Length(), candidateFilePath.Data(),
+             (int) mFilePath.Length(), mFilePath.Data(),
+             (int) logAUrl.Length(), logAUrl.Data(),
+             (int) logMUrl.Length(), logMUrl.Data()));
+    aRv = false;
+    return NS_OK;
+  }
+  MOZ_LOG(sLogger, LogLevel::Info,
+          ("UrlSearchExpression::Matches(): "
+           "Matched aUrl (%.*s) against mUrl (%.*s)\n",
+           (int) logAUrl.Length(), logAUrl.Data(),
+           (int) logMUrl.Length(), logMUrl.Data()));
+  aRv = true;
+  return NS_OK;
 }
+
+already_AddRefed<UrlSearchExpression>
+UrlSearchExpression::Create(const nsCString& aUrl,
+                                                   nsresult& aRv) {
+  nsCOMPtr<nsIIOService> io = mozilla::components::IO::Service();
+  if (NS_WARN_IF(!io)) {
+    aRv = NS_ERROR_FAILURE;
+    return nullptr;
+  }
+  if (aUrl.Equals("*")) {
+    aRv = NS_OK;
+    return do_AddRef(new UrlSearchExpression(nsCString("*"_ns), -1, nsCString("/*"_ns)));
+  }
+  nsCOMPtr<nsIURI> parsedUri;
+  aRv = io->NewURI(aUrl, nullptr, nullptr,
+                   getter_AddRefs(parsedUri));
+  NS_ENSURE_SUCCESS(aRv, nullptr);
+
+  MOZ_ASSERT(parsedUri);
+  if (!parsedUri->SchemeIs("https")) {
+    aRv = NS_ERROR_INVALID_ARG;
+    return nullptr;
+  }
+  bool tmp;
+  parsedUri->GetHasUserPass(&tmp);
+  if (tmp) {
+    aRv = NS_ERROR_INVALID_ARG;
+    return nullptr;
+  }
+  parsedUri->GetHasQuery(&tmp);
+  if (tmp) {
+    aRv = NS_ERROR_INVALID_ARG;
+    return nullptr;
+  }
+  parsedUri->GetHasRef(&tmp);
+  if (tmp) {
+    aRv = NS_ERROR_INVALID_ARG;
+    return nullptr;
+  }
+  nsCString host, filePath;
+  int32_t port;
+  aRv = parsedUri->GetHost(host);
+  if (NS_WARN_IF(NS_FAILED(aRv))) {
+    return nullptr;
+  }
+  aRv = parsedUri->GetFilePath(filePath);
+  if (NS_WARN_IF(NS_FAILED(aRv))) {
+    return nullptr;
+  }
+  aRv = parsedUri->GetPort(&port);
+  if (NS_WARN_IF(NS_FAILED(aRv))) {
+    return nullptr;
+  }
+  aRv = NS_OK;
+  return do_AddRef(new UrlSearchExpression(std::move(host), port, std::move(filePath)));
+}
+
+
+} // namespace mozilla::berytus
 
 namespace mozilla::dom {
 
@@ -384,8 +537,8 @@ already_AddRefed<BerytusX509Extension> BerytusX509Extension::Create(
             (int)entry->mUrl.len, (char*)entry->mUrl.data,
             (int)entry->mKey.len, (char*)entry->mKey.data,
             (int)entry->mSksig.len, (char*)entry->mSksig.data));
-    RefPtr<BerytusX509Extension::SigningKeyEntry::Url> url =
-        BerytusX509Extension::SigningKeyEntry::Url::Create(
+    RefPtr<berytus::UrlSearchExpression> url =
+        berytus::UrlSearchExpression::Create(
             nsCString((char*)entry->mUrl.data, entry->mUrl.len), aRv);
     if (aRv == NS_ERROR_INVALID_ARG) {
       MOZ_LOG(sLogger, LogLevel::Warning,
@@ -430,7 +583,7 @@ NS_INTERFACE_MAP_END
 
 BerytusX509Extension::SigningKeyEntry::SigningKeyEntry(nsCString&& aSpki,
                                                        nsCString&& aSkSig,
-                                                       RefPtr<Url>& aUrl)
+                                                       RefPtr<berytus::UrlSearchExpression>& aUrl)
     : mSpki(std::move(aSpki)), mSkSig(std::move(aSkSig)), mUrl(aUrl) {}
 
 BerytusX509Extension::SigningKeyEntry::~SigningKeyEntry() {}
@@ -461,160 +614,8 @@ const nsCString& BerytusX509Extension::SigningKeyEntry::GetSpki() {
 const nsCString& BerytusX509Extension::SigningKeyEntry::GetSkSig() {
   return mSkSig;
 }
-RefPtr<const BerytusX509Extension::SigningKeyEntry::Url>
+RefPtr<const berytus::UrlSearchExpression>
 BerytusX509Extension::SigningKeyEntry::GetUrl() {
   return mUrl;
 }
-
-NS_IMPL_ISUPPORTS0(BerytusX509Extension::SigningKeyEntry::Url)
-
-BerytusX509Extension::SigningKeyEntry::SigningKeyEntry::Url::Url(
-    nsCString&& aHostname, const int& aPort, nsCString&& aFilePath)
-    : mHostname(aHostname), mPort(aPort), mFilePath(aFilePath) {}
-
-BerytusX509Extension::SigningKeyEntry::SigningKeyEntry::Url::~Url() {}
-
-nsresult BerytusX509Extension::SigningKeyEntry::Url::Matches(nsIURI* aUrl,
-                                                             bool& aRv) const {
-  MOZ_ASSERT(aUrl);
-  auto logAUrl = aUrl->GetSpecOrDefault();
-  auto logMUrl = nsCString(*this);
-
-  nsCString candidateScheme, candidateHost, candidateFilePath;
-  int32_t candidatePort;
-  nsresult res;
-  res = aUrl->GetScheme(candidateScheme);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    return res;
-  }
-  res = aUrl->GetHost(candidateHost);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    return res;
-  }
-  res = aUrl->GetFilePath(candidateFilePath);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    return res;
-  }
-  res = aUrl->GetPort(&candidatePort);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    return res;
-  }
-  if (!candidateScheme.Equals(mScheme)) {
-    MOZ_LOG(sLogger, LogLevel::Info,
-            ("SigningKeyEntry::Url::Matches(): "
-             "NoMatch[Scheme(%.*s, %.*s)] "
-             "aUrl (%.*s) against mUrl (%.*s)\n",
-             (int) candidateScheme.Length(), candidateScheme.Data(),
-             (int) mScheme.Length(), mScheme.Data(),
-             (int) logAUrl.Length(), logAUrl.Data(),
-             (int) logMUrl.Length(), logMUrl.Data()));
-    aRv = false;
-    return NS_OK;
-  }
-  if (candidatePort != mPort) {
-    MOZ_LOG(sLogger, LogLevel::Info,
-            ("SigningKeyEntry::Url::Matches(): "
-             "NoMatch[Port(%d, %d)] "
-             "aUrl (%.*s) against mUrl (%.*s)\n",
-             candidatePort,
-             mPort,
-             (int) logAUrl.Length(), logAUrl.Data(),
-             (int) logMUrl.Length(), logMUrl.Data()));
-    aRv = false;
-    return NS_OK;
-  }
-  bool matched;
-  res = berytus::CompareParts(mHostname, candidateHost, '.', false, matched);
-  NS_ENSURE_SUCCESS(res, res);
-  if (!matched) {
-    MOZ_LOG(sLogger, LogLevel::Info,
-            ("SigningKeyEntry::Url::Matches(): "
-             "NoMatch[Hostname(%.*s, %.*s)] "
-             "aUrl (%.*s) against mUrl (%.*s)\n",
-             (int) candidateHost.Length(), candidateHost.Data(),
-             (int) mHostname.Length(), mHostname.Data(),
-             (int) logAUrl.Length(), logAUrl.Data(),
-             (int) logMUrl.Length(), logMUrl.Data()));
-    aRv = false;
-    return NS_OK;
-  }
-  res = berytus::CompareParts(mFilePath, candidateFilePath, '/', true, matched);
-  NS_ENSURE_SUCCESS(res, res);
-  if (!matched) {
-    MOZ_LOG(sLogger, LogLevel::Info,
-            ("SigningKeyEntry::Url::Matches(): "
-             "NoMatch[FilePath(%.*s, %.*s)] "
-             "aUrl (%.*s) against mUrl (%.*s)\n",
-             (int) candidateFilePath.Length(), candidateFilePath.Data(),
-             (int) mFilePath.Length(), mFilePath.Data(),
-             (int) logAUrl.Length(), logAUrl.Data(),
-             (int) logMUrl.Length(), logMUrl.Data()));
-    aRv = false;
-    return NS_OK;
-  }
-  MOZ_LOG(sLogger, LogLevel::Info,
-          ("SigningKeyEntry::Url::Matches(): "
-           "Matched aUrl (%.*s) against mUrl (%.*s)\n",
-           (int) logAUrl.Length(), logAUrl.Data(),
-           (int) logMUrl.Length(), logMUrl.Data()));
-  aRv = true;
-  return NS_OK;
-}
-
-already_AddRefed<BerytusX509Extension::SigningKeyEntry::Url>
-BerytusX509Extension::SigningKeyEntry::Url::Create(const nsCString& aUrl,
-                                                   nsresult& aRv) {
-  nsCOMPtr<nsIIOService> io = mozilla::components::IO::Service();
-  if (NS_WARN_IF(!io)) {
-    aRv = NS_ERROR_FAILURE;
-    return nullptr;
-  }
-  if (aUrl.Equals("*")) {
-    aRv = NS_OK;
-    return do_AddRef(new Url(nsCString("*"_ns), -1, nsCString("/*"_ns)));
-  }
-  nsCOMPtr<nsIURI> parsedUri;
-  aRv = io->NewURI(aUrl, nullptr, nullptr,
-                   getter_AddRefs(parsedUri));
-  NS_ENSURE_SUCCESS(aRv, nullptr);
-
-  MOZ_ASSERT(parsedUri);
-  if (!parsedUri->SchemeIs("https")) {
-    aRv = NS_ERROR_INVALID_ARG;
-    return nullptr;
-  }
-  bool tmp;
-  parsedUri->GetHasUserPass(&tmp);
-  if (tmp) {
-    aRv = NS_ERROR_INVALID_ARG;
-    return nullptr;
-  }
-  parsedUri->GetHasQuery(&tmp);
-  if (tmp) {
-    aRv = NS_ERROR_INVALID_ARG;
-    return nullptr;
-  }
-  parsedUri->GetHasRef(&tmp);
-  if (tmp) {
-    aRv = NS_ERROR_INVALID_ARG;
-    return nullptr;
-  }
-  nsCString host, filePath;
-  int32_t port;
-  aRv = parsedUri->GetHost(host);
-  if (NS_WARN_IF(NS_FAILED(aRv))) {
-    return nullptr;
-  }
-  aRv = parsedUri->GetFilePath(filePath);
-  if (NS_WARN_IF(NS_FAILED(aRv))) {
-    return nullptr;
-  }
-  aRv = parsedUri->GetPort(&port);
-  if (NS_WARN_IF(NS_FAILED(aRv))) {
-    return nullptr;
-  }
-  aRv = NS_OK;
-  return do_AddRef(new Url(std::move(host), port, std::move(filePath)));
-}
-
 };  // namespace mozilla::dom

@@ -7,15 +7,15 @@
 #ifndef DOM_BERYTUSUSERATTRIBUTE_H_
 #define DOM_BERYTUSUSERATTRIBUTE_H_
 
-#include "BerytusEncryptedPacket.h"
 #include "js/TypeDecls.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
+#include "mozilla/dom/UnionTypes.h" /* OwningStringOrArrayBufferOrBerytusEncryptedPacket */
 #include "nsCycleCollectionParticipant.h"
 #include "nsISupports.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
-#include "mozilla/dom/BerytusUserAttributeBinding.h"
+#include "mozilla/dom/BerytusUserAttributeBinding.h" /* OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket */
 
 namespace mozilla::dom {
 
@@ -25,7 +25,7 @@ class BerytusUserAttribute : public nsISupports /* or NonRefcountedDOMObject if 
 public:
   using ValueType = OwningStringOrArrayBufferOrBerytusEncryptedPacket;
   using SourceValueType = OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket;
-  using JSONValueType = OwningStringOrBerytusEncryptedPacketJSON;
+  using JSONValueType = nsAString;
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusUserAttribute)
@@ -81,8 +81,8 @@ public:
       nsresult& aRv
   );
 protected:
-  virtual void PopulateValueInJSON(JSONValueType& aRetVal,
-                                   ErrorResult& aErr) const = 0;
+  virtual void PopulateValueInJSON(JSONValueType& aValue,
+                                   ErrorResult& aRv) const = 0;
 };
 
 template <typename T>
@@ -111,8 +111,8 @@ public:
   ) const override;
   BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  void PopulateValueInJSON(JSONValueType& aRetVal,
-                           ErrorResult& aErr) const override;
+  void PopulateValueInJSON(JSONValueType& aValue,
+                           ErrorResult& aRv) const override;
 };
 
 template<>
@@ -138,8 +138,8 @@ public:
   ) const override;
   BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  void PopulateValueInJSON(JSONValueType& aRetVal,
-                           ErrorResult& aErr) const override;
+  void PopulateValueInJSON(JSONValueType& aValue,
+                           ErrorResult& aRv) const override;
 };
 
 template<>
@@ -165,8 +165,8 @@ public:
   ) const override;
   BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  void PopulateValueInJSON(JSONValueType& aRetVal,
-                           ErrorResult& aErr) const override;
+  void PopulateValueInJSON(JSONValueType& aValue,
+                           ErrorResult& aRv) const override;
 };
 
 

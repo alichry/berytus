@@ -1,0 +1,12 @@
+--- dom/file/Blob.h.orig	2025-05-07 23:21:57
++++ dom/file/Blob.h	2025-05-09 11:12:20
+@@ -132,6 +132,9 @@
+   virtual ~Blob();
+ 
+   virtual bool HasFileInterface() const { return false; }
++  virtual bool HasBerytusEncryptedPacketInterface() const { return false; }
++  template <typename T>
++  friend T* TryDowncastBlob(Blob* aBlob);
+ 
+   already_AddRefed<Promise> ConsumeBody(BodyConsumer::ConsumeType aConsumeType,
+                                         ErrorResult& aRv) const;

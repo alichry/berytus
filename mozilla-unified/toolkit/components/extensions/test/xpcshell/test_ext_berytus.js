@@ -36,10 +36,19 @@ function backgroundFunction() {
       }
     }
     class ChannelRequestHandler {
-      generateKeyExchangeParameters = (context, args) => {
+      createChannel = (context, args) => {
         throw new Error('Method not implemented.');
       }
-      enableEndToEndEncryption = (context, args) => {
+      generateX25519Key = (context, args) => {
+        throw new Error('Method not implemented.');
+      }
+      signKeyExchangeParameters = (context, args) => {
+        throw new Error('Method not implemented.');
+      }
+      verifySignedKeyExchangeParameters = (context, args) => {
+        throw new Error('Method not implemented.');
+      }
+      enableEndToEndEncryption = (context) => {
         throw new Error('Method not implemented.');
       }
       closeChannel = (context) => {
