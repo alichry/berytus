@@ -1746,6 +1746,18 @@ bool JSValIs<ChannelMetadata>(JSContext *aCx, const JS::Handle<JS::Value> aValue
     return true;
   }
   
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "e2eeEnabled", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(JSValIs<bool>(aCx, propVal, isValid)))) {
+    return false;
+  }
+  if (!isValid) {
+    aRv = false;
+    return true;
+  }
+  
   aRv = true;
   return true;
 
@@ -1787,6 +1799,14 @@ bool FromJSVal<ChannelMetadata>(JSContext* aCx, JS::Handle<JS::Value> aValue, Ch
     return false;
   }
   if (NS_WARN_IF(!(FromJSVal<CryptoActor>(aCx, propVal, aRv.mScmActor)))) {
+    return false;
+  }
+  
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "e2eeEnabled", &propVal))) {
+    return false;
+  }
+  if (NS_WARN_IF(!(FromJSVal<bool>(aCx, propVal, aRv.mE2eeEnabled)))) {
     return false;
   }
   
@@ -1836,6 +1856,16 @@ bool ToJSVal<ChannelMetadata>(JSContext* aCx, const ChannelMetadata& aValue, JS:
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "scmActor", memberVal3))) {
+    return false;
+  }
+  
+
+  JS::Rooted<JS::Value> memberVal4(aCx);
+  
+  if (NS_WARN_IF(!(ToJSVal<bool>(aCx, aValue.mE2eeEnabled, &memberVal4)))) {
+    return false;
+  }
+  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "e2eeEnabled", memberVal4))) {
     return false;
   }
   

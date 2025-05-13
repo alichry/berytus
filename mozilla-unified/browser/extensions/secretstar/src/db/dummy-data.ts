@@ -158,7 +158,7 @@ interface PhaseEntry {
 const _sessions: Array<PhaseEntry> = [
     {
         "phase":"Login_ApproveOperation",
-        "session":{"id":"{ca451f5f-8416-4815-83c1-4ca31982340d}","requests":[{"id":"{8b51eb0a-70c9-4c10-b544-dda44df566a6}","type":"Login_ApproveOperation"}],"channel":{"id":"{984059d0-5685-4a3a-80f6-a015e0c230d2}","constraints":{"enableEndToEndEncryption":false,"account":{"category":"Customer","schemaVersion":1}},"webAppActor":{"originalUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"},"currentUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"}},"scmActor":{"ed25519Key":"BRTTODO:SCMEd25519PublicKey"}},"operation":{"intent":"PendingDeclaration" as ELoginUserIntent.PendingDeclaration,"requestedUserAttributes":[{"id":"name","required":true},{"id":"picture","required":false},{"id":"gender","required":true},{"id":"birthdate","required":true},{"id":"address","required":true}],"fields":{},"challenges":{},"id":"{ca451f5f-8416-4815-83c1-4ca31982340d}","type":"PendingDeclaration" as EOperationType.PendingDeclaration,"status":"Pending" as EOperationStatus.Pending,"state":{}},"context":{"channel":{"id":"{984059d0-5685-4a3a-80f6-a015e0c230d2}","constraints":{"enableEndToEndEncryption":false,"account":{"category":"Customer","schemaVersion":1}},"webAppActor":{"originalUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"},"currentUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"}},"scmActor":{"ed25519Key":"BRTTODO:SCMEd25519PublicKey"}},"document":{"id":10737418242,"uri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"}},"request":{"id":"{8b51eb0a-70c9-4c10-b544-dda44df566a6}","type":"Login_ApproveOperation"}},"metadata":{"version":1,"status":"Pending" as EMetadataStatus.Pending,"category":"Customer","changePassUrl":""},"version":1}
+        "session":{"id":"{ca451f5f-8416-4815-83c1-4ca31982340d}","requests":[{"id":"{8b51eb0a-70c9-4c10-b544-dda44df566a6}","type":"Login_ApproveOperation"}],"channel":{"id":"{984059d0-5685-4a3a-80f6-a015e0c230d2}","constraints":{"enableEndToEndEncryption":false,"account":{"category":"Customer","schemaVersion":1}},"webAppActor":{"originalUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"},"currentUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"}},"scmActor":{"ed25519Key":"BRTTODO:SCMEd25519PublicKey"},"e2eeEnabled": false},"operation":{"intent":"PendingDeclaration" as ELoginUserIntent.PendingDeclaration,"requestedUserAttributes":[{"id":"name","required":true},{"id":"picture","required":false},{"id":"gender","required":true},{"id":"birthdate","required":true},{"id":"address","required":true}],"fields":{},"challenges":{},"id":"{ca451f5f-8416-4815-83c1-4ca31982340d}","type":"PendingDeclaration" as EOperationType.PendingDeclaration,"status":"Pending" as EOperationStatus.Pending,"state":{}},"context":{"channel":{"id":"{984059d0-5685-4a3a-80f6-a015e0c230d2}","constraints":{"enableEndToEndEncryption":false,"account":{"category":"Customer","schemaVersion":1}},"webAppActor":{"originalUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"},"currentUri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"}},"scmActor":{"ed25519Key":"BRTTODO:SCMEd25519PublicKey"},"e2eeEnabled": false},"document":{"id":10737418242,"uri":{"uri":"http://localhost:4321/","scheme":"http","hostname":"localhost","port":4321,"path":"/"}},"request":{"id":"{8b51eb0a-70c9-4c10-b544-dda44df566a6}","type":"Login_ApproveOperation"}},"metadata":{"version":1,"status":"Pending" as EMetadataStatus.Pending,"category":"Customer","changePassUrl":""},"version":1}
     },
     {
         "phase": "AccountCreation_GetUserAttributes",
@@ -201,7 +201,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "operation": {
             "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -262,7 +263,8 @@ const _sessions: Array<PhaseEntry> = [
               },
               "scmActor": {
                 "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-              }
+              },
+              "e2eeEnabled": false
             },
             "document": {
               "id": 2,
@@ -348,7 +350,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -409,7 +412,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 2,
@@ -572,7 +576,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -633,7 +638,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 2,
@@ -817,7 +823,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -878,7 +885,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 2,
@@ -1048,7 +1056,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "Authenticate" as ELoginUserIntent,
@@ -1101,7 +1110,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 2,
@@ -1169,7 +1179,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -1230,7 +1241,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 1,
@@ -1310,7 +1322,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -1371,7 +1384,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 1,
@@ -1462,7 +1476,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -1523,7 +1538,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 1,
@@ -1619,7 +1635,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -1680,7 +1697,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 1,
@@ -1786,7 +1804,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -1847,7 +1866,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 1,
@@ -1964,7 +1984,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -2025,7 +2046,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 1,
@@ -2147,7 +2169,8 @@ const _sessions: Array<PhaseEntry> = [
           },
           "scmActor": {
             "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-          }
+          },
+          "e2eeEnabled": false
         },
         "operation": {
           "intent": "PendingDeclaration" as ELoginUserIntent,
@@ -2208,7 +2231,8 @@ const _sessions: Array<PhaseEntry> = [
             },
             "scmActor": {
               "ed25519Key": "BRTTODO:SCMEd25519PublicKey"
-            }
+            },
+            "e2eeEnabled": false
           },
           "document": {
             "id": 2,

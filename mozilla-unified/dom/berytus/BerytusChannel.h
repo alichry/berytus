@@ -71,6 +71,7 @@ protected:
   RefPtr<mozilla::berytus::OwnedAgentProxy> mAgent;
 
   bool mActive = true;
+  bool mE2EE = false;
 private:
   uint64_t mInnerWindowId;
 
@@ -103,6 +104,8 @@ public:
   const BerytusSecretManagerActor* GetSecretManagerActor() const;
 
   const BerytusChannelConstraints& Constraints() const;
+
+  bool E2EEEnabled() const;
 
   void GetConstraints(
     JSContext* aCx,
@@ -163,7 +166,7 @@ public:
   public:
     virtual bool Attached() const override { return bool(mChannel); }
     virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override {
-      if (!Attached()) {
+      if (Attached()) {
         aRv.ThrowInvalidStateError("Already attached");
         return;
       }

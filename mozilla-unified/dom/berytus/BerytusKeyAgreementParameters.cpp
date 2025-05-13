@@ -254,7 +254,7 @@ void ToCanonicalJSON(const uint64_t& aValue, nsString& aJson, ErrorResult& aRv) 
 template<>
 void ToCanonicalJSON(const CryptoBuffer& aValue, nsString& aJson, ErrorResult& aRv) {
   Span<const uint8_t> view(aValue);
-  // TODO(berytus): Here
+  ToCanonicalJSON(view, aJson, aRv);
 }
 
 template<typename U>
@@ -395,7 +395,7 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusKeyAgreementParameters::C
   const RefPtr<BerytusChannel>& aChannel,
   const nsAString& aExchangeWebApp,
   const nsAString& aExchangeScm,
-  nsTArray<nsString>&& aCiphertextUrls,
+  nsTArray<nsString>&& aUnmaskAllowlist,
   ErrorResult& aRv) {
   MOZ_ASSERT(aChannel);
   nsIGlobalObject* global = aChannel->GetParentObject();
@@ -412,7 +412,7 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusKeyAgreementParameters::C
     aChannel->GetSecretManagerActor();
 
   NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
-  RefPtr<Session> session = Session::Create(aChannel, std::move(aCiphertextUrls), aRv);
+  RefPtr<Session> session = Session::Create(aChannel, std::move(aUnmaskAllowlist), aRv);
   NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
   nsString appPubEd25519, scmPubEd25519;
   appCryptoActor->GetEd25519Key(appPubEd25519);
@@ -772,11 +772,11 @@ Session::Session(
     const nsAString& aId,
     const std::time_t& aTimestamp,
     const RefPtr<Fingerprint>& aFingerprint,
-    nsTArray<nsString>&& aCiphertextUrls) : SupportsToDictionary(aGlobal, HoldDropJSObjectsCaller::Explicit),
+    nsTArray<nsString>&& aUnmaskAllowlist) : SupportsToDictionary(aGlobal, HoldDropJSObjectsCaller::Explicit),
                                              mId(aId),
                                              mTimestamp(aTimestamp),
                                              mFingerprint(aFingerprint),
-                                             mCiphertextUrls(std::move(aCiphertextUrls)) {
+                                             mUnmaskAllowlist(std::move(aUnmaskAllowlist)) {
   mozilla::HoldJSObjects(this);
 }
 
@@ -786,7 +786,7 @@ Session::~Session() {
 
 already_AddRefed<Session> Session::Create(
     const RefPtr<const BerytusChannel>& aChannel,
-    nsTArray<nsString>&& aCiphertextUrls,
+    nsTArray<nsString>&& aUnmaskAllowlist,
     ErrorResult& aRv) {
   MOZ_ASSERT(aChannel);
   nsString sessionId;
@@ -801,7 +801,7 @@ already_AddRefed<Session> Session::Create(
                                sessionId,
                                timestamp,
                                fingerprint,
-                               std::move(aCiphertextUrls)));
+                               std::move(aUnmaskAllowlist)));
 }
 
 const nsString& Session::GetID() const {
@@ -813,8 +813,8 @@ const std::time_t& Session::GetTimestamp() const {
 const RefPtr<Fingerprint>& Session::GetFingerprint() const {
   return mFingerprint;
 }
-Span<const nsString> Session::GetCiphertextUrls() const {
-  return Span<const nsString>(mCiphertextUrls);
+Span<const nsString> Session::GetUnmaskAllowlist() const {
+  return Span<const nsString>(mUnmaskAllowlist);
 }
 
 void Session::CacheDictionary(JSContext* aCx,
@@ -824,6 +824,12 @@ void Session::CacheDictionary(JSContext* aCx,
   RootedDictionary<BerytusKeyExchangeSession> dict(aCx);
   dict.mId.Assign(mId);
   dict.mTimestamp = mTimestamp;
+  auto& list = dict.mUnmaskAllowlist.Construct();
+  if (NS_WARN_IF(!list.AppendElements(mUnmaskAllowlist, fallible))) {
+    aRv.ThrowTypeError("Out of memory");
+    return;
+  }
+
   JS::Rooted<JS::Value> fingerprint(aCx);
   mFingerprint->ToDictionary(aCx, &fingerprint, aRv);
   NS_ENSURE_TRUE_VOID(!aRv.Failed());
@@ -847,9 +853,9 @@ void ToCanonicalJSON(const RefPtr<Session>& aValue, nsString& aJson, ErrorResult
   NS_ENSURE_TRUE_VOID(writer.Begin());
 
   NS_ENSURE_TRUE_VOID(\
-    writer.Key(u"ciphertextUrls"_ns));
+    writer.Key(u"unmaskAllowlist"_ns));
   NS_ENSURE_TRUE_VOID(\
-    writer.Value(aValue->GetCiphertextUrls()));
+    writer.Value(aValue->GetUnmaskAllowlist()));
 
   NS_ENSURE_TRUE_VOID(\
     writer.Key(u"fingerprint"_ns));

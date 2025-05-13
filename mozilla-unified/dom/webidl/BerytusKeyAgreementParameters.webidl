@@ -64,7 +64,7 @@ dictionary BerytusKeyExchangeSession {
      * A list of URLs for which ciphertext would be transmitted to.
      * TODO(berytus): Come up with a better name
      */
-    sequence<DOMString> ciphertextUrls;
+    sequence<DOMString> unmaskAllowlist;
 };
 
 [SecureContext, Exposed=(Window)]

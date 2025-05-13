@@ -378,14 +378,16 @@ struct ChannelMetadata {
   ChannelConstraints mConstraints;
   SafeVariant<CryptoActor, OriginActor> mWebAppActor;
   CryptoActor mScmActor;
+  bool mE2eeEnabled;
   ChannelMetadata() = default;
-  ChannelMetadata(nsString&& aId, ChannelConstraints&& aConstraints, SafeVariant<CryptoActor, OriginActor>&& aWebAppActor, CryptoActor&& aScmActor) : mId(std::move(aId)), mConstraints(std::move(aConstraints)), mWebAppActor(std::move(aWebAppActor)), mScmActor(std::move(aScmActor)) {}
-  ChannelMetadata(ChannelMetadata&& aOther) : mId(std::move(aOther.mId)), mConstraints(std::move(aOther.mConstraints)), mWebAppActor(std::move(aOther.mWebAppActor)), mScmActor(std::move(aOther.mScmActor))  {}
+  ChannelMetadata(nsString&& aId, ChannelConstraints&& aConstraints, SafeVariant<CryptoActor, OriginActor>&& aWebAppActor, CryptoActor&& aScmActor, bool&& aE2eeEnabled) : mId(std::move(aId)), mConstraints(std::move(aConstraints)), mWebAppActor(std::move(aWebAppActor)), mScmActor(std::move(aScmActor)), mE2eeEnabled(std::move(aE2eeEnabled)) {}
+  ChannelMetadata(ChannelMetadata&& aOther) : mId(std::move(aOther.mId)), mConstraints(std::move(aOther.mConstraints)), mWebAppActor(std::move(aOther.mWebAppActor)), mScmActor(std::move(aOther.mScmActor)), mE2eeEnabled(std::move(aOther.mE2eeEnabled))  {}
   ChannelMetadata& operator=(ChannelMetadata&& aOther) {
     mId = std::move(aOther.mId);
   mConstraints = std::move(aOther.mConstraints);
   mWebAppActor = std::move(aOther.mWebAppActor);
   mScmActor = std::move(aOther.mScmActor);
+  mE2eeEnabled = std::move(aOther.mE2eeEnabled);
     return *this;
   }
   

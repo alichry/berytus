@@ -120,17 +120,6 @@ type BerytusPlaintextSource = BerytusPlaintextStringSource | BerytusPlaintextBuf
 type BerytusCiphertextSource = BerytusEncryptedPacket;
 type BerytusDataSource = BerytusPlaintextSource | BerytusCiphertextSource;
 type BerytusDataType = string | ArrayBuffer | BerytusEncryptedPacket;
-type BerytusEncryptionParams = AesGcmParams;
-export interface AesGcmParamsJSON extends Algorithm {
-    iv: Base64URLString;
-    additionalData?: Base64URLString;
-    tagLength?: number;
-}
-type BerytusEncryptionParamsJSON = AesGcmParamsJSON;
-export interface BerytusEncryptedPacketJSON {
-    parameters: BerytusEncryptionParamsJSON;
-    ciphertext: Base64URLString;
-}
 export interface BerytusEncryptedPacket {
     type: "JWE";
     value: string;
@@ -228,6 +217,7 @@ export interface BerytusKeyExchangeSession {
     id: string;
     timestamp: number;
     fingerprint: BerytusKeyExchangeSessionFingerprint;
+    unmaskAllowlist?: Array<string>;
 }
 export interface BerytusKeyAgreementParameters {
     readonly session: any;
@@ -279,7 +269,7 @@ export interface BerytusUserAttributeJSON {
     info?: string;
     mimeType?: string;
     encoding: BerytusUserAttributeValueEncodingType;
-    value: string | BerytusEncryptedPacketJSON;
+    value: string;
 }
 export interface BerytusUserAttribute {
     readonly id: BerytusUserAttributeKey;

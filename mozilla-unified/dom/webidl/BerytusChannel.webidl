@@ -166,8 +166,10 @@ dictionary BerytusKeyAgreementInput {
     required DOMString public;
     /**
      * A list of URLs for which ciphertext would be transmitted to.
+     * If empty, all masked ciphertext would be unmasked in any
+     * fetch request.
      */
-    sequence<DOMString> ciphertextEndpoints;
+    sequence<DOMString> unmaskAllowlist;
 };
 
 [SecureContext, Exposed=(Window)]

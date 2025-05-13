@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Field, FieldValueRejection, Session, db } from "@root/db/db";
-import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity } from "@root/hooks";
+import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
@@ -45,7 +45,8 @@ export default function CreateField({ rejected }: CreateFieldProps) {
     const settings = useSettings();
     const identity = useIdentity();
     const { sessionId, fieldId } = useParams<string>();
-    const session = useLiveQuery(
+    const [error, setError] = useState<Error | undefined>();
+    const query = useLiveQuery(
         async () => {
             if (! sessionId || ! fieldId) {
                 return;
@@ -57,20 +58,29 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             if (! record.createFieldOptions.find(f => f.id === fieldId)) {
                 return;
             }
-            return record;
+            const channel = await db.channel.get(record.channel.id);
+            if (! channel) {
+                setError(new Error('Channel not found!'));
+                return;
+            }
+            return {
+                session: record,
+                channel
+            };
         }
     );
+    const { session, channel } = query || {};
     const tabId = session?.context.document.id;
     const navigate = useNavigateWithPageContextRoute();
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [value, setValue] = useState<Uint8Array>(new Uint8Array());
-    const [error, setError] = useState<Error | undefined>();
     const onProcessed = useCallback(() => {
         navigate('/loading');
     }, [navigate]);
+    const { cipherbox, loading: cipherboxLoading } = useCipherbox(channel);
     const { maybeResolve, maybeReject } = useRequest<"AccountCreation_AddField">(
         session?.requests[session?.requests.length - 1],
-        { onProcessed }
+        { onProcessed, cipherbox }
     );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
     const field = session?.createFieldOptions?.find(f => f.id === fieldId);
@@ -78,7 +88,6 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         session?.rejectedFieldValues?.find(f => f.fieldId === fieldId);
     const [generateValue, setGenerateValue] = useState<null | (() => Promise<Uint8Array>)>();
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
-
     useEffect(() => {
         if (! field || (rejected && ! rejection)) {
             return;
@@ -99,8 +108,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         };
         setGenerateValue(() => fn);
     }, [field, rejected, rejection]);
-
-    const loaded = session && (!rejected || rejection) && settings && maybeReject && maybeResolve && identity && field && (generateValue !== undefined);
+    const loaded = session && !cipherboxLoading && (!rejected || rejection) && settings && maybeReject && maybeResolve && identity && field && (generateValue !== undefined);
 
     useEffect(() => {
         if (! rejection?.webAppDictatedValue) {
