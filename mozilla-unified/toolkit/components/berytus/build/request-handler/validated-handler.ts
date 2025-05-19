@@ -232,69 +232,69 @@ const generateE2EEMessagingValidator = () => {
 // TODO(berytus): Also reject requests containing encrypted packets
 // when channel e2ee is false.
 class E2EEMessagingValidator implements ILogicalValidator {
-    #isE2EEEnabled(ctx: RequestContext) {
-        return ctx.channel.e2eeEnabled;
+    #isE2EEEnabled(ctx: PreliminaryRequestContext) {
+        if (! ("channel" in ctx)) {
+            return false;
+        }
+        return (ctx as RequestContext).channel.e2eeEnabled;
     }
 
-    #isEncrypted(valueOrDict: unknown): boolean {
+    #isEncrypted(valueOrDict: unknown): number {
         if (valueOrDict === null || valueOrDict === undefined) {
-            return true;
+            return 1;
         }
         if (typeof valueOrDict !== "object") {
-            return false;
+            return 0;
         }
         if ("type" in valueOrDict &&
             valueOrDict.type === "JWE" &&
             "value" in valueOrDict &&
             typeof valueOrDict.value === "string") {
-            return true;
+            return 2;
         }
+        let result = 0;
         for (const key in valueOrDict) {
-            const isIt = this.#isEncrypted(
-                (valueOrDict as Record<string, unknown>)[key]
-            );
-            if (! isIt) {
-                return false;
-            }
+            const entry = (valueOrDict as Record<string, unknown>)[key];
+            result |= this.#isEncrypted(entry);
         }
-        return true;
+        return result;
     }
     async consume(group: string, method: string, input: PreCallInput): Promise<void> {
-        const errorPrefix = \`Malformed output passed from the request handler's \`
+        const errorPrefix = \`Malformed input passed into the request handler's \`
             + \`\${group}:\${method} method.\`;
-        if (inputIs("AccountCreation_AddField", input)) {
-            if (! this.#isE2EEEnabled(input.context)) {
-                return;
+        if (! this.#isE2EEEnabled(input.context)) {
+            if (this.#isEncrypted(input.args) >= 2) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "input value must not be encrypted."
+                );
             }
+            return;
+        }
+        if (inputIs("AccountCreation_AddField", input)) {
             if (! this.#isEncrypted(input.args.field.value)) {
                 throw new ResolutionError(
                     errorPrefix,
-                    "resolved value must be encrypted."
+                    "input value must be encrypted."
                 );
             }
         }
         if (inputIs("AccountCreation_RejectFieldValue", input)) {
-            if (! this.#isE2EEEnabled(input.context)) {
-                return;
-            }
             if (undefined === input.args.optionalNewValue) {
                 return;
             }
             if (! this.#isEncrypted(input.args.optionalNewValue)) {
                 throw new ResolutionError(
                     errorPrefix,
-                    "resolved value must be encrypted."
+                    "input value must be encrypted."
                 );
             }
         }
-                if (inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
-            if (! this.#isE2EEEnabled(input.context)) {
-                return;
-            }
+        if (inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
             if (! this.#isEncrypted(input.args.payload)) {
                 throw new ResolutionError(
                     errorPrefix,
-                    "resolved value must be encrypted."
+                    "input value must be encrypted."
                 );
             }
         }
@@ -305,6 +305,15 @@ class E2EEMessagingValidator implements ILogicalValidator {
     async digest(group: string, method: string, input: PreCallInput, output: unknown): Promise<void> {
         const errorPrefix = \`Malformed output passed from the request handler's \`
             + \`\${group}:\${method} method.\`;
+        if (! this.#isE2EEEnabled(input.context)) {
+            if (this.#isEncrypted(output) >= 2) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "resolved value must not be encrypted."
+                );
+            }
+            return;
+        }
         const data = {
             context: input.context,
             args: input.args,
@@ -315,9 +324,6 @@ class E2EEMessagingValidator implements ILogicalValidator {
             requestIs("AccountAuthentication_RespondToChallengeMessage", data) ||
             requestIs("AccountCreation_RejectFieldValue", data)
         ) {
-            if (! this.#isE2EEEnabled(data.context)) {
-                return;
-            }
             if (! this.#isEncrypted(data.output)) {
                 throw new ResolutionError(
                     errorPrefix,
@@ -326,11 +332,8 @@ class E2EEMessagingValidator implements ILogicalValidator {
             }
         }
         if (requestIs("AccountCreation_GetUserAttributes", data)) {
-            if (! this.#isE2EEEnabled(data.context)) {
-                return;
-            }
             for (const attr of data.output) {
-                if (!this.#isEncrypted(attr.value)) {
+                if (! this.#isEncrypted(attr.value)) {
                     throw new ResolutionError(
                         errorPrefix,
                         "resolved value must be encrypted."
@@ -360,7 +363,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
     Schemas: "resource://gre/modules/Schemas.sys.mjs"
 });
 
-const isPrelimContext = (context: unknown): context is PreliminaryRequestContext => {
+const isPrelimContext = (context: unknown): context is Pick<PreliminaryRequestContext, 'request'> => {
     return typeof context === "object" &&
         context !== null &&
         "request" in context &&
@@ -599,24 +602,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
             output,
             errorPrefix
         );
-        const data = { ...input, output };
-        if (requestIs("AccountCreation_AddField", data)) {
-            const fieldTypeEntry = await this.#getFieldTypeEntry(data.args.field.type);
-            this.#validateValue(
-                fieldTypeEntry.properties.value.type,
-                output,
-                errorPrefix
-            );
-            if (data.args.field.value === null) {
-                if (data.output === null) {
-                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a field value.");
-                }
-            } else {
-                if (data.output !== null) {
-                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a field value.");
-                }
-            }
-        }
+        await this.#digestValidators(group, method, input, output);
         await super.preResolve(group, method, input, output);
     }
 
@@ -666,18 +652,6 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         }
         const methodType = groupHandlerType.properties[method].type;
         return methodType;
-    }
-
-    async #getFieldTypeEntry(fieldType: AddFieldArgs['field']['type']) {
-        const schema = await this.#getSchema();
-        const id = \`Berytus\${fieldType}Field\`;
-        const fieldTypeEntry = schema.get(id);
-        if (! fieldTypeEntry) {
-            throw new Error(
-                \`Berytus Schema did not contain a "\${id}" type.\`
-            );
-        }
-        return fieldTypeEntry;
     }
 
     async #getSchema() {

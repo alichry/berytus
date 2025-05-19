@@ -162,7 +162,7 @@ add_task(async function test_handle_invalid_output() {
 
     const promises = [];
     const handlerProxy = createRequestHandlerProxy(
-        async(group, method, cx, args) => {
+        async (group, method, cx, args) => {
             promises.push(
                 Assert.rejects(
                     cx.response.resolve("Bla Bla"),
@@ -199,7 +199,7 @@ add_task(async function test_handle_invalid_output_addFields() {
 
     const promises = [];
     const handlerProxy = createRequestHandlerProxy(
-        async(group, method, cx, args) => {
+        async (group, method, cx, args) => {
             /**
              * @type {import("../../src/types").AddFieldArgs}
              */
@@ -236,6 +236,189 @@ add_task(async function test_handle_invalid_output_addFields() {
     await Promise.all(promises);
     liaison.ereaseManager("alichry@sample-manager");
 });
+
+add_task(async function test_handle_ciphertext_input_when_e2ee_false() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+    const handlerProxy = createRequestHandlerProxy(
+        (group, method, cx, args) => {
+            throw new Error("Should not be reached");
+        }
+    );
+    liaison.registerManager(
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1,
+        },
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    const context = sampleRequests.addField().context;
+    await Assert.rejects(
+        publicHandler.accountCreation.addField(
+            {
+                ...context,
+                channel: {
+                    ...context.channel,
+                    e2eeEnabled: false
+                }
+            },
+            {
+                field: {
+                    ...sampleRequests.addField().args.field,
+                    value: {
+                        type: "JWE",
+                        value: ""
+                    }
+                }
+            }
+        ), /Malformed input passed into the request handler/i
+    );
+    liaison.ereaseManager("alichry@sample-manager");
+});
+
+add_task(async function test_handle_ciphertext_output_when_e2ee_false() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
+    const promises = [];
+    const handlerProxy = createRequestHandlerProxy(
+        (group, method, cx, args) => {
+            promises.push(
+                Assert.rejects(
+                    cx.response.resolve({
+                        type: "JWE",
+                        value: ""
+                    }),
+                    /resolved value must not be encrypted/i
+                )
+            );
+        }
+    );
+    liaison.registerManager(
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1,
+        },
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    const context = sampleRequests.addField().context;
+    await Assert.rejects(
+        publicHandler.accountCreation.addField(
+            {
+                ...context,
+                channel: {
+                    ...context.channel,
+                    e2eeEnabled: false
+                }
+            },
+            sampleRequests.addField().args
+        ), /Malformed output passed from the request handler/i
+    );
+    await Promise.all(promises);
+    liaison.ereaseManager("alichry@sample-manager");
+});
+
+
+add_task(async function test_handle_plaintext_input_when_e2ee_true() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+    const handlerProxy = createRequestHandlerProxy(
+        (group, method, cx, args) => {
+            throw new Error("Should not be reached");
+        }
+    );
+    liaison.registerManager(
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1,
+        },
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    const context = sampleRequests.addField().context;
+    await Assert.rejects(
+        publicHandler.accountCreation.addField(
+            {
+                ...context,
+                channel: {
+                    ...context.channel,
+                    e2eeEnabled: true
+                }
+            },
+            {
+                field: {
+                    ...sampleRequests.addField().args.field,
+                    value: "myUsername"
+                }
+            }
+        ), /Malformed input passed into the request handler/i
+    );
+    liaison.ereaseManager("alichry@sample-manager");
+});
+
+add_task(async function test_handle_plaintext_output_when_e2ee_true() {
+    // Need a profile to be setup; otherwise ValidatedRequestHandler
+    // would not be able to retrieve the Schema.
+    do_get_profile();
+
+    const promises = [];
+    const handlerProxy = createRequestHandlerProxy(
+        (group, method, cx, args) => {
+            promises.push(
+                Assert.rejects(
+                    cx.response.resolve("myUsername"),
+                    /resolved value must be encrypted/i
+                )
+            )
+        }
+    );
+    liaison.registerManager(
+        {
+            id: "alichry@sample-manager",
+            name: "SampleManager",
+            type: 1,
+        },
+        handlerProxy
+    );
+    const publicHandler = liaison.getRequestHandler(
+        "alichry@sample-manager"
+    );
+    const context = sampleRequests.addField().context;
+    await Assert.rejects(
+        publicHandler.accountCreation.addField(
+            {
+                ...context,
+                channel: {
+                    ...context.channel,
+                    e2eeEnabled: true
+                }
+            },
+            sampleRequests.addField().args
+        ), /Malformed output passed from the request handler/i
+    );
+    await Promise.all(promises);
+    liaison.ereaseManager("alichry@sample-manager");
+});
+
+// TODO(berytus): other methods expecting ciphertext should be tested
+// for ciphertext input/output when e2e false --> error
+//     ciphertext input/output when e2e true --> OK
+//     plaintext input/output when e2e true --> error
+//     plaintext input/output when e2e false --> OK
 
 // TODO(berytus): Add test that the request handler
 // can solve addFields with null when the web app dictates

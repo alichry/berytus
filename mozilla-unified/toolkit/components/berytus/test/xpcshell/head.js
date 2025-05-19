@@ -134,7 +134,8 @@ const sampleRequests = {
                     webAppActor: originActor(),
                     scmActor: {
                         ed25519Key: "MCowBQYDK2VwAyEAJevlUdx72BF8mxdwurBJI9WNgRDMaoYfb0VqywaLOJE="
-                    }
+                    },
+                    e2eeEnabled: false
                 },
                 operation: {
                     id: "456",
