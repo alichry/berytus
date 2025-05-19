@@ -59,7 +59,7 @@ dictionary BerytusUserAttributeJSON {
     DOMString info;
     DOMString mimeType;
     required BerytusUserAttributeValueEncodingType encoding;
-    required (DOMString /*or Base64URLString*/ or BerytusEncryptedPacketJSON) value;
+    required DOMString value;
 };
 
 [SecureContext, Exposed=(Window)]

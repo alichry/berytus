@@ -227,6 +227,126 @@ class FieldCreationHandler implements ILogicalValidator {
     return code;
 }
 
+const generateE2EEMessagingValidator = () => {
+    const code = `\
+// TODO(berytus): Also reject requests containing encrypted packets
+// when channel e2ee is false.
+class E2EEMessagingValidator implements ILogicalValidator {
+    #isE2EEEnabled(ctx: PreliminaryRequestContext) {
+        if (! ("channel" in ctx)) {
+            return false;
+        }
+        return (ctx as RequestContext).channel.e2eeEnabled;
+    }
+
+    #isEncrypted(valueOrDict: unknown): number {
+        if (valueOrDict === null || valueOrDict === undefined) {
+            return 1;
+        }
+        if (typeof valueOrDict !== "object") {
+            return 0;
+        }
+        if ("type" in valueOrDict &&
+            valueOrDict.type === "JWE" &&
+            "value" in valueOrDict &&
+            typeof valueOrDict.value === "string") {
+            return 2;
+        }
+        let result = 0;
+        for (const key in valueOrDict) {
+            const entry = (valueOrDict as Record<string, unknown>)[key];
+            result |= this.#isEncrypted(entry);
+        }
+        return result;
+    }
+    async consume(group: string, method: string, input: PreCallInput): Promise<void> {
+        const errorPrefix = \`Malformed input passed into the request handler's \`
+            + \`\${group}:\${method} method.\`;
+        if (! this.#isE2EEEnabled(input.context)) {
+            if (this.#isEncrypted(input.args) >= 2) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "input value must not be encrypted."
+                );
+            }
+            return;
+        }
+        if (inputIs("AccountCreation_AddField", input)) {
+            if (! this.#isEncrypted(input.args.field.value)) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "input value must be encrypted."
+                );
+            }
+        }
+        if (inputIs("AccountCreation_RejectFieldValue", input)) {
+            if (undefined === input.args.optionalNewValue) {
+                return;
+            }
+            if (! this.#isEncrypted(input.args.optionalNewValue)) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "input value must be encrypted."
+                );
+            }
+        }
+        if (inputIs("AccountAuthentication_RespondToChallengeMessage", input)) {
+            if (! this.#isEncrypted(input.args.payload)) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "input value must be encrypted."
+                );
+            }
+        }
+    }
+
+    async rollback(group: string, method: string, input: PreCallInput): Promise<void> {}
+
+    async digest(group: string, method: string, input: PreCallInput, output: unknown): Promise<void> {
+        const errorPrefix = \`Malformed output passed from the request handler's \`
+            + \`\${group}:\${method} method.\`;
+        if (! this.#isE2EEEnabled(input.context)) {
+            if (this.#isEncrypted(output) >= 2) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "resolved value must not be encrypted."
+                );
+            }
+            return;
+        }
+        const data = {
+            context: input.context,
+            args: input.args,
+            output
+        };
+        if (
+            requestIs("AccountCreation_AddField", data) ||
+            requestIs("AccountAuthentication_RespondToChallengeMessage", data) ||
+            requestIs("AccountCreation_RejectFieldValue", data)
+        ) {
+            if (! this.#isEncrypted(data.output)) {
+                throw new ResolutionError(
+                    errorPrefix,
+                    "resolved value must be encrypted."
+                );
+            }
+        }
+        if (requestIs("AccountCreation_GetUserAttributes", data)) {
+            for (const attr of data.output) {
+                if (! this.#isEncrypted(attr.value)) {
+                    throw new ResolutionError(
+                        errorPrefix,
+                        "resolved value must be encrypted."
+                    );
+                }
+            }
+        }
+    }
+}
+`;
+    return code;
+}
+
 export const generateValidatedHandler = () => {
     const typesToImport: Record<string, true> = {
         "RequestType": true,
@@ -243,12 +363,30 @@ ChromeUtils.defineESModuleGetters(lazy, {
     Schemas: "resource://gre/modules/Schemas.sys.mjs"
 });
 
-const requestIs = <RT extends RequestType>(requestType: RT, d: { context: PreliminaryRequestContext; args?: unknown; output: unknown}): d is { context: PreliminaryRequestContext; args: RequestHandlerFunctionParameters<RT>[1]; output: RequestHandlerFunctionReturnType<RT> } => {
-    return d.context.request.type === requestType;
+const isPrelimContext = (context: unknown): context is Pick<PreliminaryRequestContext, 'request'> => {
+    return typeof context === "object" &&
+        context !== null &&
+        "request" in context &&
+        typeof context.request === "object" &&
+        context.request !== null &&
+        "type" in context.request &&
+        typeof context.request.type === "string" &&
+        "id" in context.request &&
+        typeof context.request.id === "string";
 }
 
-const inputIs = <RT extends RequestType>(requestType: RT, input: { context: PreliminaryRequestContext; args?: unknown; }): input is { context: PreliminaryRequestContext; args: RequestHandlerFunctionParameters<RT>[1]; } => {
-    return input.context.request.type === requestType;
+const requestIs = <RT extends RequestType>(requestType: RT, d: { context: unknown; args?: unknown; output: unknown}): d is { context: RequestHandlerFunctionParameters<RT>[0]; args: RequestHandlerFunctionParameters<RT>[1]; output: RequestHandlerFunctionReturnType<RT> } => {
+    if (isPrelimContext(d.context)) {
+        return d.context.request.type === requestType;
+    }
+    return false;
+}
+
+const inputIs = <RT extends RequestType>(requestType: RT, input: { context: unknown; args?: unknown; }): input is { context: RequestHandlerFunctionParameters<RT>[0]; args: RequestHandlerFunctionParameters<RT>[1]; } => {
+    if (isPrelimContext(input.context)) {
+        return input.context.request.type === requestType;
+    }
+    return false;
 }
 
 /**
@@ -375,6 +513,7 @@ interface ILogicalValidator {
 ${generateFieldIdValidator()}
 ${generateChallangeSequenceValidator()}
 ${generateFieldCreationValidator()}
+${generateE2EEMessagingValidator()}
 
 export class ValidatedRequestHandler extends IsolatedRequestHandler {
     #schema: any;
@@ -387,7 +526,8 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         this.#validators.push(
             new FieldIdValidator(),
             new ChallangeMessagingSequenceValidator(),
-            new FieldCreationHandler()
+            new FieldCreationHandler(),
+            new E2EEMessagingValidator()
         );
     }
 
@@ -462,24 +602,7 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
             output,
             errorPrefix
         );
-        const data = { ...input, output };
-        if (requestIs("AccountCreation_AddField", data)) {
-            const fieldTypeEntry = await this.#getFieldTypeEntry(data.args.field.type);
-            this.#validateValue(
-                fieldTypeEntry.properties.value.type,
-                output,
-                errorPrefix
-            );
-            if (data.args.field.value === null) {
-                if (data.output === null) {
-                    throw new ResolutionError(errorPrefix, "resolved value must not be null since the web app did not dictate a field value.");
-                }
-            } else {
-                if (data.output !== null) {
-                    throw new ResolutionError(errorPrefix, "resolved value must be null since the web app has dictated a field value.");
-                }
-            }
-        }
+        await this.#digestValidators(group, method, input, output);
         await super.preResolve(group, method, input, output);
     }
 
@@ -529,18 +652,6 @@ export class ValidatedRequestHandler extends IsolatedRequestHandler {
         }
         const methodType = groupHandlerType.properties[method].type;
         return methodType;
-    }
-
-    async #getFieldTypeEntry(fieldType: AddFieldArgs['field']['type']) {
-        const schema = await this.#getSchema();
-        const id = \`Berytus\${fieldType}Field\`;
-        const fieldTypeEntry = schema.get(id);
-        if (! fieldTypeEntry) {
-            throw new Error(
-                \`Berytus Schema did not contain a "\${id}" type.\`
-            );
-        }
-        return fieldTypeEntry;
     }
 
     async #getSchema() {

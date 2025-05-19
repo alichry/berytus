@@ -28,6 +28,7 @@ export interface ChannelMetadata {
     constraints: ChannelConstraints;
     webAppActor: WebAppActor;
     scmActor: CryptoActor; /* retrieved from getSigningKey() */
+    e2eeEnabled: boolean;
 }
 
 export interface UriParams {

@@ -25,3 +25,9 @@ const { class: className } = Astro.props;
 <script is:inline>
     window.$signingKeys = JSON.parse(document.getElementById('signingKeys').innerHTML);
 </script>
+<script>
+    import * as jose from 'jose';
+    import parseDataURL from 'data-urls';
+    window['jose'] = jose;
+    window['parseDataURL'] = parseDataURL;
+</script>

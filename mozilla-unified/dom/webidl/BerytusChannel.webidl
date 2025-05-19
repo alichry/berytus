@@ -158,6 +158,19 @@ dictionary BerytusOnboardingOptions {
     record<DOMString, boolean> requiredUserAttributes;
 };
 
+dictionary BerytusKeyAgreementInput {
+    /**
+     * Base64 string of the DER-structured X25519 SPKI
+     * This is the web app X25519 public key
+     */
+    required DOMString public;
+    /**
+     * A list of URLs for which ciphertext would be transmitted to.
+     * If empty, all masked ciphertext would be unmasked in any
+     * fetch request.
+     */
+    sequence<DOMString> unmaskAllowlist;
+};
 
 [SecureContext, Exposed=(Window)]
 interface BerytusChannel {
@@ -204,7 +217,7 @@ interface BerytusChannel {
 
     [Throws]
     Promise<BerytusKeyAgreementParameters> prepareKeyAgreementParameters(
-        DOMString webAppX25519PublicKey
+        BerytusKeyAgreementInput input
     );
     [Throws]
     Promise<ArrayBuffer> exchangeKeyAgreementSignatures(

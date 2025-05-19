@@ -1,52 +1,69 @@
-import { ab2base64 } from "@root/key-utils";
-import type { ArrayBufferOrBerytusEncryptedPacket, BerytusEncryptedPacket, BerytusFieldUnion } from "@berytus/types-extd";
+import type { BerytusEncryptedPacket, BerytusFieldValueUnion } from "@berytus/types-extd";
+import { Channel } from "@root/db/Channel";
+import { db } from "@root/db";
+import JWEPacketCipherBox from "@root/crypto/JWEPacketBox";
 
-export const stringifyEncryptedPacket = (value: BerytusEncryptedPacket) => {
-    const parameters: Record<string, string | number | boolean | undefined> = {};
-    (Object.keys(value.parameters) as Array<keyof typeof value.parameters>).forEach(key => {
-        const prop = value.parameters[key];
-        if (prop === undefined || typeof prop === "string" || typeof prop === "number" || typeof prop === "boolean") {
-            parameters[key] = prop;
-            return;
+const createJWEPacketCipherBox = async (channelOrId: Channel | string) => {
+    let channel;
+    if (typeof channelOrId === "string") {
+        channel = await db.channel.get(channelOrId);
+        if (! channel) {
+            throw new Error('Unable to find channel by id ' + channelOrId);
         }
-        if (prop instanceof ArrayBuffer) {
-            parameters[key] = ab2base64(prop);
-            return;
-        }
-        // TODO(berytus): Remove this when ArrayBufferViews are removed
-        parameters[key] = ab2base64(prop.buffer);
-    })
-    return JSON.stringify({
-        ciphertext: ab2base64(value.ciphertext),
-        parameters
-    })
-}
-
-export const stringifyArrayBufferOrEncryptedPacket = (value: ArrayBufferOrBerytusEncryptedPacket) => {
-    if (value instanceof ArrayBuffer) {
-        return ab2base64(value);
+    } else {
+        channel = channelOrId;
     }
-    return stringifyEncryptedPacket(value);
+    if (!channel.e2eeKey) {
+        throw new Error('Cannot create JWECipherBox, channel\'s e2eeKey is unset.');
+    }
+    const box = new JWEPacketCipherBox({ key: channel.e2eeKey });
+    return box;
 }
 
-export const stringifyFieldValue = (fieldValue: BerytusFieldUnion['value']) =>  {
+const decryptPacket = async (
+    channelOrId: Channel | string,
+    packet: BerytusEncryptedPacket
+): Promise<ArrayBufferLike> => {
+    if (packet.type !== "JWE") {
+        throw new Error('Unrecognised packet type.');
+    }
+    const box = await createJWEPacketCipherBox(channelOrId);
+    const decr = await box.decrypt(packet);
+    if (decr === null) {
+        throw new Error('CipherBox refused to decrypt.');
+    }
+    return decr;
+}
+
+export const toClearFieldValue = async <FVU extends BerytusFieldValueUnion>(
+    channelOrId: Channel | string,
+    fieldValue: FVU
+) => {
     if (typeof fieldValue === "string") {
         return fieldValue;
     }
-    if (fieldValue === null) {
-        return "";
+    if (
+        typeof fieldValue === "object" &&
+        fieldValue !== null &&
+        "type" in fieldValue &&
+        "value" in fieldValue &&
+        fieldValue.type === "JWE" &&
+        typeof fieldValue.value === "string"
+    ) {
+        const decrypted = await decryptPacket(
+            channelOrId,
+            fieldValue
+        );
+        // TODO(berytus): This implementation needs documentation
+        // We stringified the returned, deciphered, buffer as
+        // all field who has a non-strucuted field values have string
+        // field value types. A Better approach is to return the proper
+        // decoding according to the field type.
+        return new TextDecoder().decode(new Uint8Array(decrypted));
     }
-    if ("salt" in fieldValue) {
-        return JSON.stringify({
-            salt: stringifyArrayBufferOrEncryptedPacket(fieldValue.salt),
-            verifier: stringifyArrayBufferOrEncryptedPacket(fieldValue.verifier)
-        })
-    }
-    if ("privateKey" in fieldValue) {
-        return stringifyArrayBufferOrEncryptedPacket(fieldValue.privateKey);
-    }
-    if ("publicKey" in fieldValue) {
-        return stringifyArrayBufferOrEncryptedPacket(fieldValue.publicKey);
-    }
-    return stringifyArrayBufferOrEncryptedPacket(fieldValue);
+    const box = await createJWEPacketCipherBox(channelOrId);
+    // Note(berytus): All other fields that have structured values
+    // have inner values as ArrayBuffers, not strings.
+    const res = await box.decryptDictionary(fieldValue as Exclude<FVU, string | BerytusEncryptedPacket>);
+    return res;
 }
