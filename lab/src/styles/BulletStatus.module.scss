@@ -1,0 +1,20 @@
+.bullet {
+    display: inline-flex;
+    align-items: center;
+}
+.bullet::before {
+    content: "●";
+    color: gray;
+    font-size: 16px;
+    line-height: 1;
+    margin-right: 1rem;
+}
+.Pending::before {
+    color: gray;
+}
+.Active::before {
+    color: green;
+}
+.Error::before {
+    color: red;
+}
