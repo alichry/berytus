@@ -7,6 +7,7 @@
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "BerytusEncryptedPacket.h"
 #include "BerytusKeyAgreementParameters.h"
+#include "mozilla/Span.h"
 #include "mozilla/dom/BerytusEncryptedPacketBinding.h"
 #include "mozilla/dom/BerytusX509Extension.h"
 #include "mozilla/dom/MemoryBlobImpl.h"
@@ -94,7 +95,14 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
   }
   MOZ_ASSERT(mUrlAllowlist.Length() == 0);
   for (const auto& url : kap->GetSession()->GetUnmaskAllowlist()) {
-    if (NS_WARN_IF(!mUrlAllowlist.AppendElement(NS_ConvertUTF16toUTF8(url), fallible))) {
+    nsresult rv;
+    already_AddRefed<berytus::UrlSearchExpression> search = berytus::UrlSearchExpression::Create(NS_ConvertUTF16toUTF8(url), rv);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      mUrlAllowlist.Clear();
+      aRv.Throw(rv);
+      return;
+    }
+    if (NS_WARN_IF(!mUrlAllowlist.AppendElement(search.take(), fallible))) {
       aRv.ThrowTypeError("Out of memory");
       mUrlAllowlist.Clear();
       return;
@@ -103,7 +111,15 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
   mAttached = true;
 }
 
-already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(const nsCString& aReqUrl, ErrorResult& aRv) {
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    const nsCString& aReqUrl, ErrorResult& aRv) {
+  bool discard;
+  return Unmask(aReqUrl, discard, aRv);
+}
+
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    const nsCString& aReqUrl,
+    bool& aUnmasked, ErrorResult& aRv) {
   nsCOMPtr<nsIURI> uri;
   // NOTE(berytus): NS_NewURI does many more things than simply calling
   // nsIIOService->NewURI.
@@ -111,17 +127,26 @@ already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(const nsCString& aReqUrl, 
     aRv.ThrowTypeError<MSG_INVALID_URL>(aReqUrl);
     return nullptr;
   }
-  return Unmask(uri, aRv);
+  return Unmask(uri, aUnmasked, aRv);
 }
 
-void BerytusEncryptedPacket::SerializeExposedToString(nsACString& aValue, ErrorResult& aRv) const {
+void BerytusEncryptedPacket::SerializeExposedToString(
+    nsACString& aValue, ErrorResult& aRv) const {
   aRv.ThrowNotSupportedError("Operation not implemented");
 }
 
-already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(nsIURI* aReqUrl, ErrorResult& aRv) {
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    nsIURI* aReqUrl, ErrorResult& aRv) {
+  bool discard;
+  return Unmask(aReqUrl, discard, aRv);
+}
+
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    nsIURI* aReqUrl, bool& aUnmasked, ErrorResult& aRv) {
   if (!mConcealed) {
     // not concealed, meaning the exposed blob already contains ciphertext
     // By default, JS-created JWE packets are not concealed and not attached.
+    aUnmasked = false;
     return do_AddRef(static_cast<Blob*>(this));
   }
   if (!Attached()) {
@@ -130,32 +155,37 @@ already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(nsIURI* aReqUrl, ErrorResu
   }
   if (mUrlAllowlist.Length() == 0) {
     // no allowlist defined, meaning we can unmask on any request url
-    return UnmaskImpl(aRv);
-  }
-  for (const auto& urlEntry : mUrlAllowlist) {
-    nsresult rv;
-    bool matches = false;
-    RefPtr<berytus::UrlSearchExpression> search = berytus::UrlSearchExpression::Create(urlEntry, rv);
-    if (NS_WARN_IF(NS_FAILED(rv))) {
-      aRv.Throw(rv);
+    auto out = UnmaskImpl(aRv);
+    if (NS_WARN_IF(aRv.Failed())) {
       return nullptr;
     }
-    rv = search->Matches(aReqUrl, matches);
-    if (NS_WARN_IF(NS_FAILED(rv))) {
-      aRv.Throw(rv);
-      return nullptr;
-    }
-    if (!matches) {
-      continue;
-    }
-    // a match! meaning we can unmask.
-    return UnmaskImpl(aRv);
+    aUnmasked = true;
+    return out;
   }
-  // no match, meaning we just return the exposed dummy blob.
-  return do_AddRef(static_cast<Blob*>(this));
+  nsresult rv;
+  bool matches = false;
+  rv = berytus::UrlSearchExpression::Matches(
+      Span(mUrlAllowlist.Elements(), mUrlAllowlist.Length()),
+      aReqUrl, matches);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.Throw(rv);
+    return nullptr;
+  }
+  if (!matches) {
+    // no match, meaning we just return the exposed dummy blob.
+    aUnmasked = false;
+    return do_AddRef(static_cast<Blob*>(this));
+  }
+  // a match! meaning we can unmask.
+  auto out = UnmaskImpl(aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  aUnmasked = true;
+  return out;
 }
 
-void TryUnmaskBerytusEncryptedPacketInFetchBody(
+bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
   const fetch::OwningBodyInit& aSrc,
   fetch::OwningBodyInit& aDest,
   const nsCString& aReqUrl,
@@ -165,15 +195,16 @@ void TryUnmaskBerytusEncryptedPacketInFetchBody(
     RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(
       aSrc.GetAsBlob());
     if (!packet) {
-      return;
+      return false;
     }
-    RefPtr<Blob> unmasked = packet->Unmask(aReqUrl, aRv);
+    bool hasUnmasked;
+    RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl,hasUnmasked, aRv);
     if (NS_WARN_IF(aRv.Failed())) {
-      return;
+      return false;
     }
-    MOZ_ASSERT(unmasked);
-    aDest.SetAsBlob() = unmasked;
-    return;
+    MOZ_ASSERT(maybeUnmaskedBlob);
+    aDest.SetAsBlob() = maybeUnmaskedBlob;
+    return hasUnmasked;
   }
   if (aSrc.IsFormData()) {
     const auto& fd = aSrc.GetAsFormData();
@@ -186,9 +217,10 @@ void TryUnmaskBerytusEncryptedPacketInFetchBody(
     });
     if (!unmaskNeeded) {
       aDest.SetAsFormData() = fd;
-      return;
+      return false;
     }
     const RefPtr<FormData> unmaskedFd = fd->Clone();
+    bool anyHasUnmasked = false;
     for (auto& entry : unmaskedFd->mFormData) {
       if (!entry.value.IsBlob()) {
         continue;
@@ -198,44 +230,76 @@ void TryUnmaskBerytusEncryptedPacketInFetchBody(
       if (!packet) {
         continue;
       }
-      RefPtr<Blob> unmasked = packet->Unmask(aReqUrl, aRv);
+      bool hasUnmasked;
+      RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl, hasUnmasked, aRv);
       if (NS_WARN_IF(aRv.Failed())) {
-        return;
+        return false;
       }
-      MOZ_ASSERT(unmasked);
-      entry.value.SetAsBlob() = unmasked;
+      MOZ_ASSERT(maybeUnmaskedBlob);
+      entry.value.SetAsBlob() = maybeUnmaskedBlob;
+      anyHasUnmasked = anyHasUnmasked || hasUnmasked;
     }
     aDest.SetAsFormData() = unmaskedFd;
-    return;
+    return anyHasUnmasked;
   }
   if (&aSrc == &aDest) {
-    return;
+    // no need to copy
+    return false;
   }
+  // TODO(berytus): Have a think about potentially not
+  // doing this unnecessary copy. A flag can be returned
+  // to guide the callee for which BodyInit to use when
+  // sending the request.
   if (aSrc.IsArrayBuffer()) {
     if (NS_WARN_IF(!aDest.SetAsArrayBuffer().Init(aSrc.GetAsArrayBuffer().Obj()))) {
       aRv.Throw(NS_ERROR_FAILURE);
-      return;
+      return false;
     }
-    return;
+    return false;
   }
   if (aSrc.IsArrayBufferView()) {
     if (NS_WARN_IF(!aDest.SetAsArrayBufferView().Init(aSrc.GetAsArrayBufferView().Obj()))) {
       aRv.Throw(NS_ERROR_FAILURE);
-      return;
+      return false;
     }
-    return;
+    return false;
   }
   if (aSrc.IsUSVString()) {
     if (NS_WARN_IF(!aDest.SetAsUSVString().Assign(aSrc.GetAsUSVString(), fallible))) {
       aRv.ThrowTypeError("Out of memory");
-      return;
+      return false;
     }
-    return;
+    return false;
   }
   if (aSrc.IsURLSearchParams()) {
     aDest.SetAsURLSearchParams() = aSrc.GetAsURLSearchParams();
+    return false;
+  }
+}
+
+void BerytusEncryptedPacket::HandleFetchRequest(
+    SafeRefPtr<InternalRequest>& aRequest,
+    const fetch::OwningBodyInit& aReqBody,
+    fetch::OwningBodyInit& aNewReqBody,
+    ErrorResult& aRv) {
+  nsCString reqUrl;
+  aRequest->GetURL(reqUrl);
+  /* Subprocedure (1): */
+  bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
+      aReqBody, aNewReqBody, reqUrl, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
     return;
   }
+  if (unmasked) {
+    aRequest->SetSkipServiceWorker();
+    // short-circuit: No need to go through subproc 2
+    // as service worker interception has been already
+    // skipped
+    return;
+  }
+  /* Subprocedure (2): */
+  // we need a way to get the list of signed urls
+  // TODO(berytus): Create ChannelContainer
 }
 
 } // namespace mozilla::dom
