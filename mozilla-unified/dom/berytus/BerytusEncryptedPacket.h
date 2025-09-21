@@ -8,9 +8,13 @@
 #define DOM_BERYTUSENCRYPTEDPACKET_H_
 
 #include "mozilla/ErrorResult.h"
+#include "mozilla/UniquePtr.h"
+#include "mozilla/dom/BerytusX509Extension.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/Blob.h"
+#include "mozilla/dom/InternalRequest.h"
 #include "nsIGlobalObject.h"
+#include "nsISupports.h"
 #include "nsStringFwd.h"
 #include "nsTArrayForwardDeclare.h"
 #include "mozilla/dom/BerytusChannel.h"
@@ -21,13 +25,6 @@ class OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVSt
 namespace fetch {
   using OwningBodyInit = OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
 }
-
-void TryUnmaskBerytusEncryptedPacketInFetchBody(
-  const fetch::OwningBodyInit& aSrc,
-  fetch::OwningBodyInit& aDest,
-  const nsCString& aReqUrl,
-  ErrorResult& aRv
-);
 
 class BerytusChannel;
 
@@ -61,13 +58,60 @@ protected:
   nsIGlobalObject* mGlobal;
   Span<uint8_t> mExposedContent;
   bool mConcealed;
-  nsTArray<nsCString> mUrlAllowlist;
+  /**
+   * Note(berytus): Unfortunately, Blob's QI method is marked
+   * as final; hence, we cannot define a new cycle collection
+   * participant, and therefore we cannot include new members
+   * to be cycle collected. Fortunately, UrlSearchExpression
+   * does not have cycle collected members of its own but
+   * it is ref-counted. Here, mUrlAllowlist would be a leaf
+   * node. Hence, as long as we do not share the items
+   * with class owners, nsTArray's destructor should be
+   * sufficient, calling the destructor of RefPtr<..>.
+   */
+  nsTArray<RefPtr<berytus::UrlSearchExpression>> mUrlAllowlist;
   bool mAttached;
 
+  already_AddRefed<Blob> Unmask(const nsCString& aReqUrl, bool& aUnmasked, ErrorResult& aRv);
+  already_AddRefed<Blob> Unmask(nsIURI* aReqUrl, bool& aUnmasked, ErrorResult& aRv);
   virtual already_AddRefed<Blob> UnmaskImpl(ErrorResult& aRv) = 0;
 
   static bool CreateMaskContent(BerytusEncryptedPacket::Content& aMask);
+
+  static bool TryUnmaskAnyPacketInFetchBody(
+    const fetch::OwningBodyInit& aSrc,
+    fetch::OwningBodyInit& aDest,
+    const nsCString& aReqUrl,
+    ErrorResult& aRv
+  );
 public:
+  /**
+   * This procedure is the main entrypoint for Berytus' E2E masking
+   * of encrypted packet. In particular, it undertakes the following
+   * subprocedures: (1) It attempts to detect a BerytusEncryptedPacket
+   * in the request body, and if one was found, it attempts to unmask it,
+   * disabling service worker interception along the way; (2) Additionally,
+   * regardless of the outcome of the previous step, it disables service
+   * worker interception if the request url is a signed url part of
+   * the key agreement parameters. This is to prepare for masking of
+   * encrypted packets coming from the web app, avoiding service worker
+   * interception before masking takes place.
+   *
+   */
+  static void HandleFetchRequest(SafeRefPtr<InternalRequest>& aRequest,
+                                 const fetch::OwningBodyInit& aReqBody,
+                                 fetch::OwningBodyInit& aNewReqBody,
+                                 ErrorResult& aRv);
+
+  /**
+   * Here, if the request url is a signed url, this procedure
+   * attempts to locate encrypted packets in the response body,
+   * and it masks them, returning a masked encrypted packet that
+   * would not be exposed on the DOM. Rather, it will be unmasked
+   * when sent to the secret manager.
+   */
+  //static void HandleFetchResponse();
+
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,
   // returning an actual global works.

@@ -68,6 +68,9 @@ public:
 
   static already_AddRefed<UrlSearchExpression> Create(const nsCString& aUrl, nsresult& aRv);
   nsresult Matches(nsIURI* aUrl, bool& aRv) const;
+  static nsresult Matches(
+    const Span<RefPtr<UrlSearchExpression>>& aSearchExprList,
+    nsIURI* aUrl, bool& aRv);
 
   explicit operator nsCString() const {
     if (mPort == -1 &&

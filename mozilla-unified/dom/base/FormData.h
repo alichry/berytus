@@ -25,10 +25,7 @@ class CustomElementFormValue;
 class HTMLFormElement;
 class GlobalObject;
 
-class OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
-namespace fetch {
-  using OwningBodyInit = OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
-}
+class BerytusEncryptedPacket;
 
 class FormData final : public nsISupports,
                        public HTMLFormSubmission,
@@ -169,12 +166,7 @@ class FormData final : public nsISupports,
 
   nsTArray<FormDataTuple> mFormData;
 
-  friend void TryUnmaskBerytusEncryptedPacketInFetchBody(
-      const fetch::OwningBodyInit& aSrc,
-      fetch::OwningBodyInit& aDest,
-      const nsCString& aReqUrl,
-      ErrorResult& aRv
-  );
+  friend class BerytusEncryptedPacket;
 };
 
 }  // namespace dom

@@ -301,6 +301,25 @@ nsresult UrlSearchExpression::Matches(nsIURI* aUrl,
   return NS_OK;
 }
 
+nsresult UrlSearchExpression::Matches(
+    const Span<RefPtr<UrlSearchExpression>>& aSearchExprList,
+    nsIURI* aUrl, bool& aRv) {
+  nsresult rv;
+  bool matches = false;
+  for (const auto& searchExpr : aSearchExprList) {
+    rv = searchExpr->Matches(aUrl, matches);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      return rv;
+    }
+    if (matches) {
+      aRv = true;
+      return NS_OK;
+    }
+  }
+  aRv = false;
+  return NS_OK;
+}
+
 already_AddRefed<UrlSearchExpression>
 UrlSearchExpression::Create(const nsCString& aUrl,
                                                    nsresult& aRv) {

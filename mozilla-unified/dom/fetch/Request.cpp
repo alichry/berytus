@@ -428,15 +428,14 @@ SafeRefPtr<Request> Request::Constructor(
         aInit.mBody.Value();
     if (!bodyInitNullable.IsNull()) {
       const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
-      // Note(berytus): Lines 432-447 show how we process the fetch body,
+      // Note(berytus): Lines 433-446 show how we process the fetch body,
       // trying to unmask encrypted packets if request URL is signed.
       fetch::OwningBodyInit maybeUnmaskedBodyInit;
-      nsCString reqUrl;
-      request->GetURL(reqUrl);
-      TryUnmaskBerytusEncryptedPacketInFetchBody(bodyInit,
-                                                 maybeUnmaskedBodyInit,
-                                                 reqUrl,
-                                                 aRv);
+      BerytusEncryptedPacket::HandleFetchRequest(
+          request,
+          bodyInit,
+          maybeUnmaskedBodyInit,
+          aRv);
       if (NS_WARN_IF(aRv.Failed())) {
         return nullptr;
       }
