@@ -1,6 +1,6 @@
 --- dom/webidl/moz.build.orig	2025-09-20 16:11:07
-+++ dom/webidl/moz.build	2025-09-20 16:11:07
-@@ -454,6 +454,33 @@
++++ dom/webidl/moz.build	2025-10-04 10:14:35
+@@ -454,6 +454,34 @@
      "BasicCardPayment.webidl",
      "BatteryManager.webidl",
      "BeforeUnloadEvent.webidl",
@@ -13,6 +13,7 @@
 +    "BerytusChallengeMessage.webidl",
 +    "BerytusChallengeParameters.webidl",
 +    "BerytusChannel.webidl",
++    "BerytusChannelContainer.webidl",
 +    "BerytusCryptoWebAppActor.webidl",
 +    "BerytusEncryptedPacket.webidl",
 +    "BerytusField.webidl",

@@ -1,0 +1,59 @@
+--- dom/fetch/Request.h.orig	2025-10-13 22:00:01
++++ dom/fetch/Request.h	2025-10-13 22:45:20
+@@ -19,6 +19,8 @@
+ 
+ namespace mozilla::dom {
+ 
++#define NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC "fetch-request-constructor"
++
+ class Headers;
+ class InternalHeaders;
+ class RequestOrUTF8String;
+@@ -127,6 +129,36 @@
+   AbortSignalImpl* GetSignalImpl() const override;
+   AbortSignalImpl* GetSignalImplToConsumeBody() const final;
+ 
++  class ConstructorNotification final : public nsISupports {
++    public:
++      NS_DECL_ISUPPORTS
++
++      ConstructorNotification(Request const* aRequest,
++                              RequestInit const* aInit)
++        : mIsSafe(true), mRequest(aRequest), mInit(aInit) {}
++
++      nsresult GetResult(Request const** aRequest) const {
++        if (!mIsSafe) {
++          return NS_ERROR_DOM_INVALID_STATE_ERR;
++        }
++        MOZ_ASSERT(mRequest);
++        *aRequest = mRequest;
++      }
++      nsresult GetInit(RequestInit const** aInit) const {
++        if (!mIsSafe) {
++          return NS_ERROR_DOM_INVALID_STATE_ERR;
++        }
++        *aInit = mInit;
++        return NS_OK;
++      }
++      void MarkAsUnsafe() { mIsSafe = false; }
++    private:
++      ~ConstructorNotification() = default;
++
++      bool mIsSafe;
++      Request const* mRequest;
++      RequestInit const* mInit;
++  };
+  private:
+   ~Request();
+ 
+@@ -135,6 +167,10 @@
+   // Lazily created.
+   RefPtr<Headers> mHeaders;
+   RefPtr<AbortSignal> mSignal;
++
++  static nsresult NotifyConstructorObservers(
++    SafeRefPtr<Request>& aRequest,
++    const RequestInit& aInit);
+ };
+ 
+ }  // namespace mozilla::dom

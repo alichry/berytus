@@ -7,11 +7,26 @@
 EXPORTS.mozilla.berytus += [
     "AgentProxy.h",
     "AgentProxyUtils.h",
+    "HttpObserver.h",
+    "MaskManagerChild.h",
+    "MaskManagerParent.h",
+    "UnmaskerChild.h",
+    "UnmaskerParent.h",
 ]
 
 UNIFIED_SOURCES += [
     "AgentProxy.cpp",
     "AgentProxyUtils.cpp",
+    "HttpObserver.cpp",
+    "MaskManagerChild.cpp",
+    "MaskManagerParent.cpp",
+    "UnmaskerChild.cpp",
+    "UnmaskerParent.cpp",
+]
+
+IPDL_SOURCES += [
+    "PMaskManager.ipdl",
+    "PUnmasker.ipdl",
 ]
 
 include("/ipc/chromium/chromium-config.mozbuild")
