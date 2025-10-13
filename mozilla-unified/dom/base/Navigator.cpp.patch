@@ -1,0 +1,37 @@
+--- dom/base/Navigator.cpp.orig	2025-10-04 10:22:48
++++ dom/base/Navigator.cpp	2025-10-04 14:24:12
+@@ -40,6 +40,7 @@
+ #include "mozilla/StorageAccess.h"
+ #include "mozilla/Telemetry.h"
+ #include "BatteryManager.h"
++#include "mozilla/dom/BerytusChannelContainer.h"
+ #include "mozilla/dom/CredentialsContainer.h"
+ #include "mozilla/dom/Clipboard.h"
+ #include "mozilla/dom/ContentChild.h"
+@@ -159,6 +160,7 @@
+   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mCredentials)
+   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMediaDevices)
+   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mServiceWorkerContainer)
++  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mBerytusChannelContainer)
+   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMediaCapabilities)
+   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMediaSession)
+   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mAddonManager)
+@@ -1903,7 +1905,18 @@
+ 
+   return ServiceWorker();
+ }
++
++already_AddRefed<BerytusChannelContainer> Navigator::BerytusChannel() {
++  MOZ_ASSERT(mWindow);
+ 
++  if (!mBerytusChannelContainer) {
++    mBerytusChannelContainer =
++        new BerytusChannelContainer(mWindow->AsGlobal());
++  }
++
++  return do_AddRef(mBerytusChannelContainer);
++}
++
+ size_t Navigator::SizeOfIncludingThis(
+     mozilla::MallocSizeOf aMallocSizeOf) const {
+   size_t n = aMallocSizeOf(this);

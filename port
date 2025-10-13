@@ -25,9 +25,13 @@ toolkit/components/extensions/parent/ext-berytus.js
 toolkit/components/extensions/test/xpcshell/test_ext_berytus.js"
 MOZILLA_FILES="toolkit/components/moz.build
 dom/moz.build
+dom/webidl/Navigator.webidl
 dom/webidl/moz.build
 dom/bindings/Bindings.conf
 dom/base/FormData.h
+dom/base/Navigator.cpp
+dom/base/Navigator.h
+dom/fetch/Request.h
 dom/fetch/Request.cpp
 dom/file/Blob.h
 toolkit/modules/ActorManagerParent.sys.mjs

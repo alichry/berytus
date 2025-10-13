@@ -8,6 +8,7 @@
 
 #include "js/Value.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "nsISupports.h"
 #include "nsIURI.h"
 #include "nsNetUtil.h"
 #include "nsPIDOMWindow.h"
@@ -28,6 +29,8 @@
 #include "mozilla/dom/ReadableStreamDefaultReader.h"
 
 namespace mozilla::dom {
+
+NS_IMPL_ISUPPORTS(Request::ConstructorNotification, nsISupports)
 
 NS_IMPL_ADDREF_INHERITED(Request, FetchBody<Request>)
 NS_IMPL_RELEASE_INHERITED(Request, FetchBody<Request>)
@@ -430,11 +433,9 @@ SafeRefPtr<Request> Request::Constructor(
       const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
       // Note(berytus): Lines 433-446 show how we process the fetch body,
       // trying to unmask encrypted packets if request URL is signed.
-      fetch::OwningBodyInit maybeUnmaskedBodyInit;
       BerytusEncryptedPacket::HandleFetchRequest(
           request,
           bodyInit,
-          maybeUnmaskedBodyInit,
           aRv);
       if (NS_WARN_IF(aRv.Failed())) {
         return nullptr;
@@ -442,7 +443,7 @@ SafeRefPtr<Request> Request::Constructor(
       nsCOMPtr<nsIInputStream> stream;
       nsAutoCString contentTypeWithCharset;
       uint64_t contentLength = 0;
-      aRv = ExtractByteStreamFromBody(/* bodyInit */ maybeUnmaskedBodyInit, getter_AddRefs(stream),
+      aRv = ExtractByteStreamFromBody(bodyInit, getter_AddRefs(stream),
                                       contentTypeWithCharset, contentLength);
       if (NS_WARN_IF(aRv.Failed())) {
         return nullptr;
@@ -482,7 +483,32 @@ SafeRefPtr<Request> Request::Constructor(
       }
     }
   }
+  aRv = NotifyConstructorObservers(domRequest, aInit);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
   return domRequest;
+}
+
+nsresult Request::NotifyConstructorObservers(
+    SafeRefPtr<Request>& aRequest,
+    const RequestInit& aInit) {
+  RefPtr<Request::ConstructorNotification> notif =
+    new Request::ConstructorNotification(
+      aRequest.unsafeGetRawPtr(), &aInit);
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  if (NS_WARN_IF(!obs)) {
+    return NS_ERROR_FAILURE;
+  }
+  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(notif);
+  if (NS_WARN_IF(!asSupports)) {
+    return NS_ERROR_FAILURE;
+  }
+  obs->NotifyObservers(asSupports,
+                       NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC,
+                       nullptr);
+  notif->MarkAsUnsafe();
+  return NS_OK;
 }
 
 SafeRefPtr<Request> Request::Clone(ErrorResult& aRv) {

@@ -242,51 +242,19 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
     aDest.SetAsFormData() = unmaskedFd;
     return anyHasUnmasked;
   }
-  if (&aSrc == &aDest) {
-    // no need to copy
-    return false;
-  }
-  // TODO(berytus): Have a think about potentially not
-  // doing this unnecessary copy. A flag can be returned
-  // to guide the callee for which BodyInit to use when
-  // sending the request.
-  if (aSrc.IsArrayBuffer()) {
-    if (NS_WARN_IF(!aDest.SetAsArrayBuffer().Init(aSrc.GetAsArrayBuffer().Obj()))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return false;
-    }
-    return false;
-  }
-  if (aSrc.IsArrayBufferView()) {
-    if (NS_WARN_IF(!aDest.SetAsArrayBufferView().Init(aSrc.GetAsArrayBufferView().Obj()))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return false;
-    }
-    return false;
-  }
-  if (aSrc.IsUSVString()) {
-    if (NS_WARN_IF(!aDest.SetAsUSVString().Assign(aSrc.GetAsUSVString(), fallible))) {
-      aRv.ThrowTypeError("Out of memory");
-      return false;
-    }
-    return false;
-  }
-  if (aSrc.IsURLSearchParams()) {
-    aDest.SetAsURLSearchParams() = aSrc.GetAsURLSearchParams();
-    return false;
-  }
+  return false;
 }
 
 void BerytusEncryptedPacket::HandleFetchRequest(
     SafeRefPtr<InternalRequest>& aRequest,
     const fetch::OwningBodyInit& aReqBody,
-    fetch::OwningBodyInit& aNewReqBody,
     ErrorResult& aRv) {
   nsCString reqUrl;
   aRequest->GetURL(reqUrl);
+  fetch::OwningBodyInit newReqBody;
   /* Subprocedure (1): */
   bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
-      aReqBody, aNewReqBody, reqUrl, aRv);
+      aReqBody, newReqBody, reqUrl, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return;
   }

@@ -14,7 +14,6 @@
 #include "mozilla/dom/Blob.h"
 #include "mozilla/dom/InternalRequest.h"
 #include "nsIGlobalObject.h"
-#include "nsISupports.h"
 #include "nsStringFwd.h"
 #include "nsTArrayForwardDeclare.h"
 #include "mozilla/dom/BerytusChannel.h"
@@ -26,6 +25,7 @@ namespace fetch {
   using OwningBodyInit = OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
 }
 
+class BerytusChannelContainer;
 class BerytusChannel;
 
 class BerytusEncryptedPacket : public Blob,
@@ -78,6 +78,7 @@ protected:
 
   static bool CreateMaskContent(BerytusEncryptedPacket::Content& aMask);
 
+  friend class BerytusChannelContainer;
   static bool TryUnmaskAnyPacketInFetchBody(
     const fetch::OwningBodyInit& aSrc,
     fetch::OwningBodyInit& aDest,
@@ -100,7 +101,6 @@ public:
    */
   static void HandleFetchRequest(SafeRefPtr<InternalRequest>& aRequest,
                                  const fetch::OwningBodyInit& aReqBody,
-                                 fetch::OwningBodyInit& aNewReqBody,
                                  ErrorResult& aRv);
 
   /**
