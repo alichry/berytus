@@ -1,5 +1,5 @@
 --- dom/fetch/Request.h.orig	2025-10-13 22:00:01
-+++ dom/fetch/Request.h	2025-10-13 22:45:20
++++ dom/fetch/Request.h	2025-10-14 22:23:13
 @@ -19,6 +19,8 @@
  
  namespace mozilla::dom {
@@ -9,6 +9,15 @@
  class Headers;
  class InternalHeaders;
  class RequestOrUTF8String;
+@@ -115,7 +117,7 @@
+ 
+   SafeRefPtr<Request> Clone(ErrorResult& aRv);
+ 
+-  SafeRefPtr<InternalRequest> GetInternalRequest();
++  SafeRefPtr<InternalRequest> GetInternalRequest() const;
+ 
+   const UniquePtr<mozilla::ipc::PrincipalInfo>& GetPrincipalInfo() const {
+     return mRequest->GetPrincipalInfo();
 @@ -127,6 +129,36 @@
    AbortSignalImpl* GetSignalImpl() const override;
    AbortSignalImpl* GetSignalImplToConsumeBody() const final;

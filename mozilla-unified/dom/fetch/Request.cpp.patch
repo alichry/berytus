@@ -1,5 +1,5 @@
 --- dom/fetch/Request.cpp.orig	2025-09-20 16:11:07
-+++ dom/fetch/Request.cpp	2025-10-13 22:53:49
++++ dom/fetch/Request.cpp	2025-10-14 22:24:41
 @@ -7,6 +7,8 @@
  #include "Request.h"
  
@@ -9,32 +9,25 @@
  #include "nsIURI.h"
  #include "nsNetUtil.h"
  #include "nsPIDOMWindow.h"
-@@ -27,6 +29,8 @@
- #include "mozilla/dom/ReadableStreamDefaultReader.h"
+@@ -28,6 +30,8 @@
  
  namespace mozilla::dom {
-+
-+NS_IMPL_ISUPPORTS(Request::ConstructorNotification, nsISupports)
  
++NS_IMPL_ISUPPORTS(Request::ConstructorNotification, nsISupports)
++
  NS_IMPL_ADDREF_INHERITED(Request, FetchBody<Request>)
  NS_IMPL_RELEASE_INHERITED(Request, FetchBody<Request>)
-@@ -427,6 +431,15 @@
-         aInit.mBody.Value();
-     if (!bodyInitNullable.IsNull()) {
-       const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
-+      // Note(berytus): Lines 433-446 show how we process the fetch body,
-+      // trying to unmask encrypted packets if request URL is signed.
-+      BerytusEncryptedPacket::HandleFetchRequest(
-+          request,
-+          bodyInit,
-+          aRv);
-+      if (NS_WARN_IF(aRv.Failed())) {
-+        return nullptr;
-+      }
-       nsCOMPtr<nsIInputStream> stream;
-       nsAutoCString contentTypeWithCharset;
-       uint64_t contentLength = 0;
-@@ -470,7 +483,32 @@
+ 
+@@ -69,7 +73,7 @@
+ 
+ Request::~Request() = default;
+ 
+-SafeRefPtr<InternalRequest> Request::GetInternalRequest() {
++SafeRefPtr<InternalRequest> Request::GetInternalRequest() const {
+   return mRequest.clonePtr();
+ }
+ 
+@@ -470,9 +474,34 @@
        }
      }
    }
@@ -43,8 +36,8 @@
 +    return nullptr;
 +  }
    return domRequest;
-+}
-+
+ }
+ 
 +nsresult Request::NotifyConstructorObservers(
 +    SafeRefPtr<Request>& aRequest,
 +    const RequestInit& aInit) {
@@ -64,6 +57,8 @@
 +                       nullptr);
 +  notif->MarkAsUnsafe();
 +  return NS_OK;
- }
- 
++}
++
  SafeRefPtr<Request> Request::Clone(ErrorResult& aRv) {
+   if (BodyUsed()) {
+     aRv.ThrowTypeError<MSG_FETCH_BODY_CONSUMED_ERROR>();

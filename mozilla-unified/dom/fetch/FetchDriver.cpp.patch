@@ -1,0 +1,45 @@
+--- dom/fetch/FetchDriver.cpp.orig	2025-10-15 22:31:30
++++ dom/fetch/FetchDriver.cpp	2025-10-18 21:46:29
+@@ -973,6 +973,42 @@
+   // Step 4 onwards of "HTTP Fetch" is handled internally by Necko.
+ 
+   mChannel = chan;
++
++  // NOTE(berytus): Second hook.
++  rv = NotifyHttpFetchObservers();
++  if (NS_WARN_IF(NS_FAILED(rv))) {
++    return rv;
++  }
++
++  return NS_OK;
++}
++
++void FetchDriver::GetRequest(InternalRequest const** aRequest) const {
++  MOZ_ASSERT(aRequest);
++  *aRequest = mRequest.unsafeGetRawPtr();
++}
++
++bool FetchDriver::GetChannel(nsIChannel const** aChannel) const {
++  if (mChannel) {
++    *aChannel = mChannel;
++    return true;
++  }
++  return false;
++}
++
++nsresult FetchDriver::NotifyHttpFetchObservers() {
++  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
++  if (NS_WARN_IF(!obs)) {
++    return NS_ERROR_FAILURE;
++  }
++  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(static_cast<AbortFollower*>(this));
++  if (NS_WARN_IF(!asSupports)) {
++    return NS_ERROR_FAILURE;
++  }
++  InternalRequest* req = mRequest.unsafeGetRawPtr();
++  obs->NotifyObservers(asSupports,
++                       NS_FETCH_DRIVER_HTTP_FETCH_TOPIC,
++                       nullptr);
+   return NS_OK;
+ }
+ 

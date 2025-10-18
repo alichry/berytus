@@ -8,15 +8,26 @@
 #include "BerytusEncryptedPacket.h"
 #include "BerytusKeyAgreementParameters.h"
 #include "mozilla/Span.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/berytus/HttpObserver.h"
+#include "mozilla/berytus/MaskManagerChild.h"
+#include "mozilla/berytus/PMaskManagerChild.h"
+#include "mozilla/berytus/UnmaskerChild.h"
 #include "mozilla/dom/BerytusEncryptedPacketBinding.h"
 #include "mozilla/dom/BerytusX509Extension.h"
+#include "mozilla/dom/FetchDriver.h"
 #include "mozilla/dom/MemoryBlobImpl.h"
 #include "mozilla/dom/URLSearchParams.h"
 #include "mozilla/dom/FormData.h"
 #include "mozilla/dom/Fetch.h"
+#include "nsIHttpProtocolHandler.h"
+#include "nsISupports.h"
 #include "nsNetUtil.h"
 #include "mozilla/dom/BerytusChannel.h"
 #include "nsString.h"
+#include "mozilla/dom/Request.h"
+#include "nsIHttpChannel.h"
+
 
 namespace mozilla::dom {
 
@@ -270,4 +281,150 @@ void BerytusEncryptedPacket::HandleFetchRequest(
   // TODO(berytus): Create ChannelContainer
 }
 
-} // namespace mozilla::dom
+using RequestObserver = BerytusEncryptedPacket::RequestObserver;
+
+NS_IMPL_CYCLE_COLLECTION(RequestObserver, mPacket, mDetectedRequests, mDetectedChannels)
+NS_IMPL_CYCLE_COLLECTING_ADDREF(RequestObserver)
+NS_IMPL_CYCLE_COLLECTING_RELEASE(RequestObserver)
+NS_INTERFACE_MAP_BEGIN(RequestObserver)
+  NS_INTERFACE_MAP_ENTRY(nsIObserver)
+  NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIObserver)
+NS_INTERFACE_MAP_END
+
+RequestObserver::RequestObserver(
+    RefPtr<BerytusEncryptedPacket>& aPacket)
+    : mPacket(aPacket) {
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  MOZ_ASSERT(obs);
+
+  obs->AddObserver(this, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, false);
+  obs->AddObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC, false);
+  obs->AddObserver(this, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC, false);
+}
+
+RequestObserver::~RequestObserver() {
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  if (obs) {
+    obs->RemoveObserver(this,
+                        NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC);
+    obs->RemoveObserver(this,
+                        NS_HTTP_ON_OPENING_REQUEST_TOPIC);
+  }
+}
+
+NS_IMETHODIMP RequestObserver::Observe(nsISupports* aSubject,
+                                       const char* aTopic,
+                                       const char16_t*) {
+  nsresult rv;
+  if (strcmp(aTopic, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC) == 0) {
+    // here, we try to detect if a masked packet is part of the request body
+    // if so, we add the request to the list of detected requests
+    RefPtr<Request::ConstructorNotification> notif =
+        RefPtr(static_cast<Request::ConstructorNotification*>(aSubject));
+    RequestInit const* init;
+    rv = notif->GetInit(&init);
+    NS_ENSURE_SUCCESS(rv, rv);
+    Request const* request;
+    rv = notif->GetResult(&request);
+    NS_ENSURE_SUCCESS(rv, rv);
+    const Nullable<fetch::OwningBodyInit>& bodyInitNullable =
+      init->mBody.Value();
+    if (bodyInitNullable.IsNull()) {
+      return NS_OK;
+    }
+    const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
+    SafeRefPtr<InternalRequest> internalRequest = request->GetInternalRequest();
+    nsCString reqUrl;
+    internalRequest->GetURL(reqUrl);
+    fetch::OwningBodyInit newReqBody;
+    ErrorResult erv;
+    bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
+        bodyInit, newReqBody, reqUrl, erv);
+    if (NS_WARN_IF(erv.Failed())) {
+      return erv.StealNSResult();
+    }
+    if (!unmasked) {
+      // no masked packet found, nothing to do
+      return NS_OK;
+    }
+    nsCOMPtr<nsIInputStream> stream;
+    nsAutoCString contentTypeWithCharset;
+    uint64_t contentLength = 0;
+    rv = ExtractByteStreamFromBody(bodyInit, getter_AddRefs(stream),
+                                   contentTypeWithCharset, contentLength);
+    NS_ENSURE_SUCCESS(rv, rv);
+    // TODO(berytus): Change mContentLength to uint64_t
+    RefPtr<berytus::HttpObserver::UnmaskPacket> packet = new berytus::HttpObserver::UnmaskPacket(
+      0,
+      contentTypeWithCharset,
+      contentLength,
+      stream);
+
+    mDetectedRequests.InsertOrUpdate(
+      internalRequest.unsafeGetRawPtr(),
+      packet);
+    return NS_OK;
+  }
+  if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
+    RefPtr<FetchDriver> fetchDriver = RefPtr(static_cast<FetchDriver*>(
+      static_cast<AbortFollower*>(aSubject)));
+    InternalRequest const* request;
+    fetchDriver->GetRequest(&request);
+    if (!mDetectedRequests.Contains(const_cast<InternalRequest*>(request))) {
+      return NS_OK;
+    }
+    RefPtr<berytus::HttpObserver::UnmaskPacket> packet =
+      mDetectedRequests.Get(const_cast<InternalRequest*>(request));
+    nsIChannel const* channel = nullptr;
+    NS_ENSURE_TRUE(fetchDriver->GetChannel(&channel), NS_ERROR_FAILURE);
+    nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(channel);
+    NS_ENSURE_TRUE(httpChannel, NS_ERROR_FAILURE);
+    uint64_t channelId = httpChannel->ChannelId();
+    if (NS_WARN_IF(mDetectedChannels.Contains(channelId))) {
+      // TODO(berytus): Double processing?
+      return NS_OK;
+    }
+    mDetectedChannels.InsertOrUpdate(channelId, packet);
+    return NS_OK;
+  }
+  if (strcmp(aTopic, NS_HTTP_ON_OPENING_REQUEST_TOPIC) == 0) {
+    nsCOMPtr<nsIHttpChannel> channel = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(channel, NS_ERROR_FAILURE);
+    nsCOMPtr<nsIRequest> request = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(request, NS_ERROR_FAILURE);
+    uint64_t channelId = channel->ChannelId();
+    if (!mDetectedChannels.Contains(channelId)) {
+      return NS_OK;
+    }
+    RefPtr<berytus::HttpObserver::UnmaskPacket> packet =
+      mDetectedChannels.Get(channelId);
+    request->Suspend();
+
+    RefPtr<mozilla::berytus::UnmaskerChild> unmasker =
+      new mozilla::berytus::UnmaskerChild();
+
+    Maybe<mozilla::ipc::IPCStream> ipcStream;
+    if (NS_WARN_IF(!mozilla::ipc::SerializeIPCStream(do_AddRef(packet->Body()), ipcStream, false))) {
+      request->Resume();
+      return NS_ERROR_FAILURE;
+    }
+    auto promise = unmasker->SendUnmaskInChannel(channelId, ipcStream.value(), packet->ContentLength(), packet->ContentType());
+    promise->Then(
+      GetMainThreadSerialEventTarget(), __func__,
+      [request]() {
+        request->Resume();
+      },
+      [request](nsresult rv) {
+        nsAutoCString msg;
+        msg.Append("Unmasking failed: nsresult = ");
+        msg.AppendPrintf("%d", static_cast<uint32_t>(rv));
+        NS_WARNING(msg.get());
+        request->Resume();
+      }
+    );
+    return NS_OK;
+  }
+  return NS_ERROR_INVALID_ARG;
+}
+
+} // namespace mozilla::dom}

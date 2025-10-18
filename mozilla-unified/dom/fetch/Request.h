@@ -117,7 +117,7 @@ class Request final : public FetchBody<Request>, public nsWrapperCache {
 
   SafeRefPtr<Request> Clone(ErrorResult& aRv);
 
-  SafeRefPtr<InternalRequest> GetInternalRequest();
+  SafeRefPtr<InternalRequest> GetInternalRequest() const;
 
   const UniquePtr<mozilla::ipc::PrincipalInfo>& GetPrincipalInfo() const {
     return mRequest->GetPrincipalInfo();

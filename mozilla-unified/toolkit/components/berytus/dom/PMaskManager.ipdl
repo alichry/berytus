@@ -13,7 +13,8 @@ protocol PMaskManager {
   manages PUnmasker;
 	parent:
 	  async __delete__(nsString aNote);
-		async PUnmasker();
+	child:
+	  async PUnmasker();
 };
 
 }

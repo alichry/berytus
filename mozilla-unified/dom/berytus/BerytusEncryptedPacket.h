@@ -13,10 +13,13 @@
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/Blob.h"
 #include "mozilla/dom/InternalRequest.h"
+#include "nsHashKeys.h"
 #include "nsIGlobalObject.h"
 #include "nsStringFwd.h"
 #include "nsTArrayForwardDeclare.h"
 #include "mozilla/dom/BerytusChannel.h"
+#include "mozilla/berytus/HttpObserver.h"
+#include "nsRefPtrHashtable.h"
 
 namespace mozilla::dom {
 
@@ -85,7 +88,22 @@ protected:
     const nsCString& aReqUrl,
     ErrorResult& aRv
   );
+
 public:
+  class RequestObserver final : public nsIObserver {
+  public:
+    NS_DECL_CYCLE_COLLECTING_ISUPPORTS
+    NS_DECL_CYCLE_COLLECTION_CLASS(RequestObserver)
+    NS_DECL_NSIOBSERVER
+
+    RequestObserver(RefPtr<BerytusEncryptedPacket>& aPacket);
+  protected:
+    ~RequestObserver();
+
+    RefPtr<BerytusEncryptedPacket> mPacket;
+    nsRefPtrHashtable<nsUint64HashKey, berytus::HttpObserver::UnmaskPacket> mDetectedChannels;
+    nsRefPtrHashtable<nsPtrHashKey<InternalRequest>, berytus::HttpObserver::UnmaskPacket> mDetectedRequests;
+  };
   /**
    * This procedure is the main entrypoint for Berytus' E2E masking
    * of encrypted packet. In particular, it undertakes the following

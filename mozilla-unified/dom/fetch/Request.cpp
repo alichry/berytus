@@ -73,7 +73,7 @@ Request::Request(nsIGlobalObject* aOwner, SafeRefPtr<InternalRequest> aRequest,
 
 Request::~Request() = default;
 
-SafeRefPtr<InternalRequest> Request::GetInternalRequest() {
+SafeRefPtr<InternalRequest> Request::GetInternalRequest() const {
   return mRequest.clonePtr();
 }
 
@@ -431,15 +431,6 @@ SafeRefPtr<Request> Request::Constructor(
         aInit.mBody.Value();
     if (!bodyInitNullable.IsNull()) {
       const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
-      // Note(berytus): Lines 433-446 show how we process the fetch body,
-      // trying to unmask encrypted packets if request URL is signed.
-      BerytusEncryptedPacket::HandleFetchRequest(
-          request,
-          bodyInit,
-          aRv);
-      if (NS_WARN_IF(aRv.Failed())) {
-        return nullptr;
-      }
       nsCOMPtr<nsIInputStream> stream;
       nsAutoCString contentTypeWithCharset;
       uint64_t contentLength = 0;
