@@ -5,6 +5,7 @@
 
 include protocol PMaskManager;
 include IPCStream;
+using struct mozilla::void_t from "ipc/IPCMessageUtils.h";
 
 namespace mozilla {
 namespace berytus {
@@ -15,7 +16,7 @@ protocol PUnmasker {
     async UnmaskInChannel(uint64_t aChannelId,
                           IPCStream aUnmaskedStream,
                           uint64_t aLength,
-                          nsCString aContentType);
+                          nsCString aContentType) returns (void_t ok);
   child:
     async __delete__(Shmem aShmem);
 };

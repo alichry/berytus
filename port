@@ -33,6 +33,8 @@ dom/base/Navigator.cpp
 dom/base/Navigator.h
 dom/fetch/Request.h
 dom/fetch/Request.cpp
+dom/fetch/FetchDriver.h
+dom/fetch/FetchDriver.cpp
 dom/file/Blob.h
 toolkit/modules/ActorManagerParent.sys.mjs
 browser/base/content/navigator-toolbox.inc.xhtml
