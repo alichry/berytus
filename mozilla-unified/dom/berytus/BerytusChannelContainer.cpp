@@ -14,7 +14,7 @@ namespace mozilla::dom {
 
 
 // Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_0(BerytusChannelContainer)
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusChannelContainer, mGlobal, mPacketObservers)
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusChannelContainer)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusChannelContainer)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusChannelContainer)
@@ -37,85 +37,22 @@ nsIGlobalObject* BerytusChannelContainer::GetParentObject() const {
   return mGlobal;
 }
 
-void BerytusChannelContainer::HandleFetchRequest(
-      nsPIDOMWindowInner* aWindow,
-      SafeRefPtr<InternalRequest>& aRequest,
-      const fetch::OwningBodyInit& aReqBody,
-      ErrorResult& aRv) {
+void BerytusChannelContainer::HoldObserver(RefPtr<PacketObserver>& aObserver) {
+  mPacketObservers.AppendElement(aObserver);
+}
+
+already_AddRefed<BerytusChannelContainer> BerytusChannelContainer::GetInstance(
+    nsPIDOMWindowInner* aWindow) {
   MOZ_ASSERT(aWindow);
-  if (!aWindow) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return;
+  if (NS_WARN_IF(!aWindow)) {
+    return nullptr;
   }
   auto* navigator = aWindow->Navigator();
   MOZ_ASSERT(navigator);
-  RefPtr<BerytusChannelContainer> impl =
-    navigator->BerytusChannel();
-  MOZ_ASSERT(impl);
-  return impl->HandleFetchRequest(aRequest, aReqBody, aRv);
-}
-
-void BerytusChannelContainer::HandleHttpFetch(
-    nsPIDOMWindowInner* aWindow,
-    SafeRefPtr<InternalRequest>& aRequest,
-    nsCOMPtr<nsIChannel>& aChannel,
-    ErrorResult& aRv
-) {
-  MOZ_ASSERT(aWindow);
-  if (!aWindow) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return;
+  if (NS_WARN_IF(!navigator)) {
+    return nullptr;
   }
-  auto* navigator = aWindow->Navigator();
-  MOZ_ASSERT(navigator);
-  RefPtr<BerytusChannelContainer> impl =
-    navigator->BerytusChannel();
-  MOZ_ASSERT(impl);
-  return impl->HandleHttpFetch(aRequest, aChannel, aRv);
-}
-
-void BerytusChannelContainer::HandleFetchRequest(
-      SafeRefPtr<InternalRequest>& aRequest,
-      const fetch::OwningBodyInit& aReqBody,
-      ErrorResult& aRv) {
-  // Here, we try to unwrap the body, and we
-  // save into a hashmap using the request address
-  nsCString reqUrl;
-  aRequest->GetURL(reqUrl);
-  if (IsSignedUrl(reqUrl)) {
-    // TODO: implement Subprocedure (2)
-  }
-  fetch::OwningBodyInit newReqBody;
-  /* Subprocedure (1): */
-  bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
-      aReqBody, newReqBody, reqUrl, aRv);
-  if (NS_WARN_IF(aRv.Failed())) {
-    return;
-  }
-  if (!unmasked) {
-    return;
-  }
-  nsCOMPtr<nsIInputStream> stream;
-  nsAutoCString contentTypeWithCharset;
-  uint64_t contentLength = 0;
-  aRv = ExtractByteStreamFromBody(newReqBody, getter_AddRefs(stream),
-                                  contentTypeWithCharset, contentLength);
-  if (NS_WARN_IF(aRv.Failed())) {
-    return;
-  }
-
-  
-}
-
-void HandleHttpFetch(
-    SafeRefPtr<InternalRequest>& aRequest,
-    nsCOMPtr<nsIChannel>& aChannel,
-    ErrorResult& aRv
-) {
-  // Here, we check if we have previously unwrapped
-  // the body containing a BerytusEncryptedPacket,
-  // and if so, we replace the channel's upload body with it.
-
+  return navigator->BerytusChannel();
 }
 
 bool BerytusChannelContainer::IsSignedUrl(const nsCString& aReqUrl) const {

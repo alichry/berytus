@@ -1,5 +1,5 @@
 --- dom/fetch/FetchDriver.h.orig	2025-10-15 22:30:35
-+++ dom/fetch/FetchDriver.h	2025-10-16 08:24:33
++++ dom/fetch/FetchDriver.h	2025-10-18 22:52:56
 @@ -35,6 +35,8 @@
  
  namespace dom {
@@ -13,8 +13,8 @@
      mIsThirdPartyWorker = aIsThirdPartyWorker;
    }
  
-+  void GetRequest(InternalRequest const** aRequest) const;
-+  bool GetChannel(nsIChannel const** aChannel) const;
++  void GetRequest(InternalRequest** aRequest) const;
++  bool GetChannel(nsIChannel** aChannel) const;
 +
   private:
    nsCOMPtr<nsIPrincipal> mPrincipal;

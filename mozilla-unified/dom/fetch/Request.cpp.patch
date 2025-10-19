@@ -1,6 +1,6 @@
 --- dom/fetch/Request.cpp.orig	2025-09-20 16:11:07
-+++ dom/fetch/Request.cpp	2025-10-14 22:24:41
-@@ -7,6 +7,8 @@
++++ dom/fetch/Request.cpp	2025-10-19 14:41:20
+@@ -7,10 +7,12 @@
  #include "Request.h"
  
  #include "js/Value.h"
@@ -9,15 +9,20 @@
  #include "nsIURI.h"
  #include "nsNetUtil.h"
  #include "nsPIDOMWindow.h"
-@@ -28,6 +30,8 @@
+-
++#include "nsIOService.h"
+ #include "mozilla/ErrorResult.h"
+ #include "mozilla/StaticPrefs_network.h"
+ #include "mozilla/dom/Headers.h"
+@@ -27,6 +29,8 @@
+ #include "mozilla/dom/ReadableStreamDefaultReader.h"
  
  namespace mozilla::dom {
- 
-+NS_IMPL_ISUPPORTS(Request::ConstructorNotification, nsISupports)
 +
++NS_IMPL_ISUPPORTS(Request::ConstructorNotification, nsISupports)
+ 
  NS_IMPL_ADDREF_INHERITED(Request, FetchBody<Request>)
  NS_IMPL_RELEASE_INHERITED(Request, FetchBody<Request>)
- 
 @@ -69,7 +73,7 @@
  
  Request::~Request() = default;
@@ -27,7 +32,7 @@
    return mRequest.clonePtr();
  }
  
-@@ -470,9 +474,34 @@
+@@ -470,9 +474,36 @@
        }
      }
    }
@@ -41,10 +46,12 @@
 +nsresult Request::NotifyConstructorObservers(
 +    SafeRefPtr<Request>& aRequest,
 +    const RequestInit& aInit) {
++
 +  RefPtr<Request::ConstructorNotification> notif =
 +    new Request::ConstructorNotification(
 +      aRequest.unsafeGetRawPtr(), &aInit);
-+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
++  nsCOMPtr<nsIObserverService> obs =
++      static_cast<nsIObserverService*>(net::gIOService);
 +  if (NS_WARN_IF(!obs)) {
 +    return NS_ERROR_FAILURE;
 +  }

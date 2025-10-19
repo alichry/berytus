@@ -8,6 +8,7 @@
 #include "mozilla/berytus/UnmaskerParent.h"
 #include "mozilla/berytus/HttpObserver.h"
 #include "mozilla/ipc/IPCStreamUtils.h"
+#include "mozilla/ipc/IPCCore.h" // void_t
 
 namespace mozilla {
 namespace berytus {
@@ -17,19 +18,21 @@ UnmaskerParent::~UnmaskerParent() {}
 
 ipc::IPCResult UnmaskerParent::RecvUnmaskInChannel(
     const uint64_t& aChannelId, const IPCStream& aUnmaskedStream,
-    const uint64_t& aLength, const nsACString& aContentType) {
+    const uint64_t& aLength, const nsACString& aContentType,
+    UnmaskInChannelResolver&& aResolver) {
   RefPtr<HttpObserver> httpObs = HttpObserver::GetSingleton();
   nsCOMPtr<nsIInputStream> body = DeserializeIPCStream(aUnmaskedStream.stream());
   if (NS_WARN_IF(!body)) {
     return IPC_FAIL(this, "Failed to deserialize IPCStream");
   }
-  RefPtr<HttpObserver::UnmaskPacket> packet =
-      new HttpObserver::UnmaskPacket(aChannelId,
+  RefPtr<UnmaskPacket> packet =
+      new UnmaskPacket(aChannelId,
                                      aContentType,
                                      // TODO(berytus): Change to uint64_t if we're sure we can infer len at some point
                                      int64_t(aLength),
                                      body);
   httpObs->HoldUnmasked(packet);
+  aResolver(void_t{});
   return IPC_OK();
 }
 

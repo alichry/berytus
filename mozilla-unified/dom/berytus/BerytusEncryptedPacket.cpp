@@ -20,6 +20,7 @@
 #include "mozilla/dom/URLSearchParams.h"
 #include "mozilla/dom/FormData.h"
 #include "mozilla/dom/Fetch.h"
+#include "nsCycleCollectionParticipant.h"
 #include "nsIHttpProtocolHandler.h"
 #include "nsISupports.h"
 #include "nsNetUtil.h"
@@ -27,11 +28,13 @@
 #include "nsString.h"
 #include "mozilla/dom/Request.h"
 #include "nsIHttpChannel.h"
-
+#include "mozilla/dom/BerytusChannelContainer.h"
 
 namespace mozilla::dom {
 
 #define CONCEALED_HINT "[BerytusJWEPacket.CONCEALED]"
+
+static mozilla::LazyLogModule sLogger("berytus_fetch_observer");
 
 template <>
 BerytusEncryptedPacket* TryDowncastBlob(Blob* aBlob) {
@@ -119,6 +122,15 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
       return;
     }
   }
+  RefPtr<BerytusChannelContainer> container =
+    BerytusChannelContainer::GetInstance(mGlobal->GetAsInnerWindow());
+  if (NS_WARN_IF(!container)) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  RefPtr<BerytusEncryptedPacket> self = this;
+  RefPtr<PacketObserver> observer = new PacketObserver(self);
+  container->HoldObserver(observer);
   mAttached = true;
 }
 
@@ -256,42 +268,15 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
   return false;
 }
 
-void BerytusEncryptedPacket::HandleFetchRequest(
-    SafeRefPtr<InternalRequest>& aRequest,
-    const fetch::OwningBodyInit& aReqBody,
-    ErrorResult& aRv) {
-  nsCString reqUrl;
-  aRequest->GetURL(reqUrl);
-  fetch::OwningBodyInit newReqBody;
-  /* Subprocedure (1): */
-  bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
-      aReqBody, newReqBody, reqUrl, aRv);
-  if (NS_WARN_IF(aRv.Failed())) {
-    return;
-  }
-  if (unmasked) {
-    aRequest->SetSkipServiceWorker();
-    // short-circuit: No need to go through subproc 2
-    // as service worker interception has been already
-    // skipped
-    return;
-  }
-  /* Subprocedure (2): */
-  // we need a way to get the list of signed urls
-  // TODO(berytus): Create ChannelContainer
-}
-
-using RequestObserver = BerytusEncryptedPacket::RequestObserver;
-
-NS_IMPL_CYCLE_COLLECTION(RequestObserver, mPacket, mDetectedRequests, mDetectedChannels)
-NS_IMPL_CYCLE_COLLECTING_ADDREF(RequestObserver)
-NS_IMPL_CYCLE_COLLECTING_RELEASE(RequestObserver)
-NS_INTERFACE_MAP_BEGIN(RequestObserver)
+NS_IMPL_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver, mPacket, mDetectedRequests, mDetectedChannels)
+NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusEncryptedPacket::PacketObserver)
+NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusEncryptedPacket::PacketObserver)
+NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver)
   NS_INTERFACE_MAP_ENTRY(nsIObserver)
   NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIObserver)
 NS_INTERFACE_MAP_END
 
-RequestObserver::RequestObserver(
+BerytusEncryptedPacket::PacketObserver::PacketObserver(
     RefPtr<BerytusEncryptedPacket>& aPacket)
     : mPacket(aPacket) {
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
@@ -302,7 +287,7 @@ RequestObserver::RequestObserver(
   obs->AddObserver(this, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC, false);
 }
 
-RequestObserver::~RequestObserver() {
+BerytusEncryptedPacket::PacketObserver::~PacketObserver() {
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
   if (obs) {
     obs->RemoveObserver(this,
@@ -312,10 +297,11 @@ RequestObserver::~RequestObserver() {
   }
 }
 
-NS_IMETHODIMP RequestObserver::Observe(nsISupports* aSubject,
+NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubject,
                                        const char* aTopic,
                                        const char16_t*) {
   nsresult rv;
+  MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s)", this, aSubject, aTopic));
   if (strcmp(aTopic, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC) == 0) {
     // here, we try to detect if a masked packet is part of the request body
     // if so, we add the request to the list of detected requests
@@ -354,7 +340,7 @@ NS_IMETHODIMP RequestObserver::Observe(nsISupports* aSubject,
                                    contentTypeWithCharset, contentLength);
     NS_ENSURE_SUCCESS(rv, rv);
     // TODO(berytus): Change mContentLength to uint64_t
-    RefPtr<berytus::HttpObserver::UnmaskPacket> packet = new berytus::HttpObserver::UnmaskPacket(
+    RefPtr<berytus::UnmaskPacket> packet = new berytus::UnmaskPacket(
       0,
       contentTypeWithCharset,
       contentLength,
@@ -363,20 +349,21 @@ NS_IMETHODIMP RequestObserver::Observe(nsISupports* aSubject,
     mDetectedRequests.InsertOrUpdate(
       internalRequest.unsafeGetRawPtr(),
       packet);
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), contentLength, contentTypeWithCharset.get()));
     return NS_OK;
   }
   if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
     RefPtr<FetchDriver> fetchDriver = RefPtr(static_cast<FetchDriver*>(
       static_cast<AbortFollower*>(aSubject)));
-    InternalRequest const* request;
+    InternalRequest* request;
     fetchDriver->GetRequest(&request);
     if (!mDetectedRequests.Contains(const_cast<InternalRequest*>(request))) {
       return NS_OK;
     }
-    RefPtr<berytus::HttpObserver::UnmaskPacket> packet =
+    RefPtr<berytus::UnmaskPacket> packet =
       mDetectedRequests.Get(const_cast<InternalRequest*>(request));
-    nsIChannel const* channel = nullptr;
-    NS_ENSURE_TRUE(fetchDriver->GetChannel(&channel), NS_ERROR_FAILURE);
+    nsCOMPtr<nsIChannel> channel = nullptr;
+    NS_ENSURE_TRUE(fetchDriver->GetChannel(getter_AddRefs(channel)), NS_ERROR_FAILURE);
     nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(channel);
     NS_ENSURE_TRUE(httpChannel, NS_ERROR_FAILURE);
     uint64_t channelId = httpChannel->ChannelId();
@@ -385,6 +372,7 @@ NS_IMETHODIMP RequestObserver::Observe(nsISupports* aSubject,
       return NS_OK;
     }
     mDetectedChannels.InsertOrUpdate(channelId, packet);
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
     return NS_OK;
   }
   if (strcmp(aTopic, NS_HTTP_ON_OPENING_REQUEST_TOPIC) == 0) {
@@ -396,30 +384,30 @@ NS_IMETHODIMP RequestObserver::Observe(nsISupports* aSubject,
     if (!mDetectedChannels.Contains(channelId)) {
       return NS_OK;
     }
-    RefPtr<berytus::HttpObserver::UnmaskPacket> packet =
+    RefPtr<berytus::UnmaskPacket> packet =
       mDetectedChannels.Get(channelId);
-    request->Suspend();
 
     RefPtr<mozilla::berytus::UnmaskerChild> unmasker =
       new mozilla::berytus::UnmaskerChild();
 
     Maybe<mozilla::ipc::IPCStream> ipcStream;
     if (NS_WARN_IF(!mozilla::ipc::SerializeIPCStream(do_AddRef(packet->Body()), ipcStream, false))) {
-      request->Resume();
       return NS_ERROR_FAILURE;
     }
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
+    rv = request->Suspend();
+    NS_ENSURE_SUCCESS(rv, rv);
     auto promise = unmasker->SendUnmaskInChannel(channelId, ipcStream.value(), packet->ContentLength(), packet->ContentType());
     promise->Then(
       GetMainThreadSerialEventTarget(), __func__,
       [request]() {
-        request->Resume();
+        nsresult rv = request->Resume();
+        NS_ENSURE_SUCCESS(rv, );
       },
-      [request](nsresult rv) {
-        nsAutoCString msg;
-        msg.Append("Unmasking failed: nsresult = ");
-        msg.AppendPrintf("%d", static_cast<uint32_t>(rv));
-        NS_WARNING(msg.get());
-        request->Resume();
+      [request](mozilla::ipc::ResponseRejectReason&& aReason) {
+        NS_WARNING("Unmasking failed");
+        nsresult rv = request->Resume();
+        NS_ENSURE_SUCCESS(rv, );
       }
     );
     return NS_OK;

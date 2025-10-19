@@ -143,6 +143,7 @@ class Request final : public FetchBody<Request>, public nsWrapperCache {
         }
         MOZ_ASSERT(mRequest);
         *aRequest = mRequest;
+        return NS_OK;
       }
       nsresult GetInit(RequestInit const** aInit) const {
         if (!mIsSafe) {

@@ -12,7 +12,7 @@
 #include "nsIURI.h"
 #include "nsNetUtil.h"
 #include "nsPIDOMWindow.h"
-
+#include "nsIOService.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/StaticPrefs_network.h"
 #include "mozilla/dom/Headers.h"
@@ -484,10 +484,12 @@ SafeRefPtr<Request> Request::Constructor(
 nsresult Request::NotifyConstructorObservers(
     SafeRefPtr<Request>& aRequest,
     const RequestInit& aInit) {
+
   RefPtr<Request::ConstructorNotification> notif =
     new Request::ConstructorNotification(
       aRequest.unsafeGetRawPtr(), &aInit);
-  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  nsCOMPtr<nsIObserverService> obs =
+      static_cast<nsIObserverService*>(net::gIOService);
   if (NS_WARN_IF(!obs)) {
     return NS_ERROR_FAILURE;
   }
