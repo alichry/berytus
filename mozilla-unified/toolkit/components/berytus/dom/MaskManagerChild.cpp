@@ -5,6 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/berytus/MaskManagerChild.h"
+#include "mozilla/berytus/UnmaskerChild.h"
 
 namespace mozilla {
 namespace berytus {
@@ -13,5 +14,9 @@ MaskManagerChild::MaskManagerChild() {}
 
 MaskManagerChild::~MaskManagerChild() {}
 
+already_AddRefed<PUnmaskerChild> MaskManagerChild::AllocPUnmaskerChild() {
+	RefPtr<PUnmaskerChild> actor = new UnmaskerChild();
+	return actor.forget();
+}
 }
 }

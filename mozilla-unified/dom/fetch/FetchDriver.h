@@ -151,8 +151,8 @@ class FetchDriver final : public nsIChannelEventSink,
     mIsThirdPartyWorker = aIsThirdPartyWorker;
   }
 
-  void GetRequest(InternalRequest const** aRequest) const;
-  bool GetChannel(nsIChannel const** aChannel) const;
+  void GetRequest(InternalRequest** aRequest) const;
+  bool GetChannel(nsIChannel** aChannel) const;
 
  private:
   nsCOMPtr<nsIPrincipal> mPrincipal;

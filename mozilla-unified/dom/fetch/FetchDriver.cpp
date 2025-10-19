@@ -983,12 +983,12 @@ nsresult FetchDriver::HttpFetch(
   return NS_OK;
 }
 
-void FetchDriver::GetRequest(InternalRequest const** aRequest) const {
+void FetchDriver::GetRequest(InternalRequest** aRequest) const {
   MOZ_ASSERT(aRequest);
   *aRequest = mRequest.unsafeGetRawPtr();
 }
 
-bool FetchDriver::GetChannel(nsIChannel const** aChannel) const {
+bool FetchDriver::GetChannel(nsIChannel** aChannel) const {
   if (mChannel) {
     *aChannel = mChannel;
     return true;
@@ -997,7 +997,8 @@ bool FetchDriver::GetChannel(nsIChannel const** aChannel) const {
 }
 
 nsresult FetchDriver::NotifyHttpFetchObservers() {
-  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  nsCOMPtr<nsIObserverService> obs =
+    static_cast<nsIObserverService*>(net::gIOService);
   if (NS_WARN_IF(!obs)) {
     return NS_ERROR_FAILURE;
   }
@@ -1005,7 +1006,6 @@ nsresult FetchDriver::NotifyHttpFetchObservers() {
   if (NS_WARN_IF(!asSupports)) {
     return NS_ERROR_FAILURE;
   }
-  InternalRequest* req = mRequest.unsafeGetRawPtr();
   obs->NotifyObservers(asSupports,
                        NS_FETCH_DRIVER_HTTP_FETCH_TOPIC,
                        nullptr);

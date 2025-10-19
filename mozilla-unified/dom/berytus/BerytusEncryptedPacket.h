@@ -15,6 +15,7 @@
 #include "mozilla/dom/InternalRequest.h"
 #include "nsHashKeys.h"
 #include "nsIGlobalObject.h"
+#include "nsISupports.h"
 #include "nsStringFwd.h"
 #include "nsTArrayForwardDeclare.h"
 #include "mozilla/dom/BerytusChannel.h"
@@ -48,6 +49,11 @@ public:
   bool HasBerytusEncryptedPacketInterface() const override;
   bool Attached() const override;
   void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override;
+
+  // This should return something that eventually allows finding a
+  // path to the global this object is associated with.  Most simply,
+  // returning an actual global works.
+  nsIGlobalObject* GetParentObject() const;
 protected:
   struct Content {
     UniquePtr<uint8_t[]> mBuf = nullptr;
@@ -90,50 +96,21 @@ protected:
   );
 
 public:
-  class RequestObserver final : public nsIObserver {
+  class PacketObserver final : public nsIObserver {
   public:
-    NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-    NS_DECL_CYCLE_COLLECTION_CLASS(RequestObserver)
+    NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
+    NS_DECL_CYCLE_COLLECTION_CLASS(PacketObserver)
     NS_DECL_NSIOBSERVER
 
-    RequestObserver(RefPtr<BerytusEncryptedPacket>& aPacket);
+    PacketObserver(RefPtr<BerytusEncryptedPacket>& aPacket);
   protected:
-    ~RequestObserver();
+    ~PacketObserver();
 
+    // TODO(berytus): Switch to WeakPtr
     RefPtr<BerytusEncryptedPacket> mPacket;
-    nsRefPtrHashtable<nsUint64HashKey, berytus::HttpObserver::UnmaskPacket> mDetectedChannels;
-    nsRefPtrHashtable<nsPtrHashKey<InternalRequest>, berytus::HttpObserver::UnmaskPacket> mDetectedRequests;
+    nsRefPtrHashtable<nsUint64HashKey, berytus::UnmaskPacket> mDetectedChannels;
+    nsRefPtrHashtable<nsPtrHashKey<InternalRequest>, berytus::UnmaskPacket> mDetectedRequests;
   };
-  /**
-   * This procedure is the main entrypoint for Berytus' E2E masking
-   * of encrypted packet. In particular, it undertakes the following
-   * subprocedures: (1) It attempts to detect a BerytusEncryptedPacket
-   * in the request body, and if one was found, it attempts to unmask it,
-   * disabling service worker interception along the way; (2) Additionally,
-   * regardless of the outcome of the previous step, it disables service
-   * worker interception if the request url is a signed url part of
-   * the key agreement parameters. This is to prepare for masking of
-   * encrypted packets coming from the web app, avoiding service worker
-   * interception before masking takes place.
-   *
-   */
-  static void HandleFetchRequest(SafeRefPtr<InternalRequest>& aRequest,
-                                 const fetch::OwningBodyInit& aReqBody,
-                                 ErrorResult& aRv);
-
-  /**
-   * Here, if the request url is a signed url, this procedure
-   * attempts to locate encrypted packets in the response body,
-   * and it masks them, returning a masked encrypted packet that
-   * would not be exposed on the DOM. Rather, it will be unmasked
-   * when sent to the secret manager.
-   */
-  //static void HandleFetchResponse();
-
-  // This should return something that eventually allows finding a
-  // path to the global this object is associated with.  Most simply,
-  // returning an actual global works.
-  nsIGlobalObject* GetParentObject() const;
 };
 
 template <typename T>

@@ -7,7 +7,9 @@
 #ifndef DOM_BERYTUSCHANNELCONTAINER_H_
 #define DOM_BERYTUSCHANNELCONTAINER_H_
 
+#include "BerytusEncryptedPacket.h"
 #include "js/TypeDecls.h"
+#include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/ErrorResult.h"
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/BindingDeclarations.h"
@@ -21,6 +23,8 @@ class OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVSt
 namespace fetch {
   using OwningBodyInit = OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
 }
+
+using PacketObserver = mozilla::dom::BerytusEncryptedPacket::PacketObserver;
 
 // we need to create a channel observer
 // and we need to access the global/inner window's
@@ -36,45 +40,17 @@ public:
 public:
   BerytusChannelContainer(nsIGlobalObject* aGlobal);
 
-  /**
-   * This procedure is the main entrypoint for Berytus' E2E masking
-   * of encrypted packet. In particular, it undertakes the following
-   * subprocedures: (1) It attempts to detect a BerytusEncryptedPacket
-   * in the request body, and if one was found, it attempts to unmask it
-   * in a non-interceptible manner; (2) Additionally, regardless of the
-   * outcome of the previous step, and if the request url  is a signed
-   * url part of the key agreement parameters, it attempts to mask
-   * any encrypted packets found in the response body, prior service
-   * worker interception.
-   */
-  static void HandleFetchRequest(
-      nsPIDOMWindowInner* aWindow,
-      SafeRefPtr<InternalRequest>& aRequest,
-      const fetch::OwningBodyInit& aReqBody,
-      ErrorResult& aRv);
-  // must be called by FetchDriver after creating
-  // a channel, and before calling AsyncOpen
-  static void HandleHttpFetch(
-      nsPIDOMWindowInner* aWindow,
-      SafeRefPtr<InternalRequest>& aRequest,
-      nsCOMPtr<nsIChannel>& aChannel,
-      ErrorResult& aRv
-  );
-  void HandleFetchRequest(
-      SafeRefPtr<InternalRequest>& aRequest,
-      const fetch::OwningBodyInit& aReqBody,
-      ErrorResult& aRv);
-  void HandleHttpFetch(
-      SafeRefPtr<InternalRequest>& aRequest,
-      nsCOMPtr<nsIChannel>& aChannel,
-      ErrorResult& aRv
-  );
+  static already_AddRefed<BerytusChannelContainer> GetInstance(
+      nsPIDOMWindowInner* aWindow);
+
+  void HoldObserver(RefPtr<PacketObserver>& aObserver);
+
   bool IsSignedUrl(const nsCString& aReqUrl) const;
 
 protected:
   ~BerytusChannelContainer();
   nsCOMPtr<nsIGlobalObject> mGlobal;
-
+  nsTArray<RefPtr<PacketObserver>> mPacketObservers;
 public:
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

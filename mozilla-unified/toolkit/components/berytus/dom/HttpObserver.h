@@ -21,38 +21,38 @@
 namespace mozilla {
 namespace berytus {
 
+class UnmaskPacket final : public nsISupports {
+public:
+  NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
+  NS_DECL_CYCLE_COLLECTION_CLASS(UnmaskPacket)
+
+  UnmaskPacket(uint64_t aChannelId,
+                const nsACString& aContentType,
+                int64_t aContentLength,
+                nsIInputStream* aBody);
+
+  uint64_t ChannelId() const;
+  const nsCString& ContentType() const;
+  int64_t ContentLength() const;
+  nsIInputStream* Body() const;
+private:
+  ~UnmaskPacket();
+  uint64_t mChannelId;
+  nsCString mContentType;
+  int64_t mContentLength;
+  nsCOMPtr<nsIInputStream> mBody;
+
+};
+
 class HttpObserver final : public nsIObserver {
 public:
-  NS_DECL_CYCLE_COLLECTING_ISUPPORTS
+  NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
   NS_DECL_CYCLE_COLLECTION_CLASS(HttpObserver)
 
   NS_DECL_NSIOBSERVER
 
   static HttpObserver& Get();
   static already_AddRefed<HttpObserver> GetSingleton();
-
-  class UnmaskPacket final : public nsISupports {
-  public:
-    NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-    NS_DECL_CYCLE_COLLECTION_CLASS(UnmaskPacket)
-
-    UnmaskPacket(uint64_t aChannelId,
-                 const nsACString& aContentType,
-                 int64_t aContentLength,
-                 nsIInputStream* aBody);
-
-    uint64_t ChannelId() const;
-    const nsCString& ContentType() const;
-    int64_t ContentLength() const;
-    nsIInputStream* Body() const;
-  private:
-    ~UnmaskPacket();
-    uint64_t mChannelId;
-    nsCString mContentType;
-    int64_t mContentLength;
-    nsCOMPtr<nsIInputStream> mBody;
-    
-  };
 
   void HoldUnmasked(RefPtr<UnmaskPacket>& aPacket);
 private:

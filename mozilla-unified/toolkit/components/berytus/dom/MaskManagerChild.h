@@ -8,6 +8,7 @@
 #define MOZILLA_BERYTUS_MASKMANAGERCHILD_H
 
 
+#include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/berytus/PMaskManagerChild.h"
 #include "mozilla/ipc/ProtocolUtils.h" // ipc::IPCResult
 
@@ -17,7 +18,9 @@ namespace berytus {
 class MaskManagerChild final : public PMaskManagerChild {
 public:
   NS_INLINE_DECL_REFCOUNTING(MaskManagerChild)
+
   MaskManagerChild();
+  already_AddRefed<PUnmaskerChild> AllocPUnmaskerChild();
 protected:
   ~MaskManagerChild();
 

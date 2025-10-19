@@ -22,7 +22,8 @@ public:
 
   ipc::IPCResult RecvUnmaskInChannel(
       const uint64_t& aChannelId, const IPCStream& aUnmaskedStream,
-      const uint64_t& aLength, const nsACString& aContentType);
+      const uint64_t& aLength, const nsACString& aContentType,
+      UnmaskInChannelResolver&& aResolver);
 
   UnmaskerParent();
 protected:
