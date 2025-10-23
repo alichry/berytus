@@ -933,6 +933,11 @@ nsresult FetchDriver::HttpFetch(
     }
   }
 
+
+  // NOTE(berytus): Second hook. Must be called
+  // before chan->AsyncOpen
+  NotifyHttpFetchObservers(chan);
+
   // if the preferred alternative data type in InternalRequest is not empty, set
   // the data type on the created channel and also create a
   // AlternativeDataStreamListener to be the stream listener of the channel.
@@ -974,12 +979,6 @@ nsresult FetchDriver::HttpFetch(
 
   mChannel = chan;
 
-  // NOTE(berytus): Second hook.
-  rv = NotifyHttpFetchObservers();
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    return rv;
-  }
-
   return NS_OK;
 }
 
@@ -996,9 +995,10 @@ bool FetchDriver::GetChannel(nsIChannel** aChannel) const {
   return false;
 }
 
-nsresult FetchDriver::NotifyHttpFetchObservers() {
-  nsCOMPtr<nsIObserverService> obs =
-    static_cast<nsIObserverService*>(net::gIOService);
+nsresult FetchDriver::NotifyHttpFetchObservers(nsCOMPtr<nsIChannel>& aChannel) {
+  NS_ENSURE_TRUE(NS_IsMainThread(), NS_ERROR_NOT_SAME_THREAD);
+  nsresult rv;
+  nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
   if (NS_WARN_IF(!obs)) {
     return NS_ERROR_FAILURE;
   }
@@ -1006,9 +1006,13 @@ nsresult FetchDriver::NotifyHttpFetchObservers() {
   if (NS_WARN_IF(!asSupports)) {
     return NS_ERROR_FAILURE;
   }
-  obs->NotifyObservers(asSupports,
-                       NS_FETCH_DRIVER_HTTP_FETCH_TOPIC,
-                       nullptr);
+  nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(aChannel);
+  NS_ENSURE_TRUE(httpChannel, NS_ERROR_FAILURE);
+  uint64_t channelId = httpChannel->ChannelId();
+  rv = obs->NotifyObservers(asSupports,
+                            NS_FETCH_DRIVER_HTTP_FETCH_TOPIC,
+                            reinterpret_cast<const char16_t*>(&channelId));
+  NS_ENSURE_SUCCESS(rv, rv);
   return NS_OK;
 }
 
