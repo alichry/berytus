@@ -8,6 +8,8 @@
 
 #include "js/Value.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "nsDebug.h"
+#include "nsIObserver.h"
 #include "nsISupports.h"
 #include "nsIURI.h"
 #include "nsNetUtil.h"
@@ -474,22 +476,19 @@ SafeRefPtr<Request> Request::Constructor(
       }
     }
   }
-  aRv = NotifyConstructorObservers(domRequest, aInit);
-  if (NS_WARN_IF(aRv.Failed())) {
-    return nullptr;
-  }
+  NotifyConstructorObservers(domRequest, aInit);
   return domRequest;
 }
 
 nsresult Request::NotifyConstructorObservers(
     SafeRefPtr<Request>& aRequest,
     const RequestInit& aInit) {
-
+  NS_ENSURE_TRUE(NS_IsMainThread(), NS_ERROR_NOT_SAME_THREAD);
+  nsresult rv;
   RefPtr<Request::ConstructorNotification> notif =
     new Request::ConstructorNotification(
       aRequest.unsafeGetRawPtr(), &aInit);
-  nsCOMPtr<nsIObserverService> obs =
-      static_cast<nsIObserverService*>(net::gIOService);
+  nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
   if (NS_WARN_IF(!obs)) {
     return NS_ERROR_FAILURE;
   }
@@ -497,9 +496,33 @@ nsresult Request::NotifyConstructorObservers(
   if (NS_WARN_IF(!asSupports)) {
     return NS_ERROR_FAILURE;
   }
-  obs->NotifyObservers(asSupports,
-                       NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC,
-                       nullptr);
+  // TODO(berytus): Remove the below block.
+  {
+    nsCOMPtr<nsISimpleEnumerator> observers;
+    rv = obs->EnumerateObservers(NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, getter_AddRefs(observers));
+    NS_ENSURE_SUCCESS(rv, rv);
+    NS_ENSURE_TRUE(observers, NS_ERROR_FAILURE);
+    bool hasMore = false;
+    rv = observers->HasMoreElements(&hasMore);
+    NS_ENSURE_SUCCESS(rv, rv);
+    if (!hasMore) {
+      printf("No Observers registered for %s\n", NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC);
+      return NS_OK;
+    }
+    while (hasMore) {
+      nsCOMPtr<nsISupports> observer;
+      rv = observers->GetNext(getter_AddRefs(observer));
+      NS_ENSURE_SUCCESS(rv, rv);
+      NS_ENSURE_TRUE(observer, NS_ERROR_FAILURE);
+      printf("TopicObserver(%s, %p)\n", NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, observer.get());
+      rv = observers->HasMoreElements(&hasMore);
+      NS_ENSURE_SUCCESS(rv, rv);
+    }
+  }
+  rv = obs->NotifyObservers(asSupports,
+                            NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC,
+                            nullptr);
+  NS_ENSURE_SUCCESS(rv, rv);
   notif->MarkAsUnsafe();
   return NS_OK;
 }

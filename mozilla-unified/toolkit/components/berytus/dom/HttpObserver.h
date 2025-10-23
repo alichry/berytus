@@ -46,7 +46,7 @@ private:
 
 class HttpObserver final : public nsIObserver {
 public:
-  NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
+  NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_CLASS(HttpObserver)
 
   NS_DECL_NSIOBSERVER

@@ -23,7 +23,7 @@ static mozilla::LazyLogModule sLogger("berytus_http_observer");
 NS_IMPL_CYCLE_COLLECTION(UnmaskPacket, mBody)
 NS_IMPL_CYCLE_COLLECTING_ADDREF(UnmaskPacket)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(UnmaskPacket)
-NS_INTERFACE_MAP_BEGIN(UnmaskPacket)
+NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(UnmaskPacket)
   NS_INTERFACE_MAP_ENTRY(nsISupports)
 NS_INTERFACE_MAP_END
 

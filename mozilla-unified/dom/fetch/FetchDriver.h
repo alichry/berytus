@@ -237,7 +237,7 @@ class FetchDriver final : public nsIChannelEventSink,
 
   void FinishOnStopRequest(AlternativeDataStreamListener* aAltDataListener);
 
-  nsresult NotifyHttpFetchObservers();
+  nsresult NotifyHttpFetchObservers(nsCOMPtr<nsIChannel>& aChannel);
 };
 
 }  // namespace dom
