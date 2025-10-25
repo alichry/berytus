@@ -978,13 +978,11 @@ nsresult FetchDriver::HttpFetch(
   // Step 4 onwards of "HTTP Fetch" is handled internally by Necko.
 
   mChannel = chan;
-
   return NS_OK;
 }
 
-void FetchDriver::GetRequest(InternalRequest** aRequest) const {
-  MOZ_ASSERT(aRequest);
-  *aRequest = mRequest.unsafeGetRawPtr();
+SafeRefPtr<InternalRequest> FetchDriver::GetRequest() const {
+  return mRequest.clonePtr();
 }
 
 bool FetchDriver::GetChannel(nsIChannel** aChannel) const {
@@ -1002,7 +1000,7 @@ nsresult FetchDriver::NotifyHttpFetchObservers(nsCOMPtr<nsIChannel>& aChannel) {
   if (NS_WARN_IF(!obs)) {
     return NS_ERROR_FAILURE;
   }
-  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(static_cast<AbortFollower*>(this));
+  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(static_cast<nsIStreamListener*>(this));
   if (NS_WARN_IF(!asSupports)) {
     return NS_ERROR_FAILURE;
   }

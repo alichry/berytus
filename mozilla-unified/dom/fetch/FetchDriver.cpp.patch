@@ -1,28 +1,27 @@
 --- dom/fetch/FetchDriver.cpp.orig	2025-10-15 22:31:30
-+++ dom/fetch/FetchDriver.cpp	2025-10-23 22:32:49
-@@ -932,6 +932,11 @@
++++ dom/fetch/FetchDriver.cpp	2025-10-25 21:42:59
+@@ -932,7 +932,12 @@
        }
      }
    }
 +
-+
+ 
 +  // NOTE(berytus): Second hook. Must be called
 +  // before chan->AsyncOpen
 +  NotifyHttpFetchObservers(chan);
- 
++
    // if the preferred alternative data type in InternalRequest is not empty, set
    // the data type on the created channel and also create a
-@@ -973,6 +978,41 @@
+   // AlternativeDataStreamListener to be the stream listener of the channel.
+@@ -973,6 +978,39 @@
    // Step 4 onwards of "HTTP Fetch" is handled internally by Necko.
  
    mChannel = chan;
-+
 +  return NS_OK;
 +}
 +
-+void FetchDriver::GetRequest(InternalRequest** aRequest) const {
-+  MOZ_ASSERT(aRequest);
-+  *aRequest = mRequest.unsafeGetRawPtr();
++SafeRefPtr<InternalRequest> FetchDriver::GetRequest() const {
++  return mRequest.clonePtr();
 +}
 +
 +bool FetchDriver::GetChannel(nsIChannel** aChannel) const {
@@ -40,7 +39,7 @@
 +  if (NS_WARN_IF(!obs)) {
 +    return NS_ERROR_FAILURE;
 +  }
-+  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(static_cast<AbortFollower*>(this));
++  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(static_cast<nsIStreamListener*>(this));
 +  if (NS_WARN_IF(!asSupports)) {
 +    return NS_ERROR_FAILURE;
 +  }

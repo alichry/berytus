@@ -133,23 +133,31 @@ class Request final : public FetchBody<Request>, public nsWrapperCache {
     public:
       NS_DECL_ISUPPORTS
 
-      ConstructorNotification(Request const* aRequest,
-                              RequestInit const* aInit)
-        : mIsSafe(true), mRequest(aRequest), mInit(aInit) {}
+      ConstructorNotification(RequestOrUTF8String const* aInput,
+                              RequestInit const* aInit,
+                              Request const* aRequest)
+        : mIsSafe(true), mInput(aInput), mInit(aInit), mRequest(aRequest) {}
 
+      nsresult GetInput(RequestOrUTF8String const** aInput) const {
+        if (NS_WARN_IF(!mIsSafe)) {
+          return NS_ERROR_DOM_INVALID_STATE_ERR;
+        }
+        *aInput = mInput;
+        return NS_OK;
+      }
+      nsresult GetInit(RequestInit const** aInit) const {
+        if (NS_WARN_IF(!mIsSafe)) {
+          return NS_ERROR_DOM_INVALID_STATE_ERR;
+        }
+        *aInit = mInit;
+        return NS_OK;
+      }
       nsresult GetResult(Request const** aRequest) const {
-        if (!mIsSafe) {
+        if (NS_WARN_IF(!mIsSafe)) {
           return NS_ERROR_DOM_INVALID_STATE_ERR;
         }
         MOZ_ASSERT(mRequest);
         *aRequest = mRequest;
-        return NS_OK;
-      }
-      nsresult GetInit(RequestInit const** aInit) const {
-        if (!mIsSafe) {
-          return NS_ERROR_DOM_INVALID_STATE_ERR;
-        }
-        *aInit = mInit;
         return NS_OK;
       }
       void MarkAsUnsafe() { mIsSafe = false; }
@@ -157,8 +165,9 @@ class Request final : public FetchBody<Request>, public nsWrapperCache {
       ~ConstructorNotification() = default;
 
       bool mIsSafe;
-      Request const* mRequest;
+      RequestOrUTF8String const* mInput;
       RequestInit const* mInit;
+      Request const* mRequest;
   };
  private:
   ~Request();
@@ -170,8 +179,9 @@ class Request final : public FetchBody<Request>, public nsWrapperCache {
   RefPtr<AbortSignal> mSignal;
 
   static nsresult NotifyConstructorObservers(
-    SafeRefPtr<Request>& aRequest,
-    const RequestInit& aInit);
+    const RequestOrUTF8String& aInput,
+    const RequestInit& aInit,
+    SafeRefPtr<Request>& aRequest);
 };
 
 }  // namespace mozilla::dom

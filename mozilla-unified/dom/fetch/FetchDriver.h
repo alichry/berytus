@@ -151,7 +151,7 @@ class FetchDriver final : public nsIChannelEventSink,
     mIsThirdPartyWorker = aIsThirdPartyWorker;
   }
 
-  void GetRequest(InternalRequest** aRequest) const;
+  SafeRefPtr<InternalRequest> GetRequest() const;
   bool GetChannel(nsIChannel** aChannel) const;
 
  private:

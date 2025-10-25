@@ -7,6 +7,7 @@
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "BerytusEncryptedPacket.h"
 #include "BerytusKeyAgreementParameters.h"
+#include "mozilla/RefPtr.h"
 #include "mozilla/Span.h"
 #include "mozilla/StaticPtr.h"
 #include "mozilla/berytus/HttpObserver.h"
@@ -21,6 +22,7 @@
 #include "mozilla/dom/FormData.h"
 #include "mozilla/dom/Fetch.h"
 #include "nsCycleCollectionParticipant.h"
+#include "nsDebug.h"
 #include "nsIHttpProtocolHandler.h"
 #include "nsISupports.h"
 #include "nsNetUtil.h"
@@ -304,6 +306,7 @@ BerytusEncryptedPacket::PacketObserver::~PacketObserver() {
 NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubject,
                                        const char* aTopic,
                                        const char16_t* aExtra) {
+  NS_ENSURE_TRUE(NS_IsMainThread(), NS_ERROR_NOT_SAME_THREAD);
   nsresult rv;
   MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s)", this, aSubject, aTopic));
   if (strcmp(aTopic, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC) == 0) {
@@ -314,21 +317,37 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     RequestInit const* init;
     rv = notif->GetInit(&init);
     NS_ENSURE_SUCCESS(rv, rv);
+    RequestOrUTF8String const* input;
+    rv = notif->GetInput(&input);
+    NS_ENSURE_SUCCESS(rv, rv);
     Request const* request;
     rv = notif->GetResult(&request);
     NS_ENSURE_SUCCESS(rv, rv);
-    if (!init->mBody.WasPassed()) {
-      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Body is unset", this, aSubject, aTopic));
-      return NS_OK;
-    }
-    const Nullable<fetch::OwningBodyInit>& bodyInitNullable =
-      init->mBody.Value();
-    if (bodyInitNullable.IsNull()) {
-      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Body is null", this, aSubject, aTopic));
-      return NS_OK;
-    }
-    const fetch::OwningBodyInit& bodyInit = bodyInitNullable.Value();
     SafeRefPtr<InternalRequest> internalRequest = request->GetInternalRequest();
+    if (!init->mBody.WasPassed() || init->mBody.Value().IsNull()) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Body is unset/null. Checking input", this, aSubject, aTopic));
+      if (input->IsUTF8String()) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is a URL.", this, aSubject, aTopic));
+        return NS_OK;
+      }
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is a Request. Checking existence", this, aSubject, aTopic));
+      RefPtr<Request> inputReq = &input->GetAsRequest();
+      SafeRefPtr<InternalRequest> inputInternalReq = inputReq->GetInternalRequest();
+      if (!mDetectedRequests.Contains(inputInternalReq.unsafeGetRawPtr())) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is an UnDetectedRequest<%p>", this, aSubject, aTopic, inputInternalReq.unsafeGetRawPtr()));
+        return NS_OK;
+      }
+      RefPtr<berytus::UnmaskPacket> packet =
+          mDetectedRequests.Get(inputInternalReq.unsafeGetRawPtr());
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is a DetectedRequest<%p, %p>", this, aSubject, aTopic, inputInternalReq.unsafeGetRawPtr(), packet.get()));
+      mDetectedRequests.InsertOrUpdate(
+        internalRequest.unsafeGetRawPtr(),
+        packet);
+      MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), packet->ContentLength(), packet->ContentType().get()));
+      return NS_OK;
+    }
+    const fetch::OwningBodyInit& bodyInit =
+      init->mBody.Value().Value();
     nsCString reqUrl;
     internalRequest->GetURL(reqUrl);
     fetch::OwningBodyInit newReqBody;
@@ -359,17 +378,21 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     mDetectedRequests.InsertOrUpdate(
       internalRequest.unsafeGetRawPtr(),
       packet);
-    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), contentLength, contentTypeWithCharset.get()));
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(url=%s, length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), reqUrl.get(), contentLength, contentTypeWithCharset.get()));
     return NS_OK;
   }
   if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
-    RefPtr<FetchDriver> fetchDriver = RefPtr(static_cast<FetchDriver*>(
-      static_cast<AbortFollower*>(aSubject)));
-    InternalRequest* request;
-    fetchDriver->GetRequest(&request);
+    nsCOMPtr<nsIStreamListener> streamListener = do_QueryInterface(aSubject);
+    if (NS_WARN_IF(!streamListener)) {
+      return NS_ERROR_FAILURE;
+    }
+    RefPtr<FetchDriver> fetchDriver = static_cast<FetchDriver*>(streamListener.get());
+    SafeRefPtr<InternalRequest> request = fetchDriver->GetRequest();
     MOZ_ASSERT(request);
-    if (!mDetectedRequests.Contains(const_cast<InternalRequest*>(request))) {
-      MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): UndetectedRequest<%p>", this, aSubject, aTopic, request));
+    nsCString url;
+    request->GetURL(url);
+    if (!mDetectedRequests.Contains(const_cast<InternalRequest*>(request.unsafeGetRawPtr()))) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): UndetectedRequest<%p>(url=%s)", this, aSubject, aTopic, request.unsafeGetRawPtr(), url.get()));
       {
         for (auto& entry : mDetectedRequests) {
           MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): [*] DetectedRequestEntry<%p, %p>", this, aSubject, aTopic, entry.GetKey(), entry.GetData().get()));
@@ -378,17 +401,13 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
       return NS_OK;
     }
     RefPtr<berytus::UnmaskPacket> packet =
-      mDetectedRequests.Get(const_cast<InternalRequest*>(request));
-    // nsCOMPtr<nsIChannel> channel = nullptr;
-    // NS_ENSURE_TRUE(fetchDriver->GetChannel(getter_AddRefs(channel)), NS_ERROR_FAILURE);
-    // nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(channel);
-    // NS_ENSURE_TRUE(httpChannel, NS_ERROR_FAILURE);
-    // uint64_t channelId = httpChannel->ChannelId();
+      mDetectedRequests.Get(const_cast<InternalRequest*>(request.unsafeGetRawPtr()));
+    NS_ENSURE_TRUE(packet, NS_ERROR_FAILURE);
     const uint64_t* channelId = reinterpret_cast<const uint64_t*>(aExtra);
     NS_ENSURE_TRUE(channelId, NS_ERROR_INVALID_ARG);
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): DetectedRequest<%p, %p>(url=%s, channelId=%llu)", this, aSubject, aTopic, request.unsafeGetRawPtr(), packet.get(), url.get(), *channelId));
     if (NS_WARN_IF(mDetectedChannels.Contains(*channelId))) {
-      // TODO(berytus): Double processing?
-      MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): DuplicateDetection<%p, %llu>", this, aSubject, aTopic, request, *channelId));
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): DuplicateDetection<%p, %llu>", this, aSubject, aTopic, request.unsafeGetRawPtr(), *channelId));
       {
         for (auto& entry : mDetectedChannels) {
           MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): [*] DetectedChannelEntry<%llu, %p>", this, aSubject, aTopic, entry.GetKey(), entry.GetData().get()));
@@ -406,7 +425,19 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     nsCOMPtr<nsIRequest> request = do_QueryInterface(aSubject);
     NS_ENSURE_TRUE(request, NS_ERROR_FAILURE);
     uint64_t channelId = channel->ChannelId();
+    nsCOMPtr<nsIURI> uri;
+    rv = channel->GetOriginalURI(getter_AddRefs(uri));
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsCString uriSpec;
+    rv = uri->GetSpec(uriSpec);
+    NS_ENSURE_SUCCESS(rv, rv);
     if (!mDetectedChannels.Contains(channelId)) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): UndetectedChannel<%llu>(url=%s)", this, aSubject, aTopic, channelId, uriSpec.get()));
+      {
+        for (auto& entry : mDetectedChannels) {
+          MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): [*] DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, entry.GetKey(), entry.GetData().get(), entry.GetData()->ContentLength(), entry.GetData()->ContentType().get()));
+        }
+      }
       return NS_OK;
     }
     RefPtr<berytus::UnmaskPacket> packet =
