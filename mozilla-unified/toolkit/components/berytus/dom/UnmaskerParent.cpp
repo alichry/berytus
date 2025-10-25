@@ -13,13 +13,22 @@
 namespace mozilla {
 namespace berytus {
 
-UnmaskerParent::UnmaskerParent() {}
-UnmaskerParent::~UnmaskerParent() {}
+namespace loggers::UnmaskerParent {
+  static mozilla::LazyLogModule sLogger("berytus_mask_ipc");
+}
+
+UnmaskerParent::UnmaskerParent() {
+  MOZ_LOG(loggers::UnmaskerParent::sLogger, LogLevel::Debug, ("UnmaskerParent()"));
+}
+UnmaskerParent::~UnmaskerParent() {
+  MOZ_LOG(loggers::UnmaskerParent::sLogger, LogLevel::Debug, ("~UnmaskerParent()"));
+}
 
 ipc::IPCResult UnmaskerParent::RecvUnmaskInChannel(
     const uint64_t& aChannelId, const IPCStream& aUnmaskedStream,
     const uint64_t& aLength, const nsACString& aContentType,
     UnmaskInChannelResolver&& aResolver) {
+  MOZ_LOG(loggers::UnmaskerParent::sLogger, LogLevel::Info, ("RecvUnmaskInChannel(channelId=%llu, length=%llu, content-type=%.*s)", aChannelId, aLength, (int) aContentType.Length(), aContentType.BeginReading()));
   RefPtr<HttpObserver> httpObs = HttpObserver::GetSingleton();
   nsCOMPtr<nsIInputStream> body = DeserializeIPCStream(aUnmaskedStream.stream());
   if (NS_WARN_IF(!body)) {
@@ -27,10 +36,10 @@ ipc::IPCResult UnmaskerParent::RecvUnmaskInChannel(
   }
   RefPtr<UnmaskPacket> packet =
       new UnmaskPacket(aChannelId,
-                                     aContentType,
-                                     // TODO(berytus): Change to uint64_t if we're sure we can infer len at some point
-                                     int64_t(aLength),
-                                     body);
+                       aContentType,
+                       // TODO(berytus): Change to uint64_t if we're sure we can infer len at some point
+                       int64_t(aLength),
+                       body);
   httpObs->HoldUnmasked(packet);
   aResolver(void_t{});
   return IPC_OK();

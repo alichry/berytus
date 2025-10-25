@@ -10,8 +10,17 @@
 namespace mozilla {
 namespace berytus {
 
-UnmaskerChild::UnmaskerChild() {}
-UnmaskerChild::~UnmaskerChild() {}
+namespace loggers::UnmaskerChild {
+  static mozilla::LazyLogModule sLogger("berytus_mask_ipc");
+}
+
+
+UnmaskerChild::UnmaskerChild() {
+  MOZ_LOG(loggers::UnmaskerChild::sLogger, LogLevel::Debug, ("UnmaskerChild()"));
+}
+UnmaskerChild::~UnmaskerChild() {
+  MOZ_LOG(loggers::UnmaskerChild::sLogger, LogLevel::Debug, ("~UnmaskerChild()"));
+}
 
 ipc::IPCResult UnmaskerChild::Recv__delete__(const ipc::Shmem& aShmem) {
   return IPC_OK();

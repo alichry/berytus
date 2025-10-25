@@ -476,18 +476,19 @@ SafeRefPtr<Request> Request::Constructor(
       }
     }
   }
-  NotifyConstructorObservers(domRequest, aInit);
+  NotifyConstructorObservers(aInput, aInit, domRequest);
   return domRequest;
 }
 
 nsresult Request::NotifyConstructorObservers(
-    SafeRefPtr<Request>& aRequest,
-    const RequestInit& aInit) {
+    const RequestOrUTF8String& aInput,
+    const RequestInit& aInit,
+    SafeRefPtr<Request>& aRequest) {
   NS_ENSURE_TRUE(NS_IsMainThread(), NS_ERROR_NOT_SAME_THREAD);
   nsresult rv;
   RefPtr<Request::ConstructorNotification> notif =
     new Request::ConstructorNotification(
-      aRequest.unsafeGetRawPtr(), &aInit);
+      &aInput, &aInit, aRequest.unsafeGetRawPtr());
   nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
   if (NS_WARN_IF(!obs)) {
     return NS_ERROR_FAILURE;
@@ -495,29 +496,6 @@ nsresult Request::NotifyConstructorObservers(
   nsCOMPtr<nsISupports> asSupports = do_QueryInterface(notif);
   if (NS_WARN_IF(!asSupports)) {
     return NS_ERROR_FAILURE;
-  }
-  // TODO(berytus): Remove the below block.
-  {
-    nsCOMPtr<nsISimpleEnumerator> observers;
-    rv = obs->EnumerateObservers(NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, getter_AddRefs(observers));
-    NS_ENSURE_SUCCESS(rv, rv);
-    NS_ENSURE_TRUE(observers, NS_ERROR_FAILURE);
-    bool hasMore = false;
-    rv = observers->HasMoreElements(&hasMore);
-    NS_ENSURE_SUCCESS(rv, rv);
-    if (!hasMore) {
-      printf("No Observers registered for %s\n", NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC);
-      return NS_OK;
-    }
-    while (hasMore) {
-      nsCOMPtr<nsISupports> observer;
-      rv = observers->GetNext(getter_AddRefs(observer));
-      NS_ENSURE_SUCCESS(rv, rv);
-      NS_ENSURE_TRUE(observer, NS_ERROR_FAILURE);
-      printf("TopicObserver(%s, %p)\n", NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, observer.get());
-      rv = observers->HasMoreElements(&hasMore);
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
   }
   rv = obs->NotifyObservers(asSupports,
                             NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC,
