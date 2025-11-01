@@ -18,6 +18,8 @@
 #include "nsRefPtrHashtable.h"
 
 
+class nsIHttpChannel;
+
 namespace mozilla {
 namespace berytus {
 
@@ -62,6 +64,9 @@ private:
   nsRefPtrHashtable<nsUint64HashKey, UnmaskPacket> mPackets;
 
   void ReleaseUnmasked(uint64_t aChannelId);
+
+  // TODO(berytus): Remove this. Mach not recongising cpp change
+  void PrintUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<nsIUploadChannel2>& aUpload);
 
   /**
    * Here, we check with the child process if the
