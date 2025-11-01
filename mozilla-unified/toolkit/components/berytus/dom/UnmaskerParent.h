@@ -15,6 +15,7 @@
 namespace mozilla {
 namespace berytus {
 
+class MaskManagerParent;
 
 class UnmaskerParent : public PUnmaskerParent {
 public:

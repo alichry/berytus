@@ -11,10 +11,17 @@
 #include "js/TypeDecls.h"
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/MozPromise.h"
+#include "mozilla/berytus/MaskManagerChild.h"
+#include "mozilla/berytus/PUnmaskerChild.h"
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsWrapperCache.h"
+
+namespace mozilla::berytus {
+class UnmaskerChild;
+}
 
 namespace mozilla::dom {
 
@@ -47,10 +54,15 @@ public:
 
   bool IsSignedUrl(const nsCString& aReqUrl) const;
 
+  RefPtr<mozilla::berytus::MaskManagerChild> GetMaskManager();
+  // TODO(berytus): Remove this method; use manager directly.
+  RefPtr<mozilla::berytus::UnmaskerChild> CreateUnmasker();
+
 protected:
   ~BerytusChannelContainer();
   nsCOMPtr<nsIGlobalObject> mGlobal;
   nsTArray<RefPtr<PacketObserver>> mPacketObservers;
+  RefPtr<mozilla::berytus::MaskManagerChild> mMaskManager;
 public:
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

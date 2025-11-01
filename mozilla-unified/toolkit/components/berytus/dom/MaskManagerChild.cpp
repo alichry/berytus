@@ -14,9 +14,15 @@ MaskManagerChild::MaskManagerChild() {}
 
 MaskManagerChild::~MaskManagerChild() {}
 
-already_AddRefed<PUnmaskerChild> MaskManagerChild::AllocPUnmaskerChild() {
-	RefPtr<PUnmaskerChild> actor = new UnmaskerChild();
-	return actor.forget();
+already_AddRefed<UnmaskerChild> MaskManagerChild::CreateUnmasker() {
+  RefPtr<UnmaskerChild> unmasker = new UnmaskerChild();
+  NS_ENSURE_TRUE(SendPUnmaskerConstructor(unmasker), nullptr);
+  return unmasker.forget();
 }
+
+// already_AddRefed<PUnmaskerChild> MaskManagerChild::AllocPUnmaskerChild() {
+// 	RefPtr<PUnmaskerChild> actor = new UnmaskerChild();
+// 	return actor.forget();
+// }
 }
 }

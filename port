@@ -47,7 +47,10 @@ toolkit/components/extensions/child/ext-toolkit.js
 toolkit/components/extensions/jar.mn
 toolkit/components/extensions/schemas/jar.mn
 toolkit/components/extensions/test/xpcshell/xpcshell.toml
-browser/extensions/moz.build"
+browser/extensions/moz.build
+ipc/glue/PBackground.ipdl
+ipc/glue/BackgroundParentImpl.h
+ipc/glue/BackgroundParentImpl.cpp"
 IGNORE_DIRS="node_modules/"
 
 usage="Berytus source code (ex|im)port usage:

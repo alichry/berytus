@@ -9,6 +9,13 @@
 #include "mozilla/dom/Navigator.h"
 #include "mozilla/dom/InternalRequest.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "mozilla/berytus/MaskManagerChild.h"
+#include "mozilla/berytus/UnmaskerChild.h"
+#include "mozilla/berytus/PUnmaskerParent.h"
+#include "mozilla/ipc/Endpoint.h"
+#include "mozilla/ipc/PBackgroundChild.h"
+#include "nsDebug.h"
+#include "mozilla/ipc/BackgroundChild.h"
 
 namespace mozilla::dom {
 
@@ -23,7 +30,7 @@ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusChannelContainer)
 NS_INTERFACE_MAP_END
 
 BerytusChannelContainer::BerytusChannelContainer(nsIGlobalObject* aGlobal)
-  : mGlobal(aGlobal)
+  : mGlobal(aGlobal), mMaskManager(nullptr)
 {
     // Add |MOZ_COUNT_CTOR(BerytusChannelContainer);| for a non-refcounted object.
 }
@@ -60,6 +67,39 @@ bool BerytusChannelContainer::IsSignedUrl(const nsCString& aReqUrl) const {
   // to the active channel, and the key agreement parameters
   // (if any) to check if the URL is signed.
   return false;
+}
+
+RefPtr<mozilla::berytus::MaskManagerChild> BerytusChannelContainer::GetMaskManager() {
+  if (mMaskManager) {
+    return mMaskManager;
+  }
+  nsresult rv;
+  mozilla::ipc::PBackgroundChild* backgroundChild =
+      mozilla::ipc::BackgroundChild::GetOrCreateForCurrentThread();
+  if (NS_WARN_IF(!backgroundChild)) {
+    return nullptr;
+  }
+
+  mozilla::ipc::Endpoint<mozilla::berytus::PMaskManagerParent> parentEnd;
+  mozilla::ipc::Endpoint<mozilla::berytus::PMaskManagerChild> childEnd;
+  rv = berytus::PMaskManager::CreateEndpoints(&parentEnd, &childEnd);
+  NS_ENSURE_SUCCESS(rv, nullptr);
+
+  RefPtr<mozilla::berytus::MaskManagerChild> managerChild =
+    new mozilla::berytus::MaskManagerChild();
+  NS_ENSURE_TRUE(childEnd.Bind(managerChild), nullptr);
+  NS_ENSURE_TRUE(backgroundChild->SendCreateMaskManagerParent(std::move(parentEnd)), nullptr);
+  mMaskManager = managerChild;
+  return managerChild;
+}
+
+RefPtr<mozilla::berytus::UnmaskerChild> BerytusChannelContainer::CreateUnmasker() {
+  RefPtr<mozilla::berytus::MaskManagerChild> manager = GetMaskManager();
+  NS_ENSURE_TRUE(manager, nullptr);
+
+  RefPtr<mozilla::berytus::UnmaskerChild> unmasker = manager->CreateUnmasker();
+  NS_ENSURE_TRUE(unmasker, nullptr);
+  return unmasker;
 }
 
 JSObject*
