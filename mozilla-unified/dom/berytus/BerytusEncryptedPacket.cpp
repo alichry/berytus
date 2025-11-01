@@ -365,7 +365,7 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     nsCOMPtr<nsIInputStream> stream;
     nsAutoCString contentTypeWithCharset;
     uint64_t contentLength = 0;
-    rv = ExtractByteStreamFromBody(bodyInit, getter_AddRefs(stream),
+    rv = ExtractByteStreamFromBody(newReqBody, getter_AddRefs(stream),
                                    contentTypeWithCharset, contentLength);
     NS_ENSURE_SUCCESS(rv, rv);
     // TODO(berytus): Change mContentLength to uint64_t
@@ -443,13 +443,6 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     RefPtr<berytus::UnmaskPacket> packet =
       mDetectedChannels.Get(channelId);
     MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
-
-    // RefPtr<mozilla::berytus::UnmaskerChild> unmasker =
-    //   new mozilla::berytus::UnmaskerChild();
-    // RefPtr<mozilla::berytus::MaskManagerChild> manager =
-    //   new mozilla::berytus::MaskManagerChild();
-    //NS_ENSURE_TRUE(manager->SendPUnmaskerConstructor(unmasker), NS_ERROR_FAILURE);
-
     RefPtr<BerytusChannelContainer> container =
     BerytusChannelContainer::GetInstance(mPacket->mGlobal->GetAsInnerWindow());
     if (NS_WARN_IF(!container)) {

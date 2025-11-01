@@ -5,6 +5,7 @@
 
 #include "mozilla/berytus/HttpObserver.h"
 #include "mozilla/Services.h"
+#include "nsCOMPtr.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsDebug.h"
 #include "nsIHttpProtocolHandler.h"
@@ -15,6 +16,7 @@
 #include "mozilla/ClearOnShutdown.h"
 #include "nsISupports.h"
 #include "nsIUploadChannel2.h"
+#include "nsNetUtil.h"
 
 namespace mozilla::berytus {
 
@@ -94,6 +96,23 @@ HttpObserver::~HttpObserver() {
   }
 }
 
+void HttpObserver::PrintUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<nsIUploadChannel2>& aUpload) {
+  int64_t length;
+  nsCOMPtr<nsIInputStream> clonedBody;
+  NS_ENSURE_SUCCESS(aUpload->CloneUploadStream(&length, getter_AddRefs(clonedBody)), );
+  if (!clonedBody) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("PrintUploadBody(channelId=%llu): length=?, body=?", aChannel->ChannelId()));
+    return;
+  }
+  if (length > 4000) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("PrintUploadBody(channelId=%llu): length=%lld, body=OMITTED", aChannel->ChannelId(), length));
+    return;
+  }
+  nsCString bodyStr;
+  NS_ENSURE_SUCCESS(NS_ReadInputStreamToString(clonedBody, bodyStr, length), );
+  MOZ_LOG(sLogger, LogLevel::Debug, ("PrintUploadBody(channelId=%llu): length=%lld, body=%s", aChannel->ChannelId(), length, bodyStr.get()));
+}
+
 NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
                                     const char* aTopic,
                                     const char16_t*) {
@@ -117,14 +136,15 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
     nsCString spec;
     rv = uri->GetSpec(spec);
     NS_ENSURE_SUCCESS(rv, rv);
+    PrintUploadBody(httpChannel, uploadChannel);
     MOZ_LOG(sLogger,
             LogLevel::Info,
-            ("Detected(%llu, %s)",
+            ("Detected(id=%llu, url=%s)",
             httpChannel->ChannelId(), spec.get()));
     if (!mPackets.Contains(httpChannel->ChannelId())) {
       MOZ_LOG(sLogger, LogLevel::Info,
-          ("Could not find packet for Channel(id:%llu)",
-          httpChannel->ChannelId()));
+          ("Could not find packet for Channel(id=%llu, url=%s)",
+          httpChannel->ChannelId(), spec.get()));
       return NS_OK;
     }
     RefPtr<UnmaskPacket> packet = mPackets.Get(httpChannel->ChannelId());
@@ -149,12 +169,23 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
     nsCString method;
     rv = httpChannel->GetRequestMethod(method);
     NS_ENSURE_SUCCESS(rv, rv);
-    MOZ_LOG(sLogger, LogLevel::Info, ("Replacing UploadStream of Channel(id:%llu) with method=%s, content-length=%lld, content-type=%s", httpChannel->ChannelId(), method.get(), packet->ContentLength(), packet->ContentType().get()));
-    uploadChannel->ExplicitSetUploadStream(body,
+    nsCString bodyStr;
+    bodyStr.Assign("?");
+    if (MOZ_LOG_TEST(sLogger, LogLevel::Debug)) {
+      rv = NS_ReadInputStreamToString(body, bodyStr, packet->ContentLength());
+      if (NS_WARN_IF(NS_FAILED(rv))) {
+        NS_ENSURE_SUCCESS(request->Resume(), rv);
+        return rv;
+      }
+    }
+    MOZ_LOG(sLogger, LogLevel::Info, ("Replacing UploadStream of Channel(id:%llu) with method=%s, content-length=%lld, content-type=%s, body=%s", httpChannel->ChannelId(), method.get(), packet->ContentLength(), packet->ContentType().get(), bodyStr.get()));
+    rv = uploadChannel->ExplicitSetUploadStream(body,
                                             packet->ContentType(),
                                             packet->ContentLength(),
                                             method,
                                             false);
+    NS_ENSURE_SUCCESS(rv, rv);
+    PrintUploadBody(httpChannel, uploadChannel);
     ReleaseUnmasked(httpChannel->ChannelId());
     MOZ_LOG(sLogger, LogLevel::Info, ("Calling Resume() on Channel(id:%llu)", httpChannel->ChannelId()));
     rv = request->Resume();
