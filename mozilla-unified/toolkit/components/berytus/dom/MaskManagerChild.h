@@ -15,15 +15,18 @@
 namespace mozilla {
 namespace berytus {
 
+class UnmaskerChild;
+
 class MaskManagerChild final : public PMaskManagerChild {
 public:
   NS_INLINE_DECL_REFCOUNTING(MaskManagerChild)
 
   MaskManagerChild();
-  already_AddRefed<PUnmaskerChild> AllocPUnmaskerChild();
+  // already_AddRefed<PUnmaskerChild> AllocPUnmaskerChild();
+
+  already_AddRefed<UnmaskerChild> CreateUnmasker();
 protected:
   ~MaskManagerChild();
-
 };
 
 }

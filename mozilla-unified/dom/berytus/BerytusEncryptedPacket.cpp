@@ -442,15 +442,26 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     }
     RefPtr<berytus::UnmaskPacket> packet =
       mDetectedChannels.Get(channelId);
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
 
-    RefPtr<mozilla::berytus::UnmaskerChild> unmasker =
-      new mozilla::berytus::UnmaskerChild();
+    // RefPtr<mozilla::berytus::UnmaskerChild> unmasker =
+    //   new mozilla::berytus::UnmaskerChild();
+    // RefPtr<mozilla::berytus::MaskManagerChild> manager =
+    //   new mozilla::berytus::MaskManagerChild();
+    //NS_ENSURE_TRUE(manager->SendPUnmaskerConstructor(unmasker), NS_ERROR_FAILURE);
+
+    RefPtr<BerytusChannelContainer> container =
+    BerytusChannelContainer::GetInstance(mPacket->mGlobal->GetAsInnerWindow());
+    if (NS_WARN_IF(!container)) {
+      return NS_ERROR_FAILURE;
+    }
+    RefPtr<mozilla::berytus::UnmaskerChild> unmasker = container->CreateUnmasker();
+    NS_ENSURE_TRUE(unmasker, NS_ERROR_FAILURE);
 
     Maybe<mozilla::ipc::IPCStream> ipcStream;
     if (NS_WARN_IF(!mozilla::ipc::SerializeIPCStream(do_AddRef(packet->Body()), ipcStream, false))) {
       return NS_ERROR_FAILURE;
     }
-    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
     rv = request->Suspend();
     NS_ENSURE_SUCCESS(rv, rv);
     auto promise = unmasker->SendUnmaskInChannel(channelId, ipcStream.value(), packet->ContentLength(), packet->ContentType());

@@ -14,6 +14,8 @@
 namespace mozilla {
 namespace berytus {
 
+class MaskManagerChild;
+
 class UnmaskerChild : public PUnmaskerChild {
 public:
   NS_INLINE_DECL_REFCOUNTING(UnmaskerChild)

@@ -8,13 +8,12 @@ include protocol PUnmasker;
 namespace mozilla {
 namespace berytus {
 
-[ChildProc=Content]
+[ChildProc=Content, ParentProc=Parent]
 protocol PMaskManager {
   manages PUnmasker;
 	parent:
-	  async __delete__(nsString aNote);
-	child:
 	  async PUnmasker();
+	  async __delete__(nsString aNote);
 };
 
 }
