@@ -419,14 +419,14 @@ class WebReqListener {
         }),
         onHeadersReceived: this.#createSafeHandler(async (details) => {
             if (details.responseHeaders) {
-                await this.#repository.setResponseHeaders(requestId, details.responseHeaders);
+                await this.#repository.setResponseHeaders(details.requestId, details.responseHeaders);
             }
         }),
         // TODO(alichry): For redirected requests, onResponseStarted
         // is not invoked. We need to find an alternative way of capturing
         // headers.
         onResponseStarted: this.#createSafeHandler(async (details) => {
-            await this.#repository.markAsStarted(requestId);
+            await this.#repository.markAsStarted(details.requestId);
             //const { requestId, responseHeaders } = details;
             //await this.#repository.setResponseHeaders(requestId, responseHeaders);
         }),

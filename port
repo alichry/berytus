@@ -47,6 +47,7 @@ toolkit/components/extensions/child/ext-toolkit.js
 toolkit/components/extensions/jar.mn
 toolkit/components/extensions/schemas/jar.mn
 toolkit/components/extensions/test/xpcshell/xpcshell.toml
+toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs
 browser/extensions/moz.build
 ipc/glue/PBackground.ipdl
 ipc/glue/BackgroundParentImpl.h

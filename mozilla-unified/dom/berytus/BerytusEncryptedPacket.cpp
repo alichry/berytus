@@ -75,8 +75,7 @@ BerytusEncryptedPacket::BerytusEncryptedPacket(
             RTPCallerType::Normal).take()),
         mGlobal(aGlobal), /* mGlobal will live as long as it does under Blob */
         mExposedContent(Span<uint8_t>(aExposedContent.mBuf.release(), aExposedContent.mLen)),
-        mConcealed(aConceal),
-        mAttached(false) {
+        mConcealed(aConceal) {
   MOZ_ASSERT(aExposedContent.mBuf.get() == nullptr);
 }
 
@@ -93,7 +92,7 @@ Span<const uint8_t> BerytusEncryptedPacket::Exposed() const {
 }
 
 bool BerytusEncryptedPacket::Attached() const {
-  return mAttached;
+  return mAttachedChannelId.Length() > 0;
 }
 
 void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
@@ -133,7 +132,7 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
   RefPtr<BerytusEncryptedPacket> self = this;
   RefPtr<PacketObserver> observer = new PacketObserver(self);
   container->HoldObserver(observer);
-  mAttached = true;
+  mAttachedChannelId.Assign(aChannel->ID());
 }
 
 already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
@@ -286,7 +285,6 @@ BerytusEncryptedPacket::PacketObserver::PacketObserver(
 
 
   // TODO(beryuts): Add a Create() method as this is fallible.
-  MOZ_LOG(sLogger, LogLevel::Info, ("SubscribingTo(%s, %s, %s)", NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, NS_HTTP_ON_OPENING_REQUEST_TOPIC, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC));
   MOZ_ASSERT(NS_SUCCEEDED(obs->AddObserver(this, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, false)));
   MOZ_ASSERT(NS_SUCCEEDED(obs->AddObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC, false)));
   MOZ_ASSERT(NS_SUCCEEDED(obs->AddObserver(this, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC, false)));
@@ -344,6 +342,8 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
         internalRequest.unsafeGetRawPtr(),
         packet);
       MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), packet->ContentLength(), packet->ContentType().get()));
+      //MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Skipping Service Worker Interception for DetectedRequestEntry<%p>", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr()));
+      //internalRequest->SetSkipServiceWorker();
       return NS_OK;
     }
     const fetch::OwningBodyInit& bodyInit =
@@ -370,6 +370,7 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     NS_ENSURE_SUCCESS(rv, rv);
     // TODO(berytus): Change mContentLength to uint64_t
     RefPtr<berytus::UnmaskPacket> packet = new berytus::UnmaskPacket(
+      NS_ConvertUTF16toUTF8(mPacket->mAttachedChannelId),
       0,
       contentTypeWithCharset,
       contentLength,
@@ -379,6 +380,8 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
       internalRequest.unsafeGetRawPtr(),
       packet);
     MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(url=%s, length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), reqUrl.get(), contentLength, contentTypeWithCharset.get()));
+    //MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Skipping Service Worker Interception for DetectedRequestEntry<%p>", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr()));
+    //internalRequest->SetSkipServiceWorker();
     return NS_OK;
   }
   if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
@@ -415,6 +418,8 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
       }
       return NS_OK;
     }
+    rv = packet->SetHttpChannelId(*channelId);
+    NS_ENSURE_SUCCESS(rv, rv);
     mDetectedChannels.InsertOrUpdate(*channelId, packet);
     MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, *channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
     return NS_OK;
@@ -442,9 +447,10 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     }
     RefPtr<berytus::UnmaskPacket> packet =
       mDetectedChannels.Get(channelId);
+    MOZ_ASSERT(channelId == packet->HttpChannelId());
     MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
     RefPtr<BerytusChannelContainer> container =
-    BerytusChannelContainer::GetInstance(mPacket->mGlobal->GetAsInnerWindow());
+      BerytusChannelContainer::GetInstance(mPacket->mGlobal->GetAsInnerWindow());
     if (NS_WARN_IF(!container)) {
       return NS_ERROR_FAILURE;
     }
@@ -455,9 +461,19 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     if (NS_WARN_IF(!mozilla::ipc::SerializeIPCStream(do_AddRef(packet->Body()), ipcStream, false))) {
       return NS_ERROR_FAILURE;
     }
+    // nsLoadFlags loadFlags;
+    // if (NS_SUCCEEDED(channel->GetLoadFlags(&loadFlags))) {
+    //   channel->SetLoadFlags(loadFlags |
+    //                         nsIChannel::LOAD_BYPASS_SERVICE_WORKER);
+    // }
     rv = request->Suspend();
     NS_ENSURE_SUCCESS(rv, rv);
-    auto promise = unmasker->SendUnmaskInChannel(channelId, ipcStream.value(), packet->ContentLength(), packet->ContentType());
+    auto promise =
+      unmasker->SendUnmaskInChannel(packet->BerytusChannelId(),
+                                    packet->HttpChannelId(),
+                                    ipcStream.value(),
+                                    packet->ContentLength(),
+                                    packet->ContentType());
     promise->Then(
       GetMainThreadSerialEventTarget(), __func__,
       [request]() {
