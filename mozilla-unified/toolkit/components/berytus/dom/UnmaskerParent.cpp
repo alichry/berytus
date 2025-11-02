@@ -25,20 +25,22 @@ UnmaskerParent::~UnmaskerParent() {
 }
 
 ipc::IPCResult UnmaskerParent::RecvUnmaskInChannel(
-    const uint64_t& aChannelId, const IPCStream& aUnmaskedStream,
-    const uint64_t& aLength, const nsACString& aContentType,
-    UnmaskInChannelResolver&& aResolver) {
-  MOZ_LOG(loggers::UnmaskerParent::sLogger, LogLevel::Info, ("RecvUnmaskInChannel(channelId=%llu, length=%llu, content-type=%.*s)", aChannelId, aLength, (int) aContentType.Length(), aContentType.BeginReading()));
+    const nsACString& aBerytusChannelId, const uint64_t& aHttpChannelId,
+    const IPCStream& aUnmaskedStream, const uint64_t& aLength,
+    const nsACString& aContentType, UnmaskInChannelResolver&& aResolver) {
+  MOZ_LOG(loggers::UnmaskerParent::sLogger,
+          LogLevel::Info,
+          ("RecvUnmaskInChannel(berytusChannelId=%.*s, httpChannelId=%llu, length=%llu, content-type=%.*s)", (int) aBerytusChannelId.Length(), aBerytusChannelId.BeginReading(), aHttpChannelId, aLength, (int) aContentType.Length(), aContentType.BeginReading()));
   RefPtr<HttpObserver> httpObs = HttpObserver::GetSingleton();
   nsCOMPtr<nsIInputStream> body = DeserializeIPCStream(aUnmaskedStream.stream());
   if (NS_WARN_IF(!body)) {
     return IPC_FAIL(this, "Failed to deserialize IPCStream");
   }
   RefPtr<UnmaskPacket> packet =
-      new UnmaskPacket(aChannelId,
+      new UnmaskPacket(aBerytusChannelId,
+                       aHttpChannelId,
                        aContentType,
-                       // TODO(berytus): Change to uint64_t if we're sure we can infer len at some point
-                       int64_t(aLength),
+                       aLength,
                        body);
   httpObs->HoldUnmasked(packet);
   aResolver(void_t{});

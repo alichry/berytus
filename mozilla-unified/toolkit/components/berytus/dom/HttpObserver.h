@@ -23,27 +23,32 @@ class nsIHttpChannel;
 namespace mozilla {
 namespace berytus {
 
+#define BERYTUS_HTTP_HEADER_CHANNEL_ID "X-Berytus-Channel-Id"_ns
+
 class UnmaskPacket final : public nsISupports {
 public:
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
   NS_DECL_CYCLE_COLLECTION_CLASS(UnmaskPacket)
 
-  UnmaskPacket(uint64_t aChannelId,
-                const nsACString& aContentType,
-                int64_t aContentLength,
-                nsIInputStream* aBody);
+  UnmaskPacket(const nsACString& aBerytusChannelId,
+               uint64_t aHttpChannelId,
+               const nsACString& aContentType,
+               uint64_t aContentLength,
+               nsIInputStream* aBody);
 
-  uint64_t ChannelId() const;
+  const nsCString& BerytusChannelId() const;
+  uint64_t HttpChannelId() const;
+  nsresult SetHttpChannelId(uint64_t aChannelId);
   const nsCString& ContentType() const;
-  int64_t ContentLength() const;
+  uint64_t ContentLength() const;
   nsIInputStream* Body() const;
 private:
   ~UnmaskPacket();
-  uint64_t mChannelId;
+  nsCString mBerytusChannelId;
+  uint64_t mHttpChannelId;
   nsCString mContentType;
-  int64_t mContentLength;
+  uint64_t mContentLength;
   nsCOMPtr<nsIInputStream> mBody;
-
 };
 
 class HttpObserver final : public nsIObserver {
@@ -65,8 +70,7 @@ private:
 
   void ReleaseUnmasked(uint64_t aChannelId);
 
-  // TODO(berytus): Remove this. Mach not recongising cpp change
-  void PrintUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<nsIUploadChannel2>& aUpload);
+  static void LogUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<nsIUploadChannel2>& aUpload);
 
   /**
    * Here, we check with the child process if the

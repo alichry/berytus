@@ -79,7 +79,7 @@ protected:
    * sufficient, calling the destructor of RefPtr<..>.
    */
   nsTArray<RefPtr<berytus::UrlSearchExpression>> mUrlAllowlist;
-  bool mAttached;
+  nsString mAttachedChannelId;
 
   already_AddRefed<Blob> Unmask(const nsCString& aReqUrl, bool& aUnmasked, ErrorResult& aRv);
   already_AddRefed<Blob> Unmask(nsIURI* aReqUrl, bool& aUnmasked, ErrorResult& aRv);

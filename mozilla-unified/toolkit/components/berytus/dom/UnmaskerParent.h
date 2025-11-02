@@ -22,9 +22,9 @@ public:
   NS_INLINE_DECL_REFCOUNTING(UnmaskerParent)
 
   ipc::IPCResult RecvUnmaskInChannel(
-      const uint64_t& aChannelId, const IPCStream& aUnmaskedStream,
-      const uint64_t& aLength, const nsACString& aContentType,
-      UnmaskInChannelResolver&& aResolver);
+      const nsACString& aBerytusChannelId, const uint64_t& aHttpChannelId,
+      const IPCStream& aUnmaskedStream, const uint64_t& aLength,
+      const nsACString& aContentType, UnmaskInChannelResolver&& aResolver);
 
   UnmaskerParent();
 protected:

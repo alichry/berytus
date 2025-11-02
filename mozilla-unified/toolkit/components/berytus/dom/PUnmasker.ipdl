@@ -13,7 +13,8 @@ namespace berytus {
 protocol PUnmasker {
   manager PMaskManager;
   parent:
-    async UnmaskInChannel(uint64_t aChannelId,
+    async UnmaskInChannel(nsCString aBerytusChannelId,
+                          uint64_t aHttpChannelId,
                           IPCStream aUnmaskedStream,
                           uint64_t aLength,
                           nsCString aContentType) returns (void_t ok);
