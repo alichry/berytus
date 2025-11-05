@@ -321,6 +321,13 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     Request const* request;
     rv = notif->GetResult(&request);
     NS_ENSURE_SUCCESS(rv, rv);
+    nsAutoCString method;
+    request->GetMethod(method);
+    if (!method.EqualsLiteral("POST") &&
+        !method.EqualsLiteral("PUT") &&
+        !method.EqualsLiteral("PATCH")) {
+      return NS_OK;
+    }
     SafeRefPtr<InternalRequest> internalRequest = request->GetInternalRequest();
     if (!init->mBody.WasPassed() || init->mBody.Value().IsNull()) {
       MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Body is unset/null. Checking input", this, aSubject, aTopic));
@@ -342,8 +349,6 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
         internalRequest.unsafeGetRawPtr(),
         packet);
       MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), packet->ContentLength(), packet->ContentType().get()));
-      //MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Skipping Service Worker Interception for DetectedRequestEntry<%p>", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr()));
-      //internalRequest->SetSkipServiceWorker();
       return NS_OK;
     }
     const fetch::OwningBodyInit& bodyInit =
@@ -368,7 +373,6 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     rv = ExtractByteStreamFromBody(newReqBody, getter_AddRefs(stream),
                                    contentTypeWithCharset, contentLength);
     NS_ENSURE_SUCCESS(rv, rv);
-    // TODO(berytus): Change mContentLength to uint64_t
     RefPtr<berytus::UnmaskPacket> packet = new berytus::UnmaskPacket(
       NS_ConvertUTF16toUTF8(mPacket->mAttachedChannelId),
       0,
@@ -380,8 +384,6 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
       internalRequest.unsafeGetRawPtr(),
       packet);
     MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(url=%s, length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), reqUrl.get(), contentLength, contentTypeWithCharset.get()));
-    //MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Skipping Service Worker Interception for DetectedRequestEntry<%p>", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr()));
-    //internalRequest->SetSkipServiceWorker();
     return NS_OK;
   }
   if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
@@ -461,11 +463,6 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     if (NS_WARN_IF(!mozilla::ipc::SerializeIPCStream(do_AddRef(packet->Body()), ipcStream, false))) {
       return NS_ERROR_FAILURE;
     }
-    // nsLoadFlags loadFlags;
-    // if (NS_SUCCEEDED(channel->GetLoadFlags(&loadFlags))) {
-    //   channel->SetLoadFlags(loadFlags |
-    //                         nsIChannel::LOAD_BYPASS_SERVICE_WORKER);
-    // }
     rv = request->Suspend();
     NS_ENSURE_SUCCESS(rv, rv);
     auto promise =

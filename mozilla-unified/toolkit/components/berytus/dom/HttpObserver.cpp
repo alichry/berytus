@@ -9,6 +9,7 @@
 #include "nsCOMPtr.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsDebug.h"
+#include "nsICloneableInputStream.h"
 #include "nsIHttpProtocolHandler.h"
 #include "nsIObserver.h"
 #include "nsIObserverService.h"
@@ -20,6 +21,7 @@
 #include "nsNetUtil.h"
 #include "nsXULAppAPI.h"
 #include <limits>
+#include "nsStreamUtils.h"
 
 
 namespace mozilla::berytus {
@@ -176,28 +178,39 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
       return NS_OK;
     }
     nsCOMPtr<nsIInputStream> body = packet->Body();
+    {
+      nsCOMPtr<nsICloneableInputStream> stream = do_QueryInterface(packet->Body());
+      if (NS_WARN_IF(!stream)) {
+        MOZ_LOG(sLogger, LogLevel::Error,
+          ("Channel(id:%llu) packet body is not cloneable; refusing to replace upload stream.",
+          httpChannel->ChannelId()));
+        return NS_ERROR_FAILURE;
+      }
+    }
     MOZ_ASSERT(body);
     nsCString method;
     rv = httpChannel->GetRequestMethod(method);
     NS_ENSURE_SUCCESS(rv, rv);
-    nsCString bodyStr;
-    bodyStr.Assign("?");
-    if (MOZ_LOG_TEST(sLogger, LogLevel::Debug)) {
-      rv = NS_ReadInputStreamToString(body, bodyStr, (int64_t) std::min(packet->ContentLength(), 4096ULL));
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
     if (NS_WARN_IF(packet->ContentLength() > std::numeric_limits<int64_t>::max())) {
       MOZ_LOG(sLogger, LogLevel::Info,
               ("Packet content length %llu exceeds int64_t max; refusing to replace upload stream.",
                packet->ContentLength()));
       return NS_ERROR_FAILURE;
     }
+    nsAutoCString contentLengthStr;
+    contentLengthStr.AppendInt(packet->ContentLength());
+    MOZ_LOG(sLogger, LogLevel::Info,
+        ("Adding Content-Length: %s to Channel(id=%llu)",
+          contentLengthStr.get(), httpChannel->ChannelId()));
+    rv = httpChannel->SetRequestHeader("Content-Length"_ns,
+                                       contentLengthStr,
+                                       false);
+    NS_ENSURE_SUCCESS(rv, rv);
     MOZ_LOG(sLogger,
             LogLevel::Info,
-            ("Replacing UploadStream of Channel(id:%llu) with method=%s, content-length=%lld, content-type=%s, body=%s",
+            ("Replacing UploadStream of Channel(id:%llu) with method=%s, content-length=%lld, content-type=%s",
               httpChannel->ChannelId(), method.get(),
-              packet->ContentLength(), packet->ContentType().get(),
-              bodyStr.get()));
+              packet->ContentLength(), packet->ContentType().get()));
     rv = uploadChannel->ExplicitSetUploadStream(body,
                                             packet->ContentType(),
                                             (int64_t) packet->ContentLength(),
@@ -211,6 +224,12 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
     rv = httpChannel->SetRequestHeader(BERYTUS_HTTP_HEADER_CHANNEL_ID,
                                        packet->BerytusChannelId(),
                                        false);
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsLoadFlags loadFlags;
+    rv = httpChannel->GetLoadFlags(&loadFlags);
+    NS_ENSURE_SUCCESS(rv, rv);
+    rv = httpChannel->SetLoadFlags(loadFlags |
+                                   nsIChannel::LOAD_BYPASS_SERVICE_WORKER);
     NS_ENSURE_SUCCESS(rv, rv);
     ReleaseUnmasked(httpChannel->ChannelId());
     return NS_OK;
