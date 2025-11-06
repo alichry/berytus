@@ -19,6 +19,7 @@
 #include "nsISupports.h"
 #include "nsIUploadChannel2.h"
 #include "nsNetUtil.h"
+#include "nsStringFwd.h"
 #include "nsXULAppAPI.h"
 #include <limits>
 #include "nsStreamUtils.h"
@@ -103,13 +104,17 @@ HttpObserver::HttpObserver() {
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
   MOZ_ASSERT(obs);
 
+  obs->AddObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC, false);
   obs->AddObserver(this, NS_HTTP_ON_MODIFY_REQUEST_TOPIC, false);
+  obs->AddObserver(this, NS_HTTP_ON_STOP_REQUEST_TOPIC, false);
 }
 
 HttpObserver::~HttpObserver() {
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
   if (obs) {
+    obs->RemoveObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC);
     obs->RemoveObserver(this, NS_HTTP_ON_MODIFY_REQUEST_TOPIC);
+    obs->RemoveObserver(this, NS_HTTP_ON_STOP_REQUEST_TOPIC);
   }
 }
 
@@ -129,11 +134,78 @@ void HttpObserver::LogUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<ns
   MOZ_LOG(sLogger, LogLevel::Debug, ("PrintUploadBody(channelId=%llu): length=%lld, body=%s", aChannel->ChannelId(), length, bodyStr.get()));
 }
 
+// TODO: To implement masking of packets coming from
+// the web app, we must apply a fetch() dom hook that
+// intercepts the about-to-be-resolved Response object
+// We would want to potentially return a ddifferent
+// Response object.
+
+// Response Exposed
+// Response Wrapped (Masked)
+// Exposed.formData() -> Wrapped.formData()
+//  then, foreach element in formdata
+//   if element is a blob, and its mime type
+//   is a jwe packet, we wrap the blob in
+//   a BerytusEncryptedPacket, else add
+//   the element as is.
+// Exposed.blob() -> Wrapped.blob()
+//   if content-type is jwe packet,
+//      we wrap Wrapped.blob() in a BerytusEncryptedPacket
+//   else if content-type is multi-part
+//      call Exposed.arrayBuffer()
+//      and wrap the return buffer as a blob.
+//   else return Wrapped.blob() as is
+// Exposed.arrayBuffer() ->
+//    if content-type is a jwe packet:
+//      return _CONCEALED PACKET_
+//    elif content-type multi part
+//      parse as form data "wrapped"
+//      create a new form data "exposed"
+//      for each element in "wrapped"
+//        if element is a packet
+//          exposed.set(element.name, _CONCEALED_PACKEt_)
+//          continue
+//        exposed.set(element.name, element.value)
+//      return serialization of 'exposed'
+//    else
+//      return Wrapped.arrayBuffer()
+// Exposed.text() -> TextDecode(Exposed.arrrayBuffer(), "utf-8")
+// Exposed.json() -> JSON.parse(Exposed.text())
+
+
 NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
                                     const char* aTopic,
                                     const char16_t*) {
   MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %s)", aSubject, aTopic));
   if (strcmp(aTopic, "app-startup") == 0) {
+    return NS_OK;
+  }
+  if (strcmp(aTopic, NS_HTTP_ON_OPENING_REQUEST_TOPIC) == 0) {
+    /**
+     * The X-Berytus-Channel-Id header is a reserved HTTP header used
+     * in the Berytus framework. It must not be set by client code,
+     * just like the Origin header must not be set by client code.
+     * The web application must not trust any JWE packet in request
+     * bodies where there is no corresponding X-Berytus-Channel-Id header.
+     * Therefore, if client code sets the header, we abort the request.
+     *
+     * Moreover, the current Berytus implementation relies on the
+     * X-Berytus-Channel-Id as a signal to skip web extension interception
+     * of request bodies.
+     */
+    nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(httpChannel, NS_ERROR_FAILURE);
+    nsAutoCString existingBerytusHeader;
+    nsresult rv = httpChannel->GetRequestHeader(BERYTUS_HTTP_HEADER_CHANNEL_ID,
+                                       existingBerytusHeader);
+    if (NS_FAILED(rv)) {
+      return NS_OK;
+    }
+    MOZ_LOG(sLogger, LogLevel::Warning,
+      ("Channel(id:%llu) already has the Berytus Header; aborting request.",
+      httpChannel->ChannelId()));
+    rv = httpChannel->Cancel(NS_ERROR_DOM_INVALID_HEADER_NAME);
+    NS_ENSURE_SUCCESS(rv, rv);
     return NS_OK;
   }
   if (strcmp(aTopic, NS_HTTP_ON_MODIFY_REQUEST_TOPIC) == 0) {
@@ -173,7 +245,7 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
     NS_ENSURE_SUCCESS(rv, rv);
     if (NS_WARN_IF(hasHeaders)) {
       MOZ_LOG(sLogger, LogLevel::Info,
-        ("Channel(id:%llu) has headers; refusing to replace upload stream.",
+        ("Channel(id:%llu) exsting upload stream has headers; refusing to replace upload stream.",
         httpChannel->ChannelId()));
       return NS_OK;
     }
@@ -231,7 +303,14 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
     rv = httpChannel->SetLoadFlags(loadFlags |
                                    nsIChannel::LOAD_BYPASS_SERVICE_WORKER);
     NS_ENSURE_SUCCESS(rv, rv);
-    ReleaseUnmasked(httpChannel->ChannelId());
+    return NS_OK;
+  }
+  if (strcmp(aTopic, NS_HTTP_ON_STOP_REQUEST_TOPIC) == 0) {
+    MOZ_LOG(sLogger, LogLevel::Info, ("In NS_HTTP_ON_STOP_REQUEST_TOPIC"));
+    nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(httpChannel, NS_ERROR_FAILURE);
+    uint64_t channelId = httpChannel->ChannelId();
+    ReleaseUnmasked(channelId);
     return NS_OK;
   }
   MOZ_ASSERT_UNREACHABLE("Unexpected topic");
