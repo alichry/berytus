@@ -1,8 +1,8 @@
 import { AuthChallenge, EAuthOutcome } from "@root/backend/db/models/AuthChallenge";
-import type { ChallengePendingMessage, IChallengeHandler, InitiateAuthChallengeResullt, ProcessChallengeMessageResult } from "./types";
+import type { ChallengePendingMessage, IChallengeHandler } from "./types";
 import { AuthChallengeMessage, type AuthChallengeMessageName, type ChallengeMessageStatus, type MessagePayload } from "@root/backend/db/models/AuthChallengeMessage";
 import { pool } from "@root/backend/db/pool";
-import type { PoolConnection } from "mysql2/promise";
+import type { ReservedConnection } from "@root/backend/db/pool";
 import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge";
 import { AuthSession } from "@root/backend/db/models/AuthSession";
 
@@ -14,7 +14,7 @@ export interface MessageDraft<MN extends AuthChallengeMessageName> {
 
 interface CommonChallengeHandlerConstructor {
     prototype: AbstractChallengeHandler<AuthChallengeMessageName>;
-    new(conn: PoolConnection, session: AuthSession, challenge: AuthChallenge): AbstractChallengeHandler<AuthChallengeMessageName>;
+    new(conn: ReservedConnection, session: AuthSession, challenge: AuthChallenge): AbstractChallengeHandler<AuthChallengeMessageName>;
 }
 
 export type Message<MN extends AuthChallengeMessageName> = Omit<AuthChallengeMessage, "messageName"> & { messageName: MN };
@@ -28,7 +28,7 @@ interface HandlerMessageDictionary<MN extends AuthChallengeMessageName> {
 
 export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageName>
     implements IChallengeHandler {
-    protected readonly conn: PoolConnection;
+    protected readonly conn: ReservedConnection;
     readonly session: AuthSession;
     readonly challenge: AuthChallenge;
     private destroyed = false;
@@ -38,7 +38,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
      * @param challenge
      */
     public constructor(
-        conn: PoolConnection,
+        conn: ReservedConnection,
         session: AuthSession,
         challenge: AuthChallenge,
     ) {
@@ -64,13 +64,32 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     ): Promise<NonNullable<ChallengeMessageStatus>>;
 
     static async initiateChallenge(
-        sessionId: number,
+        sessionId: BigInt,
+        challengeId: string,
+        handlerCtor: CommonChallengeHandlerConstructor,
+        conn?: ReservedConnection
+    ) {
+        if (! conn) {
+            conn = await pool.reserve();
+        }
+        return AbstractChallengeHandler.#initiateChallenge(
+            conn,
+            sessionId,
+            challengeId,
+            handlerCtor
+        );
+    }
+
+    static async #initiateChallenge(
+        conn: ReservedConnection,
+        sessionId: BigInt,
         challengeId: string,
         handlerCtor: CommonChallengeHandlerConstructor
     ) {
-        const conn = await pool.getConnection();
+        let begun = false;
         try {
-            await conn.beginTransaction();
+            await conn`START TRANSACTION`;
+            begun = true;
             const session = await AuthSession.getSession(
                 sessionId,
                 conn
@@ -94,19 +113,49 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
             await handler.getPendingMessage();
             return handler;
         } catch (e) {
-            conn.release();
+            try {
+                if (begun) {
+                    await conn`ROLLBACK`;
+                }
+            } catch (e2) {
+                throw new Error(
+                    e2 instanceof Error ? e2.message : String(e2),
+                    { cause: e }
+                );
+            } finally {
+                conn.release();
+            }
             throw e;
         }
     }
 
     static async loadChallenge(
-        sessionId: number,
+        sessionId: BigInt,
+        challengeId: string,
+        handlerCtor: CommonChallengeHandlerConstructor,
+        conn?: ReservedConnection
+    ) {
+        if (! conn) {
+            conn = await pool.reserve();
+        }
+        return AbstractChallengeHandler.#loadChallenge(
+            conn,
+            sessionId,
+            challengeId,
+            handlerCtor
+        );
+    }
+
+    static async #loadChallenge(
+        conn: ReservedConnection,
+        sessionId: BigInt,
         challengeId: string,
         handlerCtor: CommonChallengeHandlerConstructor
     ) {
-        const conn = await pool.getConnection();
+        let begun = false;
         try {
-            await conn.beginTransaction();
+            await conn`START TRANSACTION`;
+            begun = true;
             const session = await AuthSession.getSession(
                 sessionId,
                 conn
@@ -133,7 +182,18 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
             await handler.getPendingMessage();
             return handler;
         } catch (e) {
-            conn.release();
+            try {
+                if (begun) {
+                    await conn`ROLLBACK`;
+                }
+            } catch (e2) {
+                throw new Error(
+                    e2 instanceof Error ? e2.message : String(e2),
+                    { cause: e }
+                );
+            } finally {
+                conn.release();
+            }
             throw e;
         }
     }
@@ -231,13 +291,20 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     }
 
     async save() {
+        if (this.destroyed) {
+            throw new Error("Cannot save. Handler has been destroyed.");
+        }
         // make sure that there are at least one message before saving.
         const messages = await this.getMessages();
         if (
             messages.pendingMessage ||
             Object.values(messages.processedMessages).length > 0
         ) {
-            await this.conn.commit();
+            try {
+                await this.conn`COMMIT`;
+            } finally {
+                this.destroy();
+            }
             return;
         }
         throw new Error("Cannot save challenge. No messages were created.");

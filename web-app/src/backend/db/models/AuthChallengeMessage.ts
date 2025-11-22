@@ -1,11 +1,12 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { AccountDefAuthChallenge, EChallengeType } from "./AccountDefAuthChallenge";
-import { AuthChallenge } from "./AuthChallenge";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
-import type { JSONString } from "./types";
+/// <reference path="../../../../src/generated/berytus.d.ts" />
+import { toPostgresBigInt, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import { EChallengeType } from "./AccountDefAuthChallenge.js";
+import { AuthChallenge, EAuthOutcome } from "./AuthChallenge.js";
+import type { JSONValue } from "../types.js";
+import { AuthSession } from "./AuthSession.js";
 
-export type MessagePayload = object | null | string | number | boolean;
+export type MessagePayload = JSONValue;
 export type AuthChallengeMessageName =
     BerytusPasswordChallengeMessageName |
     BerytusSecureRemotePasswordChallengeMessageName |
@@ -24,16 +25,16 @@ const ValidMessages: Record<
 
 export type ChallengeMessageStatus = "Ok" | `Error:${string}` | null;
 
-interface PGetChallengeMessage extends RowDataPacket {
-    MessageName: AuthChallengeMessageName;
-    Request: JSONString;
-    Expected: JSONString;
-    Response: JSONString;
-    StatusMsg: ChallengeMessageStatus
+interface PGetChallengeMessage {
+    messagename: AuthChallengeMessageName;
+    request: JSONValue;
+    expected: JSONValue;
+    response: JSONValue;
+    statusmsg: ChallengeMessageStatus
 }
 
 export class AuthChallengeMessage {
-    readonly sessionId: number;
+    readonly sessionId: BigInt;
     readonly challengeId: string;
     readonly messageName: AuthChallengeMessageName;
     readonly request: MessagePayload;
@@ -42,7 +43,7 @@ export class AuthChallengeMessage {
     statusMsg: ChallengeMessageStatus;
 
     constructor(
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         messageName: AuthChallengeMessageName,
         request: MessagePayload,
@@ -60,7 +61,7 @@ export class AuthChallengeMessage {
     }
 
     static async getAllMessages(
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         existingConn?: PoolConnection
     ) {
@@ -82,42 +83,35 @@ export class AuthChallengeMessage {
 
     static async #getAllMessages(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string
     ): Promise<AuthChallengeMessage[]> {
-        const [res] = await conn.query<PGetChallengeMessage[]>(
-            'SELECT MessageName, Request, Expected, Response, StatusMsg ' +
-            'FROM berytus_account_auth_challenge_message ' +
-            'WHERE SessionID = ? AND ChallengeID = ?',
-            [
-                sessionId,
-                challengeId,
-            ]
-        );
-        // if (res.length === 0) {
-        //     throw EntityNotFoundError.default(
-        //         AuthChallengeMessage.name,
-        //         `${sessionId},${challengeId}`,
-        //         "SessionID,ChallengeID",
-        //         "Unable to retrieve list of messages. " +
-        //         "Auth Challenge was not found"
-        //     );
-        // }
+        const res = await conn<PGetChallengeMessage[]>`
+            SELECT MessageName,
+                   Request,
+                   Expected,
+                   Response,
+                   StatusMsg
+            FROM berytus_account_auth_challenge_message
+            WHERE SessionID = ${toPostgresBigInt(sessionId)}
+            AND ChallengeID = ${challengeId}
+            ORDER BY CreatedAt ASC
+        `;
         return res.map(packet =>
             new AuthChallengeMessage(
                 sessionId,
                 challengeId,
-                packet.MessageName,
-                JSON.parse(packet.Request),
-                JSON.parse(packet.Expected),
-                JSON.parse(packet.Response),
-                packet.StatusMsg
+                packet.messagename,
+                packet.request,
+                packet.expected,
+                packet.response,
+                packet.statusmsg
             )
         );
     }
 
     static async createMessage(
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         messageName: AuthChallengeMessageName,
         request: MessagePayload,
@@ -151,38 +145,46 @@ export class AuthChallengeMessage {
 
     static async #createMessage(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         messageName: AuthChallengeMessageName,
         request: MessagePayload,
         expected: MessagePayload,
         response: MessagePayload
     ) {
-        const challengeDef = (await AuthChallenge.getChallenge(
+        // TODO(berytus): have a think about concurrency
+        const session = await AuthSession.getSession(sessionId, conn);
+        if (session.outcome !== EAuthOutcome.Pending) {
+            throw new Error(
+                `Cannot create message. Auth session is NOT in pending state, rather it is in ${session.outcome} state`
+            );
+        }
+        const challenge = (await AuthChallenge.getChallenge(
             sessionId,
             challengeId,
             conn
-        )).challengeDef;
-        const challengeType = challengeDef.challengeType;
+        ));
+        if (challenge.outcome !== EAuthOutcome.Pending) {
+        throw new Error(
+                `Cannot create message. Auth challenge is NOT in pending state, rather it is in ${challenge.outcome} state`
+            );
+        }
+        const challengeType = challenge.challengeDef.challengeType;
         if (-1 === ValidMessages[challengeType].indexOf(messageName)) {
             throw new Error(
-                "Cannot createt message. Passed message name " +
+                "Cannot create message. Passed message name " +
                 `'${messageName}' is not appropriatet for the challenge.`
             );
         }
-        await conn.query(
-            'INSERT INTO berytus_account_auth_challenge_message ' +
-            '(SessionID, ChallengeID, MessageName, Request, Expected, Response) ' +
-            'VALUES (?, ?, ?, ?, ?, ?)',
-            [
-                sessionId,
-                challengeId,
-                messageName,
-                JSON.stringify(request),
-                JSON.stringify(expected),
-                JSON.stringify(response)
-            ]
-        );
+        // TODO(berytus): We should also validate
+        // that the message name is the expected next message name.
+        await conn`
+            INSERT INTO berytus_account_auth_challenge_message
+            (SessionID, ChallengeID, MessageName, Request, Expected, Response)
+            VALUES (${toPostgresBigInt(sessionId)}, ${challengeId}, ${messageName},
+                    ${conn.json(request)}, ${conn.json(expected)},
+                    ${conn.json(response)})
+        `;
         return new AuthChallengeMessage(
             sessionId,
             challengeId,
@@ -220,28 +222,22 @@ export class AuthChallengeMessage {
         response: MessagePayload,
         statusMsg: "Ok" | `Error:${string}`,
     ) {
-        await conn.query(
-            'UPDATE berytus_account_auth_challenge_message ' +
-            'SET Response = ?, StatusMsg = ? ' +
-            'WHERE SessionID = ? AND ChallengeID = ? AND MessageName = ?',
-            [
-                JSON.stringify(response),
-                statusMsg,
-                this.sessionId,
-                this.challengeId,
-                this.messageName
-            ]
-        );
+        // todo: use transaction
+        await conn`
+            UPDATE berytus_account_auth_challenge_message
+            SET Response = ${conn.json(response)},
+                StatusMsg = ${statusMsg}
+            WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+            AND   ChallengeID = ${this.challengeId}
+            AND   MessageName = ${this.messageName}
+        `;
         if (statusMsg !== 'Ok') {
-            await conn.query(
-                'UPDATE berytus_account_auth_challenge SET Outcome = ? ' +
-                'WHERE SessionID = ? AND ChallengeID = ? AND Outcome = "Pending"',
-                [
-                    'Aborted',
-                    this.sessionId,
-                    this.challengeId,
-                ]
-            );
+            await conn`
+                UPDATE berytus_account_auth_challenge SET Outcome = 'Aborted'
+                WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+                AND   ChallengeID = ${this.challengeId}
+                AND   Outcome = 'Pending'
+            `;
         }
         this.statusMsg = statusMsg;
         this.response = response;

@@ -1,25 +1,67 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
-import type { PoolConnection} from 'mysql2/promise';
-import { useConnection } from '../pool.js';
+import { toPostgresBigInt, useConnection, useTransaction } from '../pool.js';
+import type { PoolConnection } from '../pool.js';
 import type { FieldInput } from '../types.js';
 import { AccountDefKeyFieldList } from './AccountDefKeyFieldList.js';
 import { EntityAlreadyExistsError } from '../errors/EntityAlreadyExistsError.js';
+import { EntityNotFoundError } from '../errors/EntityNotFoundError.js';
 
-// interface PBerytusAccountField extends RowDataPacket {
-//     AccountID: string;
-//     FieldID: string;
-// }
+interface PCreateAccount {
+    accountid: BigInt;
+}
 
-interface PConflictCheck extends RowDataPacket {
-    AccountID: number;
-    AccountKeyFieldMatchCount: number;
+interface PConflictCheck {
+    accountid: BigInt;
+    accountkeyfieldmatchcount: number;
+}
+
+interface PGetLatest {
+    latestaccountversion: number;
 }
 
 export class Account {
-    accountId: number;
+    accountId: BigInt;
+    accountVersion: number;
 
-    protected constructor(accountId: number) {
+    protected constructor(accountId: BigInt, accountVersion: number) {
         this.accountId = accountId;
+        this.accountVersion = accountVersion;
+    }
+
+    static async latest(
+        accountId: BigInt,
+        existingConn?: PoolConnection
+    ): Promise<Account> {
+        if (existingConn) {
+            return Account.#latest(existingConn, accountId);
+        }
+        return useConnection((conn) =>
+            Account.#latest(
+                conn,
+                accountId
+            )
+        );
+    }
+
+    static async #latest(conn: PoolConnection, accountId: BigInt): Promise<Account> {
+        const rows = await conn<PGetLatest[]>`
+            SELECT MAX(AccountVersion) as LatestAccountVersion
+            FROM berytus_account_field
+            WHERE AccountID = ${toPostgresBigInt(accountId)}
+            ORDER BY MAX(AccountVersion) DESC
+            LIMIT 1
+        `;
+        if (rows.length === 0) {
+            throw EntityNotFoundError.default(
+                'Account',
+                String(accountId),
+                'AccountID',
+                'Cannot find latest account version'
+            );
+        }
+        return new Account(
+            accountId,
+            rows[0].latestaccountversion
+        );
     }
 
     static async accountExists(
@@ -44,20 +86,18 @@ export class Account {
 
     static async #createAccountId(
         conn: PoolConnection
-    ): Promise<number> {
-        const [res] = await conn.query<ResultSetHeader>(
-            'INSERT INTO berytus_account () VALUES ()'
-        );
-        return res.insertId;
+    ): Promise<BigInt> {
+        const [row] = await conn<PCreateAccount[]>
+            `INSERT INTO berytus_account DEFAULT VALUES RETURNING AccountID`;
+        return row.accountid;
     }
 
     static async createAccount(
         accountVersion: number,
         fieldInputs: FieldInput[]
     ): Promise<Account> {
-        return useConnection(async (conn) => {
-            await conn.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
-            await conn.beginTransaction();
+        return useTransaction(async (conn) => {
+            await conn`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`;
             const existingAccount = await this.#getAccount(
                 conn,
                 accountVersion,
@@ -72,26 +112,17 @@ export class Account {
                 );
             }
             const newAccountId = await this.#createAccountId(conn);
-            const records: Array<Array<number | string>> = [];
-            fieldInputs.forEach(field => {
-                records.push(
-                    [
-                        newAccountId,
-                        accountVersion,
-                        field.id,
-                        JSON.stringify(field.value)
-                    ]
-                );
-            })
-            await conn.query(
+            await conn
                 `INSERT INTO berytus_account_field
-                (AccountID, AccountVersion, FieldID, FieldValue)
-                VALUES ?`,
-                [records]
-            );
-            await conn.commit();
+                ${conn(fieldInputs.map(field => ({
+                    accountid: toPostgresBigInt(newAccountId),
+                    accountversion: accountVersion,
+                    fieldid: field.id,
+                    fieldvalue: conn.json(field.value)
+                })))}`;
             return new Account(
-                newAccountId
+                newAccountId,
+                accountVersion
             );
         });
     }
@@ -134,8 +165,8 @@ export class Account {
      * SELECT AccountID, COUNT(*) AS AccountKeyFieldMatchCount
      * FROM berytus_account_field WHERE AccountVersion = 2000
      * AND (
-     *  (FieldID = "partyId" AND FieldValue = '"jerry-and-sons"')
-     *  OR (FieldID = "username" AND FieldValue = '"jerry"')
+     *  (FieldID = 'partyId' AND FieldValue = '"jerry-and-sons"')
+     *  OR (FieldID = 'username' AND FieldValue = '"jerry"')
      * )  GROUP BY AccountID;
      * +-----------+------------------------------+
      * | AccountID | AccountKeyFieldMatchCount    |
@@ -163,34 +194,29 @@ export class Account {
             throw new Error('Malformed account field inputs');
         }
         const keyFieldInputs = keyFieldList.pickKeyFieldInputsFrom(fieldInputs);
-
-        const filterStatements: Array<string> = [];
-        const filterValues: Array<string> = [];
-        keyFieldInputs.forEach(({ id, value }) => {
-            filterStatements.push(
-                `(FieldID = ? AND FieldValue = ?)`
-            );
-            filterValues.push(
-                id, JSON.stringify(value) // values are stored in JSON format
-            );
-        })
-
-        const [rows] = await conn.query<PConflictCheck[]>(
-            `SELECT AccountID,
+        const rows = await conn<PConflictCheck[]>`
+            SELECT AccountID,
                     COUNT(*) AS AccountKeyFieldMatchCount
             FROM berytus_account_field
-            WHERE AccountVersion = ? AND (${filterStatements.join(' OR ')})
+            WHERE AccountVersion = ${keyFieldList.accountVersion}
+            AND (FieldID, FieldValue) IN
+                ${conn(keyFieldInputs.map(
+                    ({ id, value }) =>
+                        conn([
+                            id,
+                            conn.json(value)
+                        ])
+                ))}
             GROUP BY AccountID
-            ORDER BY AccountKeyFieldMatchCount DESC`,
-            [keyFieldList.accountVersion, ...filterValues]
-        );
+            ORDER BY AccountKeyFieldMatchCount DESC
+        `;
         if (
             rows.length === 0 ||
-            rows[0].AccountKeyFieldMatchCount < keyFieldList.fields.length
+            rows[0].accountkeyfieldmatchcount < keyFieldList.fields.length
         ) {
             return null;
         }
-        const accountId = rows[0].AccountID;
-        return new Account(accountId);
+        const accountId = rows[0].accountid;
+        return new Account(accountId, accountVersion);
     }
 }

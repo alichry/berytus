@@ -3,7 +3,7 @@ import { Account } from '@root/backend/db/models/Account.js';
 import { AuthSession } from '@root/backend/db/models/AuthSession';
 import { Result, ReqBody } from './schema';
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ request }) => {
     let body: ReqBody;
     try {
         body = ReqBody.parse(
@@ -41,7 +41,7 @@ export const POST: APIRoute = async ({ params, request }) => {
     );
 
     const result: Result = {
-        "sessionId": session.sessionId
+        "sessionId": session.sessionId.valueOf()
     };
 
     return new Response(JSON.stringify(result), {

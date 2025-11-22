@@ -7,18 +7,28 @@ if (process.env.NODE_ENV !== "development") {
 const cleanDb = async () => {
     const tables = [
         'berytus_account_auth_challenge_message',
-        'berytus_account_auth_challenge_def',
+        'berytus_account_auth_challenge',
+        'berytus_account_def_auth_challenge',
+        'berytus_account_auth_session',
         'berytus_account_field',
+        'berytus_account_user_attributes',
         'berytus_account_def_key_field_id',
         'berytus_account_def_field',
         'berytus_account_def_category_version',
         'berytus_account_def_category',
-        'berytus_account_def'
+        'berytus_account_def',
+        'berytus_account'
     ];
 
     return useConnection(async conn => {
         for (let i = 0; i < tables.length; i++) {
-            await conn.query(`DELETE FROM ${tables[i]}`);
+            try {
+                await conn`DELETE FROM ${conn(tables[i])}`;
+            } catch (e) {
+                console.error("Unable to delete " + tables[i]);
+                throw e;
+            }
+
         }
     });
 }

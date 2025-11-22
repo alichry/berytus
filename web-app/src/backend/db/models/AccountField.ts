@@ -1,20 +1,20 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
+import type { PoolConnection } from "../pool.js";
+import { toPostgresBigInt, useConnection } from "../pool.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 
-export interface PGetFieldValue extends RowDataPacket {
-    FieldValue: string; /* JSON */
+export interface PGetFieldValue {
+    fieldvalue: unknown; /* JSON-parsed value */
 }
 
 export class AccountField {
     readonly accountVersion: number;
-    readonly accountId: number;
+    readonly accountId: BigInt;
     readonly fieldId: string;
     readonly fieldValue: unknown;
 
     protected constructor(
         accountVersion: number,
-        accountId: number,
+        accountId: BigInt,
         fieldId: string,
         fieldValue: unknown,
     ) {
@@ -26,7 +26,7 @@ export class AccountField {
 
     static async getField(
         accountVersion: number,
-        accountId: number,
+        accountId: BigInt,
         fieldId: string,
         existingConn?: PoolConnection
     ) {
@@ -51,15 +51,16 @@ export class AccountField {
     static async #getField(
         conn: PoolConnection,
         accountVersion: number,
-        accountId: number,
+        accountId: BigInt,
         fieldId: string,
     ) {
-        const [res] = await conn.query<PGetFieldValue[]>(
-            'SELECT FieldValue ' +
-            'FROM berytus_account_field ' +
-            'WHERE AccountVersion = ? AND AccountID = ? AND FieldID = ?',
-            [accountVersion, accountId, fieldId]
-        );
+        const res = await conn<PGetFieldValue[]>`
+            SELECT FieldValue
+            FROM berytus_account_field
+            WHERE AccountVersion = ${accountVersion}
+            AND AccountID = ${toPostgresBigInt(accountId)}
+            AND FieldID = ${fieldId}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AccountField.name,
@@ -71,7 +72,7 @@ export class AccountField {
             accountVersion,
             accountId,
             fieldId,
-            JSON.parse(res[0].FieldValue)
+            res[0].fieldvalue
         );
     }
 }

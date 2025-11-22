@@ -5,7 +5,7 @@ import { AbstractChallengeHandler } from "./AbstractChallengeHandler";
 import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler";
 
 export const initiateChallenge = async (
-    sessionId: number,
+    sessionId: BigInt,
     challengeId: string
 ) => {
     const authSession = await AuthSession.getSession(sessionId);
@@ -22,7 +22,7 @@ export const initiateChallenge = async (
 }
 
 export const loadChallenge = async (
-    sessionId: number,
+    sessionId: BigInt,
     challengeId: string
 ) => {
     const authSession = await AuthSession.getSession(sessionId);

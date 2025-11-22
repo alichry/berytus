@@ -1,4 +1,3 @@
-import type { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge";
 import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
 import type { AuthChallengeMessage, AuthChallengeMessageName, ChallengeMessageStatus, MessagePayload } from "@root/backend/db/models/AuthChallengeMessage";
 

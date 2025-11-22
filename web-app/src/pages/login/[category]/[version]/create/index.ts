@@ -6,7 +6,7 @@ import { Body } from './schema';
 
 
 export const POST: APIRoute = async ({ params, request }) => {
-    const { category, version } = params;
+    const { version } = params;
     const { fields, userAttributes } = Body.parse(await request.json());
 
     const transformedFields = await Promise.all(

@@ -59,7 +59,7 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         let identityFields: { id: string; value: string}[] = [];
         let credentialFields: { id: string; value: string}[] = [];
         if (this.operation.intent === "Register") {
-            for (const [k, { id, value }] of this.operation.userAttributes) {
+            for (const [_k, { id, value }] of this.operation.userAttributes) {
                 userAttrs[id] = typeof value === "string"
                     ? value
                     : JSON.stringify(value);

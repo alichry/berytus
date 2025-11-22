@@ -1,17 +1,17 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
-import type { JSONString } from "./types";
+import { useConnection, toPostgresBigInt } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import type { JSONValue } from "../types.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 
-export interface PGetUserAttributeDictionary extends RowDataPacket {
-    UserAttributeDictionary: JSONString;
+export interface PGetUserAttributeDictionary {
+    userattributedictionary: Record<string, JSONValue>; /* JSON-parsed value */
 }
 
 export class AccountUserAttributes {
-    accountId: number;
-    userAttributes: Record<string, unknown>;
+    accountId: BigInt;
+    userAttributes: Record<string, JSONValue>;
 
-    constructor(accountId: number, userAttrs: Record<string, unknown>) {
+    constructor(accountId: BigInt, userAttrs: Record<string, JSONValue>) {
         this.accountId = accountId;
         this.userAttributes = userAttrs;
     }
@@ -25,8 +25,8 @@ export class AccountUserAttributes {
     }
 
     static async createUserAttributes(
-        accountId: number,
-        attrs: Record<string, unknown>,
+        accountId: BigInt,
+        attrs: Record<string, JSONValue>,
         existingConn?: PoolConnection
     ) {
         if (existingConn) {
@@ -47,14 +47,14 @@ export class AccountUserAttributes {
 
     static async #createUserAttributes(
         conn: PoolConnection,
-        accountId: number,
-        attrs: Record<string, unknown>
+        accountId: BigInt,
+        attrs: Record<string, JSONValue>
     ) {
-        await conn.query(
-            'INSERT INTO berytus_account_user_attributes ' +
-            '(AccountID, UserAttributeDictionary) VALUES (?, ?)',
-            [accountId, JSON.stringify(attrs)]
-        );
+        await conn`
+            INSERT INTO berytus_account_user_attributes
+            (AccountID, UserAttributeDictionary)
+            VALUES (${toPostgresBigInt(accountId)}, ${conn.json(attrs)})
+        `;
         return new AccountUserAttributes(
             accountId,
             attrs
@@ -62,7 +62,7 @@ export class AccountUserAttributes {
     }
 
     static async getUserAttributes(
-        accountId: number,
+        accountId: BigInt,
         existingConn?: PoolConnection
     ) {
         if (existingConn) {
@@ -81,23 +81,23 @@ export class AccountUserAttributes {
 
     static async #getUserAttributes(
         conn: PoolConnection,
-        accountId: number
+        accountId: BigInt
     ): Promise<AccountUserAttributes> {
-        const [res] = await conn.query<PGetUserAttributeDictionary[]>(
-            'SELECT UserAttributeDictionary FROM berytus_account_user_attributes ' +
-            'WHERE AccountID = ?',
-            [accountId]
-        );
+        const res = await conn<PGetUserAttributeDictionary[]>`
+            SELECT UserAttributeDictionary
+            FROM berytus_account_user_attributes
+            WHERE AccountID = ${toPostgresBigInt(accountId)}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AccountUserAttributes.name,
-                accountId,
+                String(accountId),
                 "AccountID"
             );
         }
         return new AccountUserAttributes(
             accountId,
-            JSON.parse(res[0].UserAttributeDictionary)
+            res[0].userattributedictionary
         );
     }
 }

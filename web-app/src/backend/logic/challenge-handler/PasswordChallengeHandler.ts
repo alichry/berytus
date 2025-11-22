@@ -4,9 +4,9 @@ import { AbstractChallengeHandler, type MessageDraft, type MessageDictionary, ty
 import { AccountField } from "@root/backend/db/models/AccountField";
 import { z } from "zod";
 import { PasswordHandler, StoredPassword } from "../field-handler/PasswordHandler";
-import type { PoolConnection } from "mysql2/promise";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
 import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
+import type { ReservedConnection } from "@root/backend/db/pool";
 
 type MessageName = BerytusPasswordChallengeMessageName;
 
@@ -35,7 +35,7 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
     }
 
     public constructor(
-        conn: PoolConnection,
+        conn: ReservedConnection,
         session: AuthSession,
         challenge: AuthChallenge
     ) {
@@ -79,7 +79,7 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
     }
 
     protected async validateMessageResponse(
-        processedMessages: MessageDictionary<MessageName>,
+        _processedMessages: MessageDictionary<MessageName>,
         pendingMessage: Message<MessageName>,
         response: MessagePayload
     ) {

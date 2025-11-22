@@ -1,7 +1,5 @@
-import type { RowDataPacket } from "mysql2";
-
-export interface PAccountDefKeyField extends RowDataPacket {
-    FieldID: string;
+export interface PAccountDefKeyField {
+    fieldid: string;
 }
 
 export class AccountDefKeyField {

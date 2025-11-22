@@ -5,9 +5,14 @@ import { AccountUserAttributes } from '@root/backend/db/models/AccountUserAttrib
 import type { Result } from './schema';
 
 export const POST: APIRoute = async ({ params }) => {
-    const { category, version, sessionId } = params;
+    const { sessionId } = params;
+    if (typeof sessionId === "undefined") {
+        return new Response(JSON.stringify({
+            error: "Missing session id path paramemter"
+        }), { status: 400 });
+    }
 
-    const session = await AuthSession.getSession(Number(sessionId));
+    const session = await AuthSession.getSession(BigInt(sessionId));
     try {
         await session.finish();
         const result: Result = {

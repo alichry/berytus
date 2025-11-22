@@ -7,7 +7,7 @@ export const ReqBody = z.object({
 });
 
 export const Result = z.object({
-    sessionId: z.number()
+    sessionId: z.bigint()
 });
 
 export type Result = z.infer<typeof Result>;

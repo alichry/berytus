@@ -8,7 +8,7 @@ const Body = z.object({
 });
 
 export const POST: APIRoute = async ({ params, request }) => {
-    const { category, version } = params;
+    const { version } = params;
     const { fields } = Body.parse(await request.json());
 
     const exists = await Account.accountExists(

@@ -1,26 +1,30 @@
-import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
-import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge";
-import { AuthChallenge, EAuthOutcome } from "./AuthChallenge";
-import { AuthError } from "../errors/AuthError";
+import { toPostgresBigInt, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
+import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
+import { AuthChallenge, EAuthOutcome } from "./AuthChallenge.js";
+import { AuthError } from "../errors/AuthError.js";
 
-interface PGetSession extends RowDataPacket {
-    SessionID: number;
-    AccountID: number;
-    AccountVersion: number;
-    Outcome: EAuthOutcome;
+interface PCreateSession {
+    sessionid: BigInt;
+}
+
+interface PGetSession {
+    sessionid: BigInt;
+    accountid: BigInt;
+    accountversion: number;
+    outcome: EAuthOutcome;
 }
 
 export class AuthSession {
-    public readonly sessionId: number;
-    public readonly accountId: number;
+    public readonly sessionId: BigInt;
+    public readonly accountId: BigInt;
     public readonly accountVersion: number;
     public outcome: EAuthOutcome;
 
     constructor(
-        sessionId: number,
-        accountId: number,
+        sessionId: BigInt,
+        accountId: BigInt,
         accountVersion: number,
         outcome: EAuthOutcome
     ) {
@@ -72,16 +76,15 @@ export class AuthSession {
                 );
             }
         }
-        await conn.query(
-            'UPDATE berytus_account_auth_session ' +
-            'SET Outcome = ? ' +
-            'WHERE SessionID = ?',
-            [EAuthOutcome.Succeeded, this.sessionId]
-        );
+        await conn`
+            UPDATE berytus_account_auth_session
+            SET Outcome = ${EAuthOutcome.Succeeded}
+            WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+        `;
     }
 
     static async getSession(
-        sessionId: number,
+        sessionId: BigInt,
         existingConn?: PoolConnection
     ) {
         if (existingConn) {
@@ -100,13 +103,14 @@ export class AuthSession {
 
     static async #getSession(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
     ) {
-        const [res] = await conn.query<PGetSession[]>(
-            'SELECT SessionID, AccountID, AccountVersion, Outcome FROM ' +
-            'berytus_account_auth_session WHERE SessionID = ?',
-            [sessionId]
-        );
+        const res = await conn<PGetSession[]>`
+            SELECT SessionID, AccountID,
+                   AccountVersion, Outcome
+            FROM berytus_account_auth_session
+            WHERE SessionID = ${toPostgresBigInt(sessionId)}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AuthSession.name,
@@ -116,14 +120,14 @@ export class AuthSession {
         }
         return new AuthSession(
             sessionId,
-            res[0].AccountID,
-            res[0].AccountVersion,
-            res[0].Outcome,
+            res[0].accountid,
+            res[0].accountversion,
+            res[0].outcome,
         );
     }
 
     static async createSession(
-        accountId: number,
+        accountId: BigInt,
         accountVersion: number,
         existingConn?: PoolConnection
     ): Promise<AuthSession> {
@@ -144,15 +148,16 @@ export class AuthSession {
     }
 
     static async #createSession(
-        accountId: number,
+        accountId: BigInt,
         accountVersion: number,
         conn: PoolConnection
     ): Promise<AuthSession> {
-        const [res] = await conn.query<ResultSetHeader>(
-            'INSERT INTO berytus_account_auth_session ' +
-            '(AccountID, AccountVersion, Outcome) VALUES (?, ?, ?)',
-            [accountId, accountVersion, EAuthOutcome.Pending]
-        );
-        return new AuthSession(res.insertId, accountId, accountVersion, EAuthOutcome.Pending);
+        const res = await conn<PCreateSession[]>`
+            INSERT INTO berytus_account_auth_session
+            (AccountID, AccountVersion, Outcome)
+            VALUES (${toPostgresBigInt(accountId)}, ${accountVersion}, ${EAuthOutcome.Pending})
+            RETURNING SessionID
+        `;
+        return new AuthSession(res[0].sessionid, accountId, accountVersion, EAuthOutcome.Pending);
     }
 }

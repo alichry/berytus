@@ -3,9 +3,14 @@ import type { APIRoute } from 'astro';
 import type { Result } from './schema';
 
 export const POST: APIRoute = async ({ params, request }) => {
-    const { category, version, sessionId, challengeId } = params;
+    const { sessionId, challengeId } = params;
+    if (typeof sessionId === "undefined") {
+        return new Response(JSON.stringify({
+            error: "Missing session id path paramemter"
+        }), { status: 400 });
+    }
     const handler = await loadChallenge(
-        Number(sessionId),
+        BigInt(sessionId),
         challengeId!
     );
     try {
