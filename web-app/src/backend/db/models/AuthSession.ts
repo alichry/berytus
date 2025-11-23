@@ -58,29 +58,49 @@ export class AuthSession {
             conn
         );
         for (let i = 0; i < challengeDefs.length; i++) {
-            const ch = await AuthChallenge.getChallenge(
-                this.sessionId,
-                challengeDefs[i].challengeId,
-                conn
-            );
+            let ch;
+            try {
+                ch = await AuthChallenge.getChallenge(
+                    this.sessionId,
+                    challengeDefs[i].challengeId,
+                    conn
+                );
+            } catch (e) {
+                if (e instanceof EntityNotFoundError) {
+                    throw new AuthError(
+                        `Challenge ${challengeDefs[i].challengeId} was not initiated. ` +
+                        `Cannnot finish auth session#${this.sessionId}.`,
+                        { cause: e }
+                    );
+                }
+                throw e;
+            }
             if (ch.outcome === EAuthOutcome.Aborted) {
                 throw new AuthError(
-                    `Challenge ${ch.challengeId} was not successful. ` +
-                    `Cannnot finish auth session.`
+                    `Challenge ${ch.challengeId} was aborted. ` +
+                    `Cannnot finish auth session#${this.sessionId}.`
                 );
             }
             if (ch.outcome === EAuthOutcome.Pending) {
                 throw new AuthError(
-                    `Challenge ${ch.challengeId} is still pemnding ` +
-                    `Cannnot finish auth session.`
+                    `Challenge ${ch.challengeId} is still pending. ` +
+                    `Cannnot finish auth session#${this.sessionId}.`
                 );
             }
         }
-        await conn`
+        const result = await conn`
             UPDATE berytus_account_auth_session
             SET Outcome = ${EAuthOutcome.Succeeded}
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+            AND   Outcome = ${EAuthOutcome.Pending}
         `;
+        if (result.count === 0) {
+            throw new Error(
+                `Failed to update session outcome. Session outcome ` +
+                `is no longer in pending state for ` +
+                `auth session#${this.sessionId}`
+            );
+        }
         this.outcome = EAuthOutcome.Succeeded;
     }
 

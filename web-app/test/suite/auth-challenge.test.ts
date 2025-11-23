@@ -7,7 +7,7 @@ import { pool } from '@root/backend/db/pool.js';
 import { strict as assert } from 'node:assert';
 import { AuthChallenge, EAuthOutcome } from '@root/backend/db/models/AuthChallenge.js';
 import { createAuthSessions, getAuthSessions } from '@test/seed/auth-session.js';
-import { createAuthChallenges } from '@test/seed/auth-challenge.js';
+import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challenge.js';
 import { createAuthChallengeMessages, getAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
@@ -200,23 +200,139 @@ describe('Berytus Auth Challenge', () => {
         expect(existingChallengesAtT1).to.deep.include(updatedChallenge);
     });
 
-    xit("Should reject challenge creation when session is not pending", async () => {
-
-    });
-
-    xit("Should reject updating outcome when Auth Session is not in pending state", async () => {
-
-    });
-
-    xit("Should reject updating outcome to Succeeded when not all messages have been processed", async () => {
-
+    it("Should reject challenge creation when session is not pending [aborted]", async () => {
+        const sessions = await getAuthSessions();
+        const challengeDefs = await getAccountChallengeDefs();
+        const challenges = await getAuthChallenges();
+        const [session, challengeDef] = (() => {
+            for (const session of sessions) {
+                if (session.outcome !== EAuthOutcome.Aborted) {
+                    continue;
+                }
+                const correspondingChallengeDefs =
+                    challengeDefs.filter(
+                        d => d.accountVersion === session.accountVersion
+                    );
+                const correspondingChallenges =
+                    challenges.filter(
+                        c => c.sessionId === session.sessionId
+                    );
+                for (const challengeDef of correspondingChallengeDefs) {
+                    const challenge = correspondingChallenges.find(
+                        c => c.challengeId === challengeDef.challengeId
+                    );
+                    if (challenge) {
+                        continue;
+                    }
+                    return [session, challengeDef]
+                }
+            }
+            assert(false, "cant find appropriate session");
+        })();
+        assert(session, "session");
+        assert(session.outcome === EAuthOutcome.Aborted, 'session.outcome === EAuthOutcome.Aborted');
+        assert(session, "challengeDef");
+        await expect(AuthChallenge.createChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        )).to.be.rejectedWith();
     });
 
     xit("Should reject updating outcome to Pending", async () => {
         // Pending is the default state
     });
 
-    xit("Should reject updating outcome when outcome has been already updated", async () => {
+    it("Should reject updating outcome when outcome has been already updated [succeeded]", async () => {
+        // find a succeeded challenge in a pending session
+        const sessions = await getAuthSessions();
+        const challengeDefs = await getAccountChallengeDefs();
+        const challenges = await getExistingChallenges();
+        const [session, challenge] = (() => {
+            for (const session of sessions) {
+                if (session.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                const correspondingChallenges = challenges.filter(
+                    c => c.sessionId === session.sessionId
+                );
+                for (const challenge of correspondingChallenges) {
+                    if (challenge.outcome !== EAuthOutcome.Succeeded) {
+                        continue;
+                    }
+                    return [session, challenge];
+                }
+            }
+            assert(false, "can't find appropriate session/challenge");
+        })();
+        const challengeDef = challengeDefs.find(
+            d => d.accountVersion === session.accountVersion
+                && d.challengeId === challenge.challengeId
+        );
+        assert(challengeDef, "challengeDef");
+        const retrievedChallenge = await AuthChallenge.getChallenge(
+            session.sessionId,
+            challenge.challengeId
+        );
+        expect({
+            challengeDef,
+            ...challenge
+        }).to.deep.equal(retrievedChallenge);
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Aborted)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Challenge either does not exist anymore or is not in a pending state.`
+        );
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Succeeded)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Challenge either does not exist anymore or is not in a pending state.`
+        );
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Refusing to update to default outcome of Pending.`
+        );
+        // hack into the object, and set the outcome to pending
+        // and see what happens..
+        const prop = 'outcome';
+        assert(retrievedChallenge[prop] === EAuthOutcome.Succeeded);
+        Object.defineProperty(
+            retrievedChallenge,
+            prop,
+            {
+                value: EAuthOutcome.Pending
+            }
+        );
+        // @ts-ignore
+        assert(retrievedChallenge[prop] === EAuthOutcome.Pending);
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Aborted)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Challenge either does not exist anymore or is not in a pending state.`
+        );
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Succeeded)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Challenge either does not exist anymore or is not in a pending state.`
+        );
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Refusing to update to default outcome of Pending.`
+        );
+    });
+
+    xit("Should reject updating outcome when Auth Session is not in pending state", async () => {
+        // find a pending challenge in a non pending session
+    });
+
+    xit("Should reject updating outcome to Succeeded when not all messages have been processed", async () => {
 
     });
 });

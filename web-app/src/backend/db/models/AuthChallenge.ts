@@ -3,6 +3,7 @@ import type { PoolConnection } from "../pool.js";
 import { AuthSession } from "./AuthSession.js";
 import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
+import { AuthError } from "../errors/AuthError.js";
 
 export enum EAuthOutcome {
     Pending = 'Pending',
@@ -135,11 +136,23 @@ export class AuthChallenge {
             );
         }
         /* now create the record */
-        await conn`
+        const result = await conn`
             INSERT INTO berytus_account_auth_challenge
             (SessionID, ChallengeID, Outcome)
-            VALUES (${toPostgresBigInt(sessionId)}, ${challengeId}, ${EAuthOutcome.Pending})
+            SELECT ${toPostgresBigInt(sessionId)},
+                   ${challengeId},
+                   ${EAuthOutcome.Pending}
+            FROM berytus_account_auth_session s
+            WHERE s.SessionID = ${toPostgresBigInt(sessionId)}
+            AND   s.Outcome = ${EAuthOutcome.Pending}
+            FOR UPDATE
         `;
+        if (result.count === 0) {
+            throw new AuthError(
+                `Cannot create a new ${challengeDef.challengeId} `
+                + `challenge, auth session#${sessionId} is not pending`
+            );
+        }
         return new AuthChallenge(
             sessionId,
             challengeId,
@@ -178,12 +191,25 @@ export class AuthChallenge {
         conn: PoolConnection,
         outcome: EAuthOutcome
     ) {
-        await conn`
+        if (outcome === EAuthOutcome.Pending) {
+            throw new AuthError(
+                `Cannot update ${this.challengeId} challenge outcome. `
+                + `Refusing to update to default outcome of Pending.`
+            )
+        }
+        const res = await conn`
             UPDATE berytus_account_auth_challenge
             SET Outcome = ${outcome}
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
             AND ChallengeID = ${this.challengeId}
+            AND Outcome = ${EAuthOutcome.Pending}
         `;
+        if (res.count === 0) {
+            throw new AuthError(
+                `Cannot update ${this.challengeId} challenge outcome. `
+                + `Challenge either does not exist anymore or is not in a pending state.`
+            );
+        }
         this.outcome = outcome;
     }
 }

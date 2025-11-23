@@ -133,22 +133,121 @@ describe("Berytus Auth Session", () => {
         expect(existingSessionsAtT1).to.deep.include(updatedSession);
     });
 
-    xit("Should reject marking session as succeeded when session is in terminal state [succeeded, aborted]", async () => {
-
+    it("Should reject marking session as succeeded when session in aborted state", async () => {
+        const sessions = await getExistingSessions();
+        const sessionMarkedAsAborted = sessions.find(
+            s => s.outcome === EAuthOutcome.Aborted
+        );
+        assert(sessionMarkedAsAborted, "sessionMarkedAsAborted");
+        const retrievedSession = await AuthSession.getSession(
+            sessionMarkedAsAborted.sessionId
+        );
+        expect(retrievedSession).to.deep.equal(sessionMarkedAsAborted);
+        await expect(retrievedSession.finish()).to.be.rejectedWith(
+            'Session is not in a pending state and thus cannot be modified'
+        );
     });
 
-    xit("Should reject marking session as succeeded when not all challenges have been processed", async () => {
-        // go through each defined challenge def for session's account versin
-        // if one of them does not exists or not successful, then
-        // implementation should reject marking the session as
-        // successful.
+    it("Should reject marking session as succeeded when session in succeeded state", async () => {
+        const sessions = await getExistingSessions();
+        const sessionMarkedAsSucceeded = sessions.find(
+            s => s.outcome === EAuthOutcome.Succeeded
+        );
+        assert(sessionMarkedAsSucceeded, "sessionMarkedAsSucceeded");
+        const retrievedSession = await AuthSession.getSession(
+            sessionMarkedAsSucceeded.sessionId
+        );
+        expect(retrievedSession).to.deep.equal(sessionMarkedAsSucceeded);
+        await expect(retrievedSession.finish()).to.be.rejectedWith(
+            'Session is not in a pending state and thus cannot be modified'
+        );
+        // hack into the object, and see what happens
+        const prop = 'outcome';
+        assert(retrievedSession[prop] === EAuthOutcome.Succeeded);
+        Object.defineProperty(
+            retrievedSession,
+            prop,
+            {
+                value: EAuthOutcome.Pending
+            }
+        );
+        // @ts-ignore
+        assert(retrievedSession[prop] === EAuthOutcome.Pending);
+        await expect(retrievedSession.finish()).to.be.rejectedWith(
+            `Failed to update session outcome. Session outcome is no longer in pending state for auth session#${sessionMarkedAsSucceeded.sessionId}`
+        );
     });
 
-    xit("Should reject marking session as succeeded when at least one challenge is still pending", async () => {
-
+    it("Should reject marking session as succeeded when not all challenges have been processed [0 challenges initiated]", async () => {
+        const sessions = await getExistingSessions();
+        const challenges = await getAuthChallenges();
+        const session = sessions.find(
+            s => s.outcome === EAuthOutcome.Pending
+                && !(challenges.find(c => c.sessionId === s.sessionId))
+        );
+        assert(session, "session");
+        const retrievedSession = await AuthSession.getSession(
+            session.sessionId
+        );
+        expect(session).to.deep.equal(retrievedSession);
+        await expect(retrievedSession.finish()).to.be.rejectedWith(
+            new RegExp(`^Challenge [a-zA-z0-9]+ was not initiated. Cannnot finish auth session#${session.sessionId}.$`)
+        );
     });
 
-    xit("Should reject marking a session as succeeded when at least one challenge is aborted", async () => {
+    it("Should reject marking session as succeeded when at least one challenge is still pending", async () => {
+        const sessions = await getExistingSessions();
+        const challenges = await getAuthChallenges();
+        const [session, pendingChallenge] = (() => {
+            for (const session of sessions) {
+                if (session.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                const challenge = challenges.find(
+                    (c) => c.sessionId === session.sessionId
+                        && c.outcome === EAuthOutcome.Pending
+                );
+                if (!challenge) {
+                    continue;
+                }
+                return [session, challenge];
+            }
+            assert(false, 'cannot find appropriate session and challenge');
+        })();
+        const retrievedSession = await AuthSession.getSession(
+            session.sessionId
+        );
+        expect(session).to.deep.equal(retrievedSession);
+        await expect(retrievedSession.finish()).to.be.rejectedWith(
+            new RegExp(`^Challenge ${pendingChallenge.challengeId} is still pending. Cannnot finish auth session#${session.sessionId}.$`)
+        );
+    });
 
+    it("Should reject marking a session as succeeded when at least one challenge is aborted", async () => {
+        const sessions = await getExistingSessions();
+        const challenges = await getAuthChallenges();
+        const [session, abortedChallenge] = (() => {
+            for (const session of sessions) {
+                if (session.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                const challenge = challenges.find(
+                    (c) => c.sessionId === session.sessionId
+                        && c.outcome === EAuthOutcome.Aborted
+                );
+                if (!challenge) {
+                    continue;
+                }
+                return [session, challenge];
+            }
+            assert(false, 'cannot find appropriate session and challenge');
+        })();
+        const retrievedSession = await AuthSession.getSession(
+            session.sessionId
+        );
+        expect(session).to.deep.equal(retrievedSession);
+        await expect(retrievedSession.finish()).to.be.rejectedWith(
+            new RegExp(`^Challenge ${abortedChallenge.challengeId} was aborted. Cannnot finish auth session#${session.sessionId}.$`)
+        );
     });
 });
