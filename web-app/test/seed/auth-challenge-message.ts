@@ -10,7 +10,11 @@ const getStatements = (
     sessions: Sessions,
     challenges: AuthChallenges
 ) => {
-    const packs = [];
+    const packs: Array<{
+        challenge: AuthChallenges[0];
+        session: Sessions[0];
+        challengeDef: ChallengeDefs[0]
+    }> = [];
     {
         const challenge = challenges.find(c => c.outcome === EAuthOutcome.Succeeded);
         assert(challenge, "challenge is unset");
@@ -18,7 +22,7 @@ const getStatements = (
         assert(session, "session is unset");
         const challengeDef = challengeDefs.find(c => {
             return c.accountVersion === session.accountVersion
-            && c.challengeId === challenge.challengeId
+                && c.challengeId === challenge.challengeId
         });
         assert(challengeDef, "challengeDef is unset");
         packs.push({
@@ -35,7 +39,50 @@ const getStatements = (
         assert(session.outcome === EAuthOutcome.Pending, "sesson is not pending");
         const challengeDef = challengeDefs.find(c => {
             return c.accountVersion === session.accountVersion
-            && c.challengeId === challenge.challengeId
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef is unset");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const challenge = challenges.find(
+            c => c.outcome === EAuthOutcome.Pending
+                && !(packs.find(
+                    p => p.challenge.sessionId === c.sessionId && p.challenge.challengeId === c.challengeId
+                ))
+        );
+        assert(challenge, "challenge is unset");
+        const session = sessions.find(s => s.sessionId === challenge.sessionId);
+        assert(session, "session is unset");
+        assert(session.outcome === EAuthOutcome.Pending, "sesson is not pending");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef is unset");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const challenge = challenges.find(
+            c => c.outcome === EAuthOutcome.Succeeded
+                && !(packs.find(
+                        p => p.challenge.sessionId === c.sessionId && p.challenge.challengeId === c.challengeId
+                    ))
+        );
+        assert(challenge, "challenge is unset");
+        const session = sessions.find(s => s.sessionId === challenge.sessionId);
+        assert(session, "session is unset");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
         });
         assert(challengeDef, "challengeDef is unset");
         packs.push({
@@ -62,7 +109,22 @@ const getStatements = (
                 'Dummy',
                 '{ "magicWord": "123" }', '{ "proof": "456" }',
                 'null', null)`,
-
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[2].challenge.sessionId}',
+                '${packs[2].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', 'Ok')`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[3].challenge.sessionId}',
+                '${packs[3].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', 'Ok')`,
     ];
 }
 

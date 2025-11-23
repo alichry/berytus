@@ -81,6 +81,7 @@ export class AuthSession {
             SET Outcome = ${EAuthOutcome.Succeeded}
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
         `;
+        this.outcome = EAuthOutcome.Succeeded;
     }
 
     static async getSession(
