@@ -5,6 +5,7 @@ import { EChallengeType } from "./AccountDefAuthChallenge.js";
 import { AuthChallenge, EAuthOutcome } from "./AuthChallenge.js";
 import type { JSONValue } from "../types.js";
 import { AuthSession } from "./AuthSession.js";
+import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 
 export type MessagePayload = JSONValue;
 export type AuthChallengeMessageName =
@@ -222,6 +223,20 @@ export class AuthChallengeMessage {
         response: MessagePayload,
         statusMsg: "Ok" | `Error:${string}`,
     ) {
+
+        if (
+            typeof statusMsg !== "string" || (
+                statusMsg !== 'Ok'
+                && (
+                    ! statusMsg.startsWith('Error:')
+                    || statusMsg.slice(6).trim().length === 0
+                )
+            )
+        ) {
+            throw new InvalidArgError(
+                "statusMsg is malformed"
+            );
+        }
         // todo: use transaction
         await conn`
             UPDATE berytus_account_auth_challenge_message

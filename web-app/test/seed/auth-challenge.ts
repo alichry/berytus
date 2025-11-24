@@ -6,7 +6,7 @@ import type { ChallengeDefs } from "./account-challenge-defs.js";
 import { getAccountChallengeDefs } from "./account-challenge-defs.js";
 
 const getStatements = (sessions: Sessions, challenges: ChallengeDefs) => {
-    assert(sessions.length >= 7, "need more sessions");
+    assert(sessions.length >= 10, "need more sessions");
     assert(challenges.length > 0, "need more challenges");
     const session1 = sessions[0];
     const session2 = sessions[1];
@@ -15,6 +15,7 @@ const getStatements = (sessions: Sessions, challenges: ChallengeDefs) => {
     const session5 = sessions[4];
     const session6 = sessions[5];
     const session7 = sessions[6];
+    const session10 = sessions[9];
     const challenge = challenges.find(
         c => c.accountVersion === session1.accountVersion
             && c.accountVersion === session2.accountVersion
@@ -22,8 +23,9 @@ const getStatements = (sessions: Sessions, challenges: ChallengeDefs) => {
             && c.accountVersion === session4.accountVersion
             && c.accountVersion === session5.accountVersion
             && c.accountVersion === session6.accountVersion
-            && c.accountVersion === session7.accountVersion);
-    assert(challenge, "could not find appropriate challenge for 6 sessions.");
+            && c.accountVersion === session7.accountVersion
+            && c.accountVersion === session10.accountVersion);
+    assert(challenge, "could not find appropriate challenge for 10 sessions.");
     assert(session1.outcome === EAuthOutcome.Pending, "session1 must be in pending state");
     assert(session2.outcome === EAuthOutcome.Aborted, "session2 must be in aborted state");
     assert(session3.outcome === EAuthOutcome.Succeeded, "session3 must be in succeeded state");
@@ -31,6 +33,7 @@ const getStatements = (sessions: Sessions, challenges: ChallengeDefs) => {
     assert(session5.outcome === EAuthOutcome.Pending, "session5 must be in pending state");
     assert(session6.outcome === EAuthOutcome.Pending, "session6 must be in pending state");
     assert(session7.outcome === EAuthOutcome.Pending, "session7 must be in pending state");
+    assert(session10.outcome === EAuthOutcome.Aborted, "session10 must be in aborted state");
     return [
         `INSERT INTO berytus_account_auth_challenge
         (SessionID, ChallengeID, Outcome)
@@ -60,6 +63,10 @@ const getStatements = (sessions: Sessions, challenges: ChallengeDefs) => {
         (SessionID, ChallengeID, Outcome)
         VALUES
         (${session7.sessionId}, '${challenge.challengeId}', 'Aborted')`,
+        `INSERT INTO berytus_account_auth_challenge
+        (SessionID, ChallengeID, Outcome)
+        VALUES
+        (${session10.sessionId}, '${challenge.challengeId}', 'Pending')`,
     ];
 }
 

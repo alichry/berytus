@@ -238,8 +238,59 @@ describe('Berytus Auth Challenge', () => {
         )).to.be.rejectedWith();
     });
 
-    xit("Should reject updating outcome to Pending", async () => {
+    it("Should reject updating outcome to Pending", async () => {
         // Pending is the default state
+        const states = new Set([EAuthOutcome.Aborted, EAuthOutcome.Pending, EAuthOutcome.Succeeded]);
+        const sessions = await getAuthSessions();
+        const challenges = await getExistingChallenges();
+        const challengeDefs = await getAccountChallengeDefs();
+        const targetChallenges = (() => {
+            const result: typeof challenges = [];
+            for (const state of states) {
+                for (const session of sessions) {
+                    if (session.outcome !== EAuthOutcome.Pending) {
+                        continue;
+                    }
+                    const appropriateChallenge = challenges.find(
+                        c => c.sessionId === session.sessionId
+                            && c.outcome === state
+                    );
+                    if (! appropriateChallenge) {
+                        continue;
+                    }
+                    result.push(appropriateChallenge);
+                    break;
+                }
+            }
+            assert(result.length === states.size, `cant find appropriate challenges`);
+            return result;
+        })();
+        assert(targetChallenges.length > 0, "targetChallenges.length > 0");
+        for (const challenge of targetChallenges) {
+            const session = sessions.find(
+                s => s.sessionId === challenge.sessionId
+            );
+            assert(session, "session");
+            const challengeDef = challengeDefs.find(
+                d => d.accountVersion === session.accountVersion
+                    && d.challengeId === challenge.challengeId
+            );
+            assert(challengeDef, "challengeDef");
+            const retrievedChallenge = await AuthChallenge.getChallenge(
+                session.sessionId,
+                challenge.challengeId
+            );
+            expect({
+                challengeDef,
+                ...challenge
+            }).to.deep.equal(retrievedChallenge);
+            await expect(
+                retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
+            ).to.be.rejectedWith(
+                `Cannot update ${challenge.challengeId} challenge outcome. `
+                + `Refusing to update to default outcome of Pending.`
+            )
+        }
     });
 
     it("Should reject updating outcome when outcome has been already updated [succeeded]", async () => {
@@ -281,13 +332,15 @@ describe('Berytus Auth Challenge', () => {
             retrievedChallenge.updateOutcome(EAuthOutcome.Aborted)
         ).to.be.rejectedWith(
             `Cannot update ${challenge.challengeId} challenge outcome. `
-            + `Challenge either does not exist anymore or is not in a pending state.`
+            + `Challenge does not exist or is not in a pending state, or `
+            + `Session does not exist or is not in a pending state.`
         );
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Succeeded)
         ).to.be.rejectedWith(
             `Cannot update ${challenge.challengeId} challenge outcome. `
-            + `Challenge either does not exist anymore or is not in a pending state.`
+            + `Challenge does not exist or is not in a pending state, or `
+            + `Session does not exist or is not in a pending state.`
         );
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
@@ -312,13 +365,15 @@ describe('Berytus Auth Challenge', () => {
             retrievedChallenge.updateOutcome(EAuthOutcome.Aborted)
         ).to.be.rejectedWith(
             `Cannot update ${challenge.challengeId} challenge outcome. `
-            + `Challenge either does not exist anymore or is not in a pending state.`
+            + `Challenge does not exist or is not in a pending state, or `
+            + `Session does not exist or is not in a pending state.`
         );
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Succeeded)
         ).to.be.rejectedWith(
             `Cannot update ${challenge.challengeId} challenge outcome. `
-            + `Challenge either does not exist anymore or is not in a pending state.`
+            + `Challenge does not exist or is not in a pending state, or `
+            + `Session does not exist or is not in a pending state.`
         );
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
@@ -328,8 +383,63 @@ describe('Berytus Auth Challenge', () => {
         );
     });
 
-    xit("Should reject updating outcome when Auth Session is not in pending state", async () => {
+    it("Should reject updating outcome when Auth Session is not in pending state", async () => {
         // find a pending challenge in a non pending session
+        const sessions = await getAuthSessions();
+        const challenges = await getExistingChallenges();
+        const challengeDefs = await getAccountChallengeDefs();
+        const [session, challenge] = (() => {
+            for (const session of sessions) {
+                if (session.outcome === EAuthOutcome.Pending) {
+                    continue;
+                }
+                const correspondingChallenges = challenges.filter(
+                    c => c.sessionId === session.sessionId
+                );
+                for (const challenge of correspondingChallenges) {
+                    if (challenge.outcome !== EAuthOutcome.Pending) {
+                        continue;
+                    }
+                    return [session, challenge];
+                }
+            }
+            assert(false, "can't find appropriate session/challenge");
+        })();
+        assert(session.outcome !== EAuthOutcome.Pending);
+        assert(challenge.outcome === EAuthOutcome.Pending);
+        const challengeDef = challengeDefs.find(
+            d => d.accountVersion === session.accountVersion
+                && d.challengeId === challenge.challengeId
+        );
+        assert(challengeDef, "challengeDef");
+        const retrievedChallenge = await AuthChallenge.getChallenge(
+            session.sessionId,
+            challenge.challengeId
+        );
+        expect({
+            challengeDef,
+            ...challenge
+        }).to.deep.equal(retrievedChallenge);
+        await expect(retrievedChallenge.updateOutcome(
+            EAuthOutcome.Aborted
+        )).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Challenge does not exist or is not in a pending state, or `
+            + `Session does not exist or is not in a pending state.`
+        );
+        await expect(retrievedChallenge.updateOutcome(
+            EAuthOutcome.Succeeded
+        )).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Challenge does not exist or is not in a pending state, or `
+            + `Session does not exist or is not in a pending state.`
+        );
+        await expect(
+            retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
+        ).to.be.rejectedWith(
+            `Cannot update ${challenge.challengeId} challenge outcome. `
+            + `Refusing to update to default outcome of Pending.`
+        );
     });
 
     xit("Should reject updating outcome to Succeeded when not all messages have been processed", async () => {

@@ -203,11 +203,18 @@ export class AuthChallenge {
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
             AND ChallengeID = ${this.challengeId}
             AND Outcome = ${EAuthOutcome.Pending}
+            AND EXISTS (
+                SELECT 1 FROM berytus_account_auth_session
+                WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+                AND   Outcome = ${EAuthOutcome.Pending}
+                FOR UPDATE
+            )
         `;
         if (res.count === 0) {
             throw new AuthError(
                 `Cannot update ${this.challengeId} challenge outcome. `
-                + `Challenge either does not exist anymore or is not in a pending state.`
+                + `Challenge does not exist or is not in a pending state, or `
+                + `Session does not exist or is not in a pending state.`
             );
         }
         this.outcome = outcome;

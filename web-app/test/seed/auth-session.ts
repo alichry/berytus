@@ -48,6 +48,10 @@ const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
         (AccountID, AccountVersion, Outcome)
         VALUES
         (${account.accountId}, ${account.accountVersion}, 'Aborted')`,
+        `INSERT INTO berytus_account_auth_session
+        (AccountID, AccountVersion, Outcome)
+        VALUES
+        (${account.accountId}, ${account.accountVersion}, 'Aborted')`,
     ];
 }
 

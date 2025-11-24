@@ -191,16 +191,43 @@ describe("Berytus Auth Challenge Message", () => {
         expect(messagesAtT1).to.deep.include(message);
     });
 
-    xit("Should reject updating a challenge outcome with an invalid status msg", async () => {
-        
+    it("Should reject updating a challenge outcome with an invalid status msg", async () => {
+        const cases = [
+            'hello',
+            '',
+            null,
+            'ok2',
+            'ok',
+            'Ok2',
+            'error:',
+            'Error:',
+            'Error2:H'
+        ]
+        const dummyChallengeMessage = new AuthChallengeMessage(
+            0n,
+            'zero',
+            'GetPasswordFields',
+            null,
+            null,
+            null,
+            null
+        );
+        for (const testCase of cases) {
+            await expect(dummyChallengeMessage.updateResponseAndStatus(
+                'helloWorld',
+                // @ts-ignore
+                testCase
+            )).to.be.rejectedWith('statusMsg is malformed');
+        }
+
     });
 
     xit("Should reject challenge message creation when challenge is not pending", async () => {
-
+        // pick a pending sesson, pick challenge aborted/succeeded
     });
 
     xit("Should reject challenge message creation when session is not pending", async () => {
-
+        // pick a non-pending sesson, pick challenge of all states
     });
 
     xit("Should reject challenge message creation with invalid message name [unrecognised message name]", async () => {
