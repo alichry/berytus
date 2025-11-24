@@ -91,6 +91,82 @@ const getStatements = (
             challengeDef
         });
     }
+    {
+        const [session, challenge] = (() => {
+            for (const challenge of challenges) {
+                if (challenge.outcome !== EAuthOutcome.Aborted) {
+                    continue;
+                }
+                const exists = packs.find(
+                    p => p.challenge.sessionId === challenge.sessionId
+                        && p.challenge.challengeId === challenge.challengeId
+                );
+                if (exists) {
+                    continue;
+                }
+                const session = sessions.find(
+                    s => s.sessionId === challenge.sessionId
+                );
+                assert(session, "session");
+                if (session.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                return [session, challenge];
+            }
+            assert(false, "unreachable");
+        })();
+        assert(challenge.outcome === EAuthOutcome.Aborted, "challenge.outcome === EAuthOutcome.Aborted");
+        assert(session.outcome === EAuthOutcome.Pending, "session.outcome === EAuthOutcome.Pending");
+        assert(session.sessionId === challenge.sessionId, "session.sessionId === challenge.sessionId");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const [session, challenge] = (() => {
+            for (const challenge of challenges) {
+                if (challenge.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                const exists = packs.find(
+                    p => p.challenge.sessionId === challenge.sessionId
+                        && p.challenge.challengeId === challenge.challengeId
+                );
+                if (exists) {
+                    continue;
+                }
+                const session = sessions.find(
+                    s => s.sessionId === challenge.sessionId
+                );
+                assert(session, "session");
+                if (session.outcome !== EAuthOutcome.Aborted) {
+                    continue;
+                }
+                return [session, challenge];
+            }
+            assert(false, "unreachable");
+        })();
+        assert(challenge.outcome === EAuthOutcome.Pending, "challenge.outcome === EAuthOutcome.Pending");
+        assert(session.outcome === EAuthOutcome.Aborted, "session.outcome === EAuthOutcome.Aborted");
+        assert(session.sessionId === challenge.sessionId, "session.sessionId === challenge.sessionId");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
 
     return [
         `INSERT INTO berytus_account_auth_challenge_message
@@ -125,6 +201,22 @@ const getStatements = (
                 'Dummy',
                 '{ "magicWord": "123" }', '{ "proof": "456" }',
                 '{ "proof": "456" }', 'Ok')`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[4].challenge.sessionId}',
+                '${packs[4].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', null)`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[5].challenge.sessionId}',
+                '${packs[5].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', null)`
     ];
 }
 

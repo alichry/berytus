@@ -9,6 +9,8 @@ import { AuthChallenge, EAuthOutcome } from '@root/backend/db/models/AuthChallen
 import { createAuthSessions, getAuthSessions } from '@test/seed/auth-session.js';
 import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challenge.js';
 import { createAuthChallengeMessages, getAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
+import { AuthError } from '@root/backend/db/errors/AuthError.js';
+import { InvalidArgError } from '@root/backend/errors/InvalidArgError.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
 
@@ -235,7 +237,11 @@ describe('Berytus Auth Challenge', () => {
         await expect(AuthChallenge.createChallenge(
             session.sessionId,
             challengeDef.challengeId
-        )).to.be.rejectedWith();
+        )).to.be.rejectedWith(
+            AuthError,
+            `Cannot create a new password challenge, ` +
+            `auth session#${session.sessionId} is not pending`
+        );
     });
 
     it("Should reject updating outcome to Pending", async () => {
@@ -287,6 +293,7 @@ describe('Berytus Auth Challenge', () => {
             await expect(
                 retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
             ).to.be.rejectedWith(
+                InvalidArgError,
                 `Cannot update ${challenge.challengeId} challenge outcome. `
                 + `Refusing to update to default outcome of Pending.`
             )
@@ -331,6 +338,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Aborted)
         ).to.be.rejectedWith(
+            AuthError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Challenge does not exist or is not in a pending state, or `
             + `Session does not exist or is not in a pending state.`
@@ -338,6 +346,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Succeeded)
         ).to.be.rejectedWith(
+            AuthError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Challenge does not exist or is not in a pending state, or `
             + `Session does not exist or is not in a pending state.`
@@ -345,6 +354,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
         ).to.be.rejectedWith(
+            InvalidArgError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Refusing to update to default outcome of Pending.`
         );
@@ -364,6 +374,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Aborted)
         ).to.be.rejectedWith(
+            AuthError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Challenge does not exist or is not in a pending state, or `
             + `Session does not exist or is not in a pending state.`
@@ -371,6 +382,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Succeeded)
         ).to.be.rejectedWith(
+            AuthError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Challenge does not exist or is not in a pending state, or `
             + `Session does not exist or is not in a pending state.`
@@ -378,6 +390,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
         ).to.be.rejectedWith(
+            InvalidArgError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Refusing to update to default outcome of Pending.`
         );
@@ -423,6 +436,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(retrievedChallenge.updateOutcome(
             EAuthOutcome.Aborted
         )).to.be.rejectedWith(
+            AuthError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Challenge does not exist or is not in a pending state, or `
             + `Session does not exist or is not in a pending state.`
@@ -430,6 +444,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(retrievedChallenge.updateOutcome(
             EAuthOutcome.Succeeded
         )).to.be.rejectedWith(
+            AuthError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Challenge does not exist or is not in a pending state, or `
             + `Session does not exist or is not in a pending state.`
@@ -437,6 +452,7 @@ describe('Berytus Auth Challenge', () => {
         await expect(
             retrievedChallenge.updateOutcome(EAuthOutcome.Pending)
         ).to.be.rejectedWith(
+            InvalidArgError,
             `Cannot update ${challenge.challengeId} challenge outcome. `
             + `Refusing to update to default outcome of Pending.`
         );

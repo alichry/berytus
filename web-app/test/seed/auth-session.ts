@@ -3,55 +3,78 @@ import { strict as assert } from 'node:assert';
 import { getAccounts, type Accounts } from "./account.js";
 import { EAuthOutcome } from "@root/backend/db/models/AuthChallenge.js";
 import { getAccountChallengeDefs, type ChallengeDefs } from "./account-challenge-defs.js";
+import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
 
 const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
-    const challengeDef = challengeDefs[0];
-    assert(challengeDef);
-    const account = accounts.find(
-        c => c.accountVersion === challengeDef.accountVersion
+    const passwordChallengeDef = challengeDefs.find(
+        d => d.challengeType === EChallengeType.Password
     );
-    assert(account);
+    assert(passwordChallengeDef);
+    const srpChallengeDef = challengeDefs.find(
+        d => d.challengeType === EChallengeType.SecureRemotePassword
+    );
+    assert(srpChallengeDef);
+    const accountForPassAuth = accounts.find(
+        a => a.accountVersion === passwordChallengeDef.accountVersion
+    );
+    assert(accountForPassAuth);
+    const accountForSrpAuth = accounts.find(
+        a => a.accountVersion === srpChallengeDef.accountVersion
+    );
+    assert(accountForSrpAuth);
     return [
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Pending')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Aborted')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Aborted')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Succeeded')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Succeeded')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Pending')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Pending')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Pending')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Pending')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Pending')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Aborted')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Aborted')`,
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
         VALUES
-        (${account.accountId}, ${account.accountVersion}, 'Aborted')`,
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Aborted')`,
+        `INSERT INTO berytus_account_auth_session
+        (AccountID, AccountVersion, Outcome)
+        VALUES
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Pending')`,
+        `INSERT INTO berytus_account_auth_session
+        (AccountID, AccountVersion, Outcome)
+        VALUES
+        (${accountForPassAuth.accountId}, ${accountForPassAuth.accountVersion}, 'Aborted')`,
+        `INSERT INTO berytus_account_auth_session
+        (AccountID, AccountVersion, Outcome)
+        VALUES
+        (${accountForSrpAuth.accountId}, ${accountForSrpAuth.accountVersion}, 'Pending')`,
     ];
 }
 

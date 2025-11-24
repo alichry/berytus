@@ -11,6 +11,7 @@ import { EAuthOutcome } from '@root/backend/db/models/AuthChallenge.js';
 import { createAuthSessions } from '@test/seed/auth-session.js';
 import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challenge.js';
 import { createAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
+import { AuthError } from '@root/backend/db/errors/AuthError.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
 
@@ -144,6 +145,7 @@ describe("Berytus Auth Session", () => {
         );
         expect(retrievedSession).to.deep.equal(sessionMarkedAsAborted);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
+            AuthError,
             'Session is not in a pending state and thus cannot be modified'
         );
     });
@@ -159,6 +161,7 @@ describe("Berytus Auth Session", () => {
         );
         expect(retrievedSession).to.deep.equal(sessionMarkedAsSucceeded);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
+            AuthError,
             'Session is not in a pending state and thus cannot be modified'
         );
         // hack into the object, and see what happens
@@ -174,6 +177,7 @@ describe("Berytus Auth Session", () => {
         // @ts-ignore
         assert(retrievedSession[prop] === EAuthOutcome.Pending);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
+            AuthError,
             `Failed to update session outcome. Session outcome is no longer in pending state for auth session#${sessionMarkedAsSucceeded.sessionId}`
         );
     });
@@ -191,6 +195,7 @@ describe("Berytus Auth Session", () => {
         );
         expect(session).to.deep.equal(retrievedSession);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
+            AuthError,
             new RegExp(`^Challenge [a-zA-z0-9]+ was not initiated. Cannnot finish auth session#${session.sessionId}.$`)
         );
     });
@@ -219,6 +224,7 @@ describe("Berytus Auth Session", () => {
         );
         expect(session).to.deep.equal(retrievedSession);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
+            AuthError,
             new RegExp(`^Challenge ${pendingChallenge.challengeId} is still pending. Cannnot finish auth session#${session.sessionId}.$`)
         );
     });
@@ -247,6 +253,7 @@ describe("Berytus Auth Session", () => {
         );
         expect(session).to.deep.equal(retrievedSession);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
+            AuthError,
             new RegExp(`^Challenge ${abortedChallenge.challengeId} was aborted. Cannnot finish auth session#${session.sessionId}.$`)
         );
     });

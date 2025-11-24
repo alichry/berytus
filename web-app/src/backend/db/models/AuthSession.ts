@@ -47,7 +47,7 @@ export class AuthSession {
         conn: PoolConnection
     ) {
         if (this.outcome !== EAuthOutcome.Pending) {
-            throw new Error(
+            throw new AuthError(
                 "Session is not in a pending state and thus cannot be modified"
             );
         }
@@ -88,6 +88,8 @@ export class AuthSession {
                 );
             }
         }
+        // TODO(berytus): Better to have the checks in the query
+        // as well.
         const result = await conn`
             UPDATE berytus_account_auth_session
             SET Outcome = ${EAuthOutcome.Succeeded}
@@ -95,7 +97,7 @@ export class AuthSession {
             AND   Outcome = ${EAuthOutcome.Pending}
         `;
         if (result.count === 0) {
-            throw new Error(
+            throw new AuthError(
                 `Failed to update session outcome. Session outcome ` +
                 `is no longer in pending state for ` +
                 `auth session#${this.sessionId}`

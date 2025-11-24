@@ -4,6 +4,7 @@ import { AuthSession } from "./AuthSession.js";
 import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import { AuthError } from "../errors/AuthError.js";
+import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 
 export enum EAuthOutcome {
     Pending = 'Pending',
@@ -192,19 +193,20 @@ export class AuthChallenge {
         outcome: EAuthOutcome
     ) {
         if (outcome === EAuthOutcome.Pending) {
-            throw new AuthError(
+            throw new InvalidArgError(
                 `Cannot update ${this.challengeId} challenge outcome. `
                 + `Refusing to update to default outcome of Pending.`
             )
         }
+        // TODO(berytus): Need to check that all messages are OK
         const res = await conn`
             UPDATE berytus_account_auth_challenge
             SET Outcome = ${outcome}
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
             AND ChallengeID = ${this.challengeId}
             AND Outcome = ${EAuthOutcome.Pending}
-            AND EXISTS (
-                SELECT 1 FROM berytus_account_auth_session
+            AND (
+                SELECT TRUE FROM berytus_account_auth_session
                 WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
                 AND   Outcome = ${EAuthOutcome.Pending}
                 FOR UPDATE
