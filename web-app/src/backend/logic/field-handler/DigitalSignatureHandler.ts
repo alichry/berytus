@@ -1,7 +1,7 @@
 import type { FieldInput } from "@root/backend/db/types";
 import type { IFieldHandler } from "./types";
 import { z } from "zod";
-import { armoredKeySchema } from "@root/backend/utils/key-utils";
+import { armoredKeySchema } from "@root/backend/utils/key-utils.js";
 
 export const PublicKeyFieldValue = z.object({
     publicKey: armoredKeySchema("public")

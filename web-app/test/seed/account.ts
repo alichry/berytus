@@ -9,13 +9,13 @@ const getStatements = (accountIds: BigInt[]) => {
         (AccountID, AccountVersion, FieldID, FieldValue)
         VALUES
         (${accountIds[0]}, 1, 'username', '"bob123"'),
-        (${accountIds[0]}, 1, 'password', '"passbob"'),
+        (${accountIds[0]}, 1, 'password', '{"salt":"c2beaeba21c92df08e0e75190d8fe318","hash":"1cbbf7d455c7aee52dc1f05af7bc61ac5e7d10c60deaff6e1dba80a48db3f475b58c96f292542903fa08c0d6976085e796d9b7e9dd469a6b544e50841e7ee153"}'),
 
         (${accountIds[0]}, 2, 'username', '"bob123"'),
         (${accountIds[0]}, 2, 'securePassword', '"securePassBob"'),
 
         (${accountIds[1]}, 1, 'username', '"john123"'),
-        (${accountIds[1]}, 1, 'password', '"passjohn"'),
+        (${accountIds[1]}, 1, 'password', '{"salt":"c2beaeba21c92df08e0e75190d8fe318","hash":"1cbbf7d455c7aee52dc1f05af7bc61ac5e7d10c60deaff6e1dba80a48db3f475b58c96f292542903fa08c0d6976085e796d9b7e9dd469a6b544e50841e7ee153"}'),
 
         (${accountIds[1]}, 2, 'username', '"john123"'),
         (${accountIds[1]}, 2, 'securePassword', '"securePassJohn"'),

@@ -1,6 +1,6 @@
 import * as chai  from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { createAccountDefs } from '../seed/account-defs.js';
+import { createAccountDefs } from '../../../seed/account-defs.js';
 import { Account } from '@root/backend/db/models/Account.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);

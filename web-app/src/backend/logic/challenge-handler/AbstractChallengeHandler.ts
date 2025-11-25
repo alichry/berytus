@@ -1,10 +1,21 @@
-import { AuthChallenge, EAuthOutcome } from "@root/backend/db/models/AuthChallenge";
-import type { ChallengePendingMessage, IChallengeHandler } from "./types";
-import { AuthChallengeMessage, type AuthChallengeMessageName, type ChallengeMessageStatus, type MessagePayload } from "@root/backend/db/models/AuthChallengeMessage";
-import { pool } from "@root/backend/db/pool";
+import {
+    AuthChallenge,
+    EAuthOutcome
+} from "@root/backend/db/models/AuthChallenge.js";
+import type {
+    ChallengePendingMessage,
+    IChallengeHandler
+} from "./types";
+import {
+    AuthChallengeMessage,
+    type AuthChallengeMessageName,
+    type ChallengeMessageStatus,
+    type MessagePayload
+} from "@root/backend/db/models/AuthChallengeMessage.js";
+import { pool } from "@root/backend/db/pool.js";
 import type { ReservedConnection } from "@root/backend/db/pool";
-import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge";
-import { AuthSession } from "@root/backend/db/models/AuthSession";
+import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import { AuthSession } from "@root/backend/db/models/AuthSession.js";
 
 export interface MessageDraft<MN extends AuthChallengeMessageName> {
     messageName: MN;

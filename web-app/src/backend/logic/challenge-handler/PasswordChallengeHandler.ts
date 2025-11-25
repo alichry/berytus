@@ -1,9 +1,22 @@
-import { EChallengeType, PasswordChallengeParameters } from "@root/backend/db/models/AccountDefAuthChallenge";
-import type { MessagePayload } from "../../db/models/AuthChallengeMessage";
-import { AbstractChallengeHandler, type MessageDraft, type MessageDictionary, type Message } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler";
-import { AccountField } from "@root/backend/db/models/AccountField";
+import {
+    EChallengeType,
+    PasswordChallengeParameters
+} from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import type {
+    MessagePayload
+} from "../../db/models/AuthChallengeMessage";
+import {
+    AbstractChallengeHandler,
+    type MessageDraft,
+    type MessageDictionary,
+    type Message
+} from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
+import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
-import { PasswordHandler, StoredPassword } from "../field-handler/PasswordHandler";
+import {
+    PasswordHandler,
+    StoredPassword
+} from "../field-handler/PasswordHandler.js";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
 import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
 import type { ReservedConnection } from "@root/backend/db/pool";

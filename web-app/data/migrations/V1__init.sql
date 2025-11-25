@@ -128,7 +128,9 @@ CREATE TABLE berytus_account_def_auth_challenge(
     ChallengeType EChallengeType NOT NULL,
     ChallengeParameters JSONB DEFAULT NULL,
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    PRIMARY KEY (AccountVersion, ChallengeID)
+    PRIMARY KEY (AccountVersion, ChallengeID),
+    CONSTRAINT uk_badac_AccountVersionChallengeType
+        UNIQUE (AccountVersion, ChallengeType)
 );
 
 CREATE TYPE EAuthOutcome AS ENUM('Pending', 'Aborted', 'Succeeded');
@@ -175,7 +177,7 @@ MariaDB [(..)]> SELECT * FROM berytus_account_field_dictionary;
 +----------------+-----------+------------------------------------------------------------------------------------+
 | AccountVersion | AccountID | FieldList                                                                          |
 +----------------+-----------+------------------------------------------------------------------------------------+
-|              1 |         1 | {"password":"passbob","username":"bob123"}                                         |
+|              1 |         1 | {"password":{"salt":"c2beae...","hash":"1cbbf7d45..."},"username":"bob123"}        |
 |              2 |         1 | {"securePassword":"securePassBob","username":"bob123"}                             |
 |              1 |         2 | {"password":"passjohn","username":"john123"}                                       |
 |              2 |         2 | {"securePassword":"securePassJohn","username":"john123"}                           |

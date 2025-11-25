@@ -112,7 +112,7 @@ INSERT INTO berytus_account_field
 (AccountID, AccountVersion, FieldID, FieldValue)
  VALUES
 (1, 1, "username", '"bob123"'),
-(1, 1, "password", '"passbob"'),
+(1, 1, "password", '{"salt":"c2beaeba21c92df08e0e75190d8fe318","hash":"1cbbf7d455c7aee52dc1f05af7bc61ac5e7d10c60deaff6e1dba80a48db3f475b58c96f292542903fa08c0d6976085e796d9b7e9dd469a6b544e50841e7ee153"}'),
 
 (1, 2, "username", '"bob123"'),
 (1, 2, "securePassword", '"securePassBob"'),

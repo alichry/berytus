@@ -1,4 +1,4 @@
-import { InvalidArgError } from "../errors/InvalidArgError";
+import { InvalidArgError } from "../errors/InvalidArgError.js";
 import { z } from "zod";
 import { subtle, webcrypto } from "node:crypto";
 

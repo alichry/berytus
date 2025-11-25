@@ -1,8 +1,8 @@
-import { AccountDefAuthChallenge, EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge";
-import { PasswordChallengeHandler } from "./PasswordChallengeHandler";
-import { AuthSession } from "@root/backend/db/models/AuthSession";
-import { AbstractChallengeHandler } from "./AbstractChallengeHandler";
-import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler";
+import { AccountDefAuthChallenge, EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import { PasswordChallengeHandler } from "./PasswordChallengeHandler.js";
+import { AuthSession } from "@root/backend/db/models/AuthSession.js";
+import { AbstractChallengeHandler } from "./AbstractChallengeHandler.js";
+import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler.js";
 
 export const initiateChallenge = async (
     sessionId: BigInt,
