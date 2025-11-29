@@ -176,6 +176,8 @@ export class AuthChallenge {
         return challengeDef;
     }
 
+    // TODO(berytus): Remove this once
+    // we refactor AbstractChallengeHandler
     async updateOutcome(
         outcome: EAuthOutcome,
         existingConn?: PoolConnection

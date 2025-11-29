@@ -24,7 +24,7 @@ export interface MessageInput<MN extends AuthChallengeMessageName>
 export interface ActionInput {
     sessionId: BigInt;
     challengeId: string;
-    messages: Array<MessageInput<AuthChallengeMessageName>>;
+    messages: ReadonlyArray<MessageInput<AuthChallengeMessageName>>;
 };
 
 export class UpsertChallengeAndInsertMessages {
@@ -171,6 +171,18 @@ export class UpsertChallengeAndInsertMessages {
                 WHERE c.SessionID = ${toPostgresBigInt(this.input.sessionId)}
                 AND c.ChallengeID = ${this.input.challengeId}
                 GROUP BY c.SessionID, c.ChallengeID
+            ), cte_previous_ok_messages_agg2 AS (
+                -- same as the above, but returns
+                -- an empty array if the challenge dne
+                SELECT ${toPostgresBigInt(this.input.sessionId)} AS SessionID,
+                       ${this.input.challengeId} AS ChallengeID,
+                       COALESCE(
+                            (
+                                SELECT MessageNames
+                                FROM cte_previous_ok_messages_agg
+                            ),
+                            '[]'::jsonb
+                       ) AS MessageNames
             ), cte_should_write AS (
                 SELECT TRUE
                 WHERE (
@@ -182,9 +194,9 @@ export class UpsertChallengeAndInsertMessages {
                 AND NOT EXISTS (
                     SELECT FROM cte_previous_nonok_message
                 )
-                AND NOT EXISTS (
-                    SELECT TRUE FROM cte_previous_ok_messages_agg
-                    WHERE MessageNames <> ${conn.json(expectedPreviousMessages)}
+                AND (
+                    SELECT TRUE FROM cte_previous_ok_messages_agg2
+                    WHERE MessageNames = ${conn.json(expectedPreviousMessages)}
                 )
             ), cte_insert_challenge_if_dne AS (
                 INSERT INTO berytus_account_auth_challenge
@@ -256,8 +268,8 @@ export class UpsertChallengeAndInsertMessages {
                     FROM cte_insert_challenge_if_dne AS t
                 ) AS InsertedChallenge,
                 (
-                    SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
-                    FROM cte_previous_ok_messages_agg AS t
+                    SELECT to_jsonb(t)
+                    FROM cte_previous_ok_messages_agg2 AS t
                 ) AS PreviousOkMessages,
                 (
                     SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
@@ -280,21 +292,20 @@ export class UpsertChallengeAndInsertMessages {
                     FROM cte_pending_session AS t
                 ) AS ExistingPendingSession
         `;
-        const { written } = res[0];
-        if (! written) {
-            throw new AuthError(
-                `Cannot upsert challenge and insert messages, `
-                + `integrity validation failed.`
-            );
-        }
         debugAssert((assert: Assert) => {
-            assert(res.length === 1, "Expected exactly one result row");
+            assert(
+                res.length === 1,
+                "Expected exactly one result row"
+            );
             const row = res[0];
 
-            assert(row.written === null || row.written === true,
+            assert(
+                row.written === null || row.written === true,
                 "Written should be null or true"
             );
-            assert(row.pendingchallengeordne === null || row.pendingchallengeordne === true,
+            assert(
+                row.pendingchallengeordne === null
+                || row.pendingchallengeordne === true,
                 "PendingChallengeOrDne should be null or true"
             );
             assert(
@@ -343,8 +354,6 @@ export class UpsertChallengeAndInsertMessages {
                 "InsertedMessages should be an array");
             assert(row.previousokmessages !== null,
                 "PreviousOkMessages should not be null");
-            assert(Array.isArray(row.previousokmessages),
-                "PreviousOkMessages should be an array");
             assert(row.previousnonokmessages !== null,
                 "PreviousNonOkMessages should not be null");
             assert(Array.isArray(row.previousnonokmessages),
@@ -354,13 +363,16 @@ export class UpsertChallengeAndInsertMessages {
             const challengeIsPendingOrDne = Boolean(row.pendingchallengeordne);
 
             if (! written) {
-                assert(row.insertedchallenge === null,
+                assert(
+                    row.insertedchallenge === null,
                     "If Written is false, InsertedChallenge must be null"
                 );
-                assert(row.insertedmessages.length === 0,
+                assert(
+                    row.insertedmessages.length === 0,
                     "If Written is false, InsertedMessages must be empty"
                 );
-                assert(row.updatedchallengeoutcome === null,
+                assert(
+                    row.updatedchallengeoutcome === null,
                     "If Written is false, UpdatedChallengeOutcome must be null"
                 );
             } else {
@@ -368,10 +380,15 @@ export class UpsertChallengeAndInsertMessages {
                     row.insertedmessages.length === this.input.messages.length,
                     "If Written is true, InsertedMessages length should match input messages length"
                 );
+                assert(
+                    row.previousnonokmessages.length === 0,
+                    "If Written is true, PreviousNonOkMessages length should be 0"
+                );
             }
 
             if (row.insertedchallenge) {
-                assert(written === true,
+                assert(
+                    written === true,
                     "If InsertedChallenge is not null, Written must be true"
                 );
                 assert(
@@ -382,10 +399,12 @@ export class UpsertChallengeAndInsertMessages {
                     BigInt(row.insertedchallenge.sessionid) === this.input.sessionId,
                     "InsertedChallenge.sessionid should equal input.sessionId"
                 );
-                assert(row.insertedchallenge.challengeid === this.input.challengeId,
+                assert(
+                    row.insertedchallenge.challengeid === this.input.challengeId,
                     "InsertedChallenge.challengeid should equal input.challengeId"
                 );
-                assert(row.insertedchallenge.outcome === EAuthOutcome.Pending,
+                assert(
+                    row.insertedchallenge.outcome === EAuthOutcome.Pending,
                     "InsertedChallenge.outcome should be Pending"
                 );
             }
@@ -394,11 +413,11 @@ export class UpsertChallengeAndInsertMessages {
                     "If UpdatedChallengeOutcome is not null, Written must be true"
                 );
                 assert(
-                    row.updatedchallengeoutcome.sessionid !== this.input.sessionId,
+                    BigInt(row.updatedchallengeoutcome.sessionid) == this.input.sessionId,
                     "UpdatedChallengeOutcome.sessionid should equal input.sessionId"
                 );
                 assert(
-                    row.updatedchallengeoutcome.challengeid !== this.input.challengeId,
+                    row.updatedchallengeoutcome.challengeid === this.input.challengeId,
                     "UpdatedChallengeOutcome.challengeid should equal input.challengeId"
                 );
                 assert(
@@ -419,28 +438,35 @@ export class UpsertChallengeAndInsertMessages {
                 );
             }
             if (row.existingchallenge !== null) {
-                assert(row.insertedchallenge === null,
+                assert(
+                    row.insertedchallenge === null,
                     "If ExistingChallenge is not null, InsertedChallenge must be null"
-                );
-                assert(BigInt(row.existingpendingchallenge.sessionid) === this.input.sessionId,
-                    "ExistingPendingChallenge.sessionid should equal input.sessionId"
-                );
-                assert(row.existingpendingchallenge.challengeid === this.input.challengeId,
-                    "ExistingPendingChallenge.challengeid should equal input.challengeId"
                 );
             }
             if (row.existingpendingchallenge !== null) {
-                assert(row.insertedchallenge === null,
+                assert(
+                    row.insertedchallenge === null,
                     "If ExistingPendingChallenge is not null, InsertedChallenge must be null"
                 );
-                assert(BigInt(row.existingpendingchallenge.sessionid) === this.input.sessionId,
+                assert(
+                    row.existingchallenge !== null,
+                    "If ExistingPendingChallenge is not null, ExistingChallenge must be not null"
+                );
+                assert(
+                    BigInt(row.existingpendingchallenge.sessionid) === this.input.sessionId,
                     "ExistingPendingChallenge.sessionid should equal input.sessionId"
                 );
-                assert(row.existingpendingchallenge.challengeid === this.input.challengeId,
+                assert(
+                    row.existingpendingchallenge.challengeid === this.input.challengeId,
                     "ExistingPendingChallenge.challengeid should equal input.challengeId"
                 );
-                assert(row.existingpendingchallenge.outcome === EAuthOutcome.Pending,
+                assert(
+                    row.existingpendingchallenge.outcome === EAuthOutcome.Pending,
                     "ExistingPendingChallenge.outcome should be Pending"
+                );
+                assert.deepEqual(
+                    row.existingchallenge, row.existingpendingchallenge,
+                    "ExistingChallenge should equal ExistingPendingChallenge"
                 );
             }
             const challengeInserted =
@@ -456,25 +482,24 @@ export class UpsertChallengeAndInsertMessages {
                 : row.existingpendingchallenge !== null
                 ? row.existingpendingchallenge.outcome
                 : null;
-            assert(
-                challengeOutcome === authOutcome,
-                "challengeOutcome === authOutcome"
-            );
-            assert(
-                challengeOutcome !== null,
-                "challengeOutcome should not be null"
-            );
-            assert(
-                updatedChallengeOutcome ?
-                    (
-                        challengeOutcome === EAuthOutcome.Aborted
-                        || challengeOutcome === EAuthOutcome.Succeeded
-                    )
-                    : (challengeOutcome === EAuthOutcome.Pending),
-                "If updatedChallengeOutcome is true, challengeOutcome "
-                + "must be Aborted or Succeeded; otherwise, it must "
-                + "be Pending"
-            );
+            if (updatedChallengeOutcome) {
+                assert(
+                    challengeOutcome === authOutcome,
+                    "If updatedChallengeOutcome is true, "
+                    + "challengeOutcome === authOutcome"
+                );
+                assert(
+                    challengeOutcome !== null,
+                    "If updatedChallengeOutcome is true, "
+                    + "challengeOutcome should not be null"
+                );
+                assert(
+                    challengeOutcome === EAuthOutcome.Aborted
+                            || challengeOutcome === EAuthOutcome.Succeeded,
+                    "If updatedChallengeOutcome is true, challengeOutcome "
+                    + "must be Aborted or Succeeded"
+                );
+            }
             for (let i = 0; i < row.insertedmessages.length; i++) {
                 const insertedMsg: any = row.insertedmessages[i];
                 const inputMsg = this.input.messages[i];
@@ -494,5 +519,12 @@ export class UpsertChallengeAndInsertMessages {
                     `Inserted message at index ${i} has incorrect StatusMsg`);
             }
         });
+        const { written } = res[0];
+        if (! written) {
+            throw new AuthError(
+                `Cannot upsert challenge and insert messages, `
+                + `integrity validation failed.`
+            );
+        }
     }
 }
