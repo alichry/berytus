@@ -1,8 +1,8 @@
-import { strict as assert } from "assert";
+import { strict as assert } from "node:assert";
 import { isDev } from "../env/app.js";
 import { InternalError } from "../errors/InternalError.js";
 
-type Assert = typeof assert;
+export type Assert = typeof assert;
 
 export const debugAssert = (cb: (assert: Assert) => void) => {
     if (! isDev()) {

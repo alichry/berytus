@@ -6,7 +6,7 @@ import { AuthChallenge, EAuthOutcome } from "./AuthChallenge.js";
 import type { JSONValue } from "../types.js";
 import { AuthSession } from "./AuthSession.js";
 import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
-import { debugAssert } from "@root/backend/utils/release-assert.js";
+import { debugAssert } from "@root/backend/utils/assert.js";
 import { AuthError } from "../errors/AuthError.js";
 
 export type MessagePayload = JSONValue;

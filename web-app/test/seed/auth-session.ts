@@ -75,6 +75,10 @@ const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
         (AccountID, AccountVersion, Outcome)
         VALUES
         (${accountForSrpAuth.accountId}, ${accountForSrpAuth.accountVersion}, 'Pending')`,
+        `INSERT INTO berytus_account_auth_session
+        (AccountID, AccountVersion, Outcome)
+        VALUES
+        (${accountForSrpAuth.accountId}, ${accountForSrpAuth.accountVersion}, 'Pending')`,
     ];
 }
 
