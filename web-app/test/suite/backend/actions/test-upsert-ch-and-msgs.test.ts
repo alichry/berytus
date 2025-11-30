@@ -11,14 +11,14 @@ import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challen
 import { createAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
 import { AuthChallengeMessage } from '@root/backend/db/models/AuthChallengeMessage.js';
 import { EChallengeType } from '@root/backend/db/models/AccountDefAuthChallenge.js';
-import { UpsertChallengeAndInsertMessages } from '@root/backend/db/actions/UpsertChallengeAndInsertMessages.js';
+import { UpsertChallengeAndMessages } from '@root/backend/db/actions/UpsertChallengeAndMessages.js';
 import { EntityNotFoundError } from '@root/backend/db/errors/EntityNotFoundError.js';
 import { AuthError } from '@root/backend/db/errors/AuthError.js';
 import { InvalidArgError } from '@root/backend/errors/InvalidArgError.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
 
-describe("Berytus UpsertChallengeAndInsertMessages", () => {
+describe("Berytus UpsertChallengeAndMessages", () => {
     beforeEach(async () => {
         await createAccountDefs();
         await createAccountChallengeDefs();
@@ -55,7 +55,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
         assert(false, "could not find appropriate session . challenge def");
     }
 
-    it("Should upsert challenge and insert messages correctly", async () => {
+    it("Should insert challenge and insert messages correctly", async () => {
         const [session, challengeDef] = await getSessionThatCanCreateSrpChallenge();
         await expect(AuthChallenge.getChallenge(
             session.sessionId,
@@ -78,7 +78,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -116,7 +116,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             },
         ] as const;
-        const action2 = new UpsertChallengeAndInsertMessages({
+        const action2 = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages: messages2
@@ -142,6 +142,94 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
         );
     });
 
+    it("Should update challenge and update messages correctly", async () => {
+        const [session, challengeDef] = await getSessionThatCanCreateSrpChallenge();
+        await expect(AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        )).to.be.rejectedWith(EntityNotFoundError);
+
+        const messages = [
+            {
+                messageName: "SelectSecurePassword",
+                request: { dummyRequest: true },
+                expected: { dummyResponse: true },
+                response: { dummyResponse: true },
+                statusMsg: 'Ok',
+            } as const,
+            {
+                messageName: "ExchangePublicKeys",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: null,
+                statusMsg: null,
+            } as const
+        ] as const;
+        const action = new UpsertChallengeAndMessages({
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId,
+            messages
+        });
+        await action.execute();
+        const retrievedChallenge = await AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        expect(retrievedChallenge.outcome).to.equal(
+            EAuthOutcome.Pending
+        );
+        const retrievedMessages = await AuthChallengeMessage.getAllMessages(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        expect(retrievedMessages).to.deep.equal(messages.map(m => ({
+            ...m,
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId
+        })));
+
+        const messages2 = [
+            {
+                messageName: "ExchangePublicKeys",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: { dummyResponse: 2 },
+                statusMsg: 'Ok',
+            } as const,
+            {
+                messageName: "ComputeClientProof",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: null,
+                statusMsg: null,
+            } as const
+        ] as const;
+        const action2 = new UpsertChallengeAndMessages({
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId,
+            messages: messages2
+        });
+        await action2.execute();
+        const retrievedChallengeAtT1 = await AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        expect(retrievedChallengeAtT1.outcome).to.equal(
+            EAuthOutcome.Pending
+        );
+        const retrievedMessagesAtT1 = await AuthChallengeMessage.getAllMessages(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        expect(retrievedMessagesAtT1).to.deep.equal(
+            [...messages.slice(0, 1), ...messages2].map(m => ({
+                ...m,
+                sessionId: session.sessionId,
+                challengeId: challengeDef.challengeId
+            }))
+        )
+    });
+
     it("Marks challenge as aborted if message has Non-Ok status [no prev messages, mlen = 1]", async () => {
         const [session, challengeDef] =
             await getSessionThatCanCreateSrpChallenge();
@@ -158,7 +246,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Error:Bad proof',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -193,7 +281,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 response: { dummyResponse: 2 },
                 statusMsg: 'Ok',
             } as const,
-                        {
+            {
                 messageName: "ExchangePublicKeys",
                 request: { dummyRequest: 1 },
                 expected: { dummyResponse: 2 },
@@ -201,7 +289,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Error:Bad proof',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -247,7 +335,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
             } as const
         ] as const;
         {
-            const action = new UpsertChallengeAndInsertMessages({
+            const action = new UpsertChallengeAndMessages({
                 sessionId: session.sessionId,
                 challengeId: challengeDef.challengeId,
                 messages: messagesT0
@@ -267,7 +355,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
             })));
         }
         {
-            const action = new UpsertChallengeAndInsertMessages({
+            const action = new UpsertChallengeAndMessages({
                 sessionId: session.sessionId,
                 challengeId: challengeDef.challengeId,
                 messages: messagesT1
@@ -328,7 +416,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
             } as const
         ] as const;
         {
-            const action = new UpsertChallengeAndInsertMessages({
+            const action = new UpsertChallengeAndMessages({
                 sessionId: session.sessionId,
                 challengeId: challengeDef.challengeId,
                 messages: messagesT0
@@ -348,7 +436,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
             })));
         }
         {
-            const action = new UpsertChallengeAndInsertMessages({
+            const action = new UpsertChallengeAndMessages({
                 sessionId: session.sessionId,
                 challengeId: challengeDef.challengeId,
                 messages: messagesT1
@@ -385,7 +473,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -419,7 +507,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -447,7 +535,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action2 = new UpsertChallengeAndInsertMessages({
+        const action2 = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages: messages2
@@ -487,7 +575,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -523,7 +611,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -540,7 +628,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
         )).length).to.equal(0);
     });
 
-    it("Rejects invalid messages [Non-Ok not at n - 1]", async () => {
+    it("Rejects invalid messages [Non-Ok (Aborted) not at n - 1]", async () => {
         const [session, challengeDef] =
             await getSessionThatCanCreateSrpChallenge();
         await AuthChallenge.createChallenge(
@@ -563,7 +651,7 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Ok',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages
@@ -580,7 +668,47 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
         )).length).to.equal(0);
     });
 
-    it("Rejects invalid messages [multiple Non-Oks]", async () => {
+    it("Rejects invalid messages [Non-Ok (null) not at n - 1]", async () => {
+        const [session, challengeDef] =
+            await getSessionThatCanCreateSrpChallenge();
+        await AuthChallenge.createChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        const messages = [
+            {
+                messageName: "SelectSecurePassword",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: { dummyResponse: 2 },
+                statusMsg: null,
+            } as const,
+            {
+                messageName: "ExchangePublicKeys",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: { dummyResponse: 2 },
+                statusMsg: 'Ok',
+            } as const
+        ] as const;
+        const action = new UpsertChallengeAndMessages({
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId,
+            messages
+        });
+        await expect(action.execute())
+            .to.be.rejectedWith(InvalidArgError);
+        expect((await AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        )).outcome).to.equal(EAuthOutcome.Pending);
+        expect((await AuthChallengeMessage.getAllMessages(
+            session.sessionId,
+            challengeDef.challengeId
+        )).length).to.equal(0);
+    });
+
+    it("Rejects invalid messages [multiple Non-Oks (Error)]", async () => {
         const [session, challengeDef] =
             await getSessionThatCanCreateSrpChallenge();
         await AuthChallenge.createChallenge(
@@ -603,7 +731,47 @@ describe("Berytus UpsertChallengeAndInsertMessages", () => {
                 statusMsg: 'Error:Bad Proof',
             } as const
         ] as const;
-        const action = new UpsertChallengeAndInsertMessages({
+        const action = new UpsertChallengeAndMessages({
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId,
+            messages
+        });
+        await expect(action.execute())
+            .to.be.rejectedWith(InvalidArgError);
+        expect((await AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        )).outcome).to.equal(EAuthOutcome.Pending);
+        expect((await AuthChallengeMessage.getAllMessages(
+            session.sessionId,
+            challengeDef.challengeId
+        )).length).to.equal(0);
+    });
+
+    it("Rejects invalid messages [multiple Non-Oks (null)]", async () => {
+        const [session, challengeDef] =
+            await getSessionThatCanCreateSrpChallenge();
+        await AuthChallenge.createChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        const messages = [
+            {
+                messageName: "SelectSecurePassword",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: { dummyResponse: 3 },
+                statusMsg: null,
+            } as const,
+            {
+                messageName: "ExchangePublicKeys",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 3 },
+                response: { dummyResponse: 2 },
+                statusMsg: null,
+            } as const
+        ] as const;
+        const action = new UpsertChallengeAndMessages({
             sessionId: session.sessionId,
             challengeId: challengeDef.challengeId,
             messages

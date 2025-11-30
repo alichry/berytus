@@ -287,26 +287,38 @@ export class AuthChallengeMessage {
         );
     }
 
+    public static validateStatusMsg(statusMsg: string | null): asserts statusMsg is "Ok" | `Error:${string}` | null {
+        if (statusMsg === null) {
+            return;
+        }
+        if (statusMsg === 'Ok') {
+            return;
+        }
+        if (
+            typeof statusMsg === 'string'
+            && statusMsg.startsWith('Error:')
+            && statusMsg.slice(6).trim().length > 0
+        ) {
+            return;
+        }
+        throw new InvalidArgError(
+            "statusMsg is malformed"
+        );
+    }
+
     async #updateResponseAndStatus(
         conn: PoolConnection,
         response: MessagePayload,
         statusMsg: "Ok" | `Error:${string}`,
     ) {
-        if (
-            typeof statusMsg !== "string" || (
-                statusMsg !== 'Ok'
-                && (
-                    ! statusMsg.startsWith('Error:')
-                    || statusMsg.slice(6).trim().length === 0
-                )
-            )
-        ) {
+        AuthChallengeMessage.validateStatusMsg(statusMsg);
+        if (statusMsg === null) {
             throw new InvalidArgError(
                 "statusMsg is malformed"
             );
         }
         if (this.statusMsg !== null) {
-            throw new InvalidArgError(
+            throw new AuthError(
                 'statusMsg is already set; Refusing to update message status'
             );
         }

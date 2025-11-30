@@ -320,7 +320,7 @@ describe("Berytus Auth Challenge Message", () => {
             ["hello world"],
             'Ok'
         )).to.be.rejectedWith(
-            InvalidArgError,
+            AuthError,
             'statusMsg is already set; Refusing to update message status'
         );
         const prop = "statusMsg";

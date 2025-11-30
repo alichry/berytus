@@ -27,7 +27,7 @@ export interface ActionInput {
     messages: ReadonlyArray<MessageInput<AuthChallengeMessageName>>;
 };
 
-export class UpsertChallengeAndInsertMessages {
+export class UpsertChallengeAndMessages {
     readonly input: ActionInput;
 
     public constructor(input: ActionInput) {
@@ -84,20 +84,33 @@ export class UpsertChallengeAndInsertMessages {
                     `has status ${msg.statusMsg}`
                 );
             }
+            AuthChallengeMessage.validateStatusMsg(msg.statusMsg);
         }
         const expectedPreviousMessages = messageDefs.slice(
             0,
             firstMessageDefIndex as number);
-        if (this.input.messages[this.input.messages.length - 1].statusMsg !== 'Ok') {
+        debugAssert(assert =>
+            this.input.messages.slice(0, this.input.messages.length - 1)
+                .forEach(m => assert(m.statusMsg === "Ok", "m.statusMsg === 'Ok'"))
+        );
+        debugAssert(assert =>
+            assert(expectedPreviousMessages.length + this.input.messages.length
+                <= messageDefs.length)
+        );
+        const lastStatusMsg = this.input.messages[this.input.messages.length - 1]
+            .statusMsg;
+        if (lastStatusMsg === null) {
+            return {
+                authOutcome: EAuthOutcome.Pending,
+                expectedPreviousMessages
+            };
+        }
+        if (lastStatusMsg !== 'Ok') {
             return {
                 authOutcome: EAuthOutcome.Aborted,
                 expectedPreviousMessages
             };
         }
-        debugAssert(assert =>
-            assert(expectedPreviousMessages.length + this.input.messages.length
-                <= messageDefs.length)
-        );
         if (
             expectedPreviousMessages.length + this.input.messages.length === messageDefs.length
         ) {
@@ -142,21 +155,26 @@ export class UpsertChallengeAndInsertMessages {
                 ) OR NOT EXISTS (
                     SELECT FROM cte_existing_challenge
                 )
-            ), cte_previous_nonok_message AS (
-                SELECT SessionID, ChallengeID, MessageName, StatusMsg
+            ),  cte_existing_messages AS (
+                SELECT SessionID, ChallengeID,
+                       MessageName, Request,
+                       Expected, Response,
+                       StatusMsg, CreatedAt
                 FROM berytus_account_auth_challenge_message
                 WHERE SessionID = ${toPostgresBigInt(this.input.sessionId)}
                 AND ChallengeID = ${this.input.challengeId}
-                AND StatusMsg <> 'Ok'
+                FOR UPDATE
+            ), cte_previous_nonok_message AS (
+                SELECT SessionID, ChallengeID,
+                       MessageName, StatusMsg
+                FROM cte_existing_messages
+                WHERE StatusMsg <> 'Ok'
             ), cte_previous_ok_messages AS (
                 SELECT SessionID, ChallengeID,
                        MessageName, StatusMsg
-                FROM berytus_account_auth_challenge_message
-                WHERE SessionID = ${toPostgresBigInt(this.input.sessionId)}
-                AND ChallengeID = ${this.input.challengeId}
-                AND StatusMsg = 'Ok'
+                FROM cte_existing_messages
+                WHERE StatusMsg = 'Ok'
                 ORDER BY CreatedAt ASC
-                FOR UPDATE
             ), cte_previous_ok_messages_agg AS (
                 SELECT c.SessionID, c.ChallengeID,
                        COALESCE(
@@ -183,6 +201,62 @@ export class UpsertChallengeAndInsertMessages {
                             ),
                             '[]'::jsonb
                        ) AS MessageNames
+            ), cte_completed_messages AS (
+                SELECT SessionID, ChallengeID,
+                       MessageName, Request,
+                       Expected, Response,
+                       StatusMsg
+                FROM cte_existing_messages
+                WHERE StatusMsg IS NOT NULL
+            ), cte_pending_messages AS (
+                SELECT SessionID, ChallengeID,
+                       MessageName, Request,
+                       Expected, Response,
+                       StatusMsg
+                FROM cte_existing_messages
+                WHERE StatusMsg IS NULL
+            ), cte_messages_to_process AS (
+                SELECT * FROM
+                    (VALUES ${conn(this.input.messages.map(msg => [
+                        toPostgresBigInt(this.input.sessionId),
+                        this.input.challengeId,
+                        msg.messageName,
+                        conn.json(msg.request),
+                        conn.json(msg.expected),
+                        conn.json(msg.response),
+                        msg.statusMsg
+                    ] as const))}) AS message (
+                        SessionID, ChallengeID, MessageName,
+                        Request, Expected, Response, StatusMsg
+                    )
+            ), cte_messages_to_insert AS (
+                SELECT pm.SessionID, pm.ChallengeID,
+                       pm.MessageName, pm.Request,
+                       pm.Expected, pm.Response,
+                       pm.StatusMsg
+                FROM cte_messages_to_process AS pm
+                LEFT JOIN cte_existing_messages AS em
+                    ON em.MessageName = pm.MessageName
+                WHERE em.MessageName IS NULL
+            ), cte_messages_to_update AS (
+                SELECT pm.SessionID, pm.ChallengeID,
+                       pm.MessageName, pm.Request,
+                       pm.Expected, pm.Response,
+                       pm.StatusMsg
+                FROM cte_messages_to_process AS pm
+                LEFT JOIN cte_pending_messages AS em
+                    ON em.MessageName = pm.MessageName
+                WHERE em.MessageName IS NOT NULL
+            ), cte_messages_to_write AS (
+                SELECT * FROM cte_messages_to_insert
+                UNION ALL
+                SELECT * FROM cte_messages_to_update
+            ), cte_rejected_messages AS (
+                SELECT pm.*
+                FROM cte_messages_to_process AS pm
+                LEFT JOIN cte_messages_to_write AS wm
+                    ON wm.MessageName = pm.MessageName
+                WHERE wm.MessageName IS NULL
             ), cte_should_write AS (
                 SELECT TRUE
                 WHERE (
@@ -197,6 +271,8 @@ export class UpsertChallengeAndInsertMessages {
                 AND (
                     SELECT TRUE FROM cte_previous_ok_messages_agg2
                     WHERE MessageNames = ${conn.json(expectedPreviousMessages)}
+                ) AND NOT EXISTS (
+                    SELECT FROM cte_rejected_messages
                 )
             ), cte_insert_challenge_if_dne AS (
                 INSERT INTO berytus_account_auth_challenge
@@ -214,19 +290,9 @@ export class UpsertChallengeAndInsertMessages {
                 INSERT INTO berytus_account_auth_challenge_message
                 (SessionID, ChallengeID, MessageName,
                 Request, Expected, Response, StatusMsg)
-                SELECT * FROM
-                    (VALUES ${conn(this.input.messages.map(msg => [
-                        toPostgresBigInt(this.input.sessionId),
-                        this.input.challengeId,
-                        msg.messageName,
-                        conn.json(msg.request),
-                        conn.json(msg.expected),
-                        conn.json(msg.response),
-                        msg.statusMsg
-                    ] as const))}) AS insert_data (
-                        SessionID, ChallengeID, MessageName,
-                        Request, Expected, Response, StatusMsg
-                    )
+                SELECT SessionID, ChallengeID, MessageName,
+                       Request, Expected, Response, StatusMsg
+                FROM cte_messages_to_insert
                 WHERE (
                     SELECT TRUE FROM cte_should_write
                 ) AND (
@@ -235,6 +301,28 @@ export class UpsertChallengeAndInsertMessages {
                 )
                 RETURNING SessionID, ChallengeID, MessageName,
                 Request, Expected, Response, StatusMsg
+            ), cte_update_messages AS (
+                --  Note(berytus): We can restrict updates to
+                -- { Response, StatusMsg } by modifying the logic
+                -- in cte_messages_to_update to not include
+                -- existing, pending messages with a non-matching
+                -- { Request, Expected }. And cte_rejected_messages
+                -- would pick it up.
+                UPDATE berytus_account_auth_challenge_message em
+                SET Request = um.Request,
+                    Expected = um.Expected,
+                    Response = um.Response,
+                    StatusMsg = um.StatusMsg
+                FROM cte_messages_to_update um
+                WHERE em.SessionID = ${toPostgresBigInt(this.input.sessionId)}
+                AND em.ChallengeID = ${this.input.challengeId}
+                AND em.MessageName = um.MessageName
+                AND (
+                    SELECT TRUE FROM cte_should_write
+                )
+                RETURNING em.SessionID, em.ChallengeID, em.MessageName,
+                          em.Request, em.Expected, em.Response,
+                          em.StatusMsg
             ), cte_update_challenge_outcome AS (
                 UPDATE berytus_account_auth_challenge
                 SET Outcome = ${authOutcome},
@@ -263,6 +351,10 @@ export class UpsertChallengeAndInsertMessages {
                     SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
                     FROM cte_insert_messages AS t
                 ) AS InsertedMessages,
+                (
+                    SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                    FROM cte_update_messages AS t
+                ) AS UpdatedMessages,
                 (
                     SELECT to_jsonb(t)
                     FROM cte_insert_challenge_if_dne AS t
@@ -352,6 +444,10 @@ export class UpsertChallengeAndInsertMessages {
                 "InsertedMessages should not be null");
             assert(Array.isArray(row.insertedmessages),
                 "InsertedMessages should be an array");
+            assert(row.updatedmessages !== null,
+                "UpdatedMessages should not be null");
+            assert(Array.isArray(row.updatedmessages),
+                "UpdatedMessages should be an array");
             assert(row.previousokmessages !== null,
                 "PreviousOkMessages should not be null");
             assert(row.previousnonokmessages !== null,
@@ -372,13 +468,20 @@ export class UpsertChallengeAndInsertMessages {
                     "If Written is false, InsertedMessages must be empty"
                 );
                 assert(
+                    row.updatedmessages.length === 0,
+                    "If Written is false, UpdatedMessages must be empty"
+                );
+                assert(
                     row.updatedchallengeoutcome === null,
                     "If Written is false, UpdatedChallengeOutcome must be null"
                 );
             } else {
                 assert(
-                    row.insertedmessages.length === this.input.messages.length,
-                    "If Written is true, InsertedMessages length should match input messages length"
+                    row.insertedmessages.length + row.updatedmessages.length
+                        === this.input.messages.length,
+                    "If Written is true, InsertedMessages length + "
+                    + "UpdatedMessages length should equal input messages "
+                    + "length"
                 );
                 assert(
                     row.previousnonokmessages.length === 0,
@@ -500,22 +603,35 @@ export class UpsertChallengeAndInsertMessages {
                     + "must be Aborted or Succeeded"
                 );
             }
-            for (let i = 0; i < row.insertedmessages.length; i++) {
-                const insertedMsg: any = row.insertedmessages[i];
+            if (! written) {
+                return;
+            }
+            for (let i = 0; i < this.input.messages.length; i++) {
                 const inputMsg = this.input.messages[i];
-                assert(BigInt(insertedMsg.sessionid) === this.input.sessionId,
+                const insertedMsg = row.insertedmessages.find(
+                    m => m.messagename === inputMsg.messageName
+                );
+                const updatedMsg = row.updatedmessages.find(
+                    m => m.messagename === inputMsg.messageName
+                );
+                assert(
+                    Number(Boolean(insertedMsg)) ^ Number(Boolean(updatedMsg)),
+                    "inserted ^ updated"
+                );
+                const upsertedMsg: any = insertedMsg || updatedMsg;
+                assert(BigInt(upsertedMsg.sessionid) === this.input.sessionId,
                     `Inserted message at index ${i} has incorrect SessionID`);
-                assert(insertedMsg.challengeid === this.input.challengeId,
+                assert(upsertedMsg.challengeid === this.input.challengeId,
                     `Inserted message at index ${i} has incorrect ChallengeID`);
-                assert(insertedMsg.messagename === inputMsg.messageName,
+                assert(upsertedMsg.messagename === inputMsg.messageName,
                     `Inserted message at index ${i} has incorrect MessageName`);
-                assert.deepEqual(insertedMsg.request, inputMsg.request,
+                assert.deepEqual(upsertedMsg.request, inputMsg.request,
                     `Inserted message at index ${i} has incorrect Request`);
-                assert.deepEqual(insertedMsg.expected, inputMsg.expected,
+                assert.deepEqual(upsertedMsg.expected, inputMsg.expected,
                     `Inserted message at index ${i} has incorrect Expected`);
-                assert.deepEqual(insertedMsg.response, inputMsg.response,
+                assert.deepEqual(upsertedMsg.response, inputMsg.response,
                     `Inserted message at index ${i} has incorrect Response`);
-                assert(insertedMsg.statusmsg === inputMsg.statusMsg,
+                assert(upsertedMsg.statusmsg === inputMsg.statusMsg,
                     `Inserted message at index ${i} has incorrect StatusMsg`);
             }
         });
