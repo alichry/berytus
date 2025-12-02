@@ -1,7 +1,9 @@
 import {
+    AccountDefAuthChallenge,
     EChallengeType
 } from "@root/backend/db/models/AccountDefAuthChallenge.js";
 import type {
+    AuthChallengeMessageName,
     MessagePayload
 } from "../../db/models/AuthChallengeMessage";
 import {
@@ -13,16 +15,18 @@ import {
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
-import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
 import {
     PublicKeyFieldInput,
     PublicKeyFieldValue
 } from "../field-handler/DigitalSignatureHandler.js";
 import { randomBytes } from "crypto";
 import { KeyUtils, SignUtils } from "../../utils/key-utils.js";
-import type { ReservedConnection } from "@root/backend/db/pool";
-
+import type { PoolConnection } from "@root/backend/db/pool";
 type MessageName = BerytusDigitalSignatureChallengeMessageName;
+
+const messageNames: ReadonlyArray<MessageName> = [
+    "SelectKey", "SignNonce"
+];
 
 const SelectKeyExpected = PublicKeyFieldInput;
 
@@ -46,14 +50,16 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
     }
 
     public constructor(
-        conn: ReservedConnection,
+        conn: PoolConnection,
         session: AuthSession,
-        challenge: AuthChallenge
+        challengeDef: AccountDefAuthChallenge,
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
     ) {
-        super(conn, session, challenge);
+        AbstractChallengeHandler.validateMessages(messageNames, existingMessages);
+        super(conn, session, challengeDef, existingMessages);
         this.challengeParameters =
             DigitalSignatureChallengeParameters.parse(
-                challenge.challengeDef.challengeParameters
+                challengeDef.challengeParameters
             );
     }
 
@@ -73,7 +79,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             return initialMessageDraft;
         }
         const field = await AccountField.getField(
-            this.challenge.challengeDef.accountVersion,
+            this.challengeDef.accountVersion,
             this.session.accountId,
             this.challengeParameters.keyFieldId,
             this.conn

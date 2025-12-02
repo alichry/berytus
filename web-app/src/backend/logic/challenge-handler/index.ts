@@ -3,38 +3,24 @@ import { PasswordChallengeHandler } from "./PasswordChallengeHandler.js";
 import { AuthSession } from "@root/backend/db/models/AuthSession.js";
 import { AbstractChallengeHandler } from "./AbstractChallengeHandler.js";
 import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler.js";
-
-export const initiateChallenge = async (
+import type { PoolConnection } from "@root/backend/db/pool.js";
+export const setupChallenge = async (
     sessionId: BigInt,
-    challengeId: string
+    challengeId: string,
+    conn?: PoolConnection
 ) => {
-    const authSession = await AuthSession.getSession(sessionId);
+    const authSession = await AuthSession.getSession(sessionId, conn);
     const challengeDef = await AccountDefAuthChallenge.getChallengeDef(
         challengeId,
-        authSession.accountVersion
+        authSession.accountVersion,
+        conn
     );
     const handlerCtr = getHandlerCtor(challengeDef.challengeType);
-    return AbstractChallengeHandler.initiateChallenge(
+    return AbstractChallengeHandler.setupChallenge(
         sessionId,
         challengeId,
-        handlerCtr
-    );
-}
-
-export const loadChallenge = async (
-    sessionId: BigInt,
-    challengeId: string
-) => {
-    const authSession = await AuthSession.getSession(sessionId);
-    const challengeDef = await AccountDefAuthChallenge.getChallengeDef(
-        challengeId,
-        authSession.accountVersion
-    );
-    const handlerCtr = getHandlerCtor(challengeDef.challengeType);
-    return AbstractChallengeHandler.loadChallenge(
-        sessionId,
-        challengeId,
-        handlerCtr
+        handlerCtr,
+        conn
     );
 }
 

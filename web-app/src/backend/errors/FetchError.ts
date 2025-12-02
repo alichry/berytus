@@ -6,9 +6,10 @@ export class FetchError extends HttpError {
 
     constructor(
         resp: Response,
-        msg?: string
+        msg?: string,
+        options?: ErrorOptions
     ) {
-        super(resp.status, msg);
+        super(resp.status, msg, options);
         this.contentType = resp.headers.get('content-type');
         this.body = resp.text()
             .then((text) => {

@@ -287,7 +287,7 @@ export class AuthChallengeMessage {
         );
     }
 
-    public static validateStatusMsg(statusMsg: string | null): asserts statusMsg is "Ok" | `Error:${string}` | null {
+    public static validateStatusMsg(statusMsg: string | null): asserts statusMsg is ChallengeMessageStatus {
         if (statusMsg === null) {
             return;
         }

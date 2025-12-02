@@ -125,14 +125,16 @@ export class UpsertChallengeAndMessages {
         };
     }
 
-    public async execute(existingConn?: PoolConnection) {
+    public async execute(
+        existingConn?: PoolConnection
+    ): Promise<EAuthOutcome> {
         if (existingConn) {
             return this.#execute(existingConn);
         }
         return useConnection(conn => this.#execute(conn));
     }
 
-    async #execute(conn: PoolConnection) {
+    async #execute(conn: PoolConnection): Promise<EAuthOutcome> {
         const { authOutcome, expectedPreviousMessages } = await this.#validateInput(conn);
         const res = await conn`
             WITH cte_pending_session AS (
@@ -642,5 +644,6 @@ export class UpsertChallengeAndMessages {
                 + `integrity validation failed.`
             );
         }
+        return authOutcome;
     }
 }

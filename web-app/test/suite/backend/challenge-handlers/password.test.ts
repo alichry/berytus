@@ -9,7 +9,7 @@ import { createAuthChallengeMessages } from '@test/seed/auth-challenge-message.j
 import { AuthChallenge, EAuthOutcome } from '@root/backend/db/models/AuthChallenge.js';
 import { EChallengeType } from '@root/backend/db/models/AccountDefAuthChallenge.js';
 import { strict as assert } from 'node:assert';
-import { initiateChallenge } from '@root/backend/logic/challenge-handler/index.js';
+import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
 import { AuthChallengeMessage } from '@root/backend/db/models/AuthChallengeMessage.js';
 import { AccountField } from '@root/backend/db/models/AccountField.js';
 const { expect } = chai;
@@ -60,13 +60,13 @@ describe("Berytus Password Challenge Handler", () => {
             session.accountId,
             passwordFieldId
         );
-        const ch = await initiateChallenge(
+        const ch = await setupChallenge(
             session.sessionId,
             challengeDef.challengeId
         );
         await ch.save();
-        expect(ch.challenge.challengeDef).to.deep.equal(challengeDef);
-        expect(ch.session).to.deep.equal(session);
+        expect(ch.challengeDef).to.deep.equal(challengeDef);
+        expect(ch.session.toJSON()).to.deep.equal(session);
         const expectedChallenge = {
             challengeDef,
             sessionId: session.sessionId,

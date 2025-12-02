@@ -73,7 +73,7 @@ describe("Berytus Auth Session", () => {
         expect(sess.sessionId.valueOf() > 0n).to.be.true;
         expect(sess.outcome).to.equal('Pending');
         const existingSessions = await getExistingSessions();
-        expect(existingSessions).to.deep.include(sess);
+        expect(existingSessions).to.deep.include(sess.toJSON());
     });
 
     it("Should correctly retrieve a session", async () => {
@@ -82,7 +82,7 @@ describe("Berytus Auth Session", () => {
             const retrievedSession = await AuthSession.getSession(
                 existingSession.sessionId
             );
-            expect(retrievedSession).to.deep.equal(existingSession);
+            expect(retrievedSession.toJSON()).to.deep.equal(existingSession);
         }
     });
 
@@ -122,13 +122,13 @@ describe("Berytus Auth Session", () => {
             assert(false, "can not find appropriate session");
         })();
         const retrievedSession = await AuthSession.getSession(session.sessionId);
-        expect(retrievedSession).to.deep.equal(session);
+        expect(retrievedSession.toJSON()).to.deep.equal(session);
         await retrievedSession.finish();
         const updatedSession = {
             ...session,
             outcome: EAuthOutcome.Succeeded
         };
-        expect(retrievedSession).to.deep.equal(updatedSession);
+        expect(retrievedSession.toJSON()).to.deep.equal(updatedSession);
         const existingSessionsAtT1 = await getExistingSessions();
         expect(existingSessionsAtT1).to.not.deep.include(session);
         expect(existingSessionsAtT1).to.deep.include(updatedSession);
@@ -143,7 +143,7 @@ describe("Berytus Auth Session", () => {
         const retrievedSession = await AuthSession.getSession(
             sessionMarkedAsAborted.sessionId
         );
-        expect(retrievedSession).to.deep.equal(sessionMarkedAsAborted);
+        expect(retrievedSession.toJSON()).to.deep.equal(sessionMarkedAsAborted);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
             AuthError,
             'Session is not in a pending state and thus cannot be modified'
@@ -159,7 +159,7 @@ describe("Berytus Auth Session", () => {
         const retrievedSession = await AuthSession.getSession(
             sessionMarkedAsSucceeded.sessionId
         );
-        expect(retrievedSession).to.deep.equal(sessionMarkedAsSucceeded);
+        expect(retrievedSession.toJSON()).to.deep.equal(sessionMarkedAsSucceeded);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
             AuthError,
             'Session is not in a pending state and thus cannot be modified'
@@ -178,7 +178,7 @@ describe("Berytus Auth Session", () => {
         assert(retrievedSession[prop] === EAuthOutcome.Pending);
         await expect(retrievedSession.finish()).to.be.rejectedWith(
             AuthError,
-            `Failed to update session outcome. Session outcome is no longer in pending state for auth session#${sessionMarkedAsSucceeded.sessionId}`
+            `Session is not in a pending state and thus cannot be modified`
         );
     });
 
@@ -193,7 +193,7 @@ describe("Berytus Auth Session", () => {
         const retrievedSession = await AuthSession.getSession(
             session.sessionId
         );
-        expect(session).to.deep.equal(retrievedSession);
+        expect(session).to.deep.equal(retrievedSession.toJSON());
         await expect(retrievedSession.finish()).to.be.rejectedWith(
             AuthError,
             new RegExp(`^Challenge [a-zA-z0-9]+ was not initiated. Cannnot finish auth session#${session.sessionId}.$`)
@@ -222,7 +222,7 @@ describe("Berytus Auth Session", () => {
         const retrievedSession = await AuthSession.getSession(
             session.sessionId
         );
-        expect(session).to.deep.equal(retrievedSession);
+        expect(session).to.deep.equal(retrievedSession.toJSON());
         await expect(retrievedSession.finish()).to.be.rejectedWith(
             AuthError,
             new RegExp(`^Challenge ${pendingChallenge.challengeId} is still pending. Cannnot finish auth session#${session.sessionId}.$`)
@@ -251,7 +251,7 @@ describe("Berytus Auth Session", () => {
         const retrievedSession = await AuthSession.getSession(
             session.sessionId
         );
-        expect(session).to.deep.equal(retrievedSession);
+        expect(session).to.deep.equal(retrievedSession.toJSON());
         await expect(retrievedSession.finish()).to.be.rejectedWith(
             AuthError,
             new RegExp(`^Challenge ${abortedChallenge.challengeId} was aborted. Cannnot finish auth session#${session.sessionId}.$`)

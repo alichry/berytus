@@ -12,10 +12,14 @@ import {
     type ChallengeMessageStatus,
     type MessagePayload
 } from "@root/backend/db/models/AuthChallengeMessage.js";
-import { pool } from "@root/backend/db/pool.js";
-import type { ReservedConnection } from "@root/backend/db/pool";
-import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import { pool, type PoolConnection } from "@root/backend/db/pool.js";
+import { AccountDefAuthChallenge, EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
 import { AuthSession } from "@root/backend/db/models/AuthSession.js";
+import { InternalError } from "@root/backend/errors/InternalError.js";
+import { debugAssert } from "@root/backend/utils/assert.js";
+import { UpsertChallengeAndMessages } from "@root/backend/db/actions/UpsertChallengeAndMessages.js";
+import { EntityNotFoundError } from "@root/backend/db/errors/EntityNotFoundError.js";
+import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 
 export interface MessageDraft<MN extends AuthChallengeMessageName> {
     messageName: MN;
@@ -23,14 +27,24 @@ export interface MessageDraft<MN extends AuthChallengeMessageName> {
     expected: MessagePayload;
 }
 
-interface CommonChallengeHandlerConstructor {
-    prototype: AbstractChallengeHandler<AuthChallengeMessageName>;
-    new(conn: ReservedConnection, session: AuthSession, challenge: AuthChallenge): AbstractChallengeHandler<AuthChallengeMessageName>;
+export interface CommonChallengeHandlerConstructor<MN extends AuthChallengeMessageName> {
+    prototype: AbstractChallengeHandler<MN>;
+    new(
+        conn: PoolConnection,
+        session: AuthSession,
+        challengeDef: AccountDefAuthChallenge,
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
+    ): AbstractChallengeHandler<MN>;
 }
 
-export type Message<MN extends AuthChallengeMessageName> = Omit<AuthChallengeMessage, "messageName"> & { messageName: MN };
+export interface Message<MN extends AuthChallengeMessageName>
+    extends MessageDraft<MN> {
+    response: MessagePayload;
+    statusMsg: ChallengeMessageStatus
+}
 
-export type MessageDictionary<MN extends AuthChallengeMessageName> = Partial<Record<MN, Message<MN>>>
+export type MessageDictionary<MN extends AuthChallengeMessageName> =
+    Partial<Record<MN, Message<MN>>>;
 
 interface HandlerMessageDictionary<MN extends AuthChallengeMessageName> {
     pendingMessage: Message<MN> | null;
@@ -39,23 +53,31 @@ interface HandlerMessageDictionary<MN extends AuthChallengeMessageName> {
 
 export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageName>
     implements IChallengeHandler {
-    protected readonly conn: ReservedConnection;
+    readonly conn: PoolConnection;
     readonly session: AuthSession;
-    readonly challenge: AuthChallenge;
-    private destroyed = false;
+    readonly challengeDef: AccountDefAuthChallenge;
+    private readonly existingMessages: ReadonlyArray<Message<MN>>;
+    private readonly prospectiveMessages: Array<Message<MN>>;
+    private destroyed: boolean;
+    #challenge: AuthChallenge | null;
 
     /**
      * @param conn Should be in transaction mode
      * @param challenge
      */
     public constructor(
-        conn: ReservedConnection,
+        conn: PoolConnection,
         session: AuthSession,
-        challenge: AuthChallenge,
+        challengeDef: AccountDefAuthChallenge,
+        existingMessages: ReadonlyArray<Message<MN>>
     ) {
         this.conn = conn;
         this.session = session;
-        this.challenge = challenge;
+        this.challengeDef = challengeDef;
+        this.existingMessages = existingMessages;
+        this.prospectiveMessages = [];
+        this.destroyed = false;
+        this.#challenge = null;
     }
 
     abstract get handlerType(): EChallengeType;
@@ -74,142 +96,86 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         response: MessagePayload
     ): Promise<NonNullable<ChallengeMessageStatus>>;
 
-    static async initiateChallenge(
+    static async setupChallenge<MN extends AuthChallengeMessageName>(
         sessionId: BigInt,
         challengeId: string,
-        handlerCtor: CommonChallengeHandlerConstructor,
-        conn?: ReservedConnection
+        handlerCtor: CommonChallengeHandlerConstructor<MN>,
+        conn?: PoolConnection
     ) {
-        if (! conn) {
-            conn = await pool.reserve();
-        }
-        return AbstractChallengeHandler.#initiateChallenge(
-            conn,
+        return AbstractChallengeHandler.#setupChallenge(
+            conn || pool,
             sessionId,
             challengeId,
             handlerCtor
         );
     }
 
-    static async #initiateChallenge(
-        conn: ReservedConnection,
+    static async #setupChallenge<MN extends AuthChallengeMessageName>(
+        conn: PoolConnection,
         sessionId: BigInt,
         challengeId: string,
-        handlerCtor: CommonChallengeHandlerConstructor
+        handlerCtor: CommonChallengeHandlerConstructor<MN>
     ) {
-        let begun = false;
-        try {
-            await conn`START TRANSACTION`;
-            begun = true;
-            const session = await AuthSession.getSession(
-                sessionId,
-                conn
-            );
-            const challenge = await AuthChallenge.createChallenge(
-                sessionId,
-                challengeId,
-                conn
-            );
-            if (
-                handlerCtor.prototype.handlerType !==
-                challenge.challengeDef.challengeType
-            ) {
-                throw new Error('ChallengeDef/Handler mismatch');
-            }
-            const handler = new handlerCtor(
-                conn,
-                session,
-                challenge,
-            );
-            await handler.getPendingMessage();
-            return handler;
-        } catch (e) {
-            try {
-                if (begun) {
-                    await conn`ROLLBACK`;
-                }
-            } catch (e2) {
-                throw new Error(
-                    e2 instanceof Error ? e2.message : String(e2),
-                    { cause: e }
-                );
-            } finally {
-                conn.release();
-            }
-            throw e;
-        }
-    }
-
-    static async loadChallenge(
-        sessionId: BigInt,
-        challengeId: string,
-        handlerCtor: CommonChallengeHandlerConstructor,
-        conn?: ReservedConnection
-    ) {
-        if (! conn) {
-            conn = await pool.reserve();
-        }
-        return AbstractChallengeHandler.#loadChallenge(
-            conn,
+        const session = await AuthSession.getSession(
             sessionId,
-            challengeId,
-            handlerCtor
+            conn
         );
-    }
-
-    static async #loadChallenge(
-        conn: ReservedConnection,
-        sessionId: BigInt,
-        challengeId: string,
-        handlerCtor: CommonChallengeHandlerConstructor
-    ) {
-        let begun = false;
+        if (session.outcome !== EAuthOutcome.Pending) {
+            throw new Error(
+                `Cannot setup challenge in a non-pendong session.`
+            )
+        }
+        const challengeDef = await AccountDefAuthChallenge.getChallengeDef(
+            challengeId,
+            session.accountVersion,
+            conn
+        );
+        if (
+            handlerCtor.prototype.handlerType !==
+            challengeDef.challengeType
+        ) {
+            throw new Error('ChallengeDef/Handler mismatch');
+        }
         try {
-            await conn`START TRANSACTION`;
-            begun = true;
-            const session = await AuthSession.getSession(
-                sessionId,
-                conn
-            );
             const challenge = await AuthChallenge.getChallenge(
                 sessionId,
                 challengeId,
                 conn
             );
             if (challenge.outcome !== EAuthOutcome.Pending) {
-                throw new Error("Cannot load challenge in a non-pending state");
+                throw new Error("Cannot setup challenge in a non-pending state");
             }
-            if (
-                handlerCtor.prototype.handlerType !==
-                challenge.challengeDef.challengeType
-            ) {
-                throw new Error('ChallengeDef/Handler mismatch');
-            }
-            const handler = new handlerCtor(
-                conn,
-                session,
-                challenge
-            );
-            await handler.getPendingMessage();
-            return handler;
         } catch (e) {
-            try {
-                if (begun) {
-                    await conn`ROLLBACK`;
-                }
-            } catch (e2) {
-                throw new Error(
-                    e2 instanceof Error ? e2.message : String(e2),
-                    { cause: e }
-                );
-            } finally {
-                conn.release();
+            if (!(e instanceof EntityNotFoundError)) {
+                throw e;
             }
-            throw e;
         }
+        const messages = await AuthChallengeMessage.getAllMessages(
+            sessionId,
+            challengeId,
+            conn
+        );
+        const handler = new handlerCtor(
+            conn,
+            session,
+            challengeDef,
+            messages.map(m => ({
+                messageName: m.messageName,
+                request: m.request,
+                expected: m.expected,
+                response: m.response,
+                statusMsg: m.statusMsg
+            }))
+        );
+        await handler.ensurePendingMessage();
+        return handler;
     }
 
-    async getPendingMessage(): Promise<ChallengePendingMessage<MN> | null> {
+    get challenge() {
+        return this.#challenge;
+    }
+
+    async ensurePendingMessage(): Promise<ChallengePendingMessage<MN> | null> {
         const { processedMessages, pendingMessage } = await this.getMessages();
         if (pendingMessage) {
             return pendingMessage;
@@ -219,21 +185,25 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         const nextMessageDraft = await this.draftNextMessage(processedMessages);
         if (nextMessageDraft === null) {
             if (Object.values(processedMessages).length === 0) {
-                throw new Error(
+                throw new InternalError(
                     'Expecting initial message draft to be non-null!'
                 );
             }
             return null; // no more messages
         }
-        await AuthChallengeMessage.createMessage(
-            this.challenge.sessionId,
-            this.challenge.challengeId,
-            nextMessageDraft.messageName,
-            nextMessageDraft.request,
-            nextMessageDraft.expected,
-            null,
-            this.conn
+        debugAssert(assert =>
+            this.prospectiveMessages.forEach(
+                m => assert(
+                        m.statusMsg !== null,
+                        'm.statusMsg !== null'
+                    )
+            )
         );
+        this.prospectiveMessages.push({
+            ...nextMessageDraft,
+            response: null,
+            statusMsg: null
+        });
         return nextMessageDraft;
     }
 
@@ -252,40 +222,29 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
             pendingMessage,
             response
         );
-        await pendingMessage.updateResponseAndStatus(
-            response,
-            statusMsg,
-            this.conn
-        );
-        // save next pending message.
-        const next = await this.getPendingMessage();
-        if (! next) {
-            await this.challenge.updateOutcome(
-                statusMsg === `Ok`
-                    ? EAuthOutcome.Succeeded : EAuthOutcome.Aborted,
-                this.conn
-            );
-        }
+        pendingMessage.response = response;
+        pendingMessage.statusMsg = statusMsg;
+        // append next prospective, pending message.
+        await this.ensurePendingMessage();
         return statusMsg;
     }
 
     async getMessages(): Promise<HandlerMessageDictionary<MN>> {
-        const messages = await AuthChallengeMessage.getAllMessages(
-            this.challenge.sessionId,
-            this.challenge.challengeId,
-            this.conn
-        ) as unknown as Message<MN>[];
         let pendingMessage: HandlerMessageDictionary<MN>['pendingMessage'] = null;
         let processedMessages:  HandlerMessageDictionary<MN>['processedMessages'] = {};
-        for (let i = 0; i < messages.length; i++) {
-            const msg = messages[i];
+        const allMessages = [
+            ...this.existingMessages,
+            ...this.prospectiveMessages
+        ];
+        for (let i = 0; i < allMessages.length; i++) {
+            const msg = allMessages[i];
             if (msg.statusMsg !== null) {
                 processedMessages[msg.messageName] = msg;
                 continue;
             }
-            if (pendingMessage !== null) {
-                throw new Error(
-                    'Integrity validation failed. More than one pending message were found.'
+            if (i !== allMessages.length - 1) {
+                throw new InternalError(
+                    'Pending message must be the last message.'
                 );
             }
             pendingMessage = msg;
@@ -293,11 +252,15 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         return { pendingMessage, processedMessages };
     }
 
+    async getPendingMessage() {
+        const { pendingMessage } = await this.getMessages();
+        return pendingMessage;
+    }
+
     destroy() {
         if (this.destroyed) {
             return;
         }
-        this.conn.release();
         this.destroyed = true;
     }
 
@@ -305,19 +268,52 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         if (this.destroyed) {
             throw new Error("Cannot save. Handler has been destroyed.");
         }
-        // make sure that there are at least one message before saving.
-        const messages = await this.getMessages();
-        if (
-            messages.pendingMessage ||
-            Object.values(messages.processedMessages).length > 0
-        ) {
-            try {
-                await this.conn`COMMIT`;
-            } finally {
-                this.destroy();
-            }
+        if (this.prospectiveMessages.length === 0) {
+            throw new Error("Cannot save challenge. No messages to write.");
+        }
+        try {
+            const action = new UpsertChallengeAndMessages({
+                sessionId: this.session.sessionId,
+                challengeId: this.challengeDef.challengeId,
+                messages: this.prospectiveMessages
+            });
+            const outcome = await action.execute();
+            this.#challenge = new AuthChallenge(
+                this.session.sessionId,
+                this.challengeDef.challengeId,
+                this.challengeDef,
+                outcome
+            );
+        } finally {
+            this.destroy();
+        }
+    }
+
+    protected static validateMessages<MN extends AuthChallengeMessageName>(
+        messageNames: ReadonlyArray<MN>,
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
+    ): asserts existingMessages is ReadonlyArray<Message<MN>> {
+        if (existingMessages.length === 0) {
             return;
         }
-        throw new Error("Cannot save challenge. No messages were created.");
+        const firstMessage = existingMessages[0];
+        const len = Math.min(existingMessages.length, messageNames.length);
+        const start = messageNames.findIndex(f => f === firstMessage.messageName);
+        if (start === -1) {
+            throw new InvalidArgError(
+                `Bad message list. Message name ` +
+                `'${firstMessage.messageName}' is not recognised`
+            );
+        }
+        for (let i = 1; i < len; i++) {
+            const {messageName} = existingMessages[i];
+            const expectedMessageName = messageNames[start + i];
+            if (messageName !== expectedMessageName) {
+                throw new InvalidArgError(
+                    "Bad message list. Expected message name "
+                    + `'${messageName}' to equal '${expectedMessageName}'`
+                );
+            }
+        }
     }
 }

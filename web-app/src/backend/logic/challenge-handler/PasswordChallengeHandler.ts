@@ -1,8 +1,10 @@
 import {
+    AccountDefAuthChallenge,
     EChallengeType,
     PasswordChallengeParameters
 } from "@root/backend/db/models/AccountDefAuthChallenge.js";
 import type {
+    AuthChallengeMessageName,
     MessagePayload
 } from "../../db/models/AuthChallengeMessage";
 import {
@@ -18,10 +20,13 @@ import {
     StoredPassword
 } from "../field-handler/PasswordHandler.js";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
-import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
-import type { ReservedConnection } from "@root/backend/db/pool";
+import type { PoolConnection } from "@root/backend/db/pool";
 
 type MessageName = BerytusPasswordChallengeMessageName;
+
+const messageNames: ReadonlyArray<MessageName> = [
+    "GetPasswordFields"
+];
 
 const PasswordResponse = z.array(
     z.object({
@@ -48,14 +53,16 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
     }
 
     public constructor(
-        conn: ReservedConnection,
+        conn: PoolConnection,
         session: AuthSession,
-        challenge: AuthChallenge
+        challengeDef: AccountDefAuthChallenge,
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
     ) {
-        super(conn, session, challenge);
+        AbstractChallengeHandler.validateMessages(messageNames, existingMessages);
+        super(conn, session, challengeDef, existingMessages);
         this.challengeParameters =
             PasswordChallengeParameters.parse(
-                challenge.challengeDef.challengeParameters
+                challengeDef.challengeParameters
             );
     }
 
@@ -70,7 +77,7 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
         for (let i = 0; i < passwordFieldIds.length; i++) {
             const fieldId = passwordFieldIds[i];
             const field = await AccountField.getField(
-                this.challenge.challengeDef.accountVersion,
+                this.challengeDef.accountVersion,
                 this.session.accountId,
                 fieldId,
                 this.conn

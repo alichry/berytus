@@ -1,15 +1,33 @@
-import { loadChallenge } from '@root/backend/logic/challenge-handler';
+import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
 import type { APIRoute } from 'astro';
-import type { Result } from './schema';
+import type { Result } from './schema.js';
+import {
+    validateParamsHasSessionIdAndChallengeId,
+    validatePendingSessionState,
+    validatePendingChallengeState } from '../common-validations.js';
+import { UserError } from '@root/backend/errors/UserError.js';
+import { debugAssert } from '@root/backend/utils/assert.js';
 
 export const POST: APIRoute = async ({ params, request }) => {
-    const { sessionId, challengeId } = params;
-    if (typeof sessionId === "undefined") {
-        return new Response(JSON.stringify({
-            error: "Missing session id path paramemter"
-        }), { status: 400 });
+    let sessionId: string, challengeId: string;
+    try {
+        validateParamsHasSessionIdAndChallengeId(params);
+        sessionId = params.sessionId;
+        challengeId = params.challengeId;
+        await validatePendingChallengeState(
+            await validatePendingSessionState(BigInt(sessionId)),
+            challengeId
+        );
+    } catch (e) {
+        if (e instanceof UserError) {
+            return new Response(JSON.stringify({
+                error: e.message
+            }), { status: 400 });
+        }
+        throw e;
     }
-    const handler = await loadChallenge(
+
+    const handler = await setupChallenge(
         BigInt(sessionId),
         challengeId!
     );
@@ -35,11 +53,18 @@ export const POST: APIRoute = async ({ params, request }) => {
             msgResponse
         );
         await handler.save();
+        debugAssert(
+            assert =>
+                assert(
+                    handler.challenge !== null,
+                    "handler.challenge !== null"
+                )
+        );
         const result: Result = {
-            outcome: handler.challenge.outcome,
+            outcome: handler.challenge!.outcome,
             statusMsg
         };
-        return new Response( JSON.stringify(result), {
+        return new Response(JSON.stringify(result), {
             headers: {
                 "Content-Type": "application/json"
             }

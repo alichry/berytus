@@ -1,4 +1,4 @@
-import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
+import type { AuthChallenge, EAuthOutcome } from "@root/backend/db/models/AuthChallenge";
 import type { AuthChallengeMessage, AuthChallengeMessageName, ChallengeMessageStatus, MessagePayload } from "@root/backend/db/models/AuthChallengeMessage";
 
 export type InitiateAuthChallengeResullt = {
@@ -17,7 +17,7 @@ export interface ChallengePendingMessage<MN extends AuthChallengeMessageName = A
 }
 
 export interface IChallengeHandler {
-    challenge: AuthChallenge;
+    challenge: AuthChallenge | null;
 
     getPendingMessage(): Promise<ChallengePendingMessage | null>;
 

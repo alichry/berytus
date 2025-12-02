@@ -3,9 +3,10 @@ export class HttpError extends Error {
 
     constructor(
         status: number,
-        msg?: string
+        msg?: string,
+        options?: ErrorOptions
     ) {
-        super(msg);
+        super(msg, options);
         this.status = status;
     }
 

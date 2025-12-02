@@ -20,7 +20,7 @@ export class AuthSession {
     public readonly sessionId: BigInt;
     public readonly accountId: BigInt;
     public readonly accountVersion: number;
-    public outcome: EAuthOutcome;
+    #outcome: EAuthOutcome;
 
     constructor(
         sessionId: BigInt,
@@ -31,7 +31,11 @@ export class AuthSession {
         this.sessionId = sessionId;
         this.accountId = accountId;
         this.accountVersion = accountVersion;
-        this.outcome = outcome;
+        this.#outcome = outcome;
+    }
+
+    get outcome() {
+        return this.#outcome;
     }
 
     async finish(
@@ -46,7 +50,7 @@ export class AuthSession {
     async #finish(
         conn: PoolConnection
     ) {
-        if (this.outcome !== EAuthOutcome.Pending) {
+        if (this.#outcome !== EAuthOutcome.Pending) {
             throw new AuthError(
                 "Session is not in a pending state and thus cannot be modified"
             );
@@ -103,7 +107,7 @@ export class AuthSession {
                 `auth session#${this.sessionId}`
             );
         }
-        this.outcome = EAuthOutcome.Succeeded;
+        this.#outcome = EAuthOutcome.Succeeded;
     }
 
     static async getSession(
@@ -182,5 +186,14 @@ export class AuthSession {
             RETURNING SessionID
         `;
         return new AuthSession(res[0].sessionid, accountId, accountVersion, EAuthOutcome.Pending);
+    }
+
+    public toJSON() {
+        return {
+            sessionId: this.sessionId,
+            accountId: this.accountId,
+            accountVersion: this.accountVersion,
+            outcome: this.outcome
+        };
     }
 }
