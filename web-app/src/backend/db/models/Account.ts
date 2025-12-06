@@ -1,12 +1,15 @@
-import { toPostgresBigInt, useConnection, useTransaction } from '../pool.js';
+import { toPostgresBigInt, useConnection } from '../pool.js';
 import type { PoolConnection } from '../pool.js';
 import type { FieldInput } from '../types.js';
 import { AccountDefKeyFieldList } from './AccountDefKeyFieldList.js';
 import { EntityAlreadyExistsError } from '../errors/EntityAlreadyExistsError.js';
 import { EntityNotFoundError } from '../errors/EntityNotFoundError.js';
+import { debugAssert, type Assert } from '@root/backend/utils/assert.js';
+import { InvalidArgError } from '@root/backend/errors/InvalidArgError.js';
 
 interface PCreateAccount {
     accountid: BigInt;
+    insertedfieldcount: number;
 }
 
 interface PConflictCheck {
@@ -44,10 +47,10 @@ export class Account {
 
     static async #latest(conn: PoolConnection, accountId: BigInt): Promise<Account> {
         const rows = await conn<PGetLatest[]>`
-            SELECT MAX(AccountVersion) as LatestAccountVersion
+            SELECT AccountVersion as LatestAccountVersion
             FROM berytus_account_field
             WHERE AccountID = ${toPostgresBigInt(accountId)}
-            ORDER BY MAX(AccountVersion) DESC
+            ORDER BY AccountVersion DESC
             LIMIT 1
         `;
         if (rows.length === 0) {
@@ -66,15 +69,28 @@ export class Account {
 
     static async accountExists(
         accountVersion: number,
-        fieldInputs: FieldInput[]
+        fieldInputs: FieldInput[],
+        existingConn?: PoolConnection
     ): Promise<boolean> {
-        return null !== await this.getAccount(accountVersion, fieldInputs);
+        return null !== await this.getAccount(
+            accountVersion,
+            fieldInputs,
+            existingConn
+        );
     }
 
     static async getAccount(
         accountVersion: number,
-        fieldInputs: FieldInput[]
+        fieldInputs: FieldInput[],
+        existingConn?: PoolConnection
     ): Promise<Account | null> {
+        if (existingConn) {
+            return this.#getAccount(
+                existingConn,
+                accountVersion,
+                fieldInputs
+            );
+        }
         return useConnection(async (conn) => {
             return this.#getAccount(
                 conn,
@@ -84,47 +100,103 @@ export class Account {
         });
     }
 
-    static async #createAccountId(
-        conn: PoolConnection
-    ): Promise<BigInt> {
-        const [row] = await conn<PCreateAccount[]>
-            `INSERT INTO berytus_account DEFAULT VALUES RETURNING AccountID`;
-        return row.accountid;
-    }
-
     static async createAccount(
         accountVersion: number,
-        fieldInputs: FieldInput[]
-    ): Promise<Account> {
-        return useTransaction(async (conn) => {
-            await conn`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`;
-            const existingAccount = await this.#getAccount(
-                conn,
+        fieldInputs: FieldInput[],
+        existingConn?: PoolConnection,
+    ) {
+        if (existingConn) {
+            return this.#createAccount(
+                existingConn,
                 accountVersion,
                 fieldInputs
             );
-            if (existingAccount) {
-                throw EntityAlreadyExistsError.default(
-                    Account.name,
-                    "[...[AccountVersion, FieldID, FieldValue], ...[AccountVersion, FieldID, FieldValue]], ..",
-                    "STRIPPED",
-                    "Cannot create an account. Passed identity fields are reserved."
-                );
-            }
-            const newAccountId = await this.#createAccountId(conn);
-            await conn
-                `INSERT INTO berytus_account_field
-                ${conn(fieldInputs.map(field => ({
-                    accountid: toPostgresBigInt(newAccountId),
-                    accountversion: accountVersion,
-                    fieldid: field.id,
-                    fieldvalue: conn.json(field.value)
-                })))}`;
-            return new Account(
-                newAccountId,
-                accountVersion
+        }
+        return useConnection(
+            conn => this.#createAccount(
+                conn,
+                accountVersion,
+                fieldInputs
+            )
+        );
+    }
+
+    static async #createAccount(
+        conn: PoolConnection,
+        accountVersion: number,
+        fieldInputs: FieldInput[]
+    ): Promise<Account> {
+        if (
+            typeof accountVersion !== "number" ||
+            Number.isNaN(accountVersion)
+        ) {
+            throw new InvalidArgError("Bad accountVersion");
+        }
+        const existingAccount = await this.#getAccount(
+            conn,
+            accountVersion,
+            fieldInputs
+        );
+        if (existingAccount) {
+            throw EntityAlreadyExistsError.default(
+                Account.name,
+                "[...[AccountVersion, FieldID, FieldValue], ...[AccountVersion, FieldID, FieldValue]], ..",
+                "STRIPPED",
+                "Cannot create an account. Passed identity fields are reserved."
+            );
+        }
+        debugAssert((assert: Assert) => {
+            assert(fieldInputs.length > 0, "fieldInputs.length > 0")
+            assert(
+                fieldInputs.filter(f => f.value === undefined).length === 0,
+                "fieldInputs.filter(f => f.value === undefined).length === 0"
             );
         });
+        const res = await conn<PCreateAccount[]>
+            `WITH cte_fields_to_insert AS (
+                SELECT * FROM
+                    (VALUES ${conn(fieldInputs.map(field => ([
+                        accountVersion,
+                        field.id,
+                        conn.json(field.value)
+                    ] as const)))}) AS field_row (
+                        AccountVersion,
+                        FieldID,
+                        FieldValue
+                    )
+            ), cte_insert_account AS (
+                INSERT INTO berytus_account
+                (AccountID) VALUES (DEFAULT)
+                RETURNING AccountID
+            ), cte_insert_fields AS (
+                INSERT INTO berytus_account_field
+                (AccountID, AccountVersion, FieldID, FieldValue)
+                SELECT
+                        (SELECT AccountID FROM cte_insert_account) AS AccountID,
+                        AccountVersion::int, FieldID, FieldValue
+                FROM cte_fields_to_insert
+                RETURNING AccountID, AccountVersion,
+                            FieldID, FieldValue
+            )
+            SELECT
+                (SELECT AccountID FROM cte_insert_account)
+                    AS AccountID,
+                (SELECT COUNT(*) FROM cte_insert_fields)
+                    AS InsertedFieldCount`;
+        debugAssert((assert: Assert) => {
+            assert(res.length > 0, "res.length > 0");
+            assert.equal(
+                typeof res[0].accountid, "bigint"
+            )
+            assert.equal(
+                res[0].insertedfieldcount, BigInt(fieldInputs.length)
+            );
+        });
+        const newAccountId = res[0].accountid;
+        return new Account(
+            newAccountId,
+            accountVersion
+        );
     }
 
     /**

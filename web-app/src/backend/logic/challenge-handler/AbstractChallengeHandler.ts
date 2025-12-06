@@ -67,7 +67,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     #challenge: AuthChallenge | null;
 
     /**
-     * @param conn Should be in transaction mode
+     * @param conn
      * @param challenge
      */
     public constructor(
