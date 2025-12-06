@@ -1,22 +1,24 @@
 import type { PoolConnection } from "../pool.js";
 import { toPostgresBigInt, useConnection } from "../pool.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
+import type { JSONValue } from "../types.js";
+import { IllegalDatabaseStateError } from "../errors/IllegalDatabaseStateError.js";
 
 export interface PGetFieldValue {
-    fieldvalue: unknown; /* JSON-parsed value */
+    fieldvalue: JSONValue;
 }
 
 export class AccountField {
     readonly accountVersion: number;
     readonly accountId: BigInt;
     readonly fieldId: string;
-    readonly fieldValue: unknown;
+    fieldValue: JSONValue;
 
     protected constructor(
         accountVersion: number,
         accountId: BigInt,
         fieldId: string,
-        fieldValue: unknown,
+        fieldValue: JSONValue,
     ) {
         this.accountVersion = accountVersion;
         this.accountId = accountId;
@@ -74,5 +76,36 @@ export class AccountField {
             fieldId,
             res[0].fieldvalue
         );
+    }
+
+    async updateValue(
+        fieldValue: JSONValue,
+        existingConn?: PoolConnection
+    ) {
+        if (existingConn) {
+            return this.#updateValue(existingConn, fieldValue);
+        }
+        return useConnection(
+            conn => this.#updateValue(conn, fieldValue)
+        );
+    }
+
+    async #updateValue(
+        conn: PoolConnection,
+        fieldValue: JSONValue
+    ) {
+        const res = await conn`
+            UPDATE berytus_account_field
+            SET FieldValue = ${conn.json(fieldValue)}
+            WHERE AccountVersion = ${this.accountVersion}
+            AND AccountID = ${toPostgresBigInt(this.accountId)}
+            AND FieldID = ${this.fieldId}
+        `;
+        if (res.count === 0) {
+            throw new IllegalDatabaseStateError(
+                "Failed to update field value"
+            );
+        }
+        this.fieldValue = fieldValue;
     }
 }

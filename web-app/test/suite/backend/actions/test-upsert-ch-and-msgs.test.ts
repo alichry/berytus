@@ -230,6 +230,67 @@ describe("Berytus UpsertChallengeAndMessages", () => {
         )
     });
 
+    it("Should insert successful challenge and successful messages in one shot", async () => {
+        const [session, challengeDef] = await getSessionThatCanCreateSrpChallenge();
+        await expect(AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        )).to.be.rejectedWith(EntityNotFoundError);
+
+        const messages = [
+            {
+                messageName: "SelectSecurePassword",
+                request: { dummyRequest: true },
+                expected: { dummyResponse: true },
+                response: { dummyResponse: true },
+                statusMsg: 'Ok',
+            },
+            {
+                messageName: "ExchangePublicKeys",
+                request: { dummyRequest: 1 },
+                expected: { dummyResponse: 2 },
+                response: { dummyResponse: 2 },
+                statusMsg: 'Ok',
+            },
+            {
+                messageName: "ComputeClientProof",
+                request: { anotherDummyRequest: 5 },
+                expected: { anotherDummyExpected: 6 },
+                response: { anotherDummyResponse: 6 },
+                statusMsg: 'Ok',
+            },
+            {
+                messageName: "VerifyServerProof",
+                request: { anotherDummyRequest: 50 },
+                expected: { anotherDummyExpected: 60 },
+                response: { anotherDummyResponse: 60 },
+                statusMsg: 'Ok',
+            },
+        ] as const;
+        const action = new UpsertChallengeAndMessages({
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId,
+            messages
+        });
+        await action.execute();
+        const retrievedChallenge = await AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        expect(retrievedChallenge.outcome).to.equal(
+            EAuthOutcome.Succeeded
+        );
+        const retrievedMessages = await AuthChallengeMessage.getAllMessages(
+            session.sessionId,
+            challengeDef.challengeId
+        );
+        expect(retrievedMessages).to.deep.equal(messages.map(m => ({
+            ...m,
+            sessionId: session.sessionId,
+            challengeId: challengeDef.challengeId
+        })));
+    });
+
     it("Marks challenge as aborted if message has Non-Ok status [no prev messages, mlen = 1]", async () => {
         const [session, challengeDef] =
             await getSessionThatCanCreateSrpChallenge();

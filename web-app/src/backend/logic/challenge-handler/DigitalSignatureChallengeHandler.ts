@@ -10,7 +10,8 @@ import {
     AbstractChallengeHandler,
     type MessageDraft,
     type MessageDictionary,
-    type Message
+    type Message,
+    type CCHDependencies
 } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
@@ -43,7 +44,7 @@ export type DigitalSignatureChallengeParameters = z.infer<typeof DigitalSignatur
 
 export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<MessageName> {
     protected challengeParameters: DigitalSignatureChallengeParameters;
-
+    protected randomBytes: typeof randomBytes;
 
     get handlerType(): EChallengeType {
         return EChallengeType.DigitalSignature;
@@ -53,7 +54,8 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
         conn: PoolConnection,
         session: AuthSession,
         challengeDef: AccountDefAuthChallenge,
-        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>,
+        dependencies: CCHDependencies
     ) {
         AbstractChallengeHandler.validateMessages(messageNames, existingMessages);
         super(conn, session, challengeDef, existingMessages);
@@ -61,6 +63,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             DigitalSignatureChallengeParameters.parse(
                 challengeDef.challengeParameters
             );
+        this.randomBytes = dependencies.randomBytes || randomBytes;
     }
 
     protected async draftNextMessage(
@@ -70,7 +73,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             return null;
         }
         if (processedMessages.SelectKey) {
-            const nonce = randomBytes(64);
+            const nonce = this.randomBytes(64);
             const initialMessageDraft = {
                 messageName: "SignNonce" as const,
                 request: nonce.toString('base64'),

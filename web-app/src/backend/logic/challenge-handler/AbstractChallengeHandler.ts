@@ -27,13 +27,18 @@ export interface MessageDraft<MN extends AuthChallengeMessageName> {
     expected: MessagePayload;
 }
 
+export interface CCHDependencies {
+    randomBytes?: typeof import("node:crypto").randomBytes;
+}
+
 export interface CommonChallengeHandlerConstructor<MN extends AuthChallengeMessageName> {
     prototype: AbstractChallengeHandler<MN>;
     new(
         conn: PoolConnection,
         session: AuthSession,
         challengeDef: AccountDefAuthChallenge,
-        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>,
+        dependencies: CCHDependencies
     ): AbstractChallengeHandler<MN>;
 }
 
@@ -100,13 +105,15 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         sessionId: BigInt,
         challengeId: string,
         handlerCtor: CommonChallengeHandlerConstructor<MN>,
-        conn?: PoolConnection
+        conn?: PoolConnection,
+        dependencies?: CCHDependencies
     ) {
         return AbstractChallengeHandler.#setupChallenge(
             conn || pool,
             sessionId,
             challengeId,
-            handlerCtor
+            handlerCtor,
+            dependencies
         );
     }
 
@@ -114,7 +121,8 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         conn: PoolConnection,
         sessionId: BigInt,
         challengeId: string,
-        handlerCtor: CommonChallengeHandlerConstructor<MN>
+        handlerCtor: CommonChallengeHandlerConstructor<MN>,
+        dependencies?: CCHDependencies
     ) {
         const session = await AuthSession.getSession(
             sessionId,
@@ -165,7 +173,8 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
                 expected: m.expected,
                 response: m.response,
                 statusMsg: m.statusMsg
-            }))
+            })),
+            dependencies || {}
         );
         await handler.ensurePendingMessage();
         return handler;
@@ -192,6 +201,12 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
             return null; // no more messages
         }
         debugAssert(assert =>
+            assert(
+                !("response" in nextMessageDraft) &&
+                !("statusMsg" in nextMessageDraft)
+            )
+        );
+        debugAssert(assert =>
             this.prospectiveMessages.forEach(
                 m => assert(
                         m.statusMsg !== null,
@@ -214,7 +229,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         if (! pendingMessage) {
             throw new Error(
                 "There are no pending message to process. Did we call " +
-                "getPendingMessage() before processPendingMessageResponse()?"
+                "ensurePendingMessage() before processPendingMessageResponse()?"
             );
         }
         const statusMsg = await this.validateMessageResponse(
@@ -277,7 +292,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
                 challengeId: this.challengeDef.challengeId,
                 messages: this.prospectiveMessages
             });
-            const outcome = await action.execute();
+            const outcome = await action.execute(this.conn);
             this.#challenge = new AuthChallenge(
                 this.session.sessionId,
                 this.challengeDef.challengeId,

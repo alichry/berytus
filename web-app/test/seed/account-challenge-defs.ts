@@ -1,6 +1,7 @@
 import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
 import { useConnection } from "../../src/backend/db/pool.js"
 import { strict as assert } from 'node:assert';
+import type { JSONValue } from "@root/backend/db/types.js";
 
 const stmts = [
     `INSERT INTO berytus_account_def_auth_challenge
@@ -21,7 +22,7 @@ let cachedAccountChallengeDefs: Array<{
     accountVersion: number;
     challengeId: string;
     challengeType: EChallengeType;
-    challengeParameters: unknown
+    challengeParameters: Record<string, JSONValue>
 }> | null = null;
 
 export const createAccountChallengeDefs = async () => {

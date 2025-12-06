@@ -8,7 +8,10 @@ export const armoredKeySchema = (type: "public" | "private" = "public") =>
             try {
                 ArmoredKeyUtils.validateArmor(val, type);
             } catch (e) {
-                return false;
+                if (e instanceof InvalidArgError) {
+                    return false;
+                }
+                throw e;
             }
             return true;
         },
@@ -29,7 +32,7 @@ export const unarmorKeySchema = (type: "public" | "private" = "public") => z.str
     });
 
 
-class ArmoredKeyUtils {
+export class ArmoredKeyUtils {
     static #header = {
         private: `-----BEGIN PRIVATE KEY-----\n`,
         public: `-----BEGIN PUBLIC KEY-----\n`
@@ -65,6 +68,18 @@ class ArmoredKeyUtils {
             );
         }
         return base64;
+    }
+
+    static armorBase64(encodedAsBase64: string, type: "public" | "private"): string {
+        if (encodedAsBase64.length === 0) {
+            throw new InvalidArgError("Cannot armor; need more data.");
+        }
+        const asMultiline = encodedAsBase64.match(/.{1,64}/g)!.join("\n");
+        return ArmoredKeyUtils.#header[type]
+            + "\n"
+            + asMultiline
+            + "\n"
+            + ArmoredKeyUtils.#footer[type];
     }
 }
 

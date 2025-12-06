@@ -11,7 +11,8 @@ import {
     AbstractChallengeHandler,
     type MessageDraft,
     type MessageDictionary,
-    type Message
+    type Message,
+    type CCHDependencies
 } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
@@ -56,7 +57,8 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
         conn: PoolConnection,
         session: AuthSession,
         challengeDef: AccountDefAuthChallenge,
-        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>,
+        dependencies: CCHDependencies
     ) {
         AbstractChallengeHandler.validateMessages(messageNames, existingMessages);
         super(conn, session, challengeDef, existingMessages);

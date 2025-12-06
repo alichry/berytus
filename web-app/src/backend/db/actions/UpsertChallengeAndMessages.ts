@@ -281,7 +281,7 @@ export class UpsertChallengeAndMessages {
                 (SessionID, ChallengeID, Outcome)
                 SELECT  ${toPostgresBigInt(this.input.sessionId)},
                         ${this.input.challengeId},
-                        ${EAuthOutcome.Pending}
+                        ${authOutcome}
                 WHERE (
                     SELECT TRUE FROM cte_should_write
                 ) AND NOT EXISTS (
@@ -509,8 +509,8 @@ export class UpsertChallengeAndMessages {
                     "InsertedChallenge.challengeid should equal input.challengeId"
                 );
                 assert(
-                    row.insertedchallenge.outcome === EAuthOutcome.Pending,
-                    "InsertedChallenge.outcome should be Pending"
+                    row.insertedchallenge.outcome === authOutcome,
+                    "InsertedChallenge.outcome === authOutcome"
                 );
             }
             if (row.updatedchallengeoutcome !== null) {

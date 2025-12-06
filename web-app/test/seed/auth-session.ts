@@ -14,6 +14,10 @@ const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
         d => d.challengeType === EChallengeType.SecureRemotePassword
     );
     assert(srpChallengeDef);
+    const dsChallengeDef = challengeDefs.find(
+        d => d.challengeType === EChallengeType.DigitalSignature
+    );
+    assert(dsChallengeDef);
     const accountForPassAuth = accounts.find(
         a => a.accountVersion === passwordChallengeDef.accountVersion
     );
@@ -22,6 +26,10 @@ const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
         a => a.accountVersion === srpChallengeDef.accountVersion
     );
     assert(accountForSrpAuth);
+    const accountForDsAuth = accounts.find(
+        a => a.accountVersion === dsChallengeDef.accountVersion
+    );
+    assert(accountForDsAuth);
     return [
         `INSERT INTO berytus_account_auth_session
         (AccountID, AccountVersion, Outcome)
@@ -79,6 +87,10 @@ const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
         (AccountID, AccountVersion, Outcome)
         VALUES
         (${accountForSrpAuth.accountId}, ${accountForSrpAuth.accountVersion}, 'Pending')`,
+        `INSERT INTO berytus_account_auth_session
+        (AccountID, AccountVersion, Outcome)
+        VALUES
+        (${accountForDsAuth.accountId}, ${accountForDsAuth.accountVersion}, 'Pending')`,
     ];
 }
 

@@ -3,7 +3,7 @@ import type { PoolConnection } from "../../src/backend/db/pool.js"
 import { strict as assert } from 'node:assert';
 
 const getStatements = (accountIds: BigInt[]) => {
-    assert(accountIds.length >= 6);
+    assert(accountIds.length >= 7);
     return [
         `INSERT INTO berytus_account_field
         (AccountID, AccountVersion, FieldID, FieldValue)
@@ -20,21 +20,24 @@ const getStatements = (accountIds: BigInt[]) => {
         (${accountIds[1]}, 2, 'username', '"john123"'),
         (${accountIds[1]}, 2, 'securePassword', '"securePassJohn"'),
 
-        (${accountIds[2]}, 2000, 'partyId', '"jerry-and-sons"'),
-        (${accountIds[2]}, 2000, 'username', '"jerry"'),
-        (${accountIds[2]}, 2000, 'securePassword', '"securePassJerry"'),
+        (${accountIds[2]}, 3, 'username', '"john123"'),
+        (${accountIds[2]}, 3, 'key', '{ "publicKey": "-----BEGIN PUBLIC KEY-----\\ndummydata\\n-----END PUBLIC KEY-----" }'),
 
         (${accountIds[3]}, 2000, 'partyId', '"jerry-and-sons"'),
-        (${accountIds[3]}, 2000, 'username', '"caleb"'),
-        (${accountIds[3]}, 2000, 'securePassword', '"securePassCaleb"'),
+        (${accountIds[3]}, 2000, 'username', '"jerry"'),
+        (${accountIds[3]}, 2000, 'securePassword', '"securePassJerry"'),
 
-        (${accountIds[4]}, 2000, 'partyId', '"marks-and-sons"'),
-        (${accountIds[4]}, 2000, 'username', '"mark"'),
-        (${accountIds[4]}, 2000, 'securePassword', '"securePassMark"'),
+        (${accountIds[4]}, 2000, 'partyId', '"jerry-and-sons"'),
+        (${accountIds[4]}, 2000, 'username', '"caleb"'),
+        (${accountIds[4]}, 2000, 'securePassword', '"securePassCaleb"'),
 
-        (${accountIds[5]}, 2000, 'partyId', '"mark-and-sons"'),
-        (${accountIds[5]}, 2000, 'username', '"matty"'),
-        (${accountIds[5]}, 2000, 'securePassword', '"securePassMatty"')`,
+        (${accountIds[5]}, 2000, 'partyId', '"marks-and-sons"'),
+        (${accountIds[5]}, 2000, 'username', '"mark"'),
+        (${accountIds[5]}, 2000, 'securePassword', '"securePassMark"'),
+
+        (${accountIds[6]}, 2000, 'partyId', '"mark-and-sons"'),
+        (${accountIds[6]}, 2000, 'username', '"matty"'),
+        (${accountIds[6]}, 2000, 'securePassword', '"securePassMatty"')`,
 
         `INSERT INTO berytus_account_user_attributes
         (AccountID, UserAttributeDictionary)
@@ -78,7 +81,7 @@ let cachedAccounts: Array<{
 
 export const createAccounts = async () => {
     return useConnection(async conn => {
-        const accountIds = await createAccountIds(conn, 6);
+        const accountIds = await createAccountIds(conn, 7);
         const stmts = getStatements(accountIds);
         assert(stmts.length > 0);
         for (let i = 0; i < stmts.length; i++) {
