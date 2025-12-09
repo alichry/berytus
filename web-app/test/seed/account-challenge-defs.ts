@@ -1,7 +1,7 @@
 import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
-import { useConnection } from "../../src/backend/db/pool.js"
 import { strict as assert } from 'node:assert';
 import type { JSONValue } from "@root/backend/db/types.js";
+import { withSearchPath } from "@test/with-search-path.js";
 
 const stmts = [
     `INSERT INTO berytus_account_def_auth_challenge
@@ -26,7 +26,7 @@ let cachedAccountChallengeDefs: Array<{
 }> | null = null;
 
 export const createAccountChallengeDefs = async () => {
-    return useConnection(async conn => {
+    return withSearchPath(async conn => {
         for (let i = 0; i < stmts.length; i++) {
             await conn.unsafe(stmts[i]);
         }

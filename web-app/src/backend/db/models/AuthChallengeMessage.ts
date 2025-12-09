@@ -1,5 +1,5 @@
 /// <reference path="../../../../src/generated/berytus.d.ts" />
-import { toPostgresBigInt, useConnection } from "../pool.js";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import { EChallengeType } from "./AccountDefAuthChallenge.js";
 import { AuthChallenge, EAuthOutcome } from "./AuthChallenge.js";
@@ -105,7 +105,7 @@ export class AuthChallengeMessage {
                    Expected,
                    Response,
                    StatusMsg
-            FROM berytus_account_auth_challenge_message
+            FROM ${table('berytus_account_auth_challenge_message')}
             WHERE SessionID = ${toPostgresBigInt(sessionId)}
             AND ChallengeID = ${challengeId}
             ORDER BY CreatedAt ASC
@@ -198,12 +198,12 @@ export class AuthChallengeMessage {
         // lock session, challenge, and every previous ok message.
         const result = await conn`
             WITH cte_pending_session AS (
-                SELECT FROM berytus_account_auth_session
+                SELECT FROM ${table('berytus_account_auth_session')}
                 WHERE SessionID = ${toPostgresBigInt(sessionId)}
                 AND Outcome = ${EAuthOutcome.Pending}
                 FOR UPDATE
             ), cte_pending_challenge AS (
-                SELECT FROM berytus_account_auth_challenge
+                SELECT FROM ${table('berytus_account_auth_challenge')}
                 WHERE SessionID = ${toPostgresBigInt(sessionId)}
                 AND   ChallengeID = ${challengeId}
                 AND   Outcome = ${EAuthOutcome.Pending}
@@ -211,7 +211,7 @@ export class AuthChallengeMessage {
             ), cte_previous_ok_messages AS (
                 SELECT SessionID, ChallengeID,
                        MessageName, StatusMsg
-                FROM berytus_account_auth_challenge_message
+                FROM ${table('berytus_account_auth_challenge_message')}
                 WHERE SessionID = ${toPostgresBigInt(sessionId)}
                 AND ChallengeID = ${challengeId}
                 AND StatusMsg = 'Ok'
@@ -225,7 +225,7 @@ export class AuthChallengeMessage {
                            '[]'::jsonb
                        ) AS MessageNames,
                        'Ok' AS StatusMsg
-                FROM berytus_account_auth_challenge AS c
+                FROM ${table('berytus_account_auth_challenge')} AS c
                 LEFT JOIN cte_previous_ok_messages AS m
                 ON m.SessionID = c.SessionID
                 AND m.ChallengeID = c.ChallengeID
@@ -233,7 +233,7 @@ export class AuthChallengeMessage {
                 AND c.ChallengeID = ${challengeId}
                 GROUP BY c.SessionID, c.ChallengeID
             )
-            INSERT INTO berytus_account_auth_challenge_message
+            INSERT INTO ${table('berytus_account_auth_challenge_message')}
             (SessionID, ChallengeID, MessageName,
             Request, Expected, Response)
             SELECT ${toPostgresBigInt(sessionId)}, ${challengeId}, ${messageName},
@@ -326,20 +326,20 @@ export class AuthChallengeMessage {
         const result = await conn<PUpdateResponseAndStatus[]>`
             WITH cte_pending_session AS (
                 SELECT SessionID, Outcome
-                FROM   berytus_account_auth_session
+                FROM   ${table('berytus_account_auth_session')}
                 WHERE  SessionID = ${toPostgresBigInt(this.sessionId)}
                 AND    Outcome = ${EAuthOutcome.Pending}
                 FOR UPDATE
             ), cte_pending_challenge AS (
                 SELECT SessionID, ChallengeID, Outcome
-                FROM berytus_account_auth_challenge
+                FROM ${table('berytus_account_auth_challenge')}
                 WHERE SessionID   = ${toPostgresBigInt(this.sessionId)}
                 AND   ChallengeID = ${this.challengeId}
                 AND   Outcome = ${EAuthOutcome.Pending}
                 AND   (SELECT TRUE FROM cte_pending_session)
                 FOR UPDATE
             ), cte_do_update_message AS (
-                UPDATE berytus_account_auth_challenge_message
+                UPDATE ${table('berytus_account_auth_challenge_message')}
                 SET Response = ${conn.json(response)},
                     StatusMsg = ${statusMsg}
                 WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
@@ -349,7 +349,7 @@ export class AuthChallengeMessage {
                 AND   (SELECT TRUE FROM cte_pending_challenge)
                 RETURNING TRUE AS MessageUpdated
             ), cte_maybe_abort_challenge AS (
-                UPDATE berytus_account_auth_challenge
+                UPDATE ${table('berytus_account_auth_challenge')}
                 SET   Outcome = 'Aborted'
                 WHERE (SELECT MessageUpdated FROM cte_do_update_message)
                 AND   'Ok' <> ${statusMsg}

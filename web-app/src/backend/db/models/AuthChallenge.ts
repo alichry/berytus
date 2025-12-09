@@ -1,4 +1,4 @@
-import { toPostgresBigInt, useConnection } from "../pool.js";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import { AuthSession } from "./AuthSession.js";
 import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
@@ -61,7 +61,7 @@ export class AuthChallenge {
         challengeId: string,
     ) {
         const res = await conn<PGetOutcome[]>`
-            SELECT Outcome FROM berytus_account_auth_challenge
+            SELECT Outcome FROM ${table('berytus_account_auth_challenge')}
             WHERE SessionID = ${toPostgresBigInt(sessionId)}
             AND ChallengeID = ${challengeId}
         `
@@ -138,12 +138,12 @@ export class AuthChallenge {
         }
         /* now create the record */
         const result = await conn`
-            INSERT INTO berytus_account_auth_challenge
+            INSERT INTO ${table('berytus_account_auth_challenge')}
             (SessionID, ChallengeID, Outcome)
             SELECT ${toPostgresBigInt(sessionId)},
                    ${challengeId},
                    ${EAuthOutcome.Pending}
-            FROM berytus_account_auth_session s
+            FROM ${table('berytus_account_auth_session')} s
             WHERE s.SessionID = ${toPostgresBigInt(sessionId)}
             AND   s.Outcome = ${EAuthOutcome.Pending}
             FOR UPDATE
@@ -202,13 +202,13 @@ export class AuthChallenge {
         }
         // TODO(berytus): Need to check that all messages are OK
         const res = await conn`
-            UPDATE berytus_account_auth_challenge
+            UPDATE ${table('berytus_account_auth_challenge')}
             SET Outcome = ${outcome}
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
             AND ChallengeID = ${this.challengeId}
             AND Outcome = ${EAuthOutcome.Pending}
             AND (
-                SELECT TRUE FROM berytus_account_auth_session
+                SELECT TRUE FROM ${table('berytus_account_auth_session')}
                 WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
                 AND   Outcome = ${EAuthOutcome.Pending}
                 FOR UPDATE

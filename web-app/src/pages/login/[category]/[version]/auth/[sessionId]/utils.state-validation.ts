@@ -3,8 +3,7 @@ import { AccountDefAuthChallenge } from "@root/backend/db/models/AccountDefAuthC
 import { AuthChallenge, EAuthOutcome } from "@root/backend/db/models/AuthChallenge.js";
 import { AuthSession } from "@root/backend/db/models/AuthSession.js";
 import { UserError } from "@root/backend/errors/UserError.js";
-import { InternalError } from "@root/backend/errors/InternalError";
-import { debugAssert } from "@root/backend/utils/assert";
+import { debugAssert } from "@root/backend/utils/assert.js";
 
 export const validatePendingSessionState = async (
     sessionId: BigInt
@@ -89,13 +88,12 @@ export const validatePendingChallengeState = async (
 }
 
 export const validateNewChallengeState = async (
-    sessionId: BigInt,
+    sessionToken: ValidPendingSessionToken,
     challengeId: string
 ) => {
-    await validatePendingSessionState(sessionId);
     try {
         await AuthChallenge.getChallenge(
-            sessionId,
+            sessionToken.sessionId,
             challengeId
         );
         throw new UserError(
@@ -132,20 +130,5 @@ export const validateChallengeDefExists = async (
                 + `'${sessionToken.sessionId}'`
             )
         }
-    }
-}
-
-export function validateParamsHasSessionIdAndChallengeId<T extends Record<string, string | undefined>>(
-    params: Record<string, string | undefined>
-): asserts params is T & { sessionId: string; challengeId: string; } {
-    if (typeof params.sessionId === "undefined") {
-        throw new InternalError(
-            "Missing session id path paramemter"
-        );
-    }
-    if (typeof params.challengeId === 'undefined') {
-        throw new InternalError(
-            "Missing challengeId id path paramemter"
-        );
     }
 }

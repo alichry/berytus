@@ -3,17 +3,19 @@ import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
 import { Result } from './schema.js';
 import {
     validateChallengeDefExists,
-    validateParamsHasSessionIdAndChallengeId,
     validatePendingSessionState
-} from '../common-validations.js';
+} from '@root/pages/login/[category]/[version]/auth/[sessionId]/utils.state-validation.js';
 import { UserError } from '@root/backend/errors/UserError.js';
+import { releaseAssert } from '@root/backend/utils/assert.js';
 
-export const GET: APIRoute = async ({ params }) => {
-    let sessionId: string, challengeId: string;
+export const GET: APIRoute<
+    Record<string, any>,
+    { sessionId: string; challengeId: string; }
+> = async ({ params }) => {
+    releaseAssert(typeof params["sessionId"] === "string");
+    releaseAssert(typeof params["challengeId"] === "string");
+    const { sessionId, challengeId } = params;
     try {
-        validateParamsHasSessionIdAndChallengeId(params);
-        sessionId = params.sessionId;
-        challengeId = params.challengeId;
         const sessionToken =
             await validatePendingSessionState(BigInt(sessionId));
         await validateChallengeDefExists(

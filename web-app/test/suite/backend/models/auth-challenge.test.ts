@@ -3,7 +3,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { createAccountDefs } from "@test/seed/account-defs.js";
 import { createAccountChallengeDefs, getAccountChallengeDefs } from '@test/seed/account-challenge-defs.js';
 import { createAccounts } from '@test/seed/account.js';
-import { pool } from '@root/backend/db/pool.js';
+import { pool, table } from '@root/backend/db/pool.js';
 import { strict as assert } from 'node:assert';
 import { AuthChallenge, EAuthOutcome } from '@root/backend/db/models/AuthChallenge.js';
 import { createAuthSessions, getAuthSessions } from '@test/seed/auth-session.js';
@@ -18,7 +18,7 @@ describe('Berytus Auth Challenge', () => {
     const getExistingChallenges = async () => {
         const rows = await pool`
             SELECT SessionID, ChallengeID, Outcome
-            FROM berytus_account_auth_challenge
+            FROM ${table('berytus_account_auth_challenge')}
         `;
         assert(rows.length > 0);
         return rows.map(({

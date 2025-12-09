@@ -7,7 +7,7 @@ export const ReqBody = z.object({
 });
 
 export const Result = z.object({
-    sessionId: z.bigint()
+    sessionId: z.string().regex(/^[1-9][0-9]*$/)
 });
 
 export type Result = z.infer<typeof Result>;

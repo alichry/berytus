@@ -69,7 +69,7 @@ export class AuthSessionHandler {
         return new AuthSessionHandler(
             accountVersion,
             accountCategory,
-            data.sessionId,
+            BigInt(data.sessionId),
         );
     }
 

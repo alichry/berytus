@@ -1,7 +1,7 @@
 import * as chai  from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { createAccountDefs } from "@test/seed/account-defs.js";
-import { pool } from '@root/backend/db/pool.js';
+import { pool, table } from '@root/backend/db/pool.js';
 import { AccountUserAttributes } from '@root/backend/db/models/AccountUserAttributes.js';
 import { createAccounts, getAccountIds } from "@test/seed/account.js";
 import { strict as assert } from 'node:assert';
@@ -13,7 +13,7 @@ describe("Berytus Account User Attributes", () => {
     const getExistingUserAttributes = async () => {
         const userAttrs = await pool`
             SELECT AccountID, UserAttributeDictionary
-            FROM berytus_account_user_attributes
+            FROM ${table('berytus_account_user_attributes')}
         `;
         assert(userAttrs.length > 0);
         return userAttrs.map(({

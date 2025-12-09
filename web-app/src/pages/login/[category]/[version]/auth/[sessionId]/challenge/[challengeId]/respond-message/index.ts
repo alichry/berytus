@@ -2,18 +2,20 @@ import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
 import type { APIRoute } from 'astro';
 import type { Result } from './schema.js';
 import {
-    validateParamsHasSessionIdAndChallengeId,
     validatePendingSessionState,
-    validatePendingChallengeState } from '../common-validations.js';
+    validatePendingChallengeState
+} from '@root/pages/login/[category]/[version]/auth/[sessionId]/utils.state-validation.js';
 import { UserError } from '@root/backend/errors/UserError.js';
-import { debugAssert } from '@root/backend/utils/assert.js';
+import { debugAssert, releaseAssert } from '@root/backend/utils/assert.js';
 
-export const POST: APIRoute = async ({ params, request }) => {
-    let sessionId: string, challengeId: string;
+export const POST: APIRoute<
+    Record<string, any>,
+    { sessionId: string; challengeId: string; }
+> = async ({ request, params }) => {
+    releaseAssert(typeof params["sessionId"] === "string");
+    releaseAssert(typeof params["challengeId"] === "string");
+    const { sessionId, challengeId } = params;
     try {
-        validateParamsHasSessionIdAndChallengeId(params);
-        sessionId = params.sessionId;
-        challengeId = params.challengeId;
         await validatePendingChallengeState(
             await validatePendingSessionState(BigInt(sessionId)),
             challengeId

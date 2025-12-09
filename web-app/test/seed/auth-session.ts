@@ -1,9 +1,9 @@
-import { useConnection } from "../../src/backend/db/pool.js"
 import { strict as assert } from 'node:assert';
 import { getAccounts, type Accounts } from "./account.js";
 import { EAuthOutcome } from "@root/backend/db/models/AuthChallenge.js";
 import { getAccountChallengeDefs, type ChallengeDefs } from "./account-challenge-defs.js";
 import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import { withSearchPath } from '@test/with-search-path.js';
 
 const getStatements = (challengeDefs: ChallengeDefs, accounts: Accounts) => {
     const passwordChallengeDef = challengeDefs.find(
@@ -102,7 +102,7 @@ let cachedAuthSessions: Array<{
 }> | null = null;
 
 export const createAuthSessions = async () => {
-    return useConnection(async conn => {
+    return withSearchPath(async conn => {
         const accounts = await getAccounts();
         const challengeDefs = await getAccountChallengeDefs();
         const stmts = getStatements(challengeDefs, accounts);

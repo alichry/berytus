@@ -1,9 +1,9 @@
-import { useConnection } from "@root/backend/db/pool.js";
 import { getAuthSessions, type Sessions } from "./auth-session.js";
 import { EAuthOutcome } from "@root/backend/db/models/AuthChallenge.js";
 import { strict as assert } from 'node:assert';
 import { getAccountChallengeDefs, type ChallengeDefs } from "./account-challenge-defs.js";
 import { getAuthChallenges, type AuthChallenges } from "./auth-challenge.js";
+import { withSearchPath } from "@test/with-search-path.js";
 
 const getStatements = (
     challengeDefs: ChallengeDefs,
@@ -231,7 +231,7 @@ let cachedAuthChallengeMessages: Array<{
 }> | null = null;
 
 export const createAuthChallengeMessages = async () => {
-    return useConnection(async conn => {
+    return withSearchPath(async conn => {
         const sessions = await getAuthSessions();
         const challengeDefs = await getAccountChallengeDefs();
         const challenges = await getAuthChallenges();

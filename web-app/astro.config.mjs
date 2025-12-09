@@ -2,11 +2,9 @@ import { defineConfig } from 'astro/config';
 import alpine from '@astrojs/alpinejs';
 import tailwind from "@astrojs/tailwind";
 
-//import node from "@astrojs/node";
-
-import node from "@astrojs/node";
-
 import preact from "@astrojs/preact";
+
+import netlify from "@astrojs/netlify";
 
 // https://astro.build/config
 export default defineConfig({
@@ -17,7 +15,6 @@ export default defineConfig({
     },
   },
   output: "server",
-  adapter: node({
-    mode: "middleware"
-  })
+  // TODO(berytus): Add build option to build for node
+  adapter: netlify()
 });

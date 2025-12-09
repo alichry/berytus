@@ -41,7 +41,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
 
     const result: Result = {
-        "sessionId": session.sessionId.valueOf()
+        "sessionId": String(session.sessionId)
     };
 
     return new Response(JSON.stringify(result), {

@@ -1,4 +1,4 @@
-import { toPostgresBigInt, useConnection } from "../pool.js";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
@@ -95,7 +95,7 @@ export class AuthSession {
         // TODO(berytus): Better to have the checks in the query
         // as well.
         const result = await conn`
-            UPDATE berytus_account_auth_session
+            UPDATE ${table('berytus_account_auth_session')}
             SET Outcome = ${EAuthOutcome.Succeeded}
             WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
             AND   Outcome = ${EAuthOutcome.Pending}
@@ -135,7 +135,7 @@ export class AuthSession {
         const res = await conn<PGetSession[]>`
             SELECT SessionID, AccountID,
                    AccountVersion, Outcome
-            FROM berytus_account_auth_session
+            FROM ${table('berytus_account_auth_session')}
             WHERE SessionID = ${toPostgresBigInt(sessionId)}
         `;
         if (res.length === 0) {
@@ -180,7 +180,7 @@ export class AuthSession {
         conn: PoolConnection
     ): Promise<AuthSession> {
         const res = await conn<PCreateSession[]>`
-            INSERT INTO berytus_account_auth_session
+            INSERT INTO ${table('berytus_account_auth_session')}
             (AccountID, AccountVersion, Outcome)
             VALUES (${toPostgresBigInt(accountId)}, ${accountVersion}, ${EAuthOutcome.Pending})
             RETURNING SessionID

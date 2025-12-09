@@ -1,10 +1,10 @@
-import { useConnection } from "@root/backend/db/pool.js";
 import { getAuthSessions, type Sessions } from "./auth-session.js";
 import { EAuthOutcome } from "@root/backend/db/models/AuthChallenge.js";
 import { strict as assert } from 'node:assert';
 import type { ChallengeDefs } from "./account-challenge-defs.js";
 import { getAccountChallengeDefs } from "./account-challenge-defs.js";
 import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import { withSearchPath } from "@test/with-search-path.js";
 
 const getStatements = (sessions: Sessions, challengeDefs: ChallengeDefs) => {
     assert(sessions.length >= 13, "need more sessions");
@@ -104,7 +104,7 @@ let cachedAuthChallenges: Array<{
 }> | null = null;
 
 export const createAuthChallenges = async () => {
-    return useConnection(async conn => {
+    return withSearchPath(async conn => {
         const sessions = await getAuthSessions();
         const challengeDefs = await getAccountChallengeDefs();
         const stmts = getStatements(sessions, challengeDefs);

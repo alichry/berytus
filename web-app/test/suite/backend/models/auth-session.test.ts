@@ -5,7 +5,7 @@ import { createAccountChallengeDefs, getAccountChallengeDefs } from '@test/seed/
 import { createAccounts, getAccountIds } from '@test/seed/account.js';
 import { AuthSession } from '@root/backend/db/models/AuthSession.js';
 import { Account } from '@root/backend/db/models/Account.js';
-import { pool } from '@root/backend/db/pool.js';
+import { pool, table } from '@root/backend/db/pool.js';
 import { strict as assert } from 'node:assert';
 import { EAuthOutcome } from '@root/backend/db/models/AuthChallenge.js';
 import { createAuthSessions } from '@test/seed/auth-session.js';
@@ -21,7 +21,7 @@ describe("Berytus Auth Session", () => {
         const rows = await pool`
             SELECT SessionID, AccountID,
                    AccountVersion, Outcome
-            FROM berytus_account_auth_session
+            FROM ${table('berytus_account_auth_session')}
         `;
         return rows.map(({
             sessionid: sessionId,

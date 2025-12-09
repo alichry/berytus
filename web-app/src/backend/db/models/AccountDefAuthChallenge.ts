@@ -1,4 +1,4 @@
-import { useConnection } from "../pool.js";
+import { table, useConnection } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import type { JSONValue } from "../types.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
@@ -91,7 +91,7 @@ export class AccountDefAuthChallenge {
         const res = await conn<PGetChallengeDef[]>`
             SELECT ChallengeID, AccountVersion, ChallengeType,
                    ChallengeParameters
-            FROM berytus_account_def_auth_challenge
+            FROM ${table('berytus_account_def_auth_challenge')}
             WHERE ChallengeID = ${challengeId}
             AND AccountVersion = ${accountVersion}
         `;
@@ -135,7 +135,7 @@ export class AccountDefAuthChallenge {
         const res = await conn<PGetChallengeDef[]>`
             SELECT ChallengeID, AccountVersion, ChallengeType,
                    ChallengeParameters
-            FROM berytus_account_def_auth_challenge
+            FROM ${table('berytus_account_def_auth_challenge')}
             WHERE AccountVersion = ${accountVersion}
         `;
         if (res.length === 0) {

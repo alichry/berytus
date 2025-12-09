@@ -1,6 +1,8 @@
 import { InvalidArgError } from "../errors/InvalidArgError.js";
 import { z } from "zod";
-import { subtle, webcrypto } from "node:crypto";
+import { subtle } from "node:crypto";
+
+type BufferSource = ArrayBufferView | ArrayBuffer;
 
 export const armoredKeySchema = (type: "public" | "private" = "public") =>
     z.string().refine(
@@ -104,7 +106,7 @@ export class KeyUtils {
 }
 
 export class SignUtils {
-    static verify(key: CryptoKey, signature: webcrypto.BufferSource, data: webcrypto.BufferSource) {
+    static verify(key: CryptoKey, signature: BufferSource, data: BufferSource) {
         return subtle.verify(
             "RSASSA-PKCS1-v1_5",
             key,

@@ -1,4 +1,4 @@
-import { useConnection } from "../pool.js";
+import { table, useConnection } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 
@@ -63,7 +63,7 @@ export class AccountDefField {
     ) {
         const res = await conn<PGetFieldTypeNOptions[]>`
             SELECT FieldType, FieldOptions
-            FROM berytus_account_def_field
+            FROM ${table('berytus_account_def_field')}
             WHERE AccountVersion = ${accountVersion}
             AND FieldID = ${fieldId}
         `;

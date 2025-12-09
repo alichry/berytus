@@ -1,5 +1,5 @@
 import type { PoolConnection } from "../pool.js";
-import { toPostgresBigInt, useConnection } from "../pool.js";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import type { JSONValue } from "../types.js";
 import { IllegalDatabaseStateError } from "../errors/IllegalDatabaseStateError.js";
@@ -58,7 +58,7 @@ export class AccountField {
     ) {
         const res = await conn<PGetFieldValue[]>`
             SELECT FieldValue
-            FROM berytus_account_field
+            FROM ${table('berytus_account_field')}
             WHERE AccountVersion = ${accountVersion}
             AND AccountID = ${toPostgresBigInt(accountId)}
             AND FieldID = ${fieldId}
@@ -95,7 +95,7 @@ export class AccountField {
         fieldValue: JSONValue
     ) {
         const res = await conn`
-            UPDATE berytus_account_field
+            UPDATE ${table('berytus_account_field')}
             SET FieldValue = ${conn.json(fieldValue)}
             WHERE AccountVersion = ${this.accountVersion}
             AND AccountID = ${toPostgresBigInt(this.accountId)}

@@ -1,7 +1,7 @@
 import * as chai  from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { createAccountDefs } from "@test/seed/account-defs.js";
-import { pool } from '@root/backend/db/pool.js';
+import { pool, table } from '@root/backend/db/pool.js';
 import { AccountField } from '@root/backend/db/models/AccountField.js';
 import { createAccounts } from "@test/seed/account.js";
 import { strict as assert } from 'node:assert';
@@ -14,7 +14,7 @@ describe("Berytus Account Field", () => {
         const fields = await pool`
             SELECT AccountID, AccountVersion,
                    FieldID, FieldValue
-            FROM berytus_account_field
+            FROM ${table('berytus_account_field')}
         `;
         assert(fields.length > 0);
         return fields.map(({

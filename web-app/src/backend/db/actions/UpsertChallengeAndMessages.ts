@@ -7,7 +7,7 @@ import {
     type ChallengeMessageStatus,
     type MessagePayload
 } from "@root/backend/db/models/AuthChallengeMessage.js";
-import { toPostgresBigInt, useConnection, type PoolConnection } from "../pool.js";
+import { table, toPostgresBigInt, useConnection, type PoolConnection } from "../pool.js";
 import { EAuthOutcome } from "../models/AuthChallenge.js";
 import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 import { AccountDefAuthChallenge } from "../models/AccountDefAuthChallenge.js";
@@ -138,12 +138,14 @@ export class UpsertChallengeAndMessages {
         const { authOutcome, expectedPreviousMessages } = await this.#validateInput(conn);
         const res = await conn`
             WITH cte_pending_session AS (
-                SELECT SessionID, Outcome FROM berytus_account_auth_session
+                SELECT SessionID, Outcome
+                FROM ${table('berytus_account_auth_session')}
                 WHERE SessionID = ${toPostgresBigInt(this.input.sessionId)}
                 AND Outcome = ${EAuthOutcome.Pending}
                 FOR UPDATE
             ), cte_existing_challenge AS (
-                SELECT SessionID, ChallengeID, Outcome FROM berytus_account_auth_challenge
+                SELECT SessionID, ChallengeID, Outcome
+                FROM ${table('berytus_account_auth_challenge')}
                 WHERE SessionID = ${toPostgresBigInt(this.input.sessionId)}
                 AND ChallengeID = ${this.input.challengeId}
                 FOR UPDATE
@@ -162,7 +164,7 @@ export class UpsertChallengeAndMessages {
                        MessageName, Request,
                        Expected, Response,
                        StatusMsg, CreatedAt
-                FROM berytus_account_auth_challenge_message
+                FROM ${table('berytus_account_auth_challenge_message')}
                 WHERE SessionID = ${toPostgresBigInt(this.input.sessionId)}
                 AND ChallengeID = ${this.input.challengeId}
                 FOR UPDATE
@@ -184,7 +186,7 @@ export class UpsertChallengeAndMessages {
                            '[]'::jsonb
                        ) AS MessageNames,
                        'Ok' AS StatusMsg
-                FROM berytus_account_auth_challenge AS c
+                FROM ${table('berytus_account_auth_challenge')} AS c
                 LEFT JOIN cte_previous_ok_messages AS m
                 ON m.SessionID = c.SessionID
                 AND m.ChallengeID = c.ChallengeID
@@ -277,7 +279,7 @@ export class UpsertChallengeAndMessages {
                     SELECT FROM cte_rejected_messages
                 )
             ), cte_insert_challenge_if_dne AS (
-                INSERT INTO berytus_account_auth_challenge
+                INSERT INTO ${table('berytus_account_auth_challenge')}
                 (SessionID, ChallengeID, Outcome)
                 SELECT  ${toPostgresBigInt(this.input.sessionId)},
                         ${this.input.challengeId},
@@ -289,7 +291,7 @@ export class UpsertChallengeAndMessages {
                 )
                 RETURNING SessionID, ChallengeID, Outcome
             ), cte_insert_messages AS (
-                INSERT INTO berytus_account_auth_challenge_message
+                INSERT INTO ${table('berytus_account_auth_challenge_message')}
                 (SessionID, ChallengeID, MessageName,
                 Request, Expected, Response, StatusMsg)
                 SELECT SessionID, ChallengeID, MessageName,
@@ -310,7 +312,7 @@ export class UpsertChallengeAndMessages {
                 -- existing, pending messages with a non-matching
                 -- { Request, Expected }. And cte_rejected_messages
                 -- would pick it up.
-                UPDATE berytus_account_auth_challenge_message em
+                UPDATE ${table('berytus_account_auth_challenge_message')} em
                 SET Request = um.Request,
                     Expected = um.Expected,
                     Response = um.Response,
@@ -326,7 +328,7 @@ export class UpsertChallengeAndMessages {
                           em.Request, em.Expected, em.Response,
                           em.StatusMsg
             ), cte_update_challenge_outcome AS (
-                UPDATE berytus_account_auth_challenge
+                UPDATE ${table('berytus_account_auth_challenge')}
                 SET Outcome = ${authOutcome},
                     UpdatedAt = NOW()
                 WHERE SessionID = ${toPostgresBigInt(this.input.sessionId)}
@@ -335,9 +337,8 @@ export class UpsertChallengeAndMessages {
                 AND Outcome <> ${authOutcome}
                 AND (
                     SELECT TRUE FROM cte_should_write
-                ) AND EXISTS (
-                    SELECT FROM cte_insert_messages
                 )
+                -- TODO(berytus): need to check if updates and inserts took place.
                 RETURNING SessionID, ChallengeID, Outcome
             ) -- result:
             SELECT

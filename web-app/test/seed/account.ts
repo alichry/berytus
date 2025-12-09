@@ -1,4 +1,4 @@
-import { useConnection } from "../../src/backend/db/pool.js"
+import { withSearchPath } from "@test/with-search-path.js";
 import type { PoolConnection } from "../../src/backend/db/pool.js"
 import { strict as assert } from 'node:assert';
 
@@ -80,7 +80,7 @@ let cachedAccounts: Array<{
 }> | null = null;
 
 export const createAccounts = async () => {
-    return useConnection(async conn => {
+    return withSearchPath(async conn => {
         const accountIds = await createAccountIds(conn, 7);
         const stmts = getStatements(accountIds);
         assert(stmts.length > 0);

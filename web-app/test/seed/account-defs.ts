@@ -1,4 +1,4 @@
-import { useConnection } from "../../src/backend/db/pool.js"
+import { withSearchPath } from "@test/with-search-path.js";
 
 const stmts = [
     `INSERT INTO berytus_account_def
@@ -85,7 +85,7 @@ const stmts = [
 ]
 
 export const createAccountDefs = async () => {
-    return useConnection(async conn => {
+    return withSearchPath(async conn => {
         for (let i = 0; i < stmts.length; i++) {
             await conn.unsafe(stmts[i]);
         }

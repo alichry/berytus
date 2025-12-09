@@ -1,5 +1,5 @@
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
-import { useConnection } from "../pool.js";
+import { table, useConnection } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import { AccountDefKeyField, type PAccountDefKeyField } from "./AccountDefKeyField.js"
 import type { FieldInput } from "../types.js";
@@ -66,7 +66,7 @@ export class AccountDefKeyFieldList {
         accountVersion: number
     ): Promise<AccountDefKeyFieldList> {
         const rows = await conn<PAccountDefKeyField[]>`
-            SELECT FieldID FROM berytus_account_def_key_field_id
+            SELECT FieldID FROM ${table('berytus_account_def_key_field_id')}
             WHERE AccountVersion = ${accountVersion}
         `;
         if (rows.length === 0) {

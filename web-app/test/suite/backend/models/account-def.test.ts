@@ -4,7 +4,7 @@ import { AccountDefField } from "@root/backend/db/models/AccountDefField.js";
 import chaiAsPromised from 'chai-as-promised';
 import { createAccountChallengeDefs } from '@test/seed/account-challenge-defs.js';
 import { AccountDefAuthChallenge } from '@root/backend/db/models/AccountDefAuthChallenge.js';
-import { pool } from '@root/backend/db/pool.js';
+import { pool, table } from '@root/backend/db/pool.js';
 import { AccountDefKeyFieldList } from '@root/backend/db/models/AccountDefKeyFieldList.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
@@ -16,7 +16,7 @@ describe("Berytus Account Def", () => {
         const challenges = await pool`
             SELECT ChallengeID, AccountVersion,
                    ChallengeType, ChallengeParameters
-            FROM berytus_account_def_auth_challenge
+            FROM ${table('berytus_account_def_auth_challenge')}
         `;
         return challenges.map(({
             challengeid: challengeId,
@@ -42,7 +42,7 @@ describe("Berytus Account Def", () => {
     const getExistingKeyFields = async () => {
         const fields = await pool`
             SELECT AccountVersion, FieldID
-            FROM berytus_account_def_key_field_id
+            FROM ${table('berytus_account_def_key_field_id')}
         `;
         return fields.map(({
             accountversion: accountVersion,

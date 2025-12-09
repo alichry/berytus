@@ -1,4 +1,4 @@
-import { pool, useConnection } from '../src/backend/db/pool.js';
+import { pool, useConnection, table } from '../src/backend/db/pool.js';
 
 if (process.env.NODE_ENV !== "development") {
     throw new Error('Refusing to preprare test db in a non-development (test) environment.')
@@ -18,12 +18,12 @@ const cleanDb = async () => {
         'berytus_account_def_category',
         'berytus_account_def',
         'berytus_account'
-    ];
+    ] as const;
 
     return useConnection(async conn => {
         for (let i = 0; i < tables.length; i++) {
             try {
-                await conn`DELETE FROM ${conn(tables[i])}`;
+                await conn`DELETE FROM ${table(tables[i])}`;
             } catch (e) {
                 console.error("Unable to delete " + tables[i]);
                 throw e;

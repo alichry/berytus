@@ -1,4 +1,4 @@
-import { strict as assert } from "node:assert";
+import { strict as assert, AssertionError } from "node:assert";
 import { isDev } from "../env/app.js";
 import { InternalError } from "../errors/InternalError.js";
 
@@ -11,15 +11,45 @@ export const debugAssert = (cb: (assert: Assert) => void) => {
     cb(assert);
 }
 
-export const releaseAssert = (cb: (assert: Assert) => void) => {
-    try {
-        const ret = cb(assert);
-        debugAssert(assert => assert(!(typeof ret === "object" && "then" in ret)));
-    } catch (e) {
-        return new InternalError(
-            `Release assertion failed for `
-            + typeof cb === "function" ? cb.toString().slice(0, 64).replace("\n", "\\n") : "??",
-            { cause: e }
-        );
-    }
-}
+export const releaseAssert: Assert = new Proxy(assert, {
+    get(target, prop: keyof typeof assert, receiver) {
+        const value = target[prop];
+        if (typeof value !== "function") {
+            return value;
+        }
+        return function (...args: any[]) {
+            try {
+                // @ts-ignore
+                return value.apply(this === receiver ? target : this, args);
+            } catch (e) {
+                if (e instanceof AssertionError) {
+                    throw new InternalError(
+                        `Release assertion failed for `
+                        + `assert.${prop}(${args.join(', ')})`,
+                        { cause: e }
+                    );
+                }
+                throw e;
+            }
+
+        };
+    },
+    apply(
+        target,
+        thisArg,
+        argArray: [value: unknown, message?: string | Error | undefined]
+    ) {
+        try {
+            return target.apply(thisArg, argArray);
+        } catch (e) {
+            if (e instanceof AssertionError) {
+                throw new InternalError(
+                    `Release assertion failed for `
+                    + `assert(${argArray.join(', ')})`,
+                    { cause: e }
+                );
+            }
+            throw e;
+        }
+    },
+});

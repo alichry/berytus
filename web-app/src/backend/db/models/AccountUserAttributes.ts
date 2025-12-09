@@ -1,4 +1,4 @@
-import { useConnection, toPostgresBigInt } from "../pool.js";
+import { useConnection, toPostgresBigInt, table } from "../pool.js";
 import type { PoolConnection } from "../pool.js";
 import type { JSONValue } from "../types.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
@@ -51,7 +51,7 @@ export class AccountUserAttributes {
         attrs: Record<string, JSONValue>
     ) {
         await conn`
-            INSERT INTO berytus_account_user_attributes
+            INSERT INTO ${table('berytus_account_user_attributes')}
             (AccountID, UserAttributeDictionary)
             VALUES (${toPostgresBigInt(accountId)}, ${conn.json(attrs)})
         `;
@@ -85,7 +85,7 @@ export class AccountUserAttributes {
     ): Promise<AccountUserAttributes> {
         const res = await conn<PGetUserAttributeDictionary[]>`
             SELECT UserAttributeDictionary
-            FROM berytus_account_user_attributes
+            FROM ${table('berytus_account_user_attributes')}
             WHERE AccountID = ${toPostgresBigInt(accountId)}
         `;
         if (res.length === 0) {

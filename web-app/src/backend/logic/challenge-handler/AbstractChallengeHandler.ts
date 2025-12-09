@@ -61,7 +61,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     readonly conn: PoolConnection;
     readonly session: AuthSession;
     readonly challengeDef: AccountDefAuthChallenge;
-    private readonly existingMessages: ReadonlyArray<Message<MN>>;
+    private readonly existingFinalMessages: ReadonlyArray<Message<MN>>;
     private readonly prospectiveMessages: Array<Message<MN>>;
     private destroyed: boolean;
     #challenge: AuthChallenge | null;
@@ -79,8 +79,19 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         this.conn = conn;
         this.session = session;
         this.challengeDef = challengeDef;
-        this.existingMessages = existingMessages;
-        this.prospectiveMessages = [];
+        if (existingMessages.length > 0) {
+            const lastMessage = existingMessages[existingMessages.length - 1];
+            if (lastMessage.statusMsg == null) {
+                this.existingFinalMessages = existingMessages.slice(0, existingMessages.length - 1);
+                this.prospectiveMessages = [lastMessage];
+            } else {
+                this.existingFinalMessages = [...existingMessages];
+                this.prospectiveMessages = [];
+            }
+        } else {
+            this.existingFinalMessages = [];
+            this.prospectiveMessages = [];
+        }
         this.destroyed = false;
         this.#challenge = null;
     }
@@ -248,7 +259,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         let pendingMessage: HandlerMessageDictionary<MN>['pendingMessage'] = null;
         let processedMessages:  HandlerMessageDictionary<MN>['processedMessages'] = {};
         const allMessages = [
-            ...this.existingMessages,
+            ...this.existingFinalMessages,
             ...this.prospectiveMessages
         ];
         for (let i = 0; i < allMessages.length; i++) {

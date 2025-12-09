@@ -12,6 +12,8 @@ export const POST: APIRoute = async ({ params }) => {
         }), { status: 400 });
     }
 
+    // TODO(berytus): Check if any challenge is pending
+    // and if so, throw UserError
     const session = await AuthSession.getSession(BigInt(sessionId));
     try {
         await session.finish();
@@ -36,6 +38,7 @@ export const POST: APIRoute = async ({ params }) => {
             return new Response(JSON.stringify({
                 error: e.message
             }), {
+                status: 500,
                 headers: {
                     "Content-Type": "application/json"
                 }

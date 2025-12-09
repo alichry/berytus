@@ -1,4 +1,4 @@
-import { toPostgresBigInt, useConnection } from '../pool.js';
+import { table, toPostgresBigInt, useConnection } from '../pool.js';
 import type { PoolConnection } from '../pool.js';
 import type { FieldInput } from '../types.js';
 import { AccountDefKeyFieldList } from './AccountDefKeyFieldList.js';
@@ -48,7 +48,7 @@ export class Account {
     static async #latest(conn: PoolConnection, accountId: BigInt): Promise<Account> {
         const rows = await conn<PGetLatest[]>`
             SELECT AccountVersion as LatestAccountVersion
-            FROM berytus_account_field
+            FROM ${table('berytus_account_field')}
             WHERE AccountID = ${toPostgresBigInt(accountId)}
             ORDER BY AccountVersion DESC
             LIMIT 1
@@ -165,11 +165,11 @@ export class Account {
                         FieldValue
                     )
             ), cte_insert_account AS (
-                INSERT INTO berytus_account
+                INSERT INTO ${table('berytus_account')}
                 (AccountID) VALUES (DEFAULT)
                 RETURNING AccountID
             ), cte_insert_fields AS (
-                INSERT INTO berytus_account_field
+                INSERT INTO ${table('berytus_account_field')}
                 (AccountID, AccountVersion, FieldID, FieldValue)
                 SELECT
                         (SELECT AccountID FROM cte_insert_account) AS AccountID,
@@ -269,7 +269,7 @@ export class Account {
         const rows = await conn<PConflictCheck[]>`
             SELECT AccountID,
                     COUNT(*) AS AccountKeyFieldMatchCount
-            FROM berytus_account_field
+            FROM ${table('berytus_account_field')}
             WHERE AccountVersion = ${keyFieldList.accountVersion}
             AND (FieldID, FieldValue) IN
                 ${conn(keyFieldInputs.map(
