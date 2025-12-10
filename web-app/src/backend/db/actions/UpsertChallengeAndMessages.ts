@@ -327,6 +327,14 @@ export class UpsertChallengeAndMessages {
                 RETURNING em.SessionID, em.ChallengeID, em.MessageName,
                           em.Request, em.Expected, em.Response,
                           em.StatusMsg
+            ), cte_written_messages AS (
+                SELECT 'UPDATE' AS Operation,
+                        um.*
+                FROM cte_update_messages um
+                UNION ALL
+                SELECT 'INSERT' AS Operation,
+                        im.*
+                FROM cte_insert_messages im
             ), cte_update_challenge_outcome AS (
                 UPDATE ${table('berytus_account_auth_challenge')}
                 SET Outcome = ${authOutcome},
@@ -338,7 +346,9 @@ export class UpsertChallengeAndMessages {
                 AND (
                     SELECT TRUE FROM cte_should_write
                 )
-                -- TODO(berytus): need to check if updates and inserts took place.
+                AND EXISTS (
+                    SELECT FROM cte_written_messages
+                )
                 RETURNING SessionID, ChallengeID, Outcome
             ) -- result:
             SELECT
@@ -358,6 +368,10 @@ export class UpsertChallengeAndMessages {
                     SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
                     FROM cte_update_messages AS t
                 ) AS UpdatedMessages,
+                (
+                    SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                    FROM cte_written_messages AS t
+                ) AS WrittenMessages,
                 (
                     SELECT to_jsonb(t)
                     FROM cte_insert_challenge_if_dne AS t
@@ -451,6 +465,10 @@ export class UpsertChallengeAndMessages {
                 "UpdatedMessages should not be null");
             assert(Array.isArray(row.updatedmessages),
                 "UpdatedMessages should be an array");
+            assert(row.writtenmessages !== null,
+                "WrittenMessages should not be null");
+            assert(Array.isArray(row.writtenmessages),
+                "WrittenMessages should be an array");
             assert(row.previousokmessages !== null,
                 "PreviousOkMessages should not be null");
             assert(row.previousnonokmessages !== null,
@@ -460,6 +478,15 @@ export class UpsertChallengeAndMessages {
 
             const written = Boolean(row.written);
             const challengeIsPendingOrDne = Boolean(row.pendingchallengeordne);
+
+            assert.deepStrictEqual([
+                ...row.updatedmessages,
+                ...row.insertedmessages
+            ], row.writtenmessages.map(wm => {
+                const ret = { ...wm };
+                delete ret["operation"];
+                return ret;
+            }));
 
             if (! written) {
                 assert(

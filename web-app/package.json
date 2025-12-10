@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build:node": "astro check && astro build",
+    "build:netlify": "BUILD_TARGET=netlify astro check && BUILD_TARGET=netlify astro build",
     "preview": "astro preview",
     "astro": "astro",
     "start": "NODE_ENV=production node ./run-server.mjs",
