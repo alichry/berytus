@@ -1,0 +1,27 @@
+--- dom/base/Navigator.h.orig	2025-10-04 10:23:05
++++ dom/base/Navigator.h	2025-10-04 10:24:32
+@@ -39,6 +39,7 @@
+ struct MediaStreamConstraints;
+ class ArrayBufferOrArrayBufferViewOrBlobOrFormDataOrUSVStringOrURLSearchParams;
+ class ServiceWorkerContainer;
++class BerytusChannelContainer;
+ class CredentialsContainer;
+ class Clipboard;
+ class LockManager;
+@@ -205,6 +206,8 @@
+   // since Navigator::ServiceWorker is also called by native functions. Remove
+   // this when we don't need the counter.
+   already_AddRefed<ServiceWorkerContainer> ServiceWorkerJS();
++
++  already_AddRefed<BerytusChannelContainer> BerytusChannel();
+ 
+   mozilla::dom::CredentialsContainer* Credentials();
+   dom::Clipboard* Clipboard();
+@@ -292,6 +295,7 @@
+   RefPtr<dom::Clipboard> mClipboard;
+   RefPtr<MediaDevices> mMediaDevices;
+   RefPtr<ServiceWorkerContainer> mServiceWorkerContainer;
++  RefPtr<BerytusChannelContainer> mBerytusChannelContainer;
+   nsCOMPtr<nsPIDOMWindowInner> mWindow;
+   RefPtr<GamepadServiceTest> mGamepadServiceTest;
+   nsTArray<RefPtr<Promise>> mVRGetDisplaysPromises;

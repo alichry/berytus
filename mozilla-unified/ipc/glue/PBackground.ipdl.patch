@@ -1,0 +1,21 @@
+--- ipc/glue/PBackground.ipdl.orig	2025-10-30 22:28:22
++++ ipc/glue/PBackground.ipdl	2025-10-31 20:18:50
+@@ -35,6 +35,7 @@
+ include protocol PMessagePort;
+ include protocol PCameras;
+ include protocol PLockManager;
++include protocol PMaskManager;
+ include protocol PMIDIManager;
+ include protocol PMIDIPort;
+ include protocol PQuota;
+@@ -284,6 +285,10 @@
+ 
+   async RequestCameraAccess(bool aAllowPermissionRequest) returns (CamerasAccessStatus rv);
+ 
++  // Note(berytus): We leerage PBackground to create
++  // the MaskManagerParent top-level actor.
++  async CreateMaskManagerParent(Endpoint<PMaskManagerParent> aEndpoint);
++
+ child:
+   async PCache();
+   async PCacheStreamControl();

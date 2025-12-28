@@ -79,6 +79,6 @@
         ]
     },
     "settings": {
-        "git.enabled": true
+        "git.enabled": false
     }
 }

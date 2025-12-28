@@ -1,0 +1,49 @@
+--- ipc/glue/BackgroundParentImpl.cpp.orig	2025-10-30 22:41:44
++++ ipc/glue/BackgroundParentImpl.cpp	2025-10-31 19:54:23
+@@ -7,6 +7,7 @@
+ #include "BackgroundParentImpl.h"
+ 
+ #include "BroadcastChannelParent.h"
++#include "mozilla/berytus/PMaskManagerParent.h"
+ #ifdef MOZ_WEBRTC
+ #  include "CamerasParent.h"
+ #endif
+@@ -27,6 +28,7 @@
+ #include "mozilla/dom/FileSystemRequestParent.h"
+ #include "mozilla/dom/GamepadEventChannelParent.h"
+ #include "mozilla/dom/GamepadTestChannelParent.h"
++#include "mozilla/berytus/MaskManagerParent.h"
+ #include "mozilla/dom/MIDIManagerParent.h"
+ #include "mozilla/dom/MIDIPlatformService.h"
+ #include "mozilla/dom/MIDIPortParent.h"
+@@ -1388,7 +1390,30 @@
+ already_AddRefed<dom::PFetchParent> BackgroundParentImpl::AllocPFetchParent() {
+   return MakeAndAddRef<dom::FetchParent>();
+ }
++
++// Note(berytus): This is used to create MaskManagerParent
++mozilla::ipc::IPCResult
++BackgroundParentImpl::RecvCreateMaskManagerParent(Endpoint<berytus::PMaskManagerParent>&& aEndpoint) {
++  AssertIsInMainProcess();
++  AssertIsOnBackgroundThread();
+ 
++  if (NS_WARN_IF(!aEndpoint.IsValid())) {
++    return IPC_FAIL(this, "invalid endpoint for MaskManager");
++  }
++
++  NS_DispatchToMainThread(NS_NewRunnableFunction(
++    "BackgroundParentImpl::RecvCreateMaskManagerParent(",
++    [endpoint = std::move(aEndpoint)]() mutable {
++        RefPtr<berytus::MaskManagerParent> parent =
++            new berytus::MaskManagerParent();
++        // NOTE(berytus): Here, we assume IPC handles
++        // the failure, as communicated in the firefox source docs
++        NS_ENSURE_TRUE(endpoint.Bind(parent), );
++      }));
++
++  return IPC_OK();
++}
++
+ }  // namespace mozilla::ipc
+ 
+ void TestParent::ActorDestroy(ActorDestroyReason aWhy) {

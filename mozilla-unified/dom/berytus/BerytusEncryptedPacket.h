@@ -7,118 +7,117 @@
 #ifndef DOM_BERYTUSENCRYPTEDPACKET_H_
 #define DOM_BERYTUSENCRYPTEDPACKET_H_
 
-#include "js/TypeDecls.h"
-#include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/UniquePtr.h"
+#include "mozilla/dom/BerytusX509Extension.h"
 #include "mozilla/dom/BindingDeclarations.h"
-#include "mozilla/dom/SubtleCryptoBinding.h"
-#include "mozilla/dom/UnionTypes.h" // ArrayBufferViewOrArrayBuffer
-#include "nsCycleCollectionParticipant.h"
-#include "nsWrapperCache.h"
+#include "mozilla/dom/Blob.h"
+#include "mozilla/dom/InternalRequest.h"
+#include "nsHashKeys.h"
 #include "nsIGlobalObject.h"
-#include "mozilla/dom/CryptoBuffer.h"
+#include "nsISupports.h"
+#include "nsStringFwd.h"
+#include "nsTArrayForwardDeclare.h"
+#include "mozilla/dom/BerytusChannel.h"
+#include "mozilla/berytus/HttpObserver.h"
+#include "nsRefPtrHashtable.h"
 
 namespace mozilla::dom {
 
-struct AesGcmParamsJSON;
-struct BerytusEncryptedPacketJSON;
-// typedefs in WebIDL, for one member, are not translated in C++
-// once there's a union, remove these.
-using BerytusEncryptionParams = AesGcmParams;
-using BerytusEncryptionParamsJSON = AesGcmParamsJSON;
+class OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
+namespace fetch {
+  using OwningBodyInit = OwningBlobOrArrayBufferViewOrArrayBufferOrFormDataOrURLSearchParamsOrUSVString;
+}
 
-class BerytusEncryptionParams_Impl {
+class BerytusChannelContainer;
+class BerytusChannel;
+
+class BerytusEncryptedPacket : public Blob,
+                               public BerytusChannel::BaseAttachable {
 public:
-  virtual ~BerytusEncryptionParams_Impl() = 0;
-  virtual void GetAlgorithm(nsString& aRv) = 0;
-  virtual void AsDictionary(JSContext* aCx,
-                            JS::Heap<JSObject*>& aObj,
-                            JS::MutableHandle<JSObject*> aRetVal,
-                            ErrorResult& aErr) = 0;
-  virtual nsresult ToJSON(BerytusEncryptionParamsJSON& aRv) = 0;
-  virtual BerytusEncryptionParams_Impl* Clone(nsresult* aRv) = 0;
-};
+  enum PacketType : uint8_t {
+    JWE
+  };
 
-class BerytusAesGcmParams_Impl final : public BerytusEncryptionParams_Impl {
-public:
-  BerytusAesGcmParams_Impl(CryptoBuffer&& aIv,
-                      CryptoBuffer&& aAdditionalData,
-                      const uint8_t& aTagLen);
-  BerytusAesGcmParams_Impl(BerytusAesGcmParams_Impl&& aOther);
-  ~BerytusAesGcmParams_Impl();
-  void GetAlgorithm(nsString& aRv) override;
-  void AsDictionary(JSContext* aCx,
-                    JS::Heap<JSObject*>& aObj,
-                    JS::MutableHandle<JSObject*> aRetVal,
-                    ErrorResult& aErr) override;
-  nsresult ToJSON(BerytusEncryptionParamsJSON& aRv) override;
-  static BerytusAesGcmParams_Impl* FromDictionary(const AesGcmParams& aDict,
-                                                  nsresult& aRv);
+  Span<const uint8_t> Exposed() const;
+  virtual PacketType Type() const = 0;
+  virtual void SerializeExposedToString(nsACString& aValue, ErrorResult& aRv) const;
 
-  BerytusEncryptionParams_Impl* Clone(nsresult* aRv) override;
-protected:
-  CryptoBuffer mIv;
-  CryptoBuffer mAdditionalData;
-  uint8_t mTagLen;
-};
+  already_AddRefed<Blob> Unmask(const nsCString& aReqUrl, ErrorResult& aRv);
+  already_AddRefed<Blob> Unmask(nsIURI* aReqUrl, ErrorResult& aRv);
 
-// let x, p, v;
-// x = (new Uint8Array([1])).buffer; p = { name: "AES-GCM", iv: (new Uint8Array([1,2])).buffer, tagLength: 128 }; v = new BerytusEncryptedPacket(p, x);
+  bool HasBerytusEncryptedPacketInterface() const override;
+  bool Attached() const override;
+  void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override;
 
-class BerytusEncryptedPacket final : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
-                                     public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
-{
-public:
-  NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  //NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusEncryptedPacket)
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(BerytusEncryptedPacket)
-
-public:
-  BerytusEncryptedPacket(
-    nsIGlobalObject* aGlobal,
-    BerytusEncryptionParams_Impl* aParams,
-    CryptoBuffer&& aCiphertext
-  );
-  BerytusEncryptedPacket(BerytusEncryptedPacket&& aOther);
-
-protected:
-  ~BerytusEncryptedPacket();
-  nsCOMPtr<nsIGlobalObject> mGlobal;
-  BerytusEncryptionParams_Impl* mParams;
-  CryptoBuffer mCiphertext;
-
-  JS::Heap<JSObject*> mCachedParams;
-  JS::Heap<JSObject*> mCachedCiphertextArrayBuffer;
-
-public:
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,
   // returning an actual global works.
   nsIGlobalObject* GetParentObject() const;
+protected:
+  struct Content {
+    UniquePtr<uint8_t[]> mBuf = nullptr;
+    uint64_t mLen = 0;
+  };
 
-  JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
+  BerytusEncryptedPacket(nsIGlobalObject* aGlobal,
+                         Content&& aExposedContent,
+                         const bool& aConceal);
+  virtual ~BerytusEncryptedPacket();
+  nsIGlobalObject* mGlobal;
+  Span<uint8_t> mExposedContent;
+  bool mConcealed;
+  /**
+   * Note(berytus): Unfortunately, Blob's QI method is marked
+   * as final; hence, we cannot define a new cycle collection
+   * participant, and therefore we cannot include new members
+   * to be cycle collected. Fortunately, UrlSearchExpression
+   * does not have cycle collected members of its own but
+   * it is ref-counted. Here, mUrlAllowlist would be a leaf
+   * node. Hence, as long as we do not share the items
+   * with class owners, nsTArray's destructor should be
+   * sufficient, calling the destructor of RefPtr<..>.
+   */
+  nsTArray<RefPtr<berytus::UrlSearchExpression>> mUrlAllowlist;
+  nsString mAttachedChannelId;
 
-  static already_AddRefed<BerytusEncryptedPacket> Constructor(
-    const GlobalObject& aGlobal,
-    const BerytusEncryptionParams& aParamsDict,
-    const ArrayBufferViewOrArrayBuffer& aCiphertext,
-    ErrorResult& aErr
+  already_AddRefed<Blob> Unmask(const nsCString& aReqUrl, bool& aUnmasked, ErrorResult& aRv);
+  already_AddRefed<Blob> Unmask(nsIURI* aReqUrl, bool& aUnmasked, ErrorResult& aRv);
+  virtual already_AddRefed<Blob> UnmaskImpl(ErrorResult& aRv) = 0;
+
+  static bool CreateMaskContent(BerytusEncryptedPacket::Content& aMask);
+
+  friend class BerytusChannelContainer;
+  static bool TryUnmaskAnyPacketInFetchBody(
+    const fetch::OwningBodyInit& aSrc,
+    fetch::OwningBodyInit& aDest,
+    const nsCString& aReqUrl,
+    ErrorResult& aRv
   );
 
-  void GetCiphertext(
-    JSContext* aCx,
-    JS::MutableHandle<JSObject*> aRetVal,
-    ErrorResult& aErr
-  );
+public:
+  class PacketObserver final : public nsIObserver {
+  public:
+    NS_DECL_CYCLE_COLLECTING_ISUPPORTS_FINAL
+    NS_DECL_CYCLE_COLLECTION_CLASS(PacketObserver)
+    NS_DECL_NSIOBSERVER
 
-  void GetParameters(JSContext* aCx,
-                    JS::MutableHandle<JSObject*> aRetVal,
-                    ErrorResult& aErr);
+    PacketObserver(RefPtr<BerytusEncryptedPacket>& aPacket);
+  protected:
+    ~PacketObserver();
 
-  void ToJSON(BerytusEncryptedPacketJSON& aRetVal, ErrorResult& aErr);
-
-  already_AddRefed<BerytusEncryptedPacket> Clone(nsresult* aRv);
+    // TODO(berytus): Switch to WeakPtr
+    RefPtr<BerytusEncryptedPacket> mPacket;
+    nsRefPtrHashtable<nsUint64HashKey, berytus::UnmaskPacket> mDetectedChannels;
+    nsRefPtrHashtable<nsPtrHashKey<InternalRequest>, berytus::UnmaskPacket> mDetectedRequests;
+  };
 };
+
+template <typename T>
+T* TryDowncastBlob(Blob* aBlob);
+
+template <>
+BerytusEncryptedPacket* TryDowncastBlob(Blob* aBlob);
 
 } // namespace mozilla::dom
 

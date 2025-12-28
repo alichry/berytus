@@ -1,3 +1,9 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim:set ts=2 sw=2 sts=2 et cindent: */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 #include "mozilla/dom/BerytusAccount.h"
 #include "BerytusUserAttributeMap.h"
 #include "js/Realm.h"
@@ -100,6 +106,12 @@ already_AddRefed<Promise> BerytusAccount::AddFields(
           RefPtr<BerytusField> field = aFields.ElementAt(i);
           auto& valueProxy = aArray.ElementAt(i);
           ErrorResult rv;
+          RefPtr<BerytusChannel> ch = Channel();
+          field->Attach(ch, rv);
+          if (NS_WARN_IF(rv.Failed())) {
+            outPromise->MaybeReject(std::move(rv));
+            return;
+          }
           if (field->GetValue().IsNull()) {
             UpdateFieldValueFromProxy(aCx, field, std::move(valueProxy), rv);
             if (NS_WARN_IF(rv.Failed())) {

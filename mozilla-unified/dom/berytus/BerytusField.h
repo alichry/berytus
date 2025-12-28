@@ -7,6 +7,7 @@
 #ifndef DOM_BERYTUSFIELD_H_
 #define DOM_BERYTUSFIELD_H_
 
+#include "BerytusChannel.h"
 #include "js/TypeDecls.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
@@ -21,7 +22,8 @@ namespace mozilla::dom {
 class BerytusDataVariant;
 
 class BerytusField : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
-                     public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
+                     public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */,
+                     public BerytusChannel::Attachable
 {
 public:
   using ValueUnion = OwningStringOrBerytusEncryptedPacketOrBerytusFieldValueDictionary;
