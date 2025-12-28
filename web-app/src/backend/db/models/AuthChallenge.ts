@@ -1,9 +1,10 @@
-import type { ResultSetHeader, PoolConnection } from "mysql2/promise";
-import type { RowDataPacket } from "mysql2";
-import { useConnection } from "../pool";
-import { AuthSession } from "./AuthSession";
-import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import { AuthSession } from "./AuthSession.js";
+import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
+import { AuthError } from "../errors/AuthError.js";
+import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 
 export enum EAuthOutcome {
     Pending = 'Pending',
@@ -11,18 +12,18 @@ export enum EAuthOutcome {
     Succeeded = 'Succeeded'
 }
 
-interface PGetOutcome extends RowDataPacket {
-    Outcome: EAuthOutcome;
+interface PGetOutcome {
+    outcome: EAuthOutcome;
 }
 
 export class AuthChallenge {
-    readonly sessionId: number;
+    readonly sessionId: BigInt;
     readonly challengeId: string;
     readonly challengeDef: AccountDefAuthChallenge;
     outcome: EAuthOutcome;
 
     constructor(
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         challengeDef: AccountDefAuthChallenge,
         outcome: EAuthOutcome
@@ -34,7 +35,7 @@ export class AuthChallenge {
     }
 
     static async getChallenge(
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         existingConn?: PoolConnection
     ): Promise<AuthChallenge> {
@@ -56,14 +57,14 @@ export class AuthChallenge {
 
     static async #getChallenge(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
     ) {
-        const [res] = await conn.query<PGetOutcome[]>(
-            'SELECT Outcome FROM berytus_account_auth_challenge ' +
-            'WHERE SessionID = ? AND ChallengeID = ?',
-            [sessionId, challengeId]
-        )
+        const res = await conn<PGetOutcome[]>`
+            SELECT Outcome FROM ${table('berytus_account_auth_challenge')}
+            WHERE SessionID = ${toPostgresBigInt(sessionId)}
+            AND ChallengeID = ${challengeId}
+        `
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AuthChallenge.name,
@@ -80,12 +81,12 @@ export class AuthChallenge {
             sessionId,
             challengeId,
             challengeDef,
-            res[0].Outcome
+            res[0].outcome
         );
     }
 
     static async createChallenge(
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
         existingConn?: PoolConnection
     ) {
@@ -107,7 +108,7 @@ export class AuthChallenge {
 
     static async #createChallenge(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string,
     ): Promise<AuthChallenge> {
         /**
@@ -136,11 +137,23 @@ export class AuthChallenge {
             );
         }
         /* now create the record */
-        await conn.query<ResultSetHeader>(
-            'INSERT INTO berytus_account_auth_challenge ' +
-            '(SessionID, ChallengeID, Outcome) VALUES (?, ?, ?)',
-            [sessionId, challengeId, EAuthOutcome.Pending]
-        );
+        const result = await conn`
+            INSERT INTO ${table('berytus_account_auth_challenge')}
+            (SessionID, ChallengeID, Outcome)
+            SELECT ${toPostgresBigInt(sessionId)},
+                   ${challengeId},
+                   ${EAuthOutcome.Pending}
+            FROM ${table('berytus_account_auth_session')} s
+            WHERE s.SessionID = ${toPostgresBigInt(sessionId)}
+            AND   s.Outcome = ${EAuthOutcome.Pending}
+            FOR UPDATE
+        `;
+        if (result.count === 0) {
+            throw new AuthError(
+                `Cannot create a new ${challengeDef.challengeId} `
+                + `challenge, auth session#${sessionId} is not pending`
+            );
+        }
         return new AuthChallenge(
             sessionId,
             challengeId,
@@ -151,7 +164,7 @@ export class AuthChallenge {
 
     static async #getAuthChallengeDef(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
         challengeId: string
     ) {
         const authSession = await AuthSession.getSession(sessionId, conn);
@@ -163,6 +176,8 @@ export class AuthChallenge {
         return challengeDef;
     }
 
+    // TODO(berytus): Remove this once
+    // we refactor AbstractChallengeHandler
     async updateOutcome(
         outcome: EAuthOutcome,
         existingConn?: PoolConnection
@@ -179,12 +194,33 @@ export class AuthChallenge {
         conn: PoolConnection,
         outcome: EAuthOutcome
     ) {
-        await conn.query(
-            'UPDATE berytus_account_auth_challenge ' +
-            'SET Outcome = ? ' +
-            'WHERE SessionID = ? AND ChallengeID = ?',
-            [outcome, this.sessionId, this.challengeId]
-        );
+        if (outcome === EAuthOutcome.Pending) {
+            throw new InvalidArgError(
+                `Cannot update ${this.challengeId} challenge outcome. `
+                + `Refusing to update to default outcome of Pending.`
+            )
+        }
+        // TODO(berytus): Need to check that all messages are OK
+        const res = await conn`
+            UPDATE ${table('berytus_account_auth_challenge')}
+            SET Outcome = ${outcome}
+            WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+            AND ChallengeID = ${this.challengeId}
+            AND Outcome = ${EAuthOutcome.Pending}
+            AND (
+                SELECT TRUE FROM ${table('berytus_account_auth_session')}
+                WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+                AND   Outcome = ${EAuthOutcome.Pending}
+                FOR UPDATE
+            )
+        `;
+        if (res.count === 0) {
+            throw new AuthError(
+                `Cannot update ${this.challengeId} challenge outcome. `
+                + `Challenge does not exist or is not in a pending state, or `
+                + `Session does not exist or is not in a pending state.`
+            );
+        }
         this.outcome = outcome;
     }
 }

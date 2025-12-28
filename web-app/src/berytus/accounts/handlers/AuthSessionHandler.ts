@@ -16,14 +16,14 @@ AuthIncorrectResponseError.prototype.name = "AuthIncorrectResponseError";
 export class AuthSessionHandler {
     readonly accountVersion: number;
     readonly accountCategory: string;
-    readonly sessionId: number;
+    readonly sessionId: BigInt;
     currentChallengeId?: string;
     lastChallengeOutcome?: ProcessMessageResult['outcome'];
 
     protected constructor(
         accountVersion: number,
         accountCategory: string,
-        sessionId: number
+        sessionId: BigInt
     ) {
         this.accountVersion = accountVersion;
         this.accountCategory = accountCategory;
@@ -69,7 +69,7 @@ export class AuthSessionHandler {
         return new AuthSessionHandler(
             accountVersion,
             accountCategory,
-            data.sessionId,
+            BigInt(data.sessionId),
         );
     }
 

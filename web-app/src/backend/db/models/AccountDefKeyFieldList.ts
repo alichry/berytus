@@ -1,6 +1,6 @@
-import type { PoolConnection } from "mysql2/promise";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
-import { useConnection } from "../pool.js";
+import { table, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
 import { AccountDefKeyField, type PAccountDefKeyField } from "./AccountDefKeyField.js"
 import type { FieldInput } from "../types.js";
 
@@ -65,11 +65,10 @@ export class AccountDefKeyFieldList {
         conn: PoolConnection,
         accountVersion: number
     ): Promise<AccountDefKeyFieldList> {
-        const [rows] = await conn.query<PAccountDefKeyField[]>(
-            'SELECT FieldID FROM berytus_account_def_key_field_id ' +
-            'WHERE AccountVersion = ?',
-            [accountVersion]
-        );
+        const rows = await conn<PAccountDefKeyField[]>`
+            SELECT FieldID FROM ${table('berytus_account_def_key_field_id')}
+            WHERE AccountVersion = ${accountVersion}
+        `;
         if (rows.length === 0) {
             throw EntityNotFoundError.default(
                 AccountDefKeyField.name,
@@ -78,7 +77,7 @@ export class AccountDefKeyFieldList {
                 "Unable to retrieve account key fields."
             )
         }
-        const keyFields = rows.map(r => new AccountDefKeyField(r.FieldID));
+        const keyFields = rows.map(r => new AccountDefKeyField(r.fieldid));
         return new AccountDefKeyFieldList(accountVersion, keyFields);
     }
 }

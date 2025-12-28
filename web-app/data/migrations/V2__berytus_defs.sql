@@ -26,22 +26,22 @@ INSERT INTO berytus_account_def
     ;
 
 INSERT INTO berytus_account_def_category
-    (AccountCategory) VALUES ("Customer"),
-                            ("Employee"),
-                            ("Citizen")
+    (AccountCategory) VALUES ('Customer'),
+                            ('Employee'),
+                            ('Citizen')
     ;
 
 INSERT INTO berytus_account_def_category_version
     (AccountCategory, AccountVersion, AllowNewRegistrations, Description)
     VALUES
-    ("Customer", 1, 1, "Username Identification and Password Authentication"),
-    ("Customer", 2, 1, "Username Identification and Secure Remote Password Authentication"),
-    ("Customer", 3, 1, "Username Identification and Digital Signature Authentication"),
-    ("Customer", 4, 1, "Username Identification, Secure Remote Password Authentication and Digital Signature Authentication"),
-    ("Customer", 1000, 1, "Email Identification, Secure Remote Password Authentication and Email OTP Authentication"),
-    ("Customer", 1001, 1, "(Passwordless/Keyless Authentication) Email Identification and Email OTP Authentication"),
-    ("Employee", 2000, 1, "(Composite Login Handle) PartyId+Username Identification and Secure Remote Password Authentication"),
-    ("Citizen", 3000, 1, "(Composite and Natural Login Handle) FirstName+FatherName+Surname+DOB+CountryOfBirth+NationalID Identification and Secure Remote Password Authentication")
+    ('Customer', 1, TRUE, 'Username Identification and Password Authentication'),
+    ('Customer', 2, TRUE, 'Username Identification and Secure Remote Password Authentication'),
+    ('Customer', 3, TRUE, 'Username Identification and Digital Signature Authentication'),
+    ('Customer', 4, TRUE, 'Username Identification, Secure Remote Password Authentication and Digital Signature Authentication'),
+    ('Customer', 1000, TRUE, 'Email Identification, Secure Remote Password Authentication and Email OTP Authentication'),
+    ('Customer', 1001, TRUE, '(Passwordless/Keyless Authentication) Email Identification and Email OTP Authentication'),
+    ('Employee', 2000, TRUE, '(Composite Login Handle) PartyId+Username Identification and Secure Remote Password Authentication'),
+    ('Citizen', 3000, TRUE, '(Composite and Natural Login Handle) FirstName+FatherName+Surname+DOB+CountryOfBirth+NationalID Identification and Secure Remote Password Authentication')
     ;
 
 INSERT INTO berytus_account_def_field
@@ -104,15 +104,15 @@ INSERT INTO berytus_account_def_key_field_id
 INSERT INTO berytus_account_def_auth_challenge
 (AccountVersion, ChallengeID, ChallengeType, ChallengeParameters)
 VALUES
-(1, "password", "Password", '{ "passwordFieldIds": ["password"] }'),
-(3, "digital-signature", "DigitalSignature", '{ "keyFieldId": "key" }');
+(1, 'password', 'Password', '{ "passwordFieldIds": ["password"] }'),
+(3, 'digital-signature', 'DigitalSignature', '{ "keyFieldId": "key" }');
 
 /*
 INSERT INTO berytus_account_field
 (AccountID, AccountVersion, FieldID, FieldValue)
  VALUES
 (1, 1, "username", '"bob123"'),
-(1, 1, "password", '"passbob"'),
+(1, 1, "password", '{"salt":"c2beaeba21c92df08e0e75190d8fe318","hash":"1cbbf7d455c7aee52dc1f05af7bc61ac5e7d10c60deaff6e1dba80a48db3f475b58c96f292542903fa08c0d6976085e796d9b7e9dd469a6b544e50841e7ee153"}'),
 
 (1, 2, "username", '"bob123"'),
 (1, 2, "securePassword", '"securePassBob"'),

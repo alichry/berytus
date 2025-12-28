@@ -1,0 +1,294 @@
+import { getAuthSessions, type Sessions } from "./auth-session.js";
+import { EAuthOutcome } from "@root/backend/db/models/AuthChallenge.js";
+import { strict as assert } from 'node:assert';
+import { getAccountChallengeDefs, type ChallengeDefs } from "./account-challenge-defs.js";
+import { getAuthChallenges, type AuthChallenges } from "./auth-challenge.js";
+import { withSearchPath } from "@test/with-search-path.js";
+
+const getStatements = (
+    challengeDefs: ChallengeDefs,
+    sessions: Sessions,
+    challenges: AuthChallenges
+) => {
+    const packs: Array<{
+        challenge: AuthChallenges[0];
+        session: Sessions[0];
+        challengeDef: ChallengeDefs[0]
+    }> = [];
+    {
+        const challenge = challenges.find(c => c.outcome === EAuthOutcome.Succeeded);
+        assert(challenge, "challenge is unset");
+        const session = sessions.find(s => s.sessionId === challenge.sessionId);
+        assert(session, "session is unset");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef is unset");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const challenge = challenges.find(c => c.outcome === EAuthOutcome.Pending);
+        assert(challenge, "challenge is unset");
+        const session = sessions.find(s => s.sessionId === challenge.sessionId);
+        assert(session, "session is unset");
+        assert(session.outcome === EAuthOutcome.Pending, "sesson is not pending");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef is unset");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const challenge = challenges.find(
+            c => c.outcome === EAuthOutcome.Pending
+                && !(packs.find(
+                    p => p.challenge.sessionId === c.sessionId && p.challenge.challengeId === c.challengeId
+                ))
+        );
+        assert(challenge, "challenge is unset");
+        const session = sessions.find(s => s.sessionId === challenge.sessionId);
+        assert(session, "session is unset");
+        assert(session.outcome === EAuthOutcome.Pending, "sesson is not pending");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef is unset");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const challenge = challenges.find(
+            c => c.outcome === EAuthOutcome.Succeeded
+                && !(packs.find(
+                        p => p.challenge.sessionId === c.sessionId && p.challenge.challengeId === c.challengeId
+                    ))
+        );
+        assert(challenge, "challenge is unset");
+        const session = sessions.find(s => s.sessionId === challenge.sessionId);
+        assert(session, "session is unset");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef is unset");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const [session, challenge] = (() => {
+            for (const challenge of challenges) {
+                if (challenge.outcome !== EAuthOutcome.Aborted) {
+                    continue;
+                }
+                const exists = packs.find(
+                    p => p.challenge.sessionId === challenge.sessionId
+                        && p.challenge.challengeId === challenge.challengeId
+                );
+                if (exists) {
+                    continue;
+                }
+                const session = sessions.find(
+                    s => s.sessionId === challenge.sessionId
+                );
+                assert(session, "session");
+                if (session.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                return [session, challenge];
+            }
+            assert(false, "unreachable");
+        })();
+        assert(challenge.outcome === EAuthOutcome.Aborted, "challenge.outcome === EAuthOutcome.Aborted");
+        assert(session.outcome === EAuthOutcome.Pending, "session.outcome === EAuthOutcome.Pending");
+        assert(session.sessionId === challenge.sessionId, "session.sessionId === challenge.sessionId");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+    {
+        const [session, challenge] = (() => {
+            for (const challenge of challenges) {
+                if (challenge.outcome !== EAuthOutcome.Pending) {
+                    continue;
+                }
+                const exists = packs.find(
+                    p => p.challenge.sessionId === challenge.sessionId
+                        && p.challenge.challengeId === challenge.challengeId
+                );
+                if (exists) {
+                    continue;
+                }
+                const session = sessions.find(
+                    s => s.sessionId === challenge.sessionId
+                );
+                assert(session, "session");
+                if (session.outcome !== EAuthOutcome.Aborted) {
+                    continue;
+                }
+                return [session, challenge];
+            }
+            assert(false, "unreachable");
+        })();
+        assert(challenge.outcome === EAuthOutcome.Pending, "challenge.outcome === EAuthOutcome.Pending");
+        assert(session.outcome === EAuthOutcome.Aborted, "session.outcome === EAuthOutcome.Aborted");
+        assert(session.sessionId === challenge.sessionId, "session.sessionId === challenge.sessionId");
+        const challengeDef = challengeDefs.find(c => {
+            return c.accountVersion === session.accountVersion
+                && c.challengeId === challenge.challengeId
+        });
+        assert(challengeDef, "challengeDef");
+        packs.push({
+            challenge,
+            session,
+            challengeDef
+        });
+    }
+
+    return [
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[0].challenge.sessionId}',
+                '${packs[0].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', 'Ok')`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[1].challenge.sessionId}',
+                '${packs[1].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                'null', null)`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[2].challenge.sessionId}',
+                '${packs[2].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', 'Ok')`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[3].challenge.sessionId}',
+                '${packs[3].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', 'Ok')`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[4].challenge.sessionId}',
+                '${packs[4].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', null)`,
+        `INSERT INTO berytus_account_auth_challenge_message
+        (SessionID, ChallengeID, MessageName, Request,
+        Expected, Response, StatusMsg)
+        VALUES ('${packs[5].challenge.sessionId}',
+                '${packs[5].challenge.challengeId}',
+                'Dummy',
+                '{ "magicWord": "123" }', '{ "proof": "456" }',
+                '{ "proof": "456" }', null)`
+    ];
+}
+
+let cachedAuthChallengeMessages: Array<{
+    sessionId: BigInt;
+    challengeId: string;
+    messageName: string;
+    request: unknown;
+    expected: unknown;
+    response: unknown;
+    statusMsg: string
+}> | null = null;
+
+export const createAuthChallengeMessages = async () => {
+    return withSearchPath(async conn => {
+        const sessions = await getAuthSessions();
+        const challengeDefs = await getAccountChallengeDefs();
+        const challenges = await getAuthChallenges();
+        const stmts = getStatements(
+            challengeDefs,
+            sessions,
+            challenges
+        );
+        assert(stmts.length > 0);
+        for (let i = 0; i < stmts.length; i++) {
+            await conn.unsafe(stmts[i]);
+        }
+        const rows = await conn`
+            SELECT SessionID, ChallengeID, MessageName,
+                   Request, Expected, Response, StatusMsg
+            FROM berytus_account_auth_challenge_message
+        `;
+        assert(rows.length > 0);
+        cachedAuthChallengeMessages = rows.map(({
+            sessionid: sessionId,
+            challengeid: challengeId,
+            messagename: messageName,
+            request,
+            expected,
+            response,
+            statusmsg: statusMsg
+        }) => {
+            assert(typeof sessionId === 'bigint');
+            assert(sessionId > 0);
+            assert(typeof challengeId === 'string');
+            assert(challengeId.trim().length > 0);
+            assert(typeof messageName === 'string');
+            assert(messageName.trim().length > 0);
+            assert(request !== undefined);
+            assert(expected !== undefined);
+            assert(response !== undefined);
+            assert(typeof statusMsg === 'string' || statusMsg === null);
+            assert(statusMsg ? statusMsg.match(/^(Ok|Error:.*)$/) : true);
+            return {
+                sessionId,
+                challengeId,
+                messageName,
+                request,
+                expected,
+                response,
+                statusMsg
+            };
+        });
+        return [...cachedAuthChallengeMessages];
+    });
+}
+
+export const getAuthChallengeMessages = async () => {
+    if (cachedAuthChallengeMessages) {
+        return cachedAuthChallengeMessages;
+    }
+    const result = await createAuthChallengeMessages();
+    assert(result.length > 0);
+    return result;
+}

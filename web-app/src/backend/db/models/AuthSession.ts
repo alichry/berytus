@@ -1,33 +1,41 @@
-import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
-import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge";
-import { AuthChallenge, EAuthOutcome } from "./AuthChallenge";
-import { AuthError } from "../errors/AuthError";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
+import { AccountDefAuthChallenge } from "./AccountDefAuthChallenge.js";
+import { AuthChallenge, EAuthOutcome } from "./AuthChallenge.js";
+import { AuthError } from "../errors/AuthError.js";
 
-interface PGetSession extends RowDataPacket {
-    SessionID: number;
-    AccountID: number;
-    AccountVersion: number;
-    Outcome: EAuthOutcome;
+interface PCreateSession {
+    sessionid: BigInt;
+}
+
+interface PGetSession {
+    sessionid: BigInt;
+    accountid: BigInt;
+    accountversion: number;
+    outcome: EAuthOutcome;
 }
 
 export class AuthSession {
-    public readonly sessionId: number;
-    public readonly accountId: number;
+    public readonly sessionId: BigInt;
+    public readonly accountId: BigInt;
     public readonly accountVersion: number;
-    public outcome: EAuthOutcome;
+    #outcome: EAuthOutcome;
 
     constructor(
-        sessionId: number,
-        accountId: number,
+        sessionId: BigInt,
+        accountId: BigInt,
         accountVersion: number,
         outcome: EAuthOutcome
     ) {
         this.sessionId = sessionId;
         this.accountId = accountId;
         this.accountVersion = accountVersion;
-        this.outcome = outcome;
+        this.#outcome = outcome;
+    }
+
+    get outcome() {
+        return this.#outcome;
     }
 
     async finish(
@@ -42,8 +50,8 @@ export class AuthSession {
     async #finish(
         conn: PoolConnection
     ) {
-        if (this.outcome !== EAuthOutcome.Pending) {
-            throw new Error(
+        if (this.#outcome !== EAuthOutcome.Pending) {
+            throw new AuthError(
                 "Session is not in a pending state and thus cannot be modified"
             );
         }
@@ -54,34 +62,56 @@ export class AuthSession {
             conn
         );
         for (let i = 0; i < challengeDefs.length; i++) {
-            const ch = await AuthChallenge.getChallenge(
-                this.sessionId,
-                challengeDefs[i].challengeId,
-                conn
-            );
+            let ch;
+            try {
+                ch = await AuthChallenge.getChallenge(
+                    this.sessionId,
+                    challengeDefs[i].challengeId,
+                    conn
+                );
+            } catch (e) {
+                if (e instanceof EntityNotFoundError) {
+                    throw new AuthError(
+                        `Challenge ${challengeDefs[i].challengeId} was not initiated. ` +
+                        `Cannnot finish auth session#${this.sessionId}.`,
+                        { cause: e }
+                    );
+                }
+                throw e;
+            }
             if (ch.outcome === EAuthOutcome.Aborted) {
                 throw new AuthError(
-                    `Challenge ${ch.challengeId} was not successful. ` +
-                    `Cannnot finish auth session.`
+                    `Challenge ${ch.challengeId} was aborted. ` +
+                    `Cannnot finish auth session#${this.sessionId}.`
                 );
             }
             if (ch.outcome === EAuthOutcome.Pending) {
                 throw new AuthError(
-                    `Challenge ${ch.challengeId} is still pemnding ` +
-                    `Cannnot finish auth session.`
+                    `Challenge ${ch.challengeId} is still pending. ` +
+                    `Cannnot finish auth session#${this.sessionId}.`
                 );
             }
         }
-        await conn.query(
-            'UPDATE berytus_account_auth_session ' +
-            'SET Outcome = ? ' +
-            'WHERE SessionID = ?',
-            [EAuthOutcome.Succeeded, this.sessionId]
-        );
+        // TODO(berytus): Better to have the checks in the query
+        // as well.
+        const result = await conn`
+            UPDATE ${table('berytus_account_auth_session')}
+            SET Outcome = ${EAuthOutcome.Succeeded}
+            WHERE SessionID = ${toPostgresBigInt(this.sessionId)}
+            AND   Outcome = ${EAuthOutcome.Pending}
+        `;
+        if (result.count === 0) {
+            throw new AuthError(
+                `Failed to update session outcome. Session outcome ` +
+                `is no longer in pending state for ` +
+                `auth session#${this.sessionId}`
+            );
+        }
+        this.#outcome = EAuthOutcome.Succeeded;
     }
 
     static async getSession(
-        sessionId: number,
+        sessionId: BigInt,
         existingConn?: PoolConnection
     ) {
         if (existingConn) {
@@ -100,13 +130,14 @@ export class AuthSession {
 
     static async #getSession(
         conn: PoolConnection,
-        sessionId: number,
+        sessionId: BigInt,
     ) {
-        const [res] = await conn.query<PGetSession[]>(
-            'SELECT SessionID, AccountID, AccountVersion, Outcome FROM ' +
-            'berytus_account_auth_session WHERE SessionID = ?',
-            [sessionId]
-        );
+        const res = await conn<PGetSession[]>`
+            SELECT SessionID, AccountID,
+                   AccountVersion, Outcome
+            FROM ${table('berytus_account_auth_session')}
+            WHERE SessionID = ${toPostgresBigInt(sessionId)}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AuthSession.name,
@@ -116,14 +147,14 @@ export class AuthSession {
         }
         return new AuthSession(
             sessionId,
-            res[0].AccountID,
-            res[0].AccountVersion,
-            res[0].Outcome,
+            res[0].accountid,
+            res[0].accountversion,
+            res[0].outcome,
         );
     }
 
     static async createSession(
-        accountId: number,
+        accountId: BigInt,
         accountVersion: number,
         existingConn?: PoolConnection
     ): Promise<AuthSession> {
@@ -144,15 +175,25 @@ export class AuthSession {
     }
 
     static async #createSession(
-        accountId: number,
+        accountId: BigInt,
         accountVersion: number,
         conn: PoolConnection
     ): Promise<AuthSession> {
-        const [res] = await conn.query<ResultSetHeader>(
-            'INSERT INTO berytus_account_auth_session ' +
-            '(AccountID, AccountVersion, Outcome) VALUES (?, ?, ?)',
-            [accountId, accountVersion, EAuthOutcome.Pending]
-        );
-        return new AuthSession(res.insertId, accountId, accountVersion, EAuthOutcome.Pending);
+        const res = await conn<PCreateSession[]>`
+            INSERT INTO ${table('berytus_account_auth_session')}
+            (AccountID, AccountVersion, Outcome)
+            VALUES (${toPostgresBigInt(accountId)}, ${accountVersion}, ${EAuthOutcome.Pending})
+            RETURNING SessionID
+        `;
+        return new AuthSession(res[0].sessionid, accountId, accountVersion, EAuthOutcome.Pending);
+    }
+
+    public toJSON() {
+        return {
+            sessionId: this.sessionId,
+            accountId: this.accountId,
+            accountVersion: this.accountVersion,
+            outcome: this.outcome
+        };
     }
 }

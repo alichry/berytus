@@ -1,16 +1,33 @@
-import { EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge";
-import type { MessagePayload } from "../../db/models/AuthChallengeMessage";
-import { AbstractChallengeHandler, type MessageDraft, type MessageDictionary, type Message } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler";
-import { AccountField } from "@root/backend/db/models/AccountField";
+import {
+    AccountDefAuthChallenge,
+    EChallengeType
+} from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import type {
+    AuthChallengeMessageName,
+    MessagePayload
+} from "../../db/models/AuthChallengeMessage";
+import {
+    AbstractChallengeHandler,
+    type MessageDraft,
+    type MessageDictionary,
+    type Message,
+    type CCHDependencies
+} from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
+import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
-import type { PoolConnection } from "mysql2/promise";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
-import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
-import { PublicKeyFieldInput, PublicKeyFieldValue } from "../field-handler/DigitalSignatureHandler";
+import {
+    PublicKeyFieldInput,
+    PublicKeyFieldValue
+} from "../field-handler/DigitalSignatureHandler.js";
 import { randomBytes } from "crypto";
-import { KeyUtils, SignUtils } from "../../utils/key-utils";
-
+import { KeyUtils, SignUtils } from "../../utils/key-utils.js";
+import type { PoolConnection } from "@root/backend/db/pool";
 type MessageName = BerytusDigitalSignatureChallengeMessageName;
+
+const messageNames: ReadonlyArray<MessageName> = [
+    "SelectKey", "SignNonce"
+];
 
 const SelectKeyExpected = PublicKeyFieldInput;
 
@@ -27,7 +44,7 @@ export type DigitalSignatureChallengeParameters = z.infer<typeof DigitalSignatur
 
 export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<MessageName> {
     protected challengeParameters: DigitalSignatureChallengeParameters;
-
+    protected randomBytes: typeof randomBytes;
 
     get handlerType(): EChallengeType {
         return EChallengeType.DigitalSignature;
@@ -36,13 +53,17 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
     public constructor(
         conn: PoolConnection,
         session: AuthSession,
-        challenge: AuthChallenge
+        challengeDef: AccountDefAuthChallenge,
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>,
+        dependencies: CCHDependencies
     ) {
-        super(conn, session, challenge);
+        AbstractChallengeHandler.validateMessages(messageNames, existingMessages);
+        super(conn, session, challengeDef, existingMessages);
         this.challengeParameters =
             DigitalSignatureChallengeParameters.parse(
-                challenge.challengeDef.challengeParameters
+                challengeDef.challengeParameters
             );
+        this.randomBytes = dependencies.randomBytes || randomBytes;
     }
 
     protected async draftNextMessage(
@@ -52,7 +73,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             return null;
         }
         if (processedMessages.SelectKey) {
-            const nonce = randomBytes(64);
+            const nonce = this.randomBytes(64);
             const initialMessageDraft = {
                 messageName: "SignNonce" as const,
                 request: nonce.toString('base64'),
@@ -61,7 +82,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             return initialMessageDraft;
         }
         const field = await AccountField.getField(
-            this.challenge.challengeDef.accountVersion,
+            this.challengeDef.accountVersion,
             this.session.accountId,
             this.challengeParameters.keyFieldId,
             this.conn

@@ -1,14 +1,33 @@
-import { EChallengeType, PasswordChallengeParameters } from "@root/backend/db/models/AccountDefAuthChallenge";
-import type { MessagePayload } from "../../db/models/AuthChallengeMessage";
-import { AbstractChallengeHandler, type MessageDraft, type MessageDictionary, type Message } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler";
-import { AccountField } from "@root/backend/db/models/AccountField";
+import {
+    AccountDefAuthChallenge,
+    EChallengeType,
+    PasswordChallengeParameters
+} from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import type {
+    AuthChallengeMessageName,
+    MessagePayload
+} from "../../db/models/AuthChallengeMessage";
+import {
+    AbstractChallengeHandler,
+    type MessageDraft,
+    type MessageDictionary,
+    type Message,
+    type CCHDependencies
+} from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
+import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
-import { PasswordHandler, StoredPassword } from "../field-handler/PasswordHandler";
-import type { PoolConnection } from "mysql2/promise";
+import {
+    PasswordHandler,
+    StoredPassword
+} from "../field-handler/PasswordHandler.js";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
-import type { AuthChallenge } from "@root/backend/db/models/AuthChallenge";
+import type { PoolConnection } from "@root/backend/db/pool";
 
 type MessageName = BerytusPasswordChallengeMessageName;
+
+const messageNames: ReadonlyArray<MessageName> = [
+    "GetPasswordFields"
+];
 
 const PasswordResponse = z.array(
     z.object({
@@ -37,12 +56,15 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
     public constructor(
         conn: PoolConnection,
         session: AuthSession,
-        challenge: AuthChallenge
+        challengeDef: AccountDefAuthChallenge,
+        existingMessages: ReadonlyArray<Message<AuthChallengeMessageName>>,
+        dependencies: CCHDependencies
     ) {
-        super(conn, session, challenge);
+        AbstractChallengeHandler.validateMessages(messageNames, existingMessages);
+        super(conn, session, challengeDef, existingMessages);
         this.challengeParameters =
             PasswordChallengeParameters.parse(
-                challenge.challengeDef.challengeParameters
+                challengeDef.challengeParameters
             );
     }
 
@@ -57,7 +79,7 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
         for (let i = 0; i < passwordFieldIds.length; i++) {
             const fieldId = passwordFieldIds[i];
             const field = await AccountField.getField(
-                this.challenge.challengeDef.accountVersion,
+                this.challengeDef.accountVersion,
                 this.session.accountId,
                 fieldId,
                 this.conn
@@ -79,7 +101,7 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
     }
 
     protected async validateMessageResponse(
-        processedMessages: MessageDictionary<MessageName>,
+        _processedMessages: MessageDictionary<MessageName>,
         pendingMessage: Message<MessageName>,
         response: MessagePayload
     ) {

@@ -1,13 +1,37 @@
 import type { APIRoute } from 'astro';
-import { loadChallenge } from '@root/backend/logic/challenge-handler';
-import { Result } from './schema';
+import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
+import { Result } from './schema.js';
+import {
+    validateChallengeDefExists,
+    validatePendingSessionState
+} from '@root/pages/login/[category]/[version]/auth/[sessionId]/utils.state-validation.js';
+import { UserError } from '@root/backend/errors/UserError.js';
+import { releaseAssert } from '@root/backend/utils/assert.js';
 
-export const GET: APIRoute = async ({ params }) => {
-    const { category, version, sessionId, challengeId } = params;
-    // TODO: Handle cases where sessionId/challengeId not found,
-    //                          incompatible challenge state
-    const handler = await loadChallenge(
-        Number(sessionId),
+export const GET: APIRoute<
+    Record<string, any>,
+    { sessionId: string; challengeId: string; }
+> = async ({ params }) => {
+    releaseAssert(typeof params["sessionId"] === "string");
+    releaseAssert(typeof params["challengeId"] === "string");
+    const { sessionId, challengeId } = params;
+    try {
+        const sessionToken =
+            await validatePendingSessionState(BigInt(sessionId));
+        await validateChallengeDefExists(
+            sessionToken,
+            challengeId
+        );
+    } catch (e) {
+        if (e instanceof UserError) {
+            return new Response(JSON.stringify({
+                error: e.message
+            }), { status: 400 });
+        }
+        throw e;
+    }
+    const handler = await setupChallenge(
+        BigInt(sessionId),
         challengeId!
     );
     try {

@@ -1,6 +1,7 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
+import { table, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import type { JSONValue } from "../types.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import { z } from "zod";
 
 export enum EChallengeType {
@@ -10,11 +11,11 @@ export enum EChallengeType {
     OffChannelOtp = 'OffChannelOtp'
 }
 
-interface PGetChallengeDef extends RowDataPacket {
-    ChallengeID: string;
-    AccountVersion: number;
-    ChallengeType: EChallengeType;
-    ChallengeParameters: string;
+interface PGetChallengeDef {
+    challengeid: string;
+    accountversion: number;
+    challengetype: EChallengeType;
+    challengeparameters: JSONValue;
 }
 
 /* Password Parameters, ideally this should be placed somewhere else */
@@ -27,13 +28,13 @@ export class AccountDefAuthChallenge {
     public readonly accountVersion: number;
     public readonly challengeId: string;
     public readonly challengeType: EChallengeType;
-    public readonly challengeParameters: unknown;
+    public readonly challengeParameters: JSONValue;
 
     constructor(
         accountVersion: number,
         challengeId: string,
         challengeType: EChallengeType,
-        challengeParameters: unknown
+        challengeParameters: JSONValue
     ) {
         this.accountVersion = accountVersion;
         this.challengeId = challengeId;
@@ -87,13 +88,13 @@ export class AccountDefAuthChallenge {
         challengeId: string,
         accountVersion: number,
     ) {
-        const [res] = await conn.query<PGetChallengeDef[]>(
-            'SELECT ChallengeID, AccountVersion, ChallengeType, ' +
-            '       ChallengeParameters ' +
-            'FROM berytus_account_def_auth_challenge ' +
-            'WHERE ChallengeID = ? AND AccountVersion = ?',
-            [challengeId, accountVersion]
-        );
+        const res = await conn<PGetChallengeDef[]>`
+            SELECT ChallengeID, AccountVersion, ChallengeType,
+                   ChallengeParameters
+            FROM ${table('berytus_account_def_auth_challenge')}
+            WHERE ChallengeID = ${challengeId}
+            AND AccountVersion = ${accountVersion}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AccountDefAuthChallenge.name,
@@ -104,8 +105,8 @@ export class AccountDefAuthChallenge {
         return new AccountDefAuthChallenge(
             accountVersion,
             challengeId,
-            res[0].ChallengeType,
-            JSON.parse(res[0].ChallengeParameters)
+            res[0].challengetype,
+            res[0].challengeparameters
         );
     }
 
@@ -131,13 +132,12 @@ export class AccountDefAuthChallenge {
         conn: PoolConnection,
         accountVersion: number,
     ) {
-        const [res] = await conn.query<PGetChallengeDef[]>(
-            'SELECT ChallengeID, AccountVersion, ChallengeType, ' +
-            '       ChallengeParameters ' +
-            'FROM berytus_account_def_auth_challenge ' +
-            'WHERE AccountVersion = ?',
-            [accountVersion]
-        );
+        const res = await conn<PGetChallengeDef[]>`
+            SELECT ChallengeID, AccountVersion, ChallengeType,
+                   ChallengeParameters
+            FROM ${table('berytus_account_def_auth_challenge')}
+            WHERE AccountVersion = ${accountVersion}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AccountDefAuthChallenge.name,
@@ -147,9 +147,9 @@ export class AccountDefAuthChallenge {
         }
         return res.map(r => new AccountDefAuthChallenge(
             accountVersion,
-            r.ChallengeID,
-            r.ChallengeType,
-            JSON.parse(r.ChallengeParameters)
+            r.challengeid,
+            r.challengetype,
+            r.challengeparameters
         ))
     }
 }

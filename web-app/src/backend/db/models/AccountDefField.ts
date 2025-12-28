@@ -1,10 +1,10 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
+import { table, useConnection } from "../pool.js";
+import type { PoolConnection } from "../pool.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 
-export interface PGetFieldTypeNOptions extends RowDataPacket {
-    FieldType: string;
-    FieldOptions: unknown;
+interface PGetFieldTypeNOptions {
+    fieldtype: string;
+    fieldoptions: unknown;
 }
 
 export enum EFieldType {
@@ -21,7 +21,7 @@ export class AccountDefField {
     readonly accountVersion: number;
     readonly fieldId: string;
     readonly fieldType: string;
-    readonly fieldOpttions: unknown
+    readonly fieldOptions: unknown
 
     protected constructor(
         accountVersion: number,
@@ -32,7 +32,7 @@ export class AccountDefField {
         this.accountVersion = accountVersion;
         this.fieldId = fieldId;
         this.fieldType = fieldType;
-        this.fieldOpttions = fieldOptions;
+        this.fieldOptions = fieldOptions;
     }
 
     static async getField(
@@ -61,12 +61,12 @@ export class AccountDefField {
         accountVersion: number,
         fieldId: string,
     ) {
-        const [res] = await conn.query<PGetFieldTypeNOptions[]>(
-            'SELECT FieldType, FieldOptions ' +
-            'FROM berytus_account_def_field ' +
-            'WHERE AccountVersion = ? AND FieldID = ?',
-            [accountVersion, fieldId]
-        );
+        const res = await conn<PGetFieldTypeNOptions[]>`
+            SELECT FieldType, FieldOptions
+            FROM ${table('berytus_account_def_field')}
+            WHERE AccountVersion = ${accountVersion}
+            AND FieldID = ${fieldId}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AccountDefField.name,
@@ -77,8 +77,8 @@ export class AccountDefField {
         return new AccountDefField(
             accountVersion,
             fieldId,
-            res[0].FieldType,
-            res[0].FieldOptions
+            res[0].fieldtype,
+            res[0].fieldoptions
         );
     }
 }

@@ -1,40 +1,28 @@
-import { AccountDefAuthChallenge, EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge";
-import { PasswordChallengeHandler } from "./PasswordChallengeHandler";
-import { AuthSession } from "@root/backend/db/models/AuthSession";
-import { AbstractChallengeHandler } from "./AbstractChallengeHandler";
-import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler";
-
-export const initiateChallenge = async (
-    sessionId: number,
-    challengeId: string
+import { AccountDefAuthChallenge, EChallengeType } from "@root/backend/db/models/AccountDefAuthChallenge.js";
+import { PasswordChallengeHandler } from "./PasswordChallengeHandler.js";
+import { AuthSession } from "@root/backend/db/models/AuthSession.js";
+import { AbstractChallengeHandler, type CCHDependencies } from "./AbstractChallengeHandler.js";
+import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler.js";
+import type { PoolConnection } from "@root/backend/db/pool.js";
+export const setupChallenge = async (
+    sessionId: BigInt,
+    challengeId: string,
+    conn?: PoolConnection,
+    dependencies?: CCHDependencies
 ) => {
-    const authSession = await AuthSession.getSession(sessionId);
+    const authSession = await AuthSession.getSession(sessionId, conn);
     const challengeDef = await AccountDefAuthChallenge.getChallengeDef(
         challengeId,
-        authSession.accountVersion
+        authSession.accountVersion,
+        conn
     );
     const handlerCtr = getHandlerCtor(challengeDef.challengeType);
-    return AbstractChallengeHandler.initiateChallenge(
+    return AbstractChallengeHandler.setupChallenge(
         sessionId,
         challengeId,
-        handlerCtr
-    );
-}
-
-export const loadChallenge = async (
-    sessionId: number,
-    challengeId: string
-) => {
-    const authSession = await AuthSession.getSession(sessionId);
-    const challengeDef = await AccountDefAuthChallenge.getChallengeDef(
-        challengeId,
-        authSession.accountVersion
-    );
-    const handlerCtr = getHandlerCtor(challengeDef.challengeType);
-    return AbstractChallengeHandler.loadChallenge(
-        sessionId,
-        challengeId,
-        handlerCtr
+        handlerCtr,
+        conn,
+        dependencies
     );
 }
 

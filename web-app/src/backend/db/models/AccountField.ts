@@ -1,22 +1,24 @@
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
-import { useConnection } from "../pool";
-import { EntityNotFoundError } from "../errors/EntityNotFoundError";
+import type { PoolConnection } from "../pool.js";
+import { table, toPostgresBigInt, useConnection } from "../pool.js";
+import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
+import type { JSONValue } from "../types.js";
+import { IllegalDatabaseStateError } from "../errors/IllegalDatabaseStateError.js";
 
-export interface PGetFieldValue extends RowDataPacket {
-    FieldValue: string; /* JSON */
+export interface PGetFieldValue {
+    fieldvalue: JSONValue;
 }
 
 export class AccountField {
     readonly accountVersion: number;
-    readonly accountId: number;
+    readonly accountId: BigInt;
     readonly fieldId: string;
-    readonly fieldValue: unknown;
+    fieldValue: JSONValue;
 
     protected constructor(
         accountVersion: number,
-        accountId: number,
+        accountId: BigInt,
         fieldId: string,
-        fieldValue: unknown,
+        fieldValue: JSONValue,
     ) {
         this.accountVersion = accountVersion;
         this.accountId = accountId;
@@ -26,7 +28,7 @@ export class AccountField {
 
     static async getField(
         accountVersion: number,
-        accountId: number,
+        accountId: BigInt,
         fieldId: string,
         existingConn?: PoolConnection
     ) {
@@ -51,15 +53,16 @@ export class AccountField {
     static async #getField(
         conn: PoolConnection,
         accountVersion: number,
-        accountId: number,
+        accountId: BigInt,
         fieldId: string,
     ) {
-        const [res] = await conn.query<PGetFieldValue[]>(
-            'SELECT FieldValue ' +
-            'FROM berytus_account_field ' +
-            'WHERE AccountVersion = ? AND AccountID = ? AND FieldID = ?',
-            [accountVersion, accountId, fieldId]
-        );
+        const res = await conn<PGetFieldValue[]>`
+            SELECT FieldValue
+            FROM ${table('berytus_account_field')}
+            WHERE AccountVersion = ${accountVersion}
+            AND AccountID = ${toPostgresBigInt(accountId)}
+            AND FieldID = ${fieldId}
+        `;
         if (res.length === 0) {
             throw EntityNotFoundError.default(
                 AccountField.name,
@@ -71,7 +74,38 @@ export class AccountField {
             accountVersion,
             accountId,
             fieldId,
-            JSON.parse(res[0].FieldValue)
+            res[0].fieldvalue
         );
+    }
+
+    async updateValue(
+        fieldValue: JSONValue,
+        existingConn?: PoolConnection
+    ) {
+        if (existingConn) {
+            return this.#updateValue(existingConn, fieldValue);
+        }
+        return useConnection(
+            conn => this.#updateValue(conn, fieldValue)
+        );
+    }
+
+    async #updateValue(
+        conn: PoolConnection,
+        fieldValue: JSONValue
+    ) {
+        const res = await conn`
+            UPDATE ${table('berytus_account_field')}
+            SET FieldValue = ${conn.json(fieldValue)}
+            WHERE AccountVersion = ${this.accountVersion}
+            AND AccountID = ${toPostgresBigInt(this.accountId)}
+            AND FieldID = ${this.fieldId}
+        `;
+        if (res.count === 0) {
+            throw new IllegalDatabaseStateError(
+                "Failed to update field value"
+            );
+        }
+        this.fieldValue = fieldValue;
     }
 }

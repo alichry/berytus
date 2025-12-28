@@ -5,9 +5,16 @@ import { AccountUserAttributes } from '@root/backend/db/models/AccountUserAttrib
 import type { Result } from './schema';
 
 export const POST: APIRoute = async ({ params }) => {
-    const { category, version, sessionId } = params;
+    const { sessionId } = params;
+    if (typeof sessionId === "undefined") {
+        return new Response(JSON.stringify({
+            error: "Missing session id path paramemter"
+        }), { status: 400 });
+    }
 
-    const session = await AuthSession.getSession(Number(sessionId));
+    // TODO(berytus): Check if any challenge is pending
+    // and if so, throw UserError
+    const session = await AuthSession.getSession(BigInt(sessionId));
     try {
         await session.finish();
         const result: Result = {
@@ -31,6 +38,7 @@ export const POST: APIRoute = async ({ params }) => {
             return new Response(JSON.stringify({
                 error: e.message
             }), {
+                status: 500,
                 headers: {
                     "Content-Type": "application/json"
                 }
