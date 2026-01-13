@@ -131,6 +131,7 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
   }
   RefPtr<BerytusEncryptedPacket> self = this;
   RefPtr<PacketObserver> observer = new PacketObserver(self);
+  // TODO(berytus): Check... we should be using a WeakMap<BerytusEncryptedPacket, PacketObserver>
   container->HoldObserver(observer);
   mAttachedChannelId.Assign(aChannel->ID());
 }

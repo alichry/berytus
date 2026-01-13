@@ -470,6 +470,7 @@ browser.berytus.registerRequestHandler({
             printSessionForSimiluationPrep('AccountCreation_GetUserAttributes', sessionId);
         },
         updateUserAttributes(context, args): void {
+            // TODO(berytus): Implement this
             throw new Error("Function not implemented.");
         },
         async addField(context, args): Promise<void> {

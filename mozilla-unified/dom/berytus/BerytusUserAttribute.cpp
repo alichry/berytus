@@ -6,8 +6,11 @@
 
 #include "mozilla/dom/BerytusUserAttribute.h"
 #include "ErrorList.h"
+#include "mozilla/ErrorResult.h"
+#include "mozilla/dom/BerytusChannel.h"
 #include "mozilla/dom/BerytusUserAttributeBinding.h"
 #include "mozilla/Base64.h"
+#include "mozilla/dom/RemoteWorkerTypes.h"
 #include "nsString.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 
@@ -72,46 +75,51 @@ bool BerytusUserAttributeImpl<BerytusEncryptedPacket>::CanSetValue(const SourceV
   return aVal.IsBerytusEncryptedPacket();
 }
 
-bool BerytusUserAttributeImpl<nsString>::SetValue(JSContext* aCx, const SourceValueType& aVal) {
+void BerytusUserAttributeImpl<nsString>::SetValue(JSContext* aCx,
+                                                  const SourceValueType& aVal,
+                                                  ErrorResult& aRv) {
   if (NS_WARN_IF(!aVal.IsString())) {
-    return false;
+    aRv.ThrowTypeError("Invalid value type for string-based attribute");
+    return;
   }
   mValue.SetAsString().Assign(aVal.GetAsString());
-  return true;
 }
 
-bool BerytusUserAttributeImpl<ArrayBuffer>::SetValue(JSContext* aCx, const SourceValueType& aVal) {
-  ValueType val;
+void BerytusUserAttributeImpl<ArrayBuffer>::SetValue(JSContext* aCx,
+                                                     const SourceValueType& aVal,
+                                                     ErrorResult& aRv) {
   if (aVal.IsArrayBufferView()) {
     JS::Rooted<JSObject*> view(aCx, aVal.GetAsArrayBufferView().Obj());
     bool isShared;
     JSObject* ab = JS_GetArrayBufferViewBuffer(aCx, view, &isShared);
     if (NS_WARN_IF(!ab)) {
-      return false;
+      aRv.ThrowTypeError("Failed to get ArrayBuffer from ArrayBufferView");
+      return;
     }
     // TODO(berytus): Should we check if buffer is detached?
-    if (NS_WARN_IF(!val.SetAsArrayBuffer().Init(ab))) {
-      return false;
+    mValue.Uninit();
+    if (NS_WARN_IF(!mValue.SetAsArrayBuffer().Init(ab))) {
+      aRv.ThrowInvalidStateError("Failed to initialize ArrayBuffer");
+      return;
     }
-    mValue = std::move(val);
-    return true;
+    return;
   }
   if (NS_WARN_IF(!aVal.IsArrayBuffer())) {
-    return false;
+    aRv.ThrowTypeError("Invalid value type for ArrayBuffer-based attribute");
+    return;
   }
-  if (!val.SetAsArrayBuffer().Init(aVal.GetAsArrayBuffer().Obj())) {
-    return false;
-  }
-  mValue = std::move(val);
-  return true;
+  SetValueInternal(aVal.GetAsArrayBuffer(), aRv);
 }
 
-bool BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValue(JSContext* aCx, const SourceValueType& aVal) {
+void BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValue(
+    JSContext* aCx,
+    const SourceValueType& aVal,
+    ErrorResult& aRv) {
   if (NS_WARN_IF(!aVal.IsBerytusEncryptedPacket())) {
-    return false;
+    aRv.ThrowTypeError("Invalid value type for BerytusEncryptedPacket-based attribute");
+    return;
   }
-  mValue.SetAsBerytusEncryptedPacket() = aVal.GetAsBerytusEncryptedPacket();
-  return true;
+  SetValueInternal(aVal.GetAsBerytusEncryptedPacket(), aRv);
 }
 
 void BerytusUserAttribute::ToJSON(
@@ -133,11 +141,12 @@ void BerytusUserAttribute::ToJSON(
 already_AddRefed<BerytusUserAttribute> BerytusUserAttribute::Create(
     JSContext* aCx,
     nsIGlobalObject* aGlobal,
+    RefPtr<BerytusChannel>& aChannel,
     const nsAString& aId,
     const nsAString& aMimeType,
     const nsAString& aInfo,
     const SourceValueType& aValue,
-    nsresult& aRv
+    ErrorResult& aRv
 ) {
   RefPtr<BerytusUserAttribute> attr;
   if (aValue.IsArrayBuffer() || aValue.IsArrayBufferView()) {
@@ -163,11 +172,15 @@ already_AddRefed<BerytusUserAttribute> BerytusUserAttribute::Create(
     );
   } else {
     MOZ_ASSERT(false, "Unrecognised source value type");
-    aRv = NS_ERROR_FAILURE;
+    aRv.ThrowTypeError("Unrecognised source value type");
     return nullptr;
   }
-  if (NS_WARN_IF(!attr->SetValue(aCx, aValue))) {
-    aRv = NS_ERROR_FAILURE;
+  attr->Attach(aChannel, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  attr->SetValue(aCx, aValue, aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
   return attr.forget();
@@ -229,8 +242,13 @@ void BerytusUserAttributeImpl<ArrayBuffer>::GetValue(JSContext* aCx,
   aRetVal.SetAsArrayBuffer().Init(mValue.GetAsArrayBuffer().Obj());
 }
 
-bool BerytusUserAttributeImpl<ArrayBuffer>::SetValueInternal(const ArrayBuffer& aValue) {
-  return !NS_WARN_IF(!mValue.SetAsArrayBuffer().Init(aValue.Obj()));
+void BerytusUserAttributeImpl<ArrayBuffer>::SetValueInternal(
+    const ArrayBuffer& aValue,
+    ErrorResult& aRv) {
+  mValue.Uninit();
+  if (NS_WARN_IF(!mValue.SetAsArrayBuffer().Init(aValue.Obj()))) {
+    aRv.ThrowInvalidStateError("Failed to initialize ArrayBuffer");
+  }
 }
 
 BerytusUserAttributeValueEncodingType BerytusUserAttributeImpl<ArrayBuffer>::ValueEncodingType() const {
@@ -277,7 +295,14 @@ void BerytusUserAttributeImpl<BerytusEncryptedPacket>::GetValue(JSContext* aCx,
   aRetVal.SetAsBerytusEncryptedPacket() = mValue.GetAsBerytusEncryptedPacket();
 }
 
-void BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue) {
+void BerytusUserAttributeImpl<BerytusEncryptedPacket>::SetValueInternal(
+    const RefPtr<BerytusEncryptedPacket>& aValue,
+    ErrorResult& aRv) {
+  if (mChannel) {
+    RefPtr<BerytusChannel> ch = mChannel.get();
+    aValue->Attach(ch, aRv);
+    NS_ENSURE_TRUE_VOID(!aRv.Failed());
+  }
   mValue.SetAsBerytusEncryptedPacket() = aValue;
 }
 

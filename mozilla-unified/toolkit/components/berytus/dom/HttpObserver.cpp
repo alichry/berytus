@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/berytus/HttpObserver.h"
+#include "ErrorList.h"
 #include "mozilla/LoggingCore.h"
 #include "mozilla/Services.h"
 #include "nsCOMPtr.h"
@@ -26,6 +27,61 @@
 
 
 namespace mozilla::berytus {
+
+/**
+ * Adapted from Fetch.cpp's FetchBody<Derived>::GetMimeType
+ */
+nsresult GetMimeType(nsCOMPtr<nsIHttpChannel>& aHttpChannel,
+                     nsACString& aMimeType,
+                     nsACString& aMixedCaseMimeType) {
+  nsCString contentTypeValues;
+  nsresult rv = aHttpChannel->GetResponseHeader(
+    BERYTUS_HTTP_HEADER_CHANNEL_ID,
+    contentTypeValues);
+
+  NS_ENSURE_SUCCESS(rv, NS_ERROR_NOT_AVAILABLE);
+
+  // HTTP ABNF states Content-Type may have only one value.
+  // This is from the "parse a header value" of the fetch spec.
+  if (!contentTypeValues.IsVoid() && contentTypeValues.Find(",") == -1) {
+    // Convert from a bytestring to a UTF8 CString.
+    CopyLatin1toUTF8(contentTypeValues, aMimeType);
+    aMixedCaseMimeType = aMimeType;
+    ToLowerCase(aMimeType);
+    return NS_OK;
+  }
+  return NS_ERROR_DOM_INVALID_HEADER_VALUE;
+}
+
+/**
+ * Copied from BodyUtil.cpp
+ */
+bool IsFormDataMimeType(const nsACString& aMimeType) {
+  constexpr auto formDataMimeType = "multipart/form-data"_ns;
+  // Allow semicolon separated boundary/encoding suffix like
+  // multipart/form-data; boundary= but disallow multipart/form-datafoobar.
+  bool isValidFormDataMimeType = StringBeginsWith(aMimeType, formDataMimeType);
+
+  if (isValidFormDataMimeType &&
+      aMimeType.Length() > formDataMimeType.Length()) {
+    isValidFormDataMimeType = aMimeType[formDataMimeType.Length()] == ';';
+  }
+  return isValidFormDataMimeType;
+}
+
+/**
+ * Copied from BodyUtil.cpp
+ */
+bool IsUrlDataMimeType(const nsACString& aMimeType) {
+constexpr auto urlDataMimeType = "application/x-www-form-urlencoded"_ns;
+  bool isValidUrlEncodedMimeType = StringBeginsWith(aMimeType, urlDataMimeType);
+
+  if (isValidUrlEncodedMimeType &&
+      aMimeType.Length() > urlDataMimeType.Length()) {
+    isValidUrlEncodedMimeType = aMimeType[urlDataMimeType.Length()] == ';';
+  }
+  return isValidUrlEncodedMimeType;
+}
 
 static mozilla::LazyLogModule sLogger("berytus_http_observer");
 
@@ -107,6 +163,7 @@ HttpObserver::HttpObserver() {
   obs->AddObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC, false);
   obs->AddObserver(this, NS_HTTP_ON_MODIFY_REQUEST_TOPIC, false);
   obs->AddObserver(this, NS_HTTP_ON_STOP_REQUEST_TOPIC, false);
+  obs->AddObserver(this, NS_HTTP_ON_EXAMINE_RESPONSE_TOPIC, false);
 }
 
 HttpObserver::~HttpObserver() {
@@ -115,6 +172,7 @@ HttpObserver::~HttpObserver() {
     obs->RemoveObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC);
     obs->RemoveObserver(this, NS_HTTP_ON_MODIFY_REQUEST_TOPIC);
     obs->RemoveObserver(this, NS_HTTP_ON_STOP_REQUEST_TOPIC);
+    obs->RemoveObserver(this, NS_HTTP_ON_EXAMINE_RESPONSE_TOPIC);
   }
 }
 
@@ -151,13 +209,14 @@ void HttpObserver::LogUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<ns
 // Exposed.blob() -> Wrapped.blob()
 //   if content-type is jwe packet,
 //      we wrap Wrapped.blob() in a BerytusEncryptedPacket
-//   else if content-type is multi-part
+//   else if content-type is application/octet-stream
 //      call Exposed.arrayBuffer()
 //      and wrap the return buffer as a blob.
 //   else return Wrapped.blob() as is
 // Exposed.arrayBuffer() ->
 //    if content-type is a jwe packet:
 //      return _CONCEALED PACKET_
+//      i.e. return Exposed.blob()'s bytes in an ArrayBuffer
 //    elif content-type multi part
 //      parse as form data "wrapped"
 //      create a new form data "exposed"
@@ -313,9 +372,50 @@ NS_IMETHODIMP HttpObserver::Observe(nsISupports* aSubject,
     ReleaseUnmasked(channelId);
     return NS_OK;
   }
+  if (strcmp(aTopic, NS_HTTP_ON_EXAMINE_RESPONSE_TOPIC) == 0) {
+    MOZ_LOG(sLogger, LogLevel::Info, ("In NS_HTTP_ON_EXAMINE_RESPONSE_TOPIC"));
+    // here, we need to extract the packets and replace
+    // the stream with a stream that has the packets masked.
+    // first, get content-type. If it's
+    // (1). Multipart
+    // (2). JWE
+    // we process it, otherwise we do nothing.
+    nsCOMPtr<nsIHttpChannel> httpChannel = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(httpChannel, NS_ERROR_INVALID_ARG);
+
+    nsAutoCString existingBerytusHeader;
+    nsresult rv = httpChannel->GetResponseHeader(
+      BERYTUS_HTTP_HEADER_CHANNEL_ID,
+      existingBerytusHeader);
+    if (NS_FAILED(rv)) {
+      // no berytus header, do nothing.
+      return NS_OK;
+    }
+    // TODO(berytus): We need to check the channel id if it's valid.
+    nsCString mimeType;
+    nsCString mixedCaseMimeType;
+    rv = GetMimeType(httpChannel, mimeType, mixedCaseMimeType);
+    if (NS_FAILED(rv)) {
+      MOZ_LOG(sLogger,
+              LogLevel::Warning,
+              ("Content-Type Response Header is invald or not found"));
+      return NS_OK;
+    }
+    if (IsFormDataMimeType(mimeType) || IsUrlDataMimeType(mimeType)) {
+      // 1. extract form data
+      // 2. extract packets
+      // 3. set fields with packets to CONCEALED
+      // 4. extract bytes from formdata
+      // Update response body, ensure content-length is updated
+      // ensure boundary is not modified.
+    }
+
+
+  }
   MOZ_ASSERT_UNREACHABLE("Unexpected topic");
   return NS_ERROR_FAILURE;
 }
+
 
 
 

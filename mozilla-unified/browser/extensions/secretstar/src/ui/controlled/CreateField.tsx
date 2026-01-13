@@ -8,9 +8,10 @@ import CreateFieldView from "../components/CreateFieldView";
 import JsrpClient from '../../JsrpClient';
 import { ab2base64, ab2str, base64ToArrayBuffer, formatBase64AsPem, pemToBuf, privateKeyBufToPublicKeyBuf, str2ab } from "@root/key-utils";
 import { randomFieldValue } from '@root/utils';
-import type { FieldInfo } from '@berytus/types';
+import type { AddFieldResult, FieldInfo } from '@berytus/types';
 import { BerytusFieldValueUnion, BerytusForeignIdentityFieldOptions, BerytusSecurePasswordFieldOptions } from "@berytus/types-extd";
 import { EBerytusFieldType, ERejectionCode } from "@berytus/enums";
+import { InternalError } from '@root/errors/InternalError';
 
 const isSecurePasswordOptions = (
     opts: FieldInfo['options']
@@ -78,9 +79,24 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         navigate('/loading');
     }, [navigate]);
     const { cipherbox, loading: cipherboxLoading } = useCipherbox(channel);
+    const preResolveCb = useCallback(async (value: NonNullable<AddFieldResult>) => {
+        if (cipherboxLoading) {
+            throw new InternalError("Cipherbox not loaded in CreateField preResolve()");
+        }
+        if (! cipherbox) {
+            return value; // e2e not enabled
+        }
+        if (typeof value === "string") {
+            return cipherbox.encrypt(value);
+        }
+        return cipherbox.encryptDictionary(value);
+    }, [cipherbox, cipherboxLoading]);
     const { maybeResolve, maybeReject } = useRequest<"AccountCreation_AddField">(
         session?.requests[session?.requests.length - 1],
-        { onProcessed, cipherbox }
+        {
+            onProcessed,
+            preResolve: preResolveCb
+        }
     );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
     const field = session?.createFieldOptions?.find(f => f.id === fieldId);
