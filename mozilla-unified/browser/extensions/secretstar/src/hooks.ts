@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { Account, db, Field, Identity, Picture } from "@root/db";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavigateFunction, NavigateOptions, To, useNavigate, useParams } from "react-router-dom";
 import { MODE, MODE_PAGE_ACTION } from './env';
 import { url } from "./workers/paths";
@@ -118,16 +118,21 @@ interface UseRequestHook<ER extends RequestType> {
     error?: unknown;
 }
 
-interface UseRequestOptions {
+interface UseRequestOptions<ER extends RequestType> {
     onProcessed?(): void;
     onIgnored?(): void;
-    cipherbox?: JWEPacketCipherBox;
+    /**
+     * preResolve value transformation hook.
+     * Will not be called if the resolved value is undefinend or null.
+     * Should return a valid value for resolution.
+     */
+    preResolve?(value: NonNullable<RequestHandlerFunctionReturnType<ER>>): Promise<RequestHandlerFunctionReturnType<ER>>;
 }
 
 /**
  * Note(berytus):
- * @note Make sure callbacks are memoised using useCallback;
- * otherwise, they will get invoked on each render if the
+ * @note Make sure callbacks {onProcessed,onIgnored,preResolve}
+ * are memoised; otherwise, they will get invoked on each rerender if the
  * request has been processed or ignored.
  */
 export function useRequest<ER extends RequestType>(
@@ -135,37 +140,50 @@ export function useRequest<ER extends RequestType>(
     {
         onProcessed,
         onIgnored,
-        cipherbox
-    }: UseRequestOptions = {}
+        preResolve
+    }: UseRequestOptions<ER> = {}
 ): UseRequestHook<ER> {
     const [processing, setProcessing] = useState<boolean>(false);
     const [processed, setProcessed] = useState<boolean>(false);
     const [ignored, setIgnored] = useState<boolean>(false);
-    const [maybeResolve, setMaybeResolve] = useState<MaybeResolve<ER>>();
-    const [maybeReject, setMaybeReject] = useState<MaybeReject>();
     const [error, setError] = useState<unknown>();
 
-    useEffect(() => {
+    const maybeResolve = useMemo<MaybeResolve<ER> | undefined>(() => {
         if (! req) {
-            setMaybeResolve(undefined);
-            setMaybeReject(undefined);
-            return;
+            return undefined;
         }
-        setMaybeResolve(
-            () => {
-                const maybe = createMaybeFunction("resolve", processed, setProcessed, setIgnored, setProcessing, setError, req.id);
-                return (value: unknown) => {
-                    if (cipherbox) {
-                        return maybe(cipherbox.encrypt(value));
-                    }
-                    return maybe(value);
-                }
+        const maybe = createMaybeFunction(
+            "resolve",
+            processed,
+            setProcessed,
+            setIgnored,
+            setProcessing,
+            setError,
+            req.id
+        );
+        return (value?: RequestHandlerFunctionReturnType<ER>) => {
+            if (preResolve && value !== undefined && value !== null) {
+                return maybe(preResolve(value));
             }
+            return maybe(value);
+        }
+    }, [req, processed, preResolve]);
+
+    const maybeReject = useMemo<MaybeReject | undefined>(() => {
+        if (! req) {
+            return undefined;
+        }
+        return createMaybeFunction(
+            "reject",
+            processed,
+            setProcessed,
+            setIgnored,
+            setProcessing,
+            setError,
+            req.id
         );
-        setMaybeReject(
-            () => createMaybeFunction("reject", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
-        );
-    }, [processed, req, cipherbox]);
+    }, [req, processed, preResolve]);
+
     useEffect(() => {
         if (ignored) {
             if (! onIgnored) {
@@ -539,8 +557,8 @@ export function useCipherbox(channel?: Channel) {
             return;
         }
         if (! channel.e2eeKey) {
-            setLoading(false);
             setBox(undefined);
+            setLoading(false);
             return;
         }
         setBox(new JWEPacketCipherBox({

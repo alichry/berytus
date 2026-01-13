@@ -16,11 +16,13 @@
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
 #include "mozilla/dom/BerytusUserAttributeBinding.h" /* OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket */
+#include "mozilla/dom/BerytusChannel.h"
 
 namespace mozilla::dom {
 
-class BerytusUserAttribute : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
-                             public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
+class BerytusUserAttribute : public nsISupports, /* or NonRefcountedDOMObject if this is a non-refcounted object */
+                             public nsWrapperCache, /* Change wrapperCache in the binding configuration if you don't want this */
+                             public BerytusChannel::Attachable
 {
 public:
   using ValueType = OwningStringOrArrayBufferOrBerytusEncryptedPacket;
@@ -64,7 +66,9 @@ public:
   ) const = 0;
 
   virtual bool CanSetValue(const SourceValueType& aVal) const = 0;
-  virtual bool SetValue(JSContext* aCx, const SourceValueType& aVal) = 0;
+  virtual void SetValue(JSContext* aCx,
+                        const SourceValueType& aVal,
+                        ErrorResult& aRv) = 0;
 
   void ToJSON(BerytusUserAttributeJSON& aRetVal,
               ErrorResult& aRv) const;
@@ -74,11 +78,12 @@ public:
   static already_AddRefed<BerytusUserAttribute> Create(
       JSContext* aCx,
       nsIGlobalObject* aGlobal,
+      RefPtr<BerytusChannel>& aChannel, /* can be nullptr */
       const nsAString& aId,
       const nsAString& aMimeType,
       const nsAString& aInfo,
       const SourceValueType& aValue,
-      nsresult& aRv
+      ErrorResult& aRv
   );
 protected:
   virtual void PopulateValueInJSON(JSONValueType& aValue,
@@ -102,7 +107,9 @@ public:
     const nsAString& aInfo
   );
   bool CanSetValue(const SourceValueType& aVal) const override;
-  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
+  void SetValue(JSContext* aCx,
+                const SourceValueType& aVal,
+                ErrorResult& aRv) override;
   void SetValueInternal(const nsString& aValue);
   void GetValue(
     JSContext* aCx,
@@ -129,8 +136,10 @@ public:
     const nsAString& aInfo
   );
   bool CanSetValue(const SourceValueType& aVal) const override;
-  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
-  bool SetValueInternal(const ArrayBuffer& aValue);
+  void SetValue(JSContext* aCx,
+                const SourceValueType& aVal,
+                ErrorResult& aRv) override;
+  void SetValueInternal(const ArrayBuffer& aValue, ErrorResult& aRv);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,
@@ -156,8 +165,11 @@ public:
     const nsAString& aInfo
   );
   bool CanSetValue(const SourceValueType& aVal) const override;
-  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
-  void SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue);
+  void SetValue(JSContext* aCx,
+                const SourceValueType& aVal,
+                ErrorResult& aRv) override;
+  void SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue,
+                        ErrorResult& aRv);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,

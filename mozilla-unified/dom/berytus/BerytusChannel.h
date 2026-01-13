@@ -37,8 +37,9 @@ class Promise;
 
 namespace mozilla::dom {
 
-class BerytusChannel final : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
-                             public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
+class BerytusChannel final : public nsISupports, /* or NonRefcountedDOMObject if this is a non-refcounted object */
+                             public nsWrapperCache, /* Change wrapperCache in the binding configuration if you don't want this */
+                             public SupportsWeakPtr
 {
 public:
   using CreationPromise = MozPromise<RefPtr<BerytusChannel>, berytus::Failure, true>;
@@ -164,18 +165,20 @@ public:
   };
   class Attachable : public BaseAttachable {
   public:
-    virtual bool Attached() const override { return bool(mChannel); }
+    virtual bool Attached() const override { return mAttached; }
     virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override {
       if (Attached()) {
         aRv.ThrowInvalidStateError("Already attached");
         return;
       }
       mChannel = aChannel;
+      mAttached = true;
     }
   protected:
-    Attachable() : mChannel(nullptr) {}
+    Attachable() : mChannel(nullptr), mAttached(false) {}
     virtual ~Attachable() = default;
-    RefPtr<BerytusChannel> mChannel;
+    WeakPtr<BerytusChannel> mChannel;
+    bool mAttached;
   };
 };
 

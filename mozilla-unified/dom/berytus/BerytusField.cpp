@@ -22,7 +22,7 @@ namespace mozilla::dom {
 
 
 // Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusField, (mGlobal, mFieldValue, mChannel), (mCachedOptions, mCachedJson))
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusField, (mGlobal, mFieldValue), (mCachedOptions, mCachedJson))
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusField)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusField)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusField)
@@ -244,7 +244,8 @@ void BerytusField::SetValueImpl(JSContext* aCx,
   if (aValue.Value().IsBerytusEncryptedPacket()) {
     const auto& packet = aValue.Value().GetAsBerytusEncryptedPacket();
     if (mChannel) {
-      packet->Attach(mChannel, aRv);
+      RefPtr<BerytusChannel> ch = mChannel.get();
+      packet->Attach(ch, aRv);
       NS_ENSURE_TRUE_VOID(!aRv.Failed());
     }
     mFieldValue.SetValue().SetAsBerytusEncryptedPacket() = packet;

@@ -8,8 +8,10 @@ export interface CipherBoxOptions<CipherType, DecipherType> {
     decrypt: DecryptFunction<CipherType, DecipherType>;
 }
 
-export type EncryptedDictionary<T extends object, CT> = {
-    [K in keyof T]:
+export type EncryptedDictionary<T extends object, CT> =
+    CT extends T
+    ? T
+    : { [K in keyof T]:
         string extends T[K]
         ? CT
         : number extends T[K]
@@ -23,7 +25,7 @@ export type EncryptedDictionary<T extends object, CT> = {
         : T[K] extends object
         ? EncryptedDictionary<T[K], CT>
         : T[K]
-};
+    };
 
 export type DecryptedDictionary<T extends object, CT, DT> = {
     [K in keyof T]:
@@ -67,6 +69,13 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
             }
             if (this.#options.ignoreValue && this.#options.ignoreValue(input[key])) {
                 continue;
+            }
+            if (this.isCiphertextType(input[key])) {
+                throw new Error(
+                    "Encountered an already encrypted field. "
+                    + "encryptDictionary() assuems all fields "
+                    + "are plaintext."
+                );
             }
             if (
                 typeof input[key] === 'object' &&

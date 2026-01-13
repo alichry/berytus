@@ -394,15 +394,16 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
             outPromise->MaybeReject(res);
             return;
           }
+          ErrorResult rv;
           if (attr) {
             if (attr->CanSetValue(val)) {
-              if (NS_WARN_IF(!attr->SetValue(aCx, val))) {
-                outPromise->MaybeReject(NS_ERROR_FAILURE);
+              attr->SetValue(aCx, val, rv);
+              if (NS_WARN_IF(rv.Failed())) {
+                outPromise->MaybeReject(std::move(rv));
                 return;
               }
               continue;
             }
-            ErrorResult rv;
             UserAttributeMap()->RemoveAttribute(id, rv);
             if (NS_WARN_IF(rv.Failed())) {
               outPromise->MaybeReject(std::move(rv));
@@ -410,19 +411,20 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
             }
             attr = nullptr;
           }
+          RefPtr<BerytusChannel> ch = Channel();
           attr = BerytusUserAttribute::Create(
               aCx,
               GetParentObject(),
+              ch,
               id,
               attrDef.mMimeType.isSome() ? nsString(attrDef.mMimeType.ref()) : nsString(),
               attrDef.mInfo.isSome() ? nsString(attrDef.mInfo.ref()) : nsString(),
               val,
-              res);
-          if (NS_WARN_IF(NS_FAILED(res))) {
-            outPromise->MaybeReject(res);
+              rv);
+          if (NS_WARN_IF(rv.Failed())) {
+            outPromise->MaybeReject(std::move(rv));
             return;
           }
-          ErrorResult rv;
           UserAttributeMap()->AddAttribute(attr, rv);
           if (NS_WARN_IF(rv.Failed())) {
             outPromise->MaybeReject(std::move(rv));
@@ -471,19 +473,22 @@ RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccount::PopulateUserAt
         if (NS_WARN_IF(NS_FAILED(res))) {
           return MozPromise<void*, berytus::Failure, true>::CreateAndReject(berytus::Failure(res), __func__);
         }
+        RefPtr<BerytusChannel> ch = Channel();
+        ErrorResult rv;
         RefPtr<BerytusUserAttribute> newAttr = BerytusUserAttribute::Create(
           aCx,
           GetParentObject(),
+          ch,
           attr.mId.AsString(),
           attr.mMimeType.isSome() ? attr.mMimeType.ref() : nsString(),
           attr.mInfo.isSome() ? attr.mInfo.ref() : nsString(),
           value,
-          res
+          rv
         );
-        if (NS_WARN_IF(NS_FAILED(res))) {
-          return MozPromise<void*, berytus::Failure, true>::CreateAndReject(berytus::Failure(res), __func__);
+        if (NS_WARN_IF(rv.Failed())) {
+          berytus::Failure fr(rv.StealNSResult());
+          return MozPromise<void*, berytus::Failure, true>::CreateAndReject(fr, __func__);
         }
-        ErrorResult rv;
         map->AddAttribute(newAttr, rv);
         if (NS_WARN_IF(rv.Failed())) {
           berytus::Failure fr(rv.StealNSResult());
