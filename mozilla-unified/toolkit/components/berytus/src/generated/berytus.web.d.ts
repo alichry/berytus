@@ -312,7 +312,7 @@ export interface BerytusChallengeSelectKeyMessageResponse {
     response: BerytusKeyFieldValue;
 }
 export interface BerytusChallengeSignNonceMessageResponse {
-    response: ArrayBuffer;
+    response: ArrayBufferOrBerytusEncryptedPacket;
 }
 export interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
 }

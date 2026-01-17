@@ -14003,7 +14003,7 @@ bool JSValIs<BerytusChallengeSignNonceMessageResponse>(JSContext *aCx, const JS:
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(JSValIs<ArrayBuffer>(aCx, propVal, isValid)))) {
+  if (NS_WARN_IF(!(JSValIs<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, isValid)))) {
     return false;
   }
   if (!isValid) {
@@ -14027,7 +14027,7 @@ bool FromJSVal<BerytusChallengeSignNonceMessageResponse>(JSContext* aCx, JS::Han
   if (NS_WARN_IF(!JS_GetProperty(aCx, obj, "response", &propVal))) {
     return false;
   }
-  if (NS_WARN_IF(!(FromJSVal<ArrayBuffer>(aCx, propVal, aRv.mResponse)))) {
+  if (NS_WARN_IF(!(FromJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, propVal, aRv.mResponse)))) {
     return false;
   }
   
@@ -14040,8 +14040,10 @@ bool ToJSVal<BerytusChallengeSignNonceMessageResponse>(JSContext* aCx, const Ber
 
   
   JS::Rooted<JS::Value> memberVal0(aCx);
-  
-  if (NS_WARN_IF(!(ToJSVal<ArrayBuffer>(aCx, aValue.mResponse, &memberVal0)))) {
+  if (NS_WARN_IF(!aValue.mResponse.Inited())) {
+    return false;
+  }
+  if (NS_WARN_IF(!(ToJSVal<SafeVariant<ArrayBuffer, BerytusEncryptedPacket>>(aCx, aValue.mResponse, &memberVal0)))) {
     return false;
   }
   if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "response", memberVal0))) {

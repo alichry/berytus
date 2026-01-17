@@ -3286,11 +3286,14 @@ bool FromJSVal<BerytusChallengeSelectKeyMessageResponse>(JSContext* aCx, JS::Han
 template<>
 bool ToJSVal<BerytusChallengeSelectKeyMessageResponse>(JSContext* aCx, const BerytusChallengeSelectKeyMessageResponse& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusChallengeSignNonceMessageResponse {
-  ArrayBuffer mResponse;
+  SafeVariant<ArrayBuffer, BerytusEncryptedPacket> mResponse;
   BerytusChallengeSignNonceMessageResponse() = default;
-  BerytusChallengeSignNonceMessageResponse(ArrayBuffer&& aResponse) : mResponse(std::move(aResponse)) {}
+  BerytusChallengeSignNonceMessageResponse(SafeVariant<ArrayBuffer, BerytusEncryptedPacket>&& aResponse) : mResponse(std::move(aResponse)) {}
   BerytusChallengeSignNonceMessageResponse(BerytusChallengeSignNonceMessageResponse&& aOther) : mResponse(std::move(aOther.mResponse))  {}
-  
+  BerytusChallengeSignNonceMessageResponse& operator=(BerytusChallengeSignNonceMessageResponse&& aOther) {
+    mResponse = std::move(aOther.mResponse);
+    return *this;
+  }
   
   ~BerytusChallengeSignNonceMessageResponse() {}
 };

@@ -891,7 +891,7 @@ dictionary BerytusChallengeSelectKeyMessageResponse {
 
 [GenerateInit]
 dictionary BerytusChallengeSignNonceMessageResponse {
-  required ArrayBuffer response;
+  required (ArrayBuffer or BerytusEncryptedPacket) response;
 };
 
 [SecureContext, Exposed=(Window)]

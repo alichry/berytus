@@ -1709,9 +1709,7 @@
         "type": "object",
         "properties": {
           "response": {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
           }
         }
       },
