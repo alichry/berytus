@@ -260,48 +260,13 @@ typedef (BerytusPlaintextSource or BerytusCiphertextSource) BerytusDataSource;
 
 typedef (DOMString or ArrayBuffer or BerytusEncryptedPacket) BerytusDataType;
 
-/**
- * See childs of Algorithm in SubtleCrypto.webidl; see
- * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#supported_algorithms
- */
-typedef AesGcmParams BerytusEncryptionParams;
-
-[GenerateConversionToJS]
-dictionary AesGcmParamsJSON : Algorithm {
-  required Base64URLString iv;
-  Base64URLString additionalData;
-  [EnforceRange] octet tagLength;
-};
-
-typedef AesGcmParamsJSON BerytusEncryptionParamsJSON;
-
-[GenerateConversionToJS]
-dictionary BerytusEncryptedPacketJSON {
-    required BerytusEncryptionParamsJSON parameters;
-    required Base64URLString ciphertext;
-};
+[SecureContext, Exposed=(Window)]
+interface BerytusEncryptedPacket : Blob {};
 
 [SecureContext, Exposed=(Window)]
-interface BerytusEncryptedPacket {
-    /**
-     * @type {BerytusEncryptionParams}
-     */
-    [Throws]
-    readonly attribute object parameters;
-
-    [SameObject, Throws]
-    readonly attribute ArrayBuffer ciphertext;
-
-    [Throws]
-    constructor(BerytusEncryptionParams algorithm, BufferSource ciphertext);
-
-    /**
-     * Return a serialisable JavaScript object that can be
-     * sent over HTTP. Mirrors `this` interface; however,
-     * ArrayBuffers are transformed into Base64 strings.
-     */
-    [Throws]
-    BerytusEncryptedPacketJSON toJSON();
+interface BerytusJWEPacket : BerytusEncryptedPacket {
+  [Throws]
+  constructor(DOMString jweCompact);
 };enum BerytusFieldType {
   "Identity",
   "ForeignIdentity",
@@ -596,7 +561,7 @@ dictionary BerytusKeyDerivationParams /*: HkdfParams */ {
 [GenerateInit, GenerateConversionToJS]
 dictionary BerytusKeyGenParams /*: AesKeyGenParams */ {
     required DOMString name; // -> AES-GCM
-    required [EnforceRange] unsigned short length;
+    required [EnforceRange] unsigned short length; // -> 256
 };
 
 /**
@@ -624,6 +589,11 @@ dictionary BerytusKeyExchangeSession {
     required DOMString id;
     required unsigned long timestamp;
     required BerytusKeyExchangeSessionFingerprint fingerprint;
+    /**
+     * A list of URLs for which ciphertext would be transmitted to.
+     * TODO(berytus): Come up with a better name
+     */
+    sequence<DOMString> unmaskAllowlist;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -784,7 +754,7 @@ dictionary BerytusUserAttributeJSON {
     DOMString info;
     DOMString mimeType;
     required BerytusUserAttributeValueEncodingType encoding;
-    required (DOMString /*or Base64URLString*/ or BerytusEncryptedPacketJSON) value;
+    required DOMString value;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -921,7 +891,7 @@ dictionary BerytusChallengeSelectKeyMessageResponse {
 
 [GenerateInit]
 dictionary BerytusChallengeSignNonceMessageResponse {
-  required ArrayBuffer response;
+  required (ArrayBuffer or BerytusEncryptedPacket) response;
 };
 
 [SecureContext, Exposed=(Window)]

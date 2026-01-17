@@ -1,0 +1,57 @@
+---
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+interface Props {
+    containerClass?: string;
+    spoilerClass?: string;
+    spoilerHeight?: "full";
+    default?: number;
+}
+const { containerClass, spoilerClass, spoilerHeight, default: defaultSlot = 0 } = Astro.props;
+
+const labels = Object.keys(Astro.slots).reverse();
+const spoilers = await Promise.all(labels.map(l => Astro.slots.render(l)));
+const uniqueId = `${Math.random().toString(36).substring(2, 8)}`;
+
+const barHeight = "41px";
+---
+
+<div class:list={[containerClass, "hozcontainer", spoilerHeight === "full" && "h-full"]}>
+    <div class:list={["bar", "flex flex-row items-center bg-slate-700 border-b border-white/50"]}>
+        {labels.map((l, i) =>
+            <details
+                name={`HozTab-${uniqueId}`}
+                class="[&[open]>summary]:bg-slate-900! last:[&>summary]:border-0"
+                open={i === defaultSlot ? true : false}
+            >
+                <summary class="list-none cursor-pointer hover:bg-slate-800 px-4 py-2 text-white hover:bg-slate-800/0.6 border-r border-white/50">
+                    {l}
+                </summary>
+                <div class:list={["spoiler", spoilerClass]}>
+                    <Fragment set:html={spoilers[i]} />
+                </div>
+            </details>
+        )}
+    </div>
+</div>
+
+<style is:global lang="scss" define:vars={{
+    barHeight,
+    spoilerHeight: spoilerHeight === "full" ? `calc(100% - ${barHeight})` : "initial"
+}}>
+    .hozcontainer {
+        position: relative;
+    }
+    .bar {
+        height: var(--barHeight);
+        overflow-y: hidden;
+    }
+    .spoiler {
+        position: absolute;
+        top: var(--barHeight);
+        left: 0;
+        height: var(--spoilerHeight);
+    }
+</style>

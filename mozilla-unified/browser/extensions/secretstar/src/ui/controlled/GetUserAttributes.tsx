@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
-import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPageContextRoute, useSettings, useIdentity } from "../../hooks";
+import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox } from "../../hooks";
 import GetUserAttributesView from "@components/GetUserAttributesView";
-import type { UserAttributeKey } from "@berytus/types";
+import type { UserAttributeKey, UserAttributes as BerytusUserAttributes } from "@berytus/types";
 import { UserAttribute } from "@root/db/db";
 import { Session, db, RRequiredUserAttributes, RUserAttributes } from '@root/db/db';
 import { useLiveQuery } from "dexie-react-hooks";
@@ -10,6 +10,8 @@ import { UserAttributes } from "@root/db";
 import { useCallback, useEffect, useState } from "react";
 import { userAttributesLabels } from "../utils/userAttributesLabels";
 import { stringifyUserAttributeValue } from "../components/AccountView";
+import { InternalError } from "@root/errors/InternalError";
+import ErrorContainer from "../components/ErrorContainer";
 
 function getMissingAttributes(requiredAttributes: RRequiredUserAttributes, userAttributes: Partial<UserAttributes>) {
     return (Object.keys(requiredAttributes) as Array<keyof typeof requiredAttributes>)
@@ -31,12 +33,17 @@ function hasAllRequiredUserAttributes(requiredAttributes: RRequiredUserAttribute
     return missing.length === 0;
 }
 
+function isAllAttributesOptional(requiredAttributes: RRequiredUserAttributes): boolean {
+    return (Object.values(requiredAttributes) as Array<boolean>)
+        .every(v => v === false);
+}
+
 export default function GetUserAttributes() {
     const settings = useSettings();
     const identity = useIdentity();
     const [error, setError] = useState<Error>();
     const { sessionId, afterVersion } = useParams<string>();
-    const session = useLiveQuery(
+    const query = useLiveQuery(
         async () => {
             if (! sessionId) {
                 return;
@@ -48,25 +55,56 @@ export default function GetUserAttributes() {
             if (afterVersion && record.version <= Number(afterVersion) ) {
                 return;
             }
-            return record;
+            const channel = await db.channel.get(record.channel.id);
+            if (! channel) {
+                setError(new Error('Channel not found!'));
+                return;
+            }
+            return {
+                session: record,
+                channel
+            };
         }
     );
+    const { session, channel } = query || {};
     const tabId = session?.context.document.id;
     const navigate = useNavigateWithPageContextRoute();
     const onProcessed = useCallback(() => {
         navigate('/loading');
     }, [navigate]);
+    const { cipherbox, loading: cipherboxLoading } = useCipherbox(channel);
+    const preResolveCb = useCallback(async (value: BerytusUserAttributes): Promise<BerytusUserAttributes> => {
+        if (cipherboxLoading) {
+            throw new InternalError("Cipherbox not loaded in CreateField preResolve()");
+        }
+        if (! cipherbox) {
+            return value; // e2e not enabled
+        }
+        return Promise.all(value.map(async (v) => {
+            const encrypted = await cipherbox.encrypt(v.value);
+                if (encrypted === null) {
+                throw new InternalError("cipherbox.encrypt() mistakenly returned null for non-null value");
+            }
+            return {
+                ...v,
+                value: encrypted
+            };
+        }))
+    }, [cipherboxLoading, cipherbox]);
     const { maybeResolve, maybeReject } = useRequest<"AccountCreation_GetUserAttributes">(
         session?.requests[session?.requests.length - 1],
-        { onProcessed }
+        {
+            onProcessed,
+            preResolve: preResolveCb
+        }
     );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
     const requiredUserAttributes = session?.requiredUserAttributes;
     const user = identity?.userAttributes;
-    const loaded =  settings && maybeResolve && maybeReject && session && requiredUserAttributes && identity;
+    const loaded = !cipherboxLoading && settings && maybeResolve && maybeReject && session && requiredUserAttributes && identity;
 
-    const approve = async (selectedUserAttributes: UserAttributeKey[], overrides: Partial<Record<UserAttributeKey, UserAttribute>>): Promise<boolean> => {
+    const approve = useCallback(async (selectedUserAttributes: UserAttributeKey[], overrides: Partial<Record<UserAttributeKey, UserAttribute>>): Promise<boolean> => {
         if (! loaded) {
             setError(new Error('Approve called before all the goods have been loaded'));
             return false;
@@ -114,7 +152,7 @@ export default function GetUserAttributes() {
             return false;
         }
         return true;
-    }
+    }, [maybeResolve]);
 
     useEffect(() => {
         if (! loaded) {
@@ -130,6 +168,9 @@ export default function GetUserAttributes() {
             ) {
                 return approve((Object.keys(requiredUserAttributes) as Array<keyof typeof session.requiredUserAttributes>), {});
             }
+            if (isAllAttributesOptional(requiredUserAttributes) && (!user || Object.keys(user).length === 0)) {
+                return approve([], {});
+            }
             return false;
         }
         run()
@@ -142,9 +183,12 @@ export default function GetUserAttributes() {
                 setSeamlessTried(true);
                 setError(e);
             })
-    }, [loaded]);
+    }, [approve, loaded]);
 
     if (! loaded || ! seamlessTried) {
+        if (error) {
+            return <ErrorContainer error={error} />;
+        }
         // BRTTODO: Put an error since the session record should exist by now.
         // Or is that the useLiveQuery is still fetching obj...
         // Maybe use a different hook.

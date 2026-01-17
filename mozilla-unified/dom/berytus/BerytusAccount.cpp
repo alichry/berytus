@@ -1,3 +1,9 @@
+/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim:set ts=2 sw=2 sts=2 et cindent: */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 #include "mozilla/dom/BerytusAccount.h"
 #include "BerytusUserAttributeMap.h"
 #include "js/Realm.h"
@@ -100,6 +106,12 @@ already_AddRefed<Promise> BerytusAccount::AddFields(
           RefPtr<BerytusField> field = aFields.ElementAt(i);
           auto& valueProxy = aArray.ElementAt(i);
           ErrorResult rv;
+          RefPtr<BerytusChannel> ch = Channel();
+          field->Attach(ch, rv);
+          if (NS_WARN_IF(rv.Failed())) {
+            outPromise->MaybeReject(std::move(rv));
+            return;
+          }
           if (field->GetValue().IsNull()) {
             UpdateFieldValueFromProxy(aCx, field, std::move(valueProxy), rv);
             if (NS_WARN_IF(rv.Failed())) {
@@ -382,15 +394,16 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
             outPromise->MaybeReject(res);
             return;
           }
+          ErrorResult rv;
           if (attr) {
             if (attr->CanSetValue(val)) {
-              if (NS_WARN_IF(!attr->SetValue(aCx, val))) {
-                outPromise->MaybeReject(NS_ERROR_FAILURE);
+              attr->SetValue(aCx, val, rv);
+              if (NS_WARN_IF(rv.Failed())) {
+                outPromise->MaybeReject(std::move(rv));
                 return;
               }
               continue;
             }
-            ErrorResult rv;
             UserAttributeMap()->RemoveAttribute(id, rv);
             if (NS_WARN_IF(rv.Failed())) {
               outPromise->MaybeReject(std::move(rv));
@@ -398,19 +411,20 @@ already_AddRefed<Promise> BerytusAccount::SetUserAttributes(
             }
             attr = nullptr;
           }
+          RefPtr<BerytusChannel> ch = Channel();
           attr = BerytusUserAttribute::Create(
               aCx,
               GetParentObject(),
+              ch,
               id,
               attrDef.mMimeType.isSome() ? nsString(attrDef.mMimeType.ref()) : nsString(),
               attrDef.mInfo.isSome() ? nsString(attrDef.mInfo.ref()) : nsString(),
               val,
-              res);
-          if (NS_WARN_IF(NS_FAILED(res))) {
-            outPromise->MaybeReject(res);
+              rv);
+          if (NS_WARN_IF(rv.Failed())) {
+            outPromise->MaybeReject(std::move(rv));
             return;
           }
-          ErrorResult rv;
           UserAttributeMap()->AddAttribute(attr, rv);
           if (NS_WARN_IF(rv.Failed())) {
             outPromise->MaybeReject(std::move(rv));
@@ -459,19 +473,22 @@ RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccount::PopulateUserAt
         if (NS_WARN_IF(NS_FAILED(res))) {
           return MozPromise<void*, berytus::Failure, true>::CreateAndReject(berytus::Failure(res), __func__);
         }
+        RefPtr<BerytusChannel> ch = Channel();
+        ErrorResult rv;
         RefPtr<BerytusUserAttribute> newAttr = BerytusUserAttribute::Create(
           aCx,
           GetParentObject(),
+          ch,
           attr.mId.AsString(),
           attr.mMimeType.isSome() ? attr.mMimeType.ref() : nsString(),
           attr.mInfo.isSome() ? attr.mInfo.ref() : nsString(),
           value,
-          res
+          rv
         );
-        if (NS_WARN_IF(NS_FAILED(res))) {
-          return MozPromise<void*, berytus::Failure, true>::CreateAndReject(berytus::Failure(res), __func__);
+        if (NS_WARN_IF(rv.Failed())) {
+          berytus::Failure fr(rv.StealNSResult());
+          return MozPromise<void*, berytus::Failure, true>::CreateAndReject(fr, __func__);
         }
-        ErrorResult rv;
         map->AddAttribute(newAttr, rv);
         if (NS_WARN_IF(rv.Failed())) {
           berytus::Failure fr(rv.StealNSResult());

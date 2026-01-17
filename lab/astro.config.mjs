@@ -7,6 +7,8 @@ import node from "@astrojs/node";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 import fs from "node:fs";
+import svgr from "vite-plugin-svgr";
+import simpleStackQuery from "simple-stack-query";
 
 // https://astro.build/config
 export default defineConfig({
@@ -14,9 +16,10 @@ export default defineConfig({
   adapter: node({
     mode: "standalone"
   }),
-  integrations: [react()],
+  publicDir: "./public",
+  integrations: [react(), simpleStackQuery()],
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss(), svgr()],
     server: {
       https: {
         key: fs.readFileSync(process.env.SERVER_KEY_PATH),

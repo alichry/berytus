@@ -3,19 +3,29 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import FetchMonitor from "../components/FetchMonitor.astro";
+import HozTab from "../components/HozTab.astro";
 import JSConsole from "../components/JSConsole.astro";
 import ServerInfo from "../components/ServerInfo.astro";
 import SiteLayout from "../layouts/SiteLayout.astro";
 ---
 <SiteLayout>
-    <div id="root" class="flex flex-row flex-wrap h-full">
+    <div id="root" class="flex flex-row flex-wrap items-start h-full">
         <ServerInfo
             server:defer
             class:list={"server-container h-full flex-1 max-w-lg"}
         />
-        <JSConsole
-            server:defer
-            class="h-full flex-1 overflow-x-auto overflow-y-auto"
-        />
+        <HozTab
+            containerClass="flex-1"
+            spoilerClass="w-full"
+            spoilerHeight="full"
+        >
+            <JSConsole
+                slot="JSConsole"
+                server:defer
+                class="flex-1 overflow-x-auto overflow-y-auto"
+            />
+            <FetchMonitor slot="Fetch Monitor" class="h-full" />
+        </HozTab>
     </div>
 </SiteLayout>

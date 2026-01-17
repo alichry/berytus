@@ -11,12 +11,12 @@
 #include "js/Value.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/HoldDropJSObjects.h"
-#include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusEncryptedPacketBinding.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
-#include "mozilla/dom/RootedDictionary.h"
 #include "mozilla/dom/BerytusFieldValueDictionary.h"
+#include "nsString.h"
+#include "mozilla/dom/ToJSValue.h"
 
 namespace mozilla::dom {
 
@@ -184,12 +184,11 @@ void BerytusField::AddValueToJSON(JSContext* aCx,
     }
     const auto& intVal = mFieldValue.Value();
     if (intVal.IsBerytusEncryptedPacket()) {
-      BerytusEncryptedPacketJSON packetJson;
-      intVal.GetAsBerytusEncryptedPacket()->ToJSON(packetJson, aRv);
-      if (NS_WARN_IF(aRv.Failed())) {
-        return;
-      }
-      if (NS_WARN_IF(!packetJson.ToObjectInternal(aCx, &value))) {
+      const auto& packet = intVal.GetAsBerytusEncryptedPacket();
+      const auto exposed = packet->Exposed();
+      const nsTDependentSubstring<char> exposedView((char*) exposed.data(),
+                                                    exposed.Length());
+      if (NS_WARN_IF(!ToJSValue(aCx, exposedView, &value))) {
         aRv.Throw(NS_ERROR_FAILURE);
         return;
       }
@@ -243,7 +242,13 @@ void BerytusField::SetValueImpl(JSContext* aCx,
     return;
   }
   if (aValue.Value().IsBerytusEncryptedPacket()) {
-    mFieldValue.SetValue().SetAsBerytusEncryptedPacket() = aValue.Value().GetAsBerytusEncryptedPacket();
+    const auto& packet = aValue.Value().GetAsBerytusEncryptedPacket();
+    if (mChannel) {
+      RefPtr<BerytusChannel> ch = mChannel.get();
+      packet->Attach(ch, aRv);
+      NS_ENSURE_TRUE_VOID(!aRv.Failed());
+    }
+    mFieldValue.SetValue().SetAsBerytusEncryptedPacket() = packet;
     return;
   }
   if (aValue.Value().IsBerytusFieldValueDictionary()) {

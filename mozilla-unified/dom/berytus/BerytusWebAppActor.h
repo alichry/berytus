@@ -27,7 +27,6 @@ public:
   NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusWebAppActor)
 
 public:
-  virtual already_AddRefed<BerytusWebAppActor> Clone() const = 0;
   virtual BerytusWebAppActorType Type() const = 0;
 
 protected:

@@ -1,0 +1,48 @@
+---
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import FetchEntriesTable from './FetchEntriesTable';
+import FetchMonitorManager, { FetchMonitorSource } from './FetchMonitorManager';
+
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+interface Props {
+    class?: string;
+}
+const { class: className }  = Astro.props;
+---
+<RootElement>
+    <div class:list={[className, "bg-slate-900 overflow-auto"]}>
+        <div class="flex flex-row flex-wrap gap-8 text-white ml-2 mr-4 pt-1 mb-2">
+            <button
+                class="bg-teal-600 cursor-pointer rounded px-4 py-1 self-center text-sm"
+                data-target="clearbtn">
+                Clear
+            </button>
+            <div class="flex-1"/>
+            <FetchMonitorManager
+                client:load
+                source={FetchMonitorSource.ServiceWorker}
+            />
+            <FetchMonitorManager
+                client:load
+                source={FetchMonitorSource.WebExtensions}
+            />
+        </div>
+        <FetchEntriesTable client:only />
+    </div>
+</RootElement>
+
+
+<script>
+    import {
+        fetchEntries
+    } from '../signals/fetch-entries.js';
+    RootElement.ready(async $ => {
+        $("clearbtn").onclick = () => fetchEntries.set([]);
+    });
+</script>

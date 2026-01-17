@@ -35,18 +35,9 @@ function clone(obj) {
 }
 
 function createPacket() {
-    const params = {
-        name: "AES-GCM",
-        iv: new Uint8Array([1, 2, 3, 4]),
-        additionalData: new Uint8Array([5, 6, 7, 8]),
-        tagLength: 128
-    };
-    const ciphertext = new Uint8Array([9, 10, 11, 12]);
-    const packet = new BerytusEncryptedPacket(
-        params,
-        ciphertext
+    return new BerytusJWEPacket(
+        "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwiY3R5IjoidGV4dC9wbGFpbjtjaGFyc2V0PXV0Zi04IiwidHlwIjoiSk9TRSJ9..NIS9k6ZROLy_mgjL.Vl5ufGUlvxXcmoIAN-UaxIfhZQ.NTMhhZ23xUslkP_NIac83g"
     );
-    return packet;
 }
 
 test(() => {

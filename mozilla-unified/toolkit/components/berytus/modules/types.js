@@ -28,6 +28,8 @@ var EChallengeType;
     EChallengeType["DigitalSignature"] = "DigitalSignature";
     EChallengeType["Password"] = "Password";
     EChallengeType["SecureRemotePassword"] = "SecureRemotePassword";
+    // TODO(berytus): Test this, I think we have mooved
+    // to OffChannelOtp
     EChallengeType["ForeignIdentityOtp"] = "ForeignIdentityOtp";
 })(EChallengeType || (EChallengeType = {}));
 var EChallengeStatus;

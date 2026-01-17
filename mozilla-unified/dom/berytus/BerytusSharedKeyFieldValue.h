@@ -52,8 +52,6 @@ public:
     const mozilla::dom::ArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket& aPrivateKeyValue,
     ErrorResult& aRv
   );
-
-  already_AddRefed<BerytusSharedKeyFieldValue> Clone(nsresult* aRv);
 };
 
 } // namespace mozilla::dom

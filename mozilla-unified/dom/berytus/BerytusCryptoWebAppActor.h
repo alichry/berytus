@@ -48,8 +48,6 @@ public:
   );
 
   void GetEd25519Key(nsString& aRetVal) const;
-
-  already_AddRefed<BerytusWebAppActor> Clone() const override;
 };
 
 } // namespace mozilla::dom

@@ -4,306 +4,489 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "ErrorList.h"
-#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
 #include "mozilla/dom/BerytusEncryptedPacket.h"
-#include "js/ArrayBuffer.h"
-#include "mozilla/Base64.h"
-#include "mozilla/dom/WebCryptoCommon.h" //WEBCRYPTO_ALG_AES_GCM
-#include "js/PropertyAndElement.h"
+#include "BerytusEncryptedPacket.h"
+#include "BerytusKeyAgreementParameters.h"
+#include "mozilla/RefPtr.h"
+#include "mozilla/Span.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/berytus/HttpObserver.h"
+#include "mozilla/berytus/MaskManagerChild.h"
+#include "mozilla/berytus/PMaskManagerChild.h"
+#include "mozilla/berytus/UnmaskerChild.h"
+#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
+#include "mozilla/dom/BerytusX509Extension.h"
+#include "mozilla/dom/FetchDriver.h"
+#include "mozilla/dom/MemoryBlobImpl.h"
+#include "mozilla/dom/URLSearchParams.h"
+#include "mozilla/dom/FormData.h"
+#include "mozilla/dom/Fetch.h"
+#include "nsCycleCollectionParticipant.h"
+#include "nsDebug.h"
+#include "nsIHttpProtocolHandler.h"
+#include "nsISupports.h"
+#include "nsNetUtil.h"
+#include "mozilla/dom/BerytusChannel.h"
+#include "nsString.h"
+#include "mozilla/dom/Request.h"
+#include "nsIHttpChannel.h"
+#include "mozilla/dom/BerytusChannelContainer.h"
 
 namespace mozilla::dom {
 
-// Only needed for refcounted objects.
-//NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusEncryptedPacket, mGlobal)
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_WITH_JS_MEMBERS(BerytusEncryptedPacket, (mGlobal), (mCachedParams, mCachedCiphertextArrayBuffer))
+#define CONCEALED_HINT "[BerytusJWEPacket.CONCEALED]"
 
-NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusEncryptedPacket)
-NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusEncryptedPacket)
-NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusEncryptedPacket)
-  NS_WRAPPERCACHE_INTERFACE_MAP_ENTRY
-  NS_INTERFACE_MAP_ENTRY(nsISupports)
-NS_INTERFACE_MAP_END
+static mozilla::LazyLogModule sLogger("berytus_fetch_observer");
 
-BerytusEncryptionParams_Impl::~BerytusEncryptionParams_Impl() {}
-
-BerytusAesGcmParams_Impl::BerytusAesGcmParams_Impl(CryptoBuffer&& aIv,
-                         CryptoBuffer&& aAdditionalData,
-                         const uint8_t& aTagLen) : mIv(std::move(aIv)),
-                                            mAdditionalData(std::move(aAdditionalData)),
-                                            mTagLen(aTagLen) {
-
-}
-
-BerytusAesGcmParams_Impl::BerytusAesGcmParams_Impl(
-  BerytusAesGcmParams_Impl&& aOther) : BerytusAesGcmParams_Impl(std::move(aOther.mIv), std::move(aOther.mAdditionalData), aOther.mTagLen) {
-
-}
-
-BerytusAesGcmParams_Impl::~BerytusAesGcmParams_Impl() {
-
-}
-
-BerytusAesGcmParams_Impl*
-BerytusAesGcmParams_Impl::FromDictionary(const AesGcmParams& aDict,
-                                   nsresult& aRv) {
-  CryptoBuffer iv;
-  CryptoBuffer addData;
-  if (!iv.Assign(aDict.mIv)) {
-    aRv = NS_ERROR_DOM_SECURITY_ERR;
+template <>
+BerytusEncryptedPacket* TryDowncastBlob(Blob* aBlob) {
+  MOZ_ASSERT(aBlob);
+  if (!aBlob) {
     return nullptr;
   }
-
-  if (aDict.mAdditionalData.WasPassed() && !addData.Assign(aDict.mAdditionalData.Value())) {
-    aRv = NS_ERROR_DOM_SECURITY_ERR;
+  if (!aBlob->HasBerytusEncryptedPacketInterface()) {
     return nullptr;
   }
-  if (!aDict.mTagLength.WasPassed()) {
-    aRv = NS_ERROR_DOM_SECURITY_ERR;
-    return nullptr;
-  }
-  aRv = NS_OK;
-  return new BerytusAesGcmParams_Impl(
-    std::move(iv),
-    std::move(addData),
-    aDict.mTagLength.Value()
-  );
+  return reinterpret_cast<BerytusEncryptedPacket*>(aBlob);
 }
 
-void BerytusAesGcmParams_Impl::GetAlgorithm(nsString& aRv) {
-  aRv.Assign(NS_ConvertASCIItoUTF16(WEBCRYPTO_ALG_AES_GCM));
-}
-
-void BerytusAesGcmParams_Impl::AsDictionary(JSContext* aCx,
-                              JS::Heap<JSObject*>& aObj,
-                              JS::MutableHandle<JSObject*> aRetVal,
-                              ErrorResult& aErr) {
-  //JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
-  aObj = JS_NewPlainObject(aCx);
-  JS::Rooted<JSObject*> obj(aCx, aObj.get());
-
-  JSObject* ivObj = ArrayBuffer::Create(aCx, mIv, aErr);
-  if (NS_WARN_IF(aErr.Failed())) {
-    return;
+bool BerytusEncryptedPacket::CreateMaskContent(BerytusEncryptedPacket::Content& aMask) {
+  uint64_t len = sizeof(CONCEALED_HINT) - 1;
+  aMask.mBuf.reset((uint8_t *) malloc(len));
+  if (NS_WARN_IF(!aMask.mBuf)) {
+    return false;
   }
-  JS::Rooted<JS::Value> iv(aCx, JS::ObjectValue(*ivObj));
-  if (NS_WARN_IF(aErr.Failed())) {
-    return;
-  }
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "iv", iv))) {
-    aErr.Throw(NS_ERROR_FAILURE);
-    return;
-  }
-
-  if (mAdditionalData.Length() > 0) {
-    JSObject* addDataObj = ArrayBuffer::Create(aCx, mAdditionalData, aErr);
-    if (NS_WARN_IF(aErr.Failed())) {
-      return;
-    }
-    JS::Rooted<JS::Value> addData(aCx, JS::ObjectValue(*addDataObj));
-
-    if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "additionalData", addData))) {
-      aErr.Throw(NS_ERROR_FAILURE);
-      return;
-    }
-  }
-  JS::Rooted<JS::Value> tagLen(aCx, JS::Int32Value(mTagLen));
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "tagLength", tagLen))) {
-    aErr.Throw(NS_ERROR_FAILURE);
-    return;
-  }
-
-  JS::Rooted<JS::Value> name(aCx, JS::StringValue(JS_NewStringCopyZ(aCx, WEBCRYPTO_ALG_AES_GCM)));
-  if (NS_WARN_IF(!JS_SetProperty(aCx, obj, "name", name))) {
-    aErr.Throw(NS_ERROR_FAILURE);
-    return;
-  }
-  aRetVal.set(obj);
-}
-
-nsresult BerytusAesGcmParams_Impl::ToJSON(BerytusEncryptionParamsJSON& aRv) {
-  nsAutoCString ivBase64Url, additionalDataBase64Url;
-  nsresult res;
-  aRv.mName.Assign(NS_ConvertASCIItoUTF16(WEBCRYPTO_ALG_AES_GCM));
-  res = Base64URLEncode(
-      mIv.Length(), mIv.Elements(),
-      Base64URLEncodePaddingPolicy::Omit, ivBase64Url);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    return NS_ERROR_DOM_SECURITY_ERR;
-  }
-  aRv.mIv = NS_ConvertASCIItoUTF16(ivBase64Url);
-
-  if (mAdditionalData.Length() > 0) {
-    res = Base64URLEncode(
-      mAdditionalData.Length(), mAdditionalData.Elements(),
-      Base64URLEncodePaddingPolicy::Omit, additionalDataBase64Url);
-    if (NS_WARN_IF(NS_FAILED(res))) {
-      return NS_ERROR_DOM_SECURITY_ERR;
-    }
-    aRv.mAdditionalData.Construct(NS_ConvertASCIItoUTF16(additionalDataBase64Url));
-  }
-
-  aRv.mTagLength.Construct(mTagLen);
-  return NS_OK;
-}
-
-BerytusEncryptionParams_Impl* BerytusAesGcmParams_Impl::Clone(nsresult* aRv) {
-  CryptoBuffer copiedIv;
-  CryptoBuffer copiedAddData;
-  if (!copiedIv.Assign(mIv)) {
-    *aRv = NS_ERROR_OUT_OF_MEMORY;
-    return nullptr;
-  }
-  if (!copiedAddData.Assign(mAdditionalData)) {
-    *aRv = NS_ERROR_OUT_OF_MEMORY;
-    return nullptr;
-  }
-  *aRv = NS_OK;
-  return new BerytusAesGcmParams_Impl(std::move(copiedIv),
-                                      std::move(copiedAddData),
-                                      mTagLen);
+  aMask.mLen = len;
+  memcpy(aMask.mBuf.get(), CONCEALED_HINT, aMask.mLen);
+  return true;
 }
 
 BerytusEncryptedPacket::BerytusEncryptedPacket(
-  nsIGlobalObject* aGlobal,
-  BerytusEncryptionParams_Impl* aParams,
-  CryptoBuffer&& aCiphertext
-) : mGlobal(aGlobal),
-    mParams(aParams),
-    mCiphertext(std::move(aCiphertext)),
-    mCachedParams(nullptr),
-    mCachedCiphertextArrayBuffer(nullptr)
-{
-  mozilla::HoldJSObjects(this);
+    nsIGlobalObject* aGlobal,
+    Content&& aExposedContent,
+    const bool& aConceal) :
+        Blob(aGlobal,
+            MemoryBlobImpl::CreateWithLastModifiedNow(
+            aExposedContent.mBuf.get(),
+            aExposedContent.mLen,
+            u"BerytusJWEPacket"_ns,
+            // TODO(berytus): Content type should always be application/jose
+            aConceal ? u"application/jose"_ns : u"text/plain"_ns,
+            RTPCallerType::Normal).take()),
+        mGlobal(aGlobal), /* mGlobal will live as long as it does under Blob */
+        mExposedContent(Span<uint8_t>(aExposedContent.mBuf.release(), aExposedContent.mLen)),
+        mConcealed(aConceal) {
+  MOZ_ASSERT(aExposedContent.mBuf.get() == nullptr);
 }
 
-BerytusEncryptedPacket::BerytusEncryptedPacket(
-  BerytusEncryptedPacket&& aOther) : mGlobal(std::move(aOther.mGlobal)),
-                                     mParams(std::move(aOther.mParams)),
-                                     mCiphertext(std::move(aOther.mCiphertext)),
-                                     mCachedParams(std::move(aOther.mCachedParams)),
-                                     mCachedCiphertextArrayBuffer(std::move(aOther.mCachedCiphertextArrayBuffer)) {
-  mozilla::HoldJSObjects(this);
-  aOther.mParams = nullptr; // do not permit the moved packet free the params.
-}
+BerytusEncryptedPacket::~BerytusEncryptedPacket() {}
 
-BerytusEncryptedPacket::~BerytusEncryptedPacket() {
-  mozilla::DropJSObjects(this);
-  delete mParams;
-  // Add |MOZ_COUNT_DTOR(BerytusEncryptedPacket);| for a non-refcounted object.
-}
-
-already_AddRefed<BerytusEncryptedPacket> BerytusEncryptedPacket::Constructor(
-  const GlobalObject& aGlobal,
-  const BerytusEncryptionParams& aParamsDict,
-  const ArrayBufferViewOrArrayBuffer& aCiphertext,
-  ErrorResult& aErr
-) {
-  nsresult res;
-  nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
-  if (!global) {
-    aErr.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
-  CryptoBuffer ciph;
-  if (!ciph.Assign(aCiphertext)) {
-    aErr.Throw(NS_ERROR_DOM_SECURITY_ERR);
-    return nullptr;
-  }
-
-  BerytusEncryptionParams_Impl* encParams = BerytusAesGcmParams_Impl::FromDictionary(
-    aParamsDict,
-    res
-  );
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    aErr.Throw(res);
-    return nullptr;
-  }
-
-  RefPtr<BerytusEncryptedPacket> obj = new BerytusEncryptedPacket(
-    global,
-    encParams,
-    std::move(ciph)
-  );
-  return obj.forget();
-}
-
-void BerytusEncryptedPacket::GetParameters(JSContext* aCx,
-                    JS::MutableHandle<JSObject*> aRetVal,
-                    ErrorResult& aErr) {
-  if (! mCachedParams) {
-    //JS::Rooted<JSObject*> obj(aCx);
-    // mParams->AsDictionary(aCx, &obj, aErr);
-    mParams->AsDictionary(aCx, mCachedParams, aRetVal, aErr);
-    if (NS_WARN_IF(aErr.Failed())) {
-      return;
-    }
-    //mCachedParams.set(obj);
-    MOZ_ASSERT(mCachedParams);
-    return;
-  }
-  aRetVal.set(mCachedParams);
-}
-
-void BerytusEncryptedPacket::GetCiphertext(
-  JSContext* aCx,
-  JS::MutableHandle<JSObject*> aRetVal,
-  ErrorResult& aErr
-) {
-  if (! mCachedCiphertextArrayBuffer) {
-    mCachedCiphertextArrayBuffer = ArrayBuffer::Create(aCx, mCiphertext, aErr);
-    if (NS_WARN_IF(aErr.Failed())) {
-      return;
-    }
-  }
-  aRetVal.set(mCachedCiphertextArrayBuffer);
-}
-
-void BerytusEncryptedPacket::ToJSON(BerytusEncryptedPacketJSON& aRetVal, ErrorResult& aErr) {
-  nsAutoCString ciphertextBase64Url;
-  nsresult res;
-  res = Base64URLEncode(
-      mCiphertext.Length(), mCiphertext.Elements(),
-      Base64URLEncodePaddingPolicy::Omit, ciphertextBase64Url);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    aErr.Throw(res);
-    return;
-  }
-  aRetVal.mCiphertext = NS_ConvertASCIItoUTF16(ciphertextBase64Url);
-  BerytusEncryptionParamsJSON paramsJson;
-  res = mParams->ToJSON(aRetVal.mParameters);
-  if (NS_WARN_IF(NS_FAILED(res))) {
-    aErr.Throw(res);
-    return;
-  }
+bool BerytusEncryptedPacket::HasBerytusEncryptedPacketInterface() const {
+  return true;
 }
 
 nsIGlobalObject* BerytusEncryptedPacket::GetParentObject() const { return mGlobal; }
 
-JSObject*
-BerytusEncryptedPacket::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto)
-{
-  return BerytusEncryptedPacket_Binding::Wrap(aCx, this, aGivenProto);
+Span<const uint8_t> BerytusEncryptedPacket::Exposed() const {
+  return mExposedContent;
 }
 
-already_AddRefed<BerytusEncryptedPacket> BerytusEncryptedPacket::Clone(nsresult* aRv)
-{
-  BerytusEncryptionParams_Impl* copiedParams = mParams->Clone(aRv);
-  if (*aRv != NS_OK) {
-    return nullptr;
-  }
-  CryptoBuffer copiedCiphertext;
-  if (!copiedCiphertext.Assign(mCiphertext)) {
-    *aRv = NS_ERROR_OUT_OF_MEMORY;
-    return nullptr;
-  }
-  RefPtr<BerytusEncryptedPacket> packet = new BerytusEncryptedPacket(
-    mGlobal,
-    copiedParams,
-    std::move(copiedCiphertext)
-  );
-  *aRv = NS_OK;
-  return packet.forget();
+bool BerytusEncryptedPacket::Attached() const {
+  return mAttachedChannelId.Length() > 0;
 }
 
-} // namespace mozilla::dom
+void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
+                                    ErrorResult& aRv) {
+  MOZ_ASSERT(aChannel);
+  if (Attached()) {
+    aRv.ThrowInvalidStateError("Packet already attached.");
+    return;
+  }
+  RefPtr<BerytusKeyAgreementParameters> kap =
+    aChannel->GetKeyAgreementParams();
+  if (!kap) {
+    aRv.ThrowInvalidStateError("Key agreement not prepared.");
+    return;
+  }
+  MOZ_ASSERT(mUrlAllowlist.Length() == 0);
+  for (const auto& url : kap->GetSession()->GetUnmaskAllowlist()) {
+    nsresult rv;
+    already_AddRefed<berytus::UrlSearchExpression> search = berytus::UrlSearchExpression::Create(NS_ConvertUTF16toUTF8(url), rv);
+    if (NS_WARN_IF(NS_FAILED(rv))) {
+      mUrlAllowlist.Clear();
+      aRv.Throw(rv);
+      return;
+    }
+    if (NS_WARN_IF(!mUrlAllowlist.AppendElement(search.take(), fallible))) {
+      aRv.ThrowTypeError("Out of memory");
+      mUrlAllowlist.Clear();
+      return;
+    }
+  }
+  RefPtr<BerytusChannelContainer> container =
+    BerytusChannelContainer::GetInstance(mGlobal->GetAsInnerWindow());
+  if (NS_WARN_IF(!container)) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  RefPtr<BerytusEncryptedPacket> self = this;
+  RefPtr<PacketObserver> observer = new PacketObserver(self);
+  // TODO(berytus): Check... we should be using a WeakMap<BerytusEncryptedPacket, PacketObserver>
+  container->HoldObserver(observer);
+  mAttachedChannelId.Assign(aChannel->ID());
+}
+
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    const nsCString& aReqUrl, ErrorResult& aRv) {
+  bool discard;
+  return Unmask(aReqUrl, discard, aRv);
+}
+
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    const nsCString& aReqUrl,
+    bool& aUnmasked, ErrorResult& aRv) {
+  nsCOMPtr<nsIURI> uri;
+  // NOTE(berytus): NS_NewURI does many more things than simply calling
+  // nsIIOService->NewURI.
+  if (NS_FAILED(NS_NewURI(getter_AddRefs(uri), aReqUrl, nullptr, nullptr))) {
+    aRv.ThrowTypeError<MSG_INVALID_URL>(aReqUrl);
+    return nullptr;
+  }
+  return Unmask(uri, aUnmasked, aRv);
+}
+
+void BerytusEncryptedPacket::SerializeExposedToString(
+    nsACString& aValue, ErrorResult& aRv) const {
+  aRv.ThrowNotSupportedError("Operation not implemented");
+}
+
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    nsIURI* aReqUrl, ErrorResult& aRv) {
+  bool discard;
+  return Unmask(aReqUrl, discard, aRv);
+}
+
+already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
+    nsIURI* aReqUrl, bool& aUnmasked, ErrorResult& aRv) {
+  if (!mConcealed) {
+    // not concealed, meaning the exposed blob already contains ciphertext
+    // By default, JS-created JWE packets are not concealed and not attached.
+    aUnmasked = false;
+    return do_AddRef(static_cast<Blob*>(this));
+  }
+  if (!Attached()) {
+    aRv.ThrowInvalidStateError("Bad packet");
+    return nullptr;
+  }
+  if (mUrlAllowlist.Length() == 0) {
+    // no allowlist defined, meaning we can unmask on any request url
+    auto out = UnmaskImpl(aRv);
+    if (NS_WARN_IF(aRv.Failed())) {
+      return nullptr;
+    }
+    aUnmasked = true;
+    return out;
+  }
+  nsresult rv;
+  bool matches = false;
+  rv = berytus::UrlSearchExpression::Matches(
+      Span(mUrlAllowlist.Elements(), mUrlAllowlist.Length()),
+      aReqUrl, matches);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.Throw(rv);
+    return nullptr;
+  }
+  if (!matches) {
+    // no match, meaning we just return the exposed dummy blob.
+    aUnmasked = false;
+    return do_AddRef(static_cast<Blob*>(this));
+  }
+  // a match! meaning we can unmask.
+  auto out = UnmaskImpl(aRv);
+  if (NS_WARN_IF(aRv.Failed())) {
+    return nullptr;
+  }
+  aUnmasked = true;
+  return out;
+}
+
+bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
+  const fetch::OwningBodyInit& aSrc,
+  fetch::OwningBodyInit& aDest,
+  const nsCString& aReqUrl,
+  ErrorResult& aRv
+) {
+  if (aSrc.IsBlob()) {
+    RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(
+      aSrc.GetAsBlob());
+    if (!packet) {
+      return false;
+    }
+    bool hasUnmasked;
+    RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl,hasUnmasked, aRv);
+    if (NS_WARN_IF(aRv.Failed())) {
+      return false;
+    }
+    MOZ_ASSERT(maybeUnmaskedBlob);
+    aDest.SetAsBlob() = maybeUnmaskedBlob;
+    return hasUnmasked;
+  }
+  if (aSrc.IsFormData()) {
+    const auto& fd = aSrc.GetAsFormData();
+    bool unmaskNeeded = !fd->ForEach([](const nsString&,
+                             const OwningBlobOrDirectoryOrUSVString& aValue) -> bool {
+      if (!aValue.IsBlob()) {
+        return true;
+      }
+      return !(bool(TryDowncastBlob<BerytusEncryptedPacket>(aValue.GetAsBlob())));
+    });
+    if (!unmaskNeeded) {
+      aDest.SetAsFormData() = fd;
+      return false;
+    }
+    const RefPtr<FormData> unmaskedFd = fd->Clone();
+    bool anyHasUnmasked = false;
+    for (auto& entry : unmaskedFd->mFormData) {
+      if (!entry.value.IsBlob()) {
+        continue;
+      }
+      RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(
+          entry.value.GetAsBlob());
+      if (!packet) {
+        continue;
+      }
+      bool hasUnmasked;
+      RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl, hasUnmasked, aRv);
+      if (NS_WARN_IF(aRv.Failed())) {
+        return false;
+      }
+      MOZ_ASSERT(maybeUnmaskedBlob);
+      entry.value.SetAsBlob() = maybeUnmaskedBlob;
+      anyHasUnmasked = anyHasUnmasked || hasUnmasked;
+    }
+    aDest.SetAsFormData() = unmaskedFd;
+    return anyHasUnmasked;
+  }
+  return false;
+}
+
+NS_IMPL_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver, mPacket, mDetectedRequests, mDetectedChannels)
+NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusEncryptedPacket::PacketObserver)
+NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusEncryptedPacket::PacketObserver)
+NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver)
+  NS_INTERFACE_MAP_ENTRY(nsIObserver)
+  NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIObserver)
+NS_INTERFACE_MAP_END
+
+BerytusEncryptedPacket::PacketObserver::PacketObserver(
+    RefPtr<BerytusEncryptedPacket>& aPacket)
+    : mPacket(aPacket) {
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  MOZ_ASSERT(obs);
+
+
+  // TODO(beryuts): Add a Create() method as this is fallible.
+  MOZ_ASSERT(NS_SUCCEEDED(obs->AddObserver(this, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC, false)));
+  MOZ_ASSERT(NS_SUCCEEDED(obs->AddObserver(this, NS_HTTP_ON_OPENING_REQUEST_TOPIC, false)));
+  MOZ_ASSERT(NS_SUCCEEDED(obs->AddObserver(this, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC, false)));
+}
+
+BerytusEncryptedPacket::PacketObserver::~PacketObserver() {
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  if (obs) {
+    obs->RemoveObserver(this,
+                        NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC);
+    obs->RemoveObserver(this,
+                        NS_HTTP_ON_OPENING_REQUEST_TOPIC);
+    obs->RemoveObserver(this, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC);
+  }
+}
+
+NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubject,
+                                       const char* aTopic,
+                                       const char16_t* aExtra) {
+  NS_ENSURE_TRUE(NS_IsMainThread(), NS_ERROR_NOT_SAME_THREAD);
+  nsresult rv;
+  MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s)", this, aSubject, aTopic));
+  if (strcmp(aTopic, NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC) == 0) {
+    // here, we try to detect if a masked packet is part of the request body
+    // if so, we add the request to the list of detected requests
+    RefPtr<Request::ConstructorNotification> notif =
+        RefPtr(static_cast<Request::ConstructorNotification*>(aSubject));
+    RequestInit const* init;
+    rv = notif->GetInit(&init);
+    NS_ENSURE_SUCCESS(rv, rv);
+    RequestOrUTF8String const* input;
+    rv = notif->GetInput(&input);
+    NS_ENSURE_SUCCESS(rv, rv);
+    Request const* request;
+    rv = notif->GetResult(&request);
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsAutoCString method;
+    request->GetMethod(method);
+    if (!method.EqualsLiteral("POST") &&
+        !method.EqualsLiteral("PUT") &&
+        !method.EqualsLiteral("PATCH")) {
+      return NS_OK;
+    }
+    SafeRefPtr<InternalRequest> internalRequest = request->GetInternalRequest();
+    if (!init->mBody.WasPassed() || init->mBody.Value().IsNull()) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Body is unset/null. Checking input", this, aSubject, aTopic));
+      if (input->IsUTF8String()) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is a URL.", this, aSubject, aTopic));
+        return NS_OK;
+      }
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is a Request. Checking existence", this, aSubject, aTopic));
+      RefPtr<Request> inputReq = &input->GetAsRequest();
+      SafeRefPtr<InternalRequest> inputInternalReq = inputReq->GetInternalRequest();
+      if (!mDetectedRequests.Contains(inputInternalReq.unsafeGetRawPtr())) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is an UnDetectedRequest<%p>", this, aSubject, aTopic, inputInternalReq.unsafeGetRawPtr()));
+        return NS_OK;
+      }
+      RefPtr<berytus::UnmaskPacket> packet =
+          mDetectedRequests.Get(inputInternalReq.unsafeGetRawPtr());
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): Input is a DetectedRequest<%p, %p>", this, aSubject, aTopic, inputInternalReq.unsafeGetRawPtr(), packet.get()));
+      mDetectedRequests.InsertOrUpdate(
+        internalRequest.unsafeGetRawPtr(),
+        packet);
+      MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), packet->ContentLength(), packet->ContentType().get()));
+      return NS_OK;
+    }
+    const fetch::OwningBodyInit& bodyInit =
+      init->mBody.Value().Value();
+    nsCString reqUrl;
+    internalRequest->GetURL(reqUrl);
+    fetch::OwningBodyInit newReqBody;
+    ErrorResult erv;
+    bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
+        bodyInit, newReqBody, reqUrl, erv);
+    if (NS_WARN_IF(erv.Failed())) {
+      return erv.StealNSResult();
+    }
+    if (!unmasked) {
+      // no masked packet found, nothing to do
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): No masked packet found", this, aSubject, aTopic));
+      return NS_OK;
+    }
+    nsCOMPtr<nsIInputStream> stream;
+    nsAutoCString contentTypeWithCharset;
+    uint64_t contentLength = 0;
+    rv = ExtractByteStreamFromBody(newReqBody, getter_AddRefs(stream),
+                                   contentTypeWithCharset, contentLength);
+    NS_ENSURE_SUCCESS(rv, rv);
+    RefPtr<berytus::UnmaskPacket> packet = new berytus::UnmaskPacket(
+      NS_ConvertUTF16toUTF8(mPacket->mAttachedChannelId),
+      0,
+      contentTypeWithCharset,
+      contentLength,
+      stream);
+
+    mDetectedRequests.InsertOrUpdate(
+      internalRequest.unsafeGetRawPtr(),
+      packet);
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(url=%s, length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), reqUrl.get(), contentLength, contentTypeWithCharset.get()));
+    return NS_OK;
+  }
+  if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
+    nsCOMPtr<nsIStreamListener> streamListener = do_QueryInterface(aSubject);
+    if (NS_WARN_IF(!streamListener)) {
+      return NS_ERROR_FAILURE;
+    }
+    RefPtr<FetchDriver> fetchDriver = static_cast<FetchDriver*>(streamListener.get());
+    SafeRefPtr<InternalRequest> request = fetchDriver->GetRequest();
+    MOZ_ASSERT(request);
+    nsCString url;
+    request->GetURL(url);
+    if (!mDetectedRequests.Contains(const_cast<InternalRequest*>(request.unsafeGetRawPtr()))) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): UndetectedRequest<%p>(url=%s)", this, aSubject, aTopic, request.unsafeGetRawPtr(), url.get()));
+      {
+        for (auto& entry : mDetectedRequests) {
+          MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): [*] DetectedRequestEntry<%p, %p>", this, aSubject, aTopic, entry.GetKey(), entry.GetData().get()));
+        }
+      }
+      return NS_OK;
+    }
+    RefPtr<berytus::UnmaskPacket> packet =
+      mDetectedRequests.Get(const_cast<InternalRequest*>(request.unsafeGetRawPtr()));
+    NS_ENSURE_TRUE(packet, NS_ERROR_FAILURE);
+    const uint64_t* channelId = reinterpret_cast<const uint64_t*>(aExtra);
+    NS_ENSURE_TRUE(channelId, NS_ERROR_INVALID_ARG);
+    MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): DetectedRequest<%p, %p>(url=%s, channelId=%llu)", this, aSubject, aTopic, request.unsafeGetRawPtr(), packet.get(), url.get(), *channelId));
+    if (NS_WARN_IF(mDetectedChannels.Contains(*channelId))) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): DuplicateDetection<%p, %llu>", this, aSubject, aTopic, request.unsafeGetRawPtr(), *channelId));
+      {
+        for (auto& entry : mDetectedChannels) {
+          MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): [*] DetectedChannelEntry<%llu, %p>", this, aSubject, aTopic, entry.GetKey(), entry.GetData().get()));
+        }
+      }
+      return NS_OK;
+    }
+    rv = packet->SetHttpChannelId(*channelId);
+    NS_ENSURE_SUCCESS(rv, rv);
+    mDetectedChannels.InsertOrUpdate(*channelId, packet);
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, *channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
+    return NS_OK;
+  }
+  if (strcmp(aTopic, NS_HTTP_ON_OPENING_REQUEST_TOPIC) == 0) {
+    nsCOMPtr<nsIHttpChannel> channel = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(channel, NS_ERROR_FAILURE);
+    nsCOMPtr<nsIRequest> request = do_QueryInterface(aSubject);
+    NS_ENSURE_TRUE(request, NS_ERROR_FAILURE);
+    uint64_t channelId = channel->ChannelId();
+    nsCOMPtr<nsIURI> uri;
+    rv = channel->GetOriginalURI(getter_AddRefs(uri));
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsCString uriSpec;
+    rv = uri->GetSpec(uriSpec);
+    NS_ENSURE_SUCCESS(rv, rv);
+    if (!mDetectedChannels.Contains(channelId)) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): UndetectedChannel<%llu>(url=%s)", this, aSubject, aTopic, channelId, uriSpec.get()));
+      {
+        for (auto& entry : mDetectedChannels) {
+          MOZ_LOG(sLogger, LogLevel::Debug, ("Observe(%p, %p, %s): [*] DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, entry.GetKey(), entry.GetData().get(), entry.GetData()->ContentLength(), entry.GetData()->ContentType().get()));
+        }
+      }
+      return NS_OK;
+    }
+    RefPtr<berytus::UnmaskPacket> packet =
+      mDetectedChannels.Get(channelId);
+    MOZ_ASSERT(channelId == packet->HttpChannelId());
+    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
+    RefPtr<BerytusChannelContainer> container =
+      BerytusChannelContainer::GetInstance(mPacket->mGlobal->GetAsInnerWindow());
+    if (NS_WARN_IF(!container)) {
+      return NS_ERROR_FAILURE;
+    }
+    RefPtr<mozilla::berytus::UnmaskerChild> unmasker = container->CreateUnmasker();
+    NS_ENSURE_TRUE(unmasker, NS_ERROR_FAILURE);
+
+    Maybe<mozilla::ipc::IPCStream> ipcStream;
+    if (NS_WARN_IF(!mozilla::ipc::SerializeIPCStream(do_AddRef(packet->Body()), ipcStream, false))) {
+      return NS_ERROR_FAILURE;
+    }
+    rv = request->Suspend();
+    NS_ENSURE_SUCCESS(rv, rv);
+    auto promise =
+      unmasker->SendUnmaskInChannel(packet->BerytusChannelId(),
+                                    packet->HttpChannelId(),
+                                    ipcStream.value(),
+                                    packet->ContentLength(),
+                                    packet->ContentType());
+    promise->Then(
+      GetMainThreadSerialEventTarget(), __func__,
+      [request]() {
+        nsresult rv = request->Resume();
+        NS_ENSURE_SUCCESS(rv, );
+      },
+      [request](mozilla::ipc::ResponseRejectReason&& aReason) {
+        NS_WARNING("Unmasking failed");
+        nsresult rv = request->Resume();
+        NS_ENSURE_SUCCESS(rv, );
+      }
+    );
+    return NS_OK;
+  }
+  return NS_ERROR_INVALID_ARG;
+}
+
+} // namespace mozilla::dom}

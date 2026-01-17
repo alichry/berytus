@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 import Loading from "../../components/Loading";
 import GetIdentityFieldsMessage from "./Identification/messages/GetIdentityFields/Message";
-import { useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useRequest, useSettings } from "@root/hooks";
+import { useAbortRequestOnWindowClose, useCipherbox, useNavigateWithPageContextRoute, useRequest, useSettings } from "@root/hooks";
 import UnknownChallengeMessage from "./UnknownChallengeMessage";
 import ErrorPage from "@root/ui/components/ErrorPage";
 import GetPasswordFieldsMessage from "./Password/messages/GetPasswordFields/Message";
@@ -25,6 +25,8 @@ import {
     EBerytusChallengeType,
     BerytusReceiveMessageUnion
 } from "@berytus/types-extd";
+import { RespondToChallengeMessageResult } from "@berytus/types";
+import { InternalError } from "@root/errors/InternalError";
 export interface RespondToMessageProps {
 }
 
@@ -44,6 +46,11 @@ export default function RespondToMessage({}: RespondToMessageProps) {
             setError(new Error('Session was not found!'));
             return;
         }
+        const channel = await db.channel.get(record.channel.id);
+        if (! channel) {
+            setError(new Error('Channel not found!'));
+            return;
+        }
         if (! record.challenges) {
             setError(new Error('Session is missing a challenge dictionary! What?'));
             return;
@@ -60,6 +67,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
 
         return {
             session: record,
+            channel,
             challenge,
             message: challenge.messages[messageId]
         };
@@ -71,12 +79,22 @@ export default function RespondToMessage({}: RespondToMessageProps) {
     const tabId = query?.session.context.document.id;
 
     const navigate = useNavigateWithPageContextRoute();
+    const { cipherbox, loading: cipherboxLoading } = useCipherbox(query?.channel);
+    const preResolveCb = useCallback(async (value: RespondToChallengeMessageResult): Promise<RespondToChallengeMessageResult> => {
+        if (cipherboxLoading) {
+            throw new InternalError("Cipherbox not loaded in CreateField preResolve()");
+        }
+        if (! cipherbox) {
+            return value; // e2e not enabled
+        }
+        return await cipherbox.encryptDictionary(value);
+    }, [cipherboxLoading, cipherbox]);
     const onProcessed = useCallback(() => {
         navigate('/loading');
     }, [navigate]);
     const { maybeResolve, maybeReject } = useRequest<"AccountAuthentication_RespondToChallengeMessage">(
         request,
-        { onProcessed }
+        { onProcessed, preResolve: preResolveCb }
     );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
     const settings = useSettings();

@@ -40,11 +40,6 @@ BerytusAnonymousWebAppActor::BerytusAnonymousWebAppActor(
   const BerytusAnonymousWebAppActor& rhs
 ) : BerytusWebAppActor(rhs.mGlobal) { }
 
-already_AddRefed<BerytusWebAppActor> BerytusAnonymousWebAppActor::Clone() const {
-  RefPtr<BerytusAnonymousWebAppActor> cl = new BerytusAnonymousWebAppActor(*this);
-  return cl.forget();
-}
-
 BerytusAnonymousWebAppActor::~BerytusAnonymousWebAppActor()
 {
     // Add |MOZ_COUNT_DTOR(BerytusAnonymousWebAppActor);| for a non-refcounted object.

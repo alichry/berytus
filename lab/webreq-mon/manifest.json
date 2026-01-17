@@ -1,0 +1,33 @@
+{
+    "manifest_version": 3,
+    "name": "WebReq Monitor",
+    "version": "1.0",
+    "icons": {
+        "48": "pen.svg"
+    },
+    "permissions": [
+        "alarms",
+        "webRequest",
+        "webRequestBlocking",
+        "webRequestFilterResponse",
+        "storage"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "content_scripts": [
+      {
+        "matches": ["*://localhost/*", "*://127.0.0.1/*"],
+        "js": ["content.js"]
+      }
+    ],
+    "background": {
+      "scripts": ["./background.js"]
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "webreq-monitor@alichry",
+            "strict_min_version": "57.0a1"
+        }
+    }
+}

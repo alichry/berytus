@@ -8,6 +8,8 @@
 #include "ErrorList.h"
 #include "js/Value.h"
 #include "mozilla/AlreadyAddRefed.h"
+#include "mozilla/Assertions.h"
+#include "mozilla/ErrorResult.h"
 #include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/dom/BerytusChallengeBinding.h"
@@ -15,6 +17,8 @@
 #include "mozilla/dom/BerytusChannelBinding.h"
 #include "mozilla/dom/BerytusCryptoWebAppActor.h"
 #include "mozilla/dom/BerytusAnonymousWebAppActor.h"
+#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
+#include "mozilla/dom/BerytusJWEPacket.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/RootedDictionary.h"
 #include "nsError.h"
@@ -66,6 +70,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal, const RefPtr<const dom:
                                aChannel->Constraints(),
                                aChannel->GetWebAppActor(),
                                aChannel->GetSecretManagerActor(),
+                               aChannel->E2EEEnabled(),
                                aRetVal);
 }
 
@@ -74,6 +79,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
                                const dom::BerytusChannelConstraints& aCts,
                                const RefPtr<const dom::BerytusWebAppActor>& aWebAppActor,
                                const RefPtr<const dom::BerytusSecretManagerActor>& aScmActor,
+                               const bool aE2EEEnabled,
                                berytus::ChannelMetadata& aRetVal) {
   aRetVal.mId.Assign(aChannelId);
   if (aCts.mAccount.WasPassed()) {
@@ -111,6 +117,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
   }
   MOZ_ASSERT(aRetVal.mWebAppActor.Inited());
   aScmActor->GetEd25519Key(aRetVal.mScmActor.mEd25519Key);
+  aRetVal.mE2eeEnabled = aE2EEEnabled;
   return NS_OK;
 }
 
@@ -294,73 +301,26 @@ bool Utils_ArrayBufferViewToSafeVariant(const ArrayBufferView& aBuf,
 
 namespace utils {
 
-dom::BerytusAesGcmParams_Impl* FromProxy::BerytusAesGcmParams_Impl(
-      const AesGcmParams_ImplProxy& aProxy, nsresult& aRv) {
-  // TODO: perhaps impl a utility function that converts a
-  // Variant<ArrayBuffer, ArrayBufferView> to CryptoBuffer?
-  MOZ_ASSERT(aProxy.mIv.Inited());
-  dom::CryptoBuffer iv, addData;
-  if (aProxy.mIv.InternalValue()->is<dom::ArrayBuffer>()) {
-    if (NS_WARN_IF(!iv.Assign(aProxy.mIv.InternalValue()->as<ArrayBuffer>()))) {
-      aRv = NS_ERROR_OUT_OF_MEMORY;
-      return nullptr;
-    }
-  } else if (aProxy.mIv.InternalValue()->is<ArrayBufferView>()) {
-    if (NS_WARN_IF(!iv.Assign(aProxy.mIv.InternalValue()->as<ArrayBufferView>()))) {
-      aRv = NS_ERROR_OUT_OF_MEMORY;
-      return nullptr;
-    }
-  } else {
-    MOZ_ASSERT(false, "IV should either be an ArrayBuffer or ArrayBufferView");
-    aRv = NS_ERROR_INVALID_ARG;
-    return nullptr;
-  }
-  if (aProxy.mAdditionalData.Inited()) {
-    if (aProxy.mAdditionalData.InternalValue()->is<ArrayBuffer>()) {
-      if (NS_WARN_IF(!addData.Assign(aProxy.mAdditionalData.InternalValue()->as<ArrayBuffer>()))) {
-        aRv = NS_ERROR_OUT_OF_MEMORY;
-        return nullptr;
-      }
-    } else if (aProxy.mAdditionalData.InternalValue()->is<ArrayBufferView>()) {
-      if (NS_WARN_IF(!addData.Assign(aProxy.mAdditionalData.InternalValue()->as<ArrayBufferView>()))) {
-        aRv = NS_ERROR_OUT_OF_MEMORY;
-        return nullptr;
-      }
-    } else {
-      MOZ_ASSERT(false, "AdditionalData should either be an ArrayBuffer or ArrayBufferView");
-      aRv = NS_ERROR_INVALID_ARG;
-      return nullptr;
-    }
-  }
-  // TODO(berytus): Why is tagLength optional?
-  return new dom::BerytusAesGcmParams_Impl(std::move(iv),
-                                      std::move(addData),
-                                      aProxy.mTagLength.isNothing()
-                                      ? 0 : static_cast<uint8_t>(aProxy.mTagLength.value()));
-}
-dom::BerytusEncryptionParams_Impl* FromProxy::BerytusEncryptionParams_Impl(
-    const EncryptedPacketParametersProxy& aProxy, nsresult& aRv) {
-  return FromProxy::BerytusAesGcmParams_Impl(aProxy, aRv);
-}
 already_AddRefed<dom::BerytusEncryptedPacket> FromProxy::BerytusEncryptedPacket(
     nsIGlobalObject* aGlobal, const EncryptedPacketProxy& aProxy,
     nsresult& aRv) {
-  dom::BerytusEncryptionParams_Impl* params = FromProxy::BerytusEncryptionParams_Impl(aProxy.mParameters, aRv);
-  if (NS_WARN_IF(NS_FAILED(aRv))) {
-    return nullptr;
+  if (aProxy.mType.GetString().Equals(u"JWE"_ns)) {
+    ErrorResult rv;
+    RefPtr<dom::BerytusEncryptedPacket> packet = dom::BerytusJWEPacket::Create(
+        aGlobal,
+        aProxy.mValue,
+        true,
+        rv);
+    if (NS_WARN_IF(rv.Failed())) {
+      aRv = rv.StealNSResult();
+      return nullptr;
+    }
+    aRv = NS_OK;
+    return packet.forget();
   }
-  dom::CryptoBuffer ciphertext;
-  if (NS_WARN_IF(!ciphertext.Assign(aProxy.mCiphertext))) {
-    aRv = NS_ERROR_OUT_OF_MEMORY;
-    return nullptr;
-  }
-  aRv = NS_OK;
-  RefPtr<dom::BerytusEncryptedPacket> packet = new dom::BerytusEncryptedPacket(
-    aGlobal,
-    params,
-    std::move(ciphertext)
-  );
-  return packet.forget();
+  MOZ_ASSERT_UNREACHABLE("Unrecognised encrypted packet type");
+  aRv = NS_ERROR_FAILURE;
+  return nullptr;
 }
 
 template <typename... T>

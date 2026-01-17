@@ -63,7 +63,6 @@ public:
   public:
     NS_DECL_ISUPPORTS_INHERITED
     NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(Session, SupportsToDictionary)
-    //NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(Session, SupportsToDictionary)
 
     class Fingerprint final : public SupportsToDictionary {
     public:
@@ -92,22 +91,26 @@ public:
 
     static already_AddRefed<Session> Create(
         const RefPtr<const BerytusChannel>& aChannel,
+        nsTArray<nsString>&& aUnmaskAllowlist,
         ErrorResult& aRv);
     const nsString& GetID() const;
     const std::time_t& GetTimestamp() const;
-    RefPtr<const Fingerprint> GetFingerprint() const;
-    RefPtr<Fingerprint>& GetFingerprint();
+    const RefPtr<Fingerprint>& GetFingerprint() const;
+    Span<const nsString> GetUnmaskAllowlist() const;
+
     void CacheDictionary(JSContext* aCx,
                          ErrorResult& aRv) override;
   protected:
     Session(nsIGlobalObject* aGlobal,
-            const nsString& aId,
+            const nsAString& aId,
             const std::time_t& aTimestamp,
-            const RefPtr<Fingerprint>& aFingerprint);
+            const RefPtr<Fingerprint>& aFingerprint,
+            nsTArray<nsString>&& aUnmaskAllowlist);
     ~Session();
     nsString mId;
     std::time_t mTimestamp;
     RefPtr<Fingerprint> mFingerprint;
+    nsTArray<nsString> mUnmaskAllowlist;
   }; // class Session
 
   class Authentication final : public SupportsToDictionary {
@@ -115,8 +118,8 @@ public:
     NS_DECL_ISUPPORTS_INHERITED
 
     Authentication(nsIGlobalObject* aGlobal,
-                   const nsString& aWebApp,
-                   const nsString& aScm);
+                   const nsAString& aWebApp,
+                   const nsAString& aScm);
     const nsLiteralString& GetName() const;
     const nsString& GetWebApp() const;
     const nsString& GetScm() const;
@@ -133,15 +136,12 @@ public:
   public:
     NS_DECL_ISUPPORTS_INHERITED
 
-    Exchange(nsIGlobalObject* aGlobal);
     Exchange(nsIGlobalObject* aGlobal,
-             const nsString& aWebApp,
-             const nsString& aScm);
+             const nsAString& aWebApp,
+             const nsAString& aScm);
     const nsLiteralString& GetName() const;
     const nsString& GetWebApp() const;
     const nsString& GetScm() const;
-    void SetWebApp(const nsAString& aWebApp);
-    void SetScm(const nsAString& aScm);
     void CacheDictionary(JSContext* aCx,
                          ErrorResult& aRv) override;
   protected:
@@ -208,6 +208,9 @@ protected:
 public:
   static already_AddRefed<BerytusKeyAgreementParameters> Create(
       const RefPtr<BerytusChannel>& aChannel,
+      const nsAString& aExchangeWebApp,
+      const nsAString& aExchangeScm,
+      nsTArray<nsString>&& aUnmaskAllowlist,
       ErrorResult& aRv);
   // This should return something that eventually allows finding a
   // path to the global this object is associated with.  Most simply,

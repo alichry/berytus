@@ -37,8 +37,9 @@ class Promise;
 
 namespace mozilla::dom {
 
-class BerytusChannel final : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
-                             public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
+class BerytusChannel final : public nsISupports, /* or NonRefcountedDOMObject if this is a non-refcounted object */
+                             public nsWrapperCache, /* Change wrapperCache in the binding configuration if you don't want this */
+                             public SupportsWeakPtr
 {
 public:
   using CreationPromise = MozPromise<RefPtr<BerytusChannel>, berytus::Failure, true>;
@@ -71,6 +72,7 @@ protected:
   RefPtr<mozilla::berytus::OwnedAgentProxy> mAgent;
 
   bool mActive = true;
+  bool mE2EE = false;
 private:
   uint64_t mInnerWindowId;
 
@@ -104,6 +106,8 @@ public:
 
   const BerytusChannelConstraints& Constraints() const;
 
+  bool E2EEEnabled() const;
+
   void GetConstraints(
     JSContext* aCx,
     JS::MutableHandle<JSObject*> aRetVal,
@@ -130,7 +134,7 @@ public:
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<Promise> PrepareKeyAgreementParameters(
-      const nsAString& webAppX25519PublicKey,
+      const BerytusKeyAgreementInput& aInput,
       ErrorResult& aRv);
 
   already_AddRefed<Promise> ExchangeKeyAgreementSignatures(
@@ -149,6 +153,33 @@ private:
     JS::PersistentRooted<JS::Value> aConstraints,
     const RefPtr<BerytusX509Extension>& aCertExt
   );
+
+public:
+  class BaseAttachable {
+  public:
+    virtual bool Attached() const = 0;
+    virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) = 0;
+  protected:
+    BaseAttachable() = default;
+    virtual ~BaseAttachable() = default;
+  };
+  class Attachable : public BaseAttachable {
+  public:
+    virtual bool Attached() const override { return mAttached; }
+    virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override {
+      if (Attached()) {
+        aRv.ThrowInvalidStateError("Already attached");
+        return;
+      }
+      mChannel = aChannel;
+      mAttached = true;
+    }
+  protected:
+    Attachable() : mChannel(nullptr), mAttached(false) {}
+    virtual ~Attachable() = default;
+    WeakPtr<BerytusChannel> mChannel;
+    bool mAttached;
+  };
 };
 
 } // namespace mozilla::dom

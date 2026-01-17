@@ -39,11 +39,6 @@ BerytusCryptoWebAppActor::BerytusCryptoWebAppActor(
   const BerytusCryptoWebAppActor& rhs
 ) : BerytusWebAppActor(rhs.mGlobal), mEd25519Key(rhs.mEd25519Key) { }
 
-already_AddRefed<BerytusWebAppActor> BerytusCryptoWebAppActor::Clone() const {
-  RefPtr<BerytusCryptoWebAppActor> cl = new BerytusCryptoWebAppActor(*this);
-  return cl.forget();
-}
-
 BerytusCryptoWebAppActor::~BerytusCryptoWebAppActor()
 {
     // Add |MOZ_COUNT_DTOR(BerytusCryptoWebAppActor);| for a non-refcounted object.

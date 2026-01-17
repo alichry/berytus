@@ -127,11 +127,14 @@ const interfaceEnsureUnionsAreAliasd = (
     updater(oldText, newText);
 }
 
-const ensureUnionsAreAliases = async (list: Array<InterfaceDeclaration | string | RegExp>) => {
+const ensureUnionsAreAliases = async (
+    list: Array<InterfaceDeclaration | string | RegExp>,
+    existingUnionAliases: ReadonlyArray<{ alias: string, def: string }> = []
+) => {
     const typesFile = createProject().getSourceFileOrThrow(
         dtsFile
     );
-    const unionAliases: Array<{ alias: string, def: string }> = [];
+    const newUnionAliases: Array<{ alias: string, def: string }> = [];
     const unionAliasGenerator = (options: ParsedType[]): string => {
         const getAliasAndDef = (opt: ParsedType) => {
             let optAlias: string;
@@ -161,8 +164,11 @@ const ensureUnionsAreAliases = async (list: Array<InterfaceDeclaration | string 
         });
         const alias = aliasesAndDefs.map(a => a.optAlias).join("Or");
         const def = `export type ${alias} = ` + aliasesAndDefs.map(d => d.optDef).join(" |\n\t") + ";\n";
-        if (! unionAliases.some(uA => uA.alias === alias)) {
-            unionAliases.push({
+        if (
+            ! newUnionAliases.some(uA => uA.alias === alias)
+            && ! existingUnionAliases.some(uA => uA.alias === alias)
+        ) {
+            newUnionAliases.push({
                 alias,
                 def
             });
@@ -199,8 +205,9 @@ const ensureUnionsAreAliases = async (list: Array<InterfaceDeclaration | string 
 
     await writeFile(
         dtsFile,
-        dts + unionAliases.map(a => a.def).join("\n")
+        dts + newUnionAliases.map(a => a.def).join("\n")
     );
+    return [...newUnionAliases, ...existingUnionAliases];
 }
 
 const generateEnumFromLiteralUnion = async (typeName: string) => {
@@ -349,23 +356,27 @@ const deleteFunctions = async () => {
 }
 
 /**
- * WebIDL defines "object" as the type for packet's parameters.
- * This gets mapped to "any" by webidl-dts-gen which is no good.
+ * BerytusEncryptedPacket does not define any attributes.
+ * Therefore, the generator will not embed an appropriate
+ * placeholder for the JWE. We define one here and remove
+ * the inheritance from Blob.
  */
-const correctPacketParametersAttribute = async () => {
+const correctEncryptedPacketInterface = async () => {
     const typesFile = project.getSourceFileOrThrow(
         dtsFile
     );
     let dts: string = await readFile(dtsFile, { encoding: "utf8" });
     const intf = typesFile.getInterfaceOrThrow("BerytusEncryptedPacket");
     const origText = intf.getText();
-    const parameterType = intf.getConstructSignatures()[0].getParameters()[0].getType();
-    intf.getProperty("parameters")!.set({
-        name: "parameters",
-        type: parameterType.getAliasSymbol()?.getName()
-            || parameterType.getSymbol()?.getName()
+    intf.removeExtends(0); // we do not want it to inherit from Blob
+    intf.addProperty({
+        name: "type",
+        type: "\"JWE\"",
+    })
+    intf.addProperty({
+        name: "value",
+        type: "string"
     });
-
     dts = dts.replace(origText, intf.getText());
     await writeFile(
         dtsFile,
@@ -451,18 +462,24 @@ export enum ${messageNameEnum} {
 };
 
 const generate = async () => {
+    let unionAliases;
     await generateFieldTypeEnum();
     await generateFieldProperties();
-    await ensureUnionsAreAliases(listFields());
+    unionAliases = await ensureUnionsAreAliases(listFields());
     await generateFieldOptionsUnion();
-    await ensureUnionsAreAliases(["BerytusUserAttributeDefinition"]);
-    await correctPacketParametersAttribute();
+    unionAliases = await ensureUnionsAreAliases([
+        "BerytusUserAttributeDefinition",
+    ], unionAliases);
+    await correctEncryptedPacketInterface();
     await generateChallengeTypeEnum();
     await generateChallengeMessagingTypes();
     await deleteFunctions();
     await generateFieldUnion();
     await generateFieldValueUnion();
-    await ensureUnionsAreAliases([/^Berytus.*?Challenge/]);
+    unionAliases = await ensureUnionsAreAliases(
+        [/^Berytus.*?Challenge/],
+        unionAliases
+    );
 }
 
 generate();

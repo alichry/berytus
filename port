@@ -25,8 +25,17 @@ toolkit/components/extensions/parent/ext-berytus.js
 toolkit/components/extensions/test/xpcshell/test_ext_berytus.js"
 MOZILLA_FILES="toolkit/components/moz.build
 dom/moz.build
+dom/webidl/Navigator.webidl
 dom/webidl/moz.build
 dom/bindings/Bindings.conf
+dom/base/FormData.h
+dom/base/Navigator.cpp
+dom/base/Navigator.h
+dom/fetch/Request.h
+dom/fetch/Request.cpp
+dom/fetch/FetchDriver.h
+dom/fetch/FetchDriver.cpp
+dom/file/Blob.h
 toolkit/modules/ActorManagerParent.sys.mjs
 browser/base/content/navigator-toolbox.inc.xhtml
 browser/base/content/popup-notifications.inc
@@ -38,7 +47,11 @@ toolkit/components/extensions/child/ext-toolkit.js
 toolkit/components/extensions/jar.mn
 toolkit/components/extensions/schemas/jar.mn
 toolkit/components/extensions/test/xpcshell/xpcshell.toml
-browser/extensions/moz.build"
+toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs
+browser/extensions/moz.build
+ipc/glue/PBackground.ipdl
+ipc/glue/BackgroundParentImpl.h
+ipc/glue/BackgroundParentImpl.cpp"
 IGNORE_DIRS="node_modules/"
 
 usage="Berytus source code (ex|im)port usage:

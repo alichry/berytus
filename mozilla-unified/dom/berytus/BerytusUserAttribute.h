@@ -7,25 +7,27 @@
 #ifndef DOM_BERYTUSUSERATTRIBUTE_H_
 #define DOM_BERYTUSUSERATTRIBUTE_H_
 
-#include "BerytusEncryptedPacket.h"
 #include "js/TypeDecls.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
+#include "mozilla/dom/UnionTypes.h" /* OwningStringOrArrayBufferOrBerytusEncryptedPacket */
 #include "nsCycleCollectionParticipant.h"
 #include "nsISupports.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
-#include "mozilla/dom/BerytusUserAttributeBinding.h"
+#include "mozilla/dom/BerytusUserAttributeBinding.h" /* OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket */
+#include "mozilla/dom/BerytusChannel.h"
 
 namespace mozilla::dom {
 
-class BerytusUserAttribute : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
-                             public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
+class BerytusUserAttribute : public nsISupports, /* or NonRefcountedDOMObject if this is a non-refcounted object */
+                             public nsWrapperCache, /* Change wrapperCache in the binding configuration if you don't want this */
+                             public BerytusChannel::Attachable
 {
 public:
   using ValueType = OwningStringOrArrayBufferOrBerytusEncryptedPacket;
   using SourceValueType = OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket;
-  using JSONValueType = OwningStringOrBerytusEncryptedPacketJSON;
+  using JSONValueType = nsAString;
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
   NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(BerytusUserAttribute)
@@ -64,7 +66,9 @@ public:
   ) const = 0;
 
   virtual bool CanSetValue(const SourceValueType& aVal) const = 0;
-  virtual bool SetValue(JSContext* aCx, const SourceValueType& aVal) = 0;
+  virtual void SetValue(JSContext* aCx,
+                        const SourceValueType& aVal,
+                        ErrorResult& aRv) = 0;
 
   void ToJSON(BerytusUserAttributeJSON& aRetVal,
               ErrorResult& aRv) const;
@@ -74,15 +78,16 @@ public:
   static already_AddRefed<BerytusUserAttribute> Create(
       JSContext* aCx,
       nsIGlobalObject* aGlobal,
+      RefPtr<BerytusChannel>& aChannel, /* can be nullptr */
       const nsAString& aId,
       const nsAString& aMimeType,
       const nsAString& aInfo,
       const SourceValueType& aValue,
-      nsresult& aRv
+      ErrorResult& aRv
   );
 protected:
-  virtual void PopulateValueInJSON(JSONValueType& aRetVal,
-                                   ErrorResult& aErr) const = 0;
+  virtual void PopulateValueInJSON(JSONValueType& aValue,
+                                   ErrorResult& aRv) const = 0;
 };
 
 template <typename T>
@@ -102,7 +107,9 @@ public:
     const nsAString& aInfo
   );
   bool CanSetValue(const SourceValueType& aVal) const override;
-  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
+  void SetValue(JSContext* aCx,
+                const SourceValueType& aVal,
+                ErrorResult& aRv) override;
   void SetValueInternal(const nsString& aValue);
   void GetValue(
     JSContext* aCx,
@@ -111,8 +118,8 @@ public:
   ) const override;
   BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  void PopulateValueInJSON(JSONValueType& aRetVal,
-                           ErrorResult& aErr) const override;
+  void PopulateValueInJSON(JSONValueType& aValue,
+                           ErrorResult& aRv) const override;
 };
 
 template<>
@@ -129,8 +136,10 @@ public:
     const nsAString& aInfo
   );
   bool CanSetValue(const SourceValueType& aVal) const override;
-  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
-  bool SetValueInternal(const ArrayBuffer& aValue);
+  void SetValue(JSContext* aCx,
+                const SourceValueType& aVal,
+                ErrorResult& aRv) override;
+  void SetValueInternal(const ArrayBuffer& aValue, ErrorResult& aRv);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,
@@ -138,8 +147,8 @@ public:
   ) const override;
   BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  void PopulateValueInJSON(JSONValueType& aRetVal,
-                           ErrorResult& aErr) const override;
+  void PopulateValueInJSON(JSONValueType& aValue,
+                           ErrorResult& aRv) const override;
 };
 
 template<>
@@ -156,8 +165,11 @@ public:
     const nsAString& aInfo
   );
   bool CanSetValue(const SourceValueType& aVal) const override;
-  bool SetValue(JSContext* aCx, const SourceValueType& aVal) override;
-  void SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue);
+  void SetValue(JSContext* aCx,
+                const SourceValueType& aVal,
+                ErrorResult& aRv) override;
+  void SetValueInternal(const RefPtr<BerytusEncryptedPacket>& aValue,
+                        ErrorResult& aRv);
   void GetValue(
     JSContext* aCx,
     ValueType& aRetVal,
@@ -165,8 +177,8 @@ public:
   ) const override;
   BerytusUserAttributeValueEncodingType ValueEncodingType() const override;
 protected:
-  void PopulateValueInJSON(JSONValueType& aRetVal,
-                           ErrorResult& aErr) const override;
+  void PopulateValueInJSON(JSONValueType& aValue,
+                           ErrorResult& aRv) const override;
 };
 
 
