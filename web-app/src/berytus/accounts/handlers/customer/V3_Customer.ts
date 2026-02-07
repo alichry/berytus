@@ -176,12 +176,12 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         let operation = this.operation;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
-        const registerAccountInBackEnd = (
+        const registerAccountInBackEnd = async (
             username: string,
             key: BerytusKeyFieldValue,
             attrsMap: BerytusUserAttributeMap
         ) => {
-            assert(key.publicKey instanceof ArrayBuffer);
+            assert(key.publicKey instanceof ArrayBuffer || key.publicKey instanceof BerytusJWEPacket);
             const fields = [{
                 id: "username",
                 value: username
@@ -189,7 +189,9 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             {
                 id: "key",
                 value: {
-                    publicKey: armorKey(key.publicKey)
+                    publicKey: key.publicKey instanceof ArrayBuffer
+                        ? armorKey(key.publicKey)
+                        : await key.publicKey.text() // returns _concealed_
                 }
             }];
             const attrs: Record<string, string> = {};
@@ -328,13 +330,9 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
                 await this.authHandler.sendResponse({
                     id: "key",
                     value: {
-                        publicKey: armorKey(key.publicKey)
+                        publicKey: key.publicKey
                     }
-                });
-                // const res= await this.authHandler.finish();
-                // res.userAttributes.forEach(u => {
-                //     this.loginState.userAttributes[u.id] = u.value;
-                // });
+                }, "multipart");
                 return true;
             } catch (e) {
                 if (e instanceof AuthIncorrectResponseError) {
@@ -361,10 +359,12 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             );
         }
         //! EXPORT_FN_IGNORE_START
-        assert(key.publicKey instanceof ArrayBuffer);
+        assert(key.publicKey instanceof ArrayBuffer || key.publicKey instanceof BerytusJWEPacket);
         this.loginState.credentialFields.push({
             id: 'key',
-            value: armorKey(key.publicKey)
+            value: key.publicKey instanceof ArrayBuffer
+                ? armorKey(key.publicKey)
+                : await key.publicKey.text() // returns _concealed_
         });
         return { nextStep: "signNonce" as const }
         //! EXPORT_FN_IGNORE_END
@@ -392,17 +392,12 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             // @ts-ignore: TODO(berytus): Check if views can be passed
             return byteArray.buffer;
         }
-        const verifySignature = async (signature: ArrayBuffer): Promise<boolean> => {
+        const verifySignature = async (signature: ArrayBuffer | BerytusEncryptedPacket): Promise<boolean> => {
             assert(!!this.authHandler);
             try {
-                await this.authHandler.sendResponse(
-                    new Uint8Array(signature)
-                        // @ts-ignore: Firefox only.
-                        .toBase64({
-                            alphabet: "base64",
-                            omitPadding: false
-                        })
-                )
+                await this.authHandler.sendResponse({
+                    signature
+                }, "multipart");
                 const res= await this.authHandler.finish();
                 res.userAttributes.forEach(u => {
                     this.loginState.userAttributes[u.id] = u.value;

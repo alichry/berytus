@@ -112,6 +112,22 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         response: MessagePayload
     ): Promise<NonNullable<ChallengeMessageStatus>>;
 
+    /**
+     * If the response is valid, i.e. validateMessageResponse()
+     * returns `Ok`, transform the response into the format we
+     * want to store in the database. This is useful when the
+     * format of the response sent by the client is different
+     * from the format we want to store in the database.
+     * For example, signed nonces are sent as raw bytes from
+     * the client, but we want to store them as base64-encoded
+     * strings. Handlers should implement this method to transform
+     * the response if necessary for the given message.
+     */
+    protected abstract transformResponseForStorage(
+        pendingMessage: Message<MN>,
+        response: MessagePayload
+    ): Promise<MessagePayload>;
+
     static async setupChallenge<MN extends AuthChallengeMessageName>(
         sessionId: BigInt,
         challengeId: string,
@@ -248,7 +264,10 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
             pendingMessage,
             response
         );
-        pendingMessage.response = response;
+        pendingMessage.response = await this.transformResponseForStorage(
+            pendingMessage,
+            response
+        );
         pendingMessage.statusMsg = statusMsg;
         // append next prospective, pending message.
         await this.ensurePendingMessage();

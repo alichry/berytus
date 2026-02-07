@@ -129,4 +129,11 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
         }
         return `Ok` as const;
     }
+
+    protected async transformResponseForStorage(
+        pendingMessage: Message<MessageName>,
+        response: MessagePayload
+    ): Promise<MessagePayload> {
+        return response;
+    }
 }

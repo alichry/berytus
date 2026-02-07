@@ -13,6 +13,34 @@ AuthAccountNotFoundError.prototype.name = 'AuthAccountNotFoundError';
 export class AuthIncorrectResponseError extends AuthError {}
 AuthIncorrectResponseError.prototype.name = "AuthIncorrectResponseError";
 
+const populateFormData = (fdata: FormData, value: unknown, key?: string) => {
+    if (typeof value === "object" && value !== null && !(value instanceof Blob)) {
+        for (const [k, v] of Object.entries(value)) {
+            if (/(\[|\])/.test(String(k))) {
+                throw new Error(
+                    `Keys cannot contain square brackets when `
+                    + `using multipart form data. Invalid key: ${k}`
+                );
+            }
+            populateFormData(fdata, v, key ? `${key}[${k}]` : k);
+        }
+        return;
+    }
+    if (value instanceof ArrayBuffer) {
+        fdata.append(key!, new Blob([value], { type: "application/octet-stream" }));
+        return;
+    }
+    if (ArrayBuffer.isView(value) || value instanceof DataView) {
+        throw new Error(
+            "Expecting ArrayBuffer to be passed for binary data. "
+            + "Typed arrays and DataViews are not supported."
+        );
+    }
+    // @ts-ignore: Browser implementation should
+    // convert value to string if necessary.
+    fdata.append(key!, value);
+}
+
 export class AuthSessionHandler {
     readonly accountVersion: number;
     readonly accountCategory: string;
@@ -127,18 +155,37 @@ export class AuthSessionHandler {
     }
 
     async sendResponse(
-        response: unknown
+        response: unknown,
+        contentType: "json" | "multipart" = "multipart"
     ) {
         if (! this.currentChallengeId) {
             throw new Error(
                 "Cannot send response, challenge is not active"
             );
         }
+        let body, contentTypeHeader;
+        if (contentType === "json") {
+            body = JSON.stringify(response);
+            contentTypeHeader = "application/json";
+        } else {
+            if (typeof response !== "object" || response === null) {
+                throw new Error(
+                    "Expecting response to be a non-null object "
+                    + "when contentType is multipart."
+                );
+            }
+            body = new FormData();
+            contentTypeHeader = "multipart/form-data";
+            populateFormData(body, response);
+        }
         const resp = await fetch(
             `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,
             {
                 method: "POST",
-                body: JSON.stringify(response)
+                headers: {
+                    ['Content-Type']: contentTypeHeader
+                },
+                body
             }
         )
         if (! resp.ok) {

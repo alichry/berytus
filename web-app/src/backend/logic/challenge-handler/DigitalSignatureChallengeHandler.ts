@@ -16,26 +16,33 @@ import {
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
 import type { AuthSession } from "@root/backend/db/models/AuthSession";
-import {
-    PublicKeyFieldInput,
-    PublicKeyFieldValue
-} from "../field-handler/DigitalSignatureHandler.js";
 import { randomBytes } from "crypto";
-import { KeyUtils, SignUtils } from "../../utils/key-utils.js";
+import { ArmoredKeyUtils, KeyUtils, SignUtils } from "../../utils/key-utils.js";
 import type { PoolConnection } from "@root/backend/db/pool";
+import { PublicKeyFieldInput, ArmoredPublicKeyFieldValue } from "../field-handler/DigitalSignatureHandler";
+
 type MessageName = BerytusDigitalSignatureChallengeMessageName;
 
 const messageNames: ReadonlyArray<MessageName> = [
     "SelectKey", "SignNonce"
 ];
 
-const SelectKeyExpected = PublicKeyFieldInput;
+const SelectKeyExpected = z.object({
+    id: z.string(),
+    value: ArmoredPublicKeyFieldValue
+}).required();
 
 type SelectKeyExpected = z.infer<typeof SelectKeyExpected>;
 
-const SelectKeyResponse = SelectKeyExpected;
+const SelectKeyResponse = PublicKeyFieldInput;
 
-const SignNonceResponse = z.string(); // base64
+type SelectKeyResponse = z.infer<typeof SelectKeyResponse>;
+
+const SignNonceResponse = z.object({
+    signature: z.instanceof(ArrayBuffer)
+});
+
+type SignNonceResponse = z.infer<typeof SignNonceResponse>;
 
 export const DigitalSignatureChallengeParameters = z.object({
     keyFieldId: z.string()
@@ -89,7 +96,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
         );
         const expected: SelectKeyExpected = {
             id: this.challengeParameters.keyFieldId,
-            value: await PublicKeyFieldValue.parseAsync(field.fieldValue)
+            value: await ArmoredPublicKeyFieldValue.parseAsync(field.fieldValue)
         }
         const initialMessageDraft = {
             messageName: "SelectKey" as const,
@@ -114,17 +121,21 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 if (expected.id !== fieldId) {
                     throw new Error('Malformed message response.');
                 }
-                // TODO(berytus): A better way is to compare the stripped
-                // base64 data which does not include newlines.
-                if (expected.value.publicKey !== passedValue.publicKey) {
+                const passedPublicKeyAsBase64 = Buffer.from(
+                    passedValue.publicKey
+                ).toString('base64');
+                const expectedPublicKeyAsBase64 = ArmoredKeyUtils.extractBase64(
+                    expected.value.publicKey, "public"
+                );
+                if (expectedPublicKeyAsBase64 !== passedPublicKeyAsBase64) {
                     return `Error:PublicKeyMismatch` as const;
                 }
                 return `Ok` as const;
             }
             case "SignNonce": {
-                const sigBase64 = await SignNonceResponse.parseAsync(response);
+                const { signature: sig } =
+                    await SignNonceResponse.parseAsync(response);
                 const nonce = Buffer.from(pendingMessage.request as string, 'base64');
-                const sig = Buffer.from(sigBase64, 'base64');
                 const key = await KeyUtils.importArmoredKeyForVerification(
                     (processedMessages.SelectKey!.expected as SelectKeyExpected).value.publicKey,
                 );
@@ -135,6 +146,38 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             }
             default:
                 throw new Error("Invalid message response; message name not recognised");
+        }
+    }
+
+    protected async transformResponseForStorage(
+        pendingMessage: Message<MessageName>,
+        response: MessagePayload
+    ): Promise<MessagePayload> {
+        switch (pendingMessage.messageName) {
+            case "SelectKey": {
+                const {
+                    id,
+                    value
+                } = response as unknown as SelectKeyResponse;
+                return {
+                    id,
+                    value: {
+                        publicKey: ArmoredKeyUtils.armorBase64(
+                            Buffer.from(value.publicKey).toString('base64'),
+                            "public"
+                        )
+                    }
+                }
+            }
+            case "SignNonce": {
+                const { signature } = response as SignNonceResponse;
+                const sigBase64 = Buffer.from(signature).toString('base64');
+                return sigBase64;
+            }
+            default:
+                throw new Error(
+                    "Invalid message response; message name not recognised"
+                );
         }
     }
 }

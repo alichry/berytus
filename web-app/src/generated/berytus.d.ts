@@ -72,6 +72,10 @@ declare global {
 	    intent?: BerytusOnboardingIntent;
 	    requiredUserAttributes?: Record<string, boolean>;
 	}
+	interface BerytusKeyAgreementInput {
+	    public: string;
+	    unmaskAllowlist?: Array<string>;
+	}
 	interface BerytusChannel {
 	    readonly active: boolean;
 	    readonly webApp: BerytusWebAppActor;
@@ -81,7 +85,9 @@ declare global {
 	    static create(options?: BerytusChannelOptions): Promise<BerytusChannel>;
 	    close(): Promise<undefined>;
 	    login(options?: BerytusOnboardingOptions): Promise<BerytusAccountAuthenticationOperation | BerytusAccountCreationOperation>;
-	    prepareKeyAgreementParameters(webAppX25519PublicKey: string): Promise<BerytusKeyAgreementParameters>;
+	    prepareKeyAgreementParameters(input: BerytusKeyAgreementInput): Promise<BerytusKeyAgreementParameters>;
+	    exchangeKeyAgreementSignatures(webAppSignature: ArrayBuffer): Promise<ArrayBuffer>;
+	    enableEndToEndEncryption(): Promise<undefined>;
 	}
 	interface BerytusCryptoWebAppActor extends BerytusWebAppActor {
 	    readonly ed25519Key: string;
@@ -93,22 +99,10 @@ declare global {
 	type BerytusCiphertextSource = BerytusEncryptedPacket;
 	type BerytusDataSource = BerytusPlaintextSource | BerytusCiphertextSource;
 	type BerytusDataType = string | ArrayBuffer | BerytusEncryptedPacket;
-	type BerytusEncryptionParams = AesGcmParams;
-	interface AesGcmParamsJSON extends Algorithm {
-	    iv: Base64URLString;
-	    additionalData?: Base64URLString;
-	    tagLength?: number;
+	interface BerytusEncryptedPacket extends Blob {
 	}
-	type BerytusEncryptionParamsJSON = AesGcmParamsJSON;
-	interface BerytusEncryptedPacketJSON {
-	    parameters: BerytusEncryptionParamsJSON;
-	    ciphertext: Base64URLString;
-	}
-	interface BerytusEncryptedPacket {
-	    readonly parameters: any;
-	    readonly ciphertext: ArrayBuffer;
-	    new (algorithm: BerytusEncryptionParams, ciphertext: BufferSource);
-	    toJSON(): BerytusEncryptedPacketJSON;
+	interface BerytusJWEPacket extends BerytusEncryptedPacket {
+	    new (jweCompact: string);
 	}
 	type BerytusFieldType = "Identity" | "ForeignIdentity" | "Password" | "SecurePassword" | "ConsumablePassword" | "Key" | "SharedKey" | "Custom";
 	type BerytusFieldRejectionReasonCode = string;
@@ -167,15 +161,47 @@ declare global {
 	interface BerytusIdentityField extends BerytusField {
 	    new (id: string, options: BerytusIdentityFieldOptions, desiredValue?: string | BerytusEncryptedPacket);
 	}
+	interface BerytusKeyExchangePartyPublicKeys {
+	    scm: string;
+	    webApp: string;
+	}
+	interface BerytusKeyExchangeAuthentication {
+	    name: string;
+	    public: BerytusKeyExchangePartyPublicKeys;
+	}
+	interface BerytusKeyExchangeParams {
+	    name: string;
+	    public: BerytusKeyExchangePartyPublicKeys;
+	}
+	interface BerytusKeyDerivationParams {
+	    name: string;
+	    hash: string;
+	    salt: BufferSource;
+	    info: BufferSource;
+	}
+	interface BerytusKeyGenParams {
+	    name: string;
+	    length: number;
+	}
+	interface BerytusKeyExchangeSessionFingerprint {
+	    hash: string;
+	    version: string;
+	    salt: BufferSource;
+	    value: BufferSource;
+	}
+	interface BerytusKeyExchangeSession {
+	    id: string;
+	    timestamp: number;
+	    fingerprint: BerytusKeyExchangeSessionFingerprint;
+	    unmaskAllowlist?: Array<string>;
+	}
 	interface BerytusKeyAgreementParameters {
-	    readonly sessionId: string;
-	    readonly webAppX25519Key: string;
-	    readonly scmX25519Key: string;
-	    readonly hkdfHash: string;
-	    readonly hkdfSalt: ArrayBuffer;
-	    readonly hkdfInfo: ArrayBuffer;
-	    readonly aesKeyLength: number;
-	    toJSON(): string;
+	    readonly session: any;
+	    readonly authentication: any;
+	    readonly exchange: any;
+	    readonly derivation: any;
+	    readonly generation: any;
+	    toCanonicalJSON(): string;
 	}
 	interface BerytusKeyFieldValue extends BerytusFieldValueDictionary {
 	    readonly publicKey: ArrayBuffer | BerytusEncryptedPacket;
@@ -219,7 +245,7 @@ declare global {
 	    info?: string;
 	    mimeType?: string;
 	    encoding: BerytusUserAttributeValueEncodingType;
-	    value: string | BerytusEncryptedPacketJSON;
+	    value: string;
 	}
 	interface BerytusUserAttribute {
 	    readonly id: BerytusUserAttributeKey;
@@ -265,7 +291,7 @@ declare global {
 	    response: BerytusKeyFieldValue;
 	}
 	interface BerytusChallengeSignNonceMessageResponse {
-	    response: ArrayBuffer;
+	    response: ArrayBuffer | BerytusEncryptedPacket;
 	}
 	interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
 	    new (id: string);
@@ -318,6 +344,7 @@ declare global {
 	declare var BerytusChannel: BerytusChannel;
 	declare var BerytusCryptoWebAppActor: BerytusCryptoWebAppActor;
 	declare var BerytusEncryptedPacket: BerytusEncryptedPacket;
+	declare var BerytusJWEPacket: BerytusJWEPacket;
 	declare var BerytusField: BerytusField;
 	declare var BerytusFieldMap: BerytusFieldMap;
 	declare var BerytusFieldValueDictionary: BerytusFieldValueDictionary;

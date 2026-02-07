@@ -176,7 +176,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             throw new Error("Pass challenge not set.");
         }
         const username = "";
-        const login = async (username: string, password: string) => {
+        const login = async (username: string, password: string | BerytusEncryptedPacket) => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -189,7 +189,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
                         id: "password",
                         value: password
                     }
-                ]);
+                ], "multipart");
                 const res= await this.authHandler.finish();
                 res.userAttributes.forEach(u => {
                     this.loginState.userAttributes[u.id] = u.value;
@@ -205,7 +205,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_END
         const { response: { password } } = await passCh.getPasswordFields(['password']);
         //! EXPORT_FN_IGNORE_START
-        assertIsString(password);
+        assert(typeof password === "string" || password instanceof BerytusJWEPacket);
         //! EXPORT_FN_IGNORE_END
         /*!
          * We use a web app-specific routine, `login`, for password
@@ -222,7 +222,9 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         this.loginState.credentialFields.push({
             id: 'password',
-            value: password
+            value: typeof password === "string"
+                ? password
+                : await password.text() // returns _concealed_
         });
         return { nextStep: "finishLogin" as const }
         //! EXPORT_FN_IGNORE_END
