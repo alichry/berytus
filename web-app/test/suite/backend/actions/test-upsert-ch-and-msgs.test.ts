@@ -621,11 +621,20 @@ describe("Berytus UpsertChallengeAndMessages", () => {
     it("Rejects when challenge's outcome is aborted", async() => {
         const [session, challengeDef] =
             await getSessionThatCanCreateSrpChallenge();
-        const challenge = await AuthChallenge.createChallenge(
+        let challenge = await AuthChallenge.createChallenge(
             session.sessionId,
             challengeDef.challengeId
         );
-        await challenge.updateOutcome(EAuthOutcome.Aborted);
+        await pool`
+            UPDATE ${table('berytus_account_auth_challenge')}
+            SET Outcome = ${EAuthOutcome.Aborted}
+            WHERE SessionID = ${toPostgresBigInt(session.sessionId)}
+            AND ChallengeID = ${challengeDef.challengeId}
+        `;
+        challenge = await AuthChallenge.getChallenge(
+            session.sessionId,
+            challengeDef.challengeId
+        );
         expect(challenge.outcome).to.equal(EAuthOutcome.Aborted);
         const messages = [
             {

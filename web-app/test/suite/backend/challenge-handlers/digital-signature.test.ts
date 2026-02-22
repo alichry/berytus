@@ -12,7 +12,7 @@ import { strict as assert } from 'node:assert';
 import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
 import { AuthChallengeMessage, type ChallengeMessageStatus } from '@root/backend/db/models/AuthChallengeMessage.js';
 import { AccountField } from '@root/backend/db/models/AccountField.js';
-import { PublicKeyFieldValue } from '@root/backend/logic/field-handler/DigitalSignatureHandler.js';
+import { ArmoredPublicKeyFieldValue } from '@root/backend/logic/field-handler/DigitalSignatureHandler.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
 import { ArmoredKeyUtils } from "@root/backend/utils/key-utils.js";
@@ -66,7 +66,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                         request: keyFieldId,
                         expected: {
                             id: keyFieldId,
-                            value: await PublicKeyFieldValue.parseAsync(keyField.fieldValue)
+                            value: await ArmoredPublicKeyFieldValue.parseAsync(keyField.fieldValue)
                         },
                         response,
                         statusMsg

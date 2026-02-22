@@ -5,7 +5,7 @@ import {
 import type {
     AuthChallengeMessageName,
     MessagePayload
-} from "../../db/models/AuthChallengeMessage";
+} from "../../db/models/AuthChallengeMessage.js";
 import {
     AbstractChallengeHandler,
     type MessageDraft,
@@ -15,11 +15,11 @@ import {
 } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
-import type { AuthSession } from "@root/backend/db/models/AuthSession";
+import type { AuthSession } from "@root/backend/db/models/AuthSession.js";
 import { randomBytes } from "crypto";
 import { ArmoredKeyUtils, KeyUtils, SignUtils } from "../../utils/key-utils.js";
 import type { PoolConnection } from "@root/backend/db/pool";
-import { PublicKeyFieldInput, ArmoredPublicKeyFieldValue } from "../field-handler/DigitalSignatureHandler";
+import { PublicKeyFieldInput, ArmoredPublicKeyFieldValue } from "../field-handler/DigitalSignatureHandler.js";
 
 type MessageName = BerytusDigitalSignatureChallengeMessageName;
 
@@ -170,7 +170,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 }
             }
             case "SignNonce": {
-                const { signature } = response as SignNonceResponse;
+                const { signature } = response as unknown as SignNonceResponse;
                 const sigBase64 = Buffer.from(signature).toString('base64');
                 return sigBase64;
             }
