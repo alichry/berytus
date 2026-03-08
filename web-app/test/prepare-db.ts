@@ -17,7 +17,9 @@ const cleanDb = async () => {
         'berytus_account_def_category_version',
         'berytus_account_def_category',
         'berytus_account_def',
-        'berytus_account'
+        'berytus_account',
+        'berytus_channel',
+        'berytus_channel_request',
     ] as const;
 
     return useConnection(async conn => {

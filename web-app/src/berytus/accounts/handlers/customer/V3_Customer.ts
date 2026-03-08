@@ -395,9 +395,12 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         const verifySignature = async (signature: ArrayBuffer | BerytusEncryptedPacket): Promise<boolean> => {
             assert(!!this.authHandler);
             try {
-                await this.authHandler.sendResponse({
-                    signature
-                }, "multipart");
+                await this.authHandler.sendResponse(
+                    signature instanceof ArrayBuffer
+                        ? new Blob([signature], { type: "application/octet-stream"})
+                        : signature,
+                    "blob"
+                );
                 const res= await this.authHandler.finish();
                 res.userAttributes.forEach(u => {
                     this.loginState.userAttributes[u.id] = u.value;

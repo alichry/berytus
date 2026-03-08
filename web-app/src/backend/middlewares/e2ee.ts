@@ -1,3 +1,6 @@
+import type { APIContext } from "astro";
+import objectPath from 'object-path';
+
 /*
  * Goal: define an e2ee midleware such that:
  * - it decrypts incoming payloads to match their cleartext
@@ -22,3 +25,35 @@
  * shared secret (if any). If e2ee is disabled, i.e. no shared
  * key, the middleware leaves the payload intact.
  */
+
+export const handleRequest = async (context: APIContext) => {
+    const parsedUrl = new URL(context.request.url);
+    if (
+        !(/^\/login\/.*\/.*\/auth\/.*\/challenge\/.*\/respond-message$/
+            .test(parsedUrl.pathname))
+    ) {
+        return;
+    }
+    if (context.request.method !== "POST") {
+        return;
+    }
+    // TODO(berytus): Support blob in addition to multipart
+    if (context.request.headers.get("Content-Type") !== "multipart/form-data") {
+        return;
+    }
+    const channelId = context.request.headers.get("X-Berytus-Channel-Id");
+    if (channelId === null) {
+        return;
+    }
+    const formData = await context.request.formData();
+    const obj = {};
+    formData.forEach((value, key) => {
+        objectPath.set(obj, key, value);
+    });
+
+    context.locals.requestBody = obj;
+}
+
+export const handleResponse = async (context: APIContext) => {
+    // TODO(berytus): Here
+}

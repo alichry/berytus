@@ -1,3 +1,28 @@
+CREATE TYPE EChannelType AS ENUM('NonE2EE', 'E2EE');
+
+CREATE TABLE berytus_channel_request(
+    RequestID BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL,
+    WebAppActor JSONB NOT NULL, -- ed25519 public key or origin
+    WebAppX25519 JSONB DEFAULT NULL, -- { "public": "..", "private": ".." }
+    UnmaskAllowlist JSONB DEFAULT NULL,
+    CreatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (RequestID)
+);
+
+CREATE TABLE berytus_channel(
+    ChannelID VARCHAR(256) NOT NULL,
+    ChannelType EChannelType DEFAULT 'NonE2EE' NOT NULL,
+    ChannelRequestID BIGINT NOT NULL,
+    ScmActor JSONB NOT NULL,
+    KeyAgreementParameters JSONB DEFAULT NULL,
+    KeyAgreementSignatures JSONB DEFAULT NULL,
+    SessionKey JSONB DEFAULT NULL,
+    CreatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (ChannelID),
+    CONSTRAINT fk_bc_ChannelRequestID
+        FOREIGN KEY (ChannelRequestID) REFERENCES berytus_channel_request(RequestID)
+);
+
 CREATE TABLE berytus_account(
     AccountID BIGINT GENERATED ALWAYS AS IDENTITY,
     CreatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,

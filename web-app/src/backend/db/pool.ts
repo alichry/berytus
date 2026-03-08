@@ -34,6 +34,8 @@ type TableName =
     | "berytus_account_auth_session"
     | "berytus_account_auth_challenge"
     | "berytus_account_auth_challenge_message"
+    | "berytus_channel_request"
+    | "berytus_channel"
 
 export const table = (name: TableName) => {
     return pool(`${databaseSchema}.${name}`);

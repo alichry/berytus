@@ -11,7 +11,7 @@ import { debugAssert, releaseAssert } from '@root/backend/utils/assert.js';
 export const POST: APIRoute<
     Record<string, any>,
     { sessionId: string; challengeId: string; }
-> = async ({ request, params }) => {
+> = async ({ request, params, locals }) => {
     releaseAssert(typeof params["sessionId"] === "string");
     releaseAssert(typeof params["challengeId"] === "string");
     const { sessionId, challengeId } = params;
