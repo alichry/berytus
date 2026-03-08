@@ -156,7 +156,7 @@ export class AuthSessionHandler {
 
     async sendResponse(
         response: unknown,
-        contentType: "json" | "multipart" = "multipart"
+        contentType: "json" | "multipart" | "blob" = "multipart"
     ) {
         if (! this.currentChallengeId) {
             throw new Error(
@@ -167,7 +167,7 @@ export class AuthSessionHandler {
         if (contentType === "json") {
             body = JSON.stringify(response);
             contentTypeHeader = "application/json";
-        } else {
+        } else if (contentType === "multipart") {
             if (typeof response !== "object" || response === null) {
                 throw new Error(
                     "Expecting response to be a non-null object "
@@ -177,6 +177,14 @@ export class AuthSessionHandler {
             body = new FormData();
             contentTypeHeader = "multipart/form-data";
             populateFormData(body, response);
+        } else {
+            if (! (response instanceof Blob)) {
+                throw new Error(
+                    "Expecting response to be a Blob when contentType is blob."
+                );
+            }
+            body = response;
+            contentTypeHeader = response.type;
         }
         const resp = await fetch(
             `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,

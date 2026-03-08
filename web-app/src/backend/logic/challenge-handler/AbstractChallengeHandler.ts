@@ -21,6 +21,24 @@ import { UpsertChallengeAndMessages } from "@root/backend/db/actions/UpsertChall
 import { EntityNotFoundError } from "@root/backend/db/errors/EntityNotFoundError.js";
 import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 
+/**
+ * The payload type sent by the client before storage in the database.
+ * This is different from MessagePayload because sometimes the client may send
+ * data in a format that is different from how we want to store it in the database.
+ * For example, signed nonces are sent as raw bytes from the client, but we
+ * want to store them as base64-encoded strings in the database.
+ * In such cases, the handler will implement transformResponseForStorage() to
+ * transform the client-sent payload (InputMessagePayload) into the
+ * format we want to store in the database (MessagePayload).
+ */
+export type InputMessagePayload = MessagePayload /* JSONValue */
+    | ArrayBuffer
+    | {
+      readonly [prop: string | number]:
+      | undefined
+      | InputMessagePayload
+    };
+
 export interface MessageDraft<MN extends AuthChallengeMessageName> {
     messageName: MN;
     request: MessagePayload;
@@ -109,7 +127,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     protected abstract validateMessageResponse(
         processedMessages: MessageDictionary<MN>,
         pendingMessage: Message<MN>,
-        response: MessagePayload
+        response: InputMessagePayload
     ): Promise<NonNullable<ChallengeMessageStatus>>;
 
     /**
@@ -125,7 +143,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
      */
     protected abstract transformResponseForStorage(
         pendingMessage: Message<MN>,
-        response: MessagePayload
+        response: InputMessagePayload
     ): Promise<MessagePayload>;
 
     static async setupChallenge<MN extends AuthChallengeMessageName>(
@@ -250,7 +268,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     }
 
     async processPendingMessageResponse(
-        response: MessagePayload
+        response: InputMessagePayload
     ): Promise<NonNullable<ChallengeMessageStatus>> {
         const { processedMessages, pendingMessage } = await this.getMessages();
         if (! pendingMessage) {

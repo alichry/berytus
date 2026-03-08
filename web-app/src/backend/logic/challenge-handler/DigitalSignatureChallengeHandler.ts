@@ -11,7 +11,8 @@ import {
     type MessageDraft,
     type MessageDictionary,
     type Message,
-    type CCHDependencies
+    type CCHDependencies,
+    type InputMessagePayload
 } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
@@ -38,9 +39,7 @@ const SelectKeyResponse = PublicKeyFieldInput;
 
 type SelectKeyResponse = z.infer<typeof SelectKeyResponse>;
 
-const SignNonceResponse = z.object({
-    signature: z.instanceof(ArrayBuffer)
-});
+const SignNonceResponse = z.instanceof(ArrayBuffer);
 
 type SignNonceResponse = z.infer<typeof SignNonceResponse>;
 
@@ -109,7 +108,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
     protected async validateMessageResponse(
         processedMessages: MessageDictionary<MessageName>,
         pendingMessage: Message<MessageName>,
-        response: MessagePayload
+        response: InputMessagePayload
     ) {
         switch (pendingMessage.messageName) {
             case "SelectKey": {
@@ -133,7 +132,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 return `Ok` as const;
             }
             case "SignNonce": {
-                const { signature: sig } =
+                const sig =
                     await SignNonceResponse.parseAsync(response);
                 const nonce = Buffer.from(pendingMessage.request as string, 'base64');
                 const key = await KeyUtils.importArmoredKeyForVerification(
@@ -151,14 +150,14 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
 
     protected async transformResponseForStorage(
         pendingMessage: Message<MessageName>,
-        response: MessagePayload
+        response: InputMessagePayload
     ): Promise<MessagePayload> {
         switch (pendingMessage.messageName) {
             case "SelectKey": {
                 const {
                     id,
                     value
-                } = response as unknown as SelectKeyResponse;
+                } = response as SelectKeyResponse;
                 return {
                     id,
                     value: {
@@ -170,8 +169,8 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 }
             }
             case "SignNonce": {
-                const { signature } = response as unknown as SignNonceResponse;
-                const sigBase64 = Buffer.from(signature).toString('base64');
+                const sig = response as SignNonceResponse;
+                const sigBase64 = Buffer.from(sig).toString('base64');
                 return sigBase64;
             }
             default:
