@@ -5,6 +5,7 @@ import { ConditionalCheckError } from "../errors/ConditionalCheckError.js";
 import { ChannelRequest } from "./ChannelRequest.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import { webcrypto } from "node:crypto";
+import { isDeepStrictEqual } from 'node:util';
 
 export enum EChannelType {
     NonE2EE = "NonE2EE",
@@ -15,11 +16,12 @@ type ScmActor = Pick<BerytusSecretManagerActor, 'ed25519Key'>;
 
 type KeyAgreementParameters = {
     [key: string]: JSONValue;
-    readonly session: Omit<BerytusKeyExchangeSession, 'fingerprint'> & {
+    readonly session: Omit<BerytusKeyExchangeSession, 'fingerprint' | 'unmaskAllowlist'> & {
         fingerprint: Omit<BerytusKeyExchangeSession['fingerprint'], 'salt' | 'value'> & {
 	        salt: string; // base64 encoded
 	        value: string; // base64 encoded
         };
+        unmaskAllowlist?: ReadonlyArray<string>;
     };
     readonly authentication: BerytusKeyExchangeAuthentication & { [key: string]: JSONValue };
     readonly exchange: BerytusKeyExchangeParams & { [key: string]: JSONValue };
@@ -78,7 +80,7 @@ export class Channel {
     }
 
     get keyAgreementParameters() {
-        return this.#keyAgreementSignatures;
+        return this.#keyAgreementParameters;
     }
 
     get keyAgreementSignatures() {
@@ -122,7 +124,8 @@ export class Channel {
     ): Promise<Channel> {
         const res = await conn<PGetChannel[]>`
             SELECT ChannelID, ChannelType, ChannelRequestID,
-                   ScmActor, KeyAgreementParameters, SessionKey
+                   ScmActor, KeyAgreementParameters,
+                   KeyAgreementSignatures, SessionKey
             FROM ${table('berytus_channel')}
             WHERE ChannelID = ${channelId}
         `;
@@ -244,19 +247,19 @@ export class Channel {
         }
         const checks = [
             ['channelId', params.session.id, this.id],
-            ['unmaskAllowlist', params.session.unmaskAllowlist || null, request.unmaskAllowlist],
+            ['unmaskAllowlist', params.session.unmaskAllowlist, request.unmaskAllowlist],
+            ['keyExchAuthAlg', params.authentication.name, 'Ed25519'],
             ['webAppEd25519', params.authentication.public.webApp, request.webAppActor.ed25519Key],
             ['scmEd25519', params.authentication.public.scm, this.scmActor.ed25519Key],
             ['webAppX25519', params.exchange.public.webApp, request.webAppX25519.public],
-            ['keyExchAuthAlg', params.authentication.name, 'Ed25519'],
             ['keyExchAlg', params.exchange.name, 'X25519'],
             ['keyDerivAlg', params.derivation.name, 'HKDF'],
             ['keyDerivHash', params.derivation.hash, 'SHA-256'],
             ['keyGenAlg', params.generation.name, 'AES-GCM'],
-            ['keyGenKeyLength', params.generation.keyLength, 256],
+            ['keyGenKeyLength', params.generation.length, 256],
         ];
-        for (const [paramName, expected, actual] of checks) {
-            if (actual !== expected) {
+        for (const [paramName, actual, expected] of checks) {
+            if (! isDeepStrictEqual(actual, expected)) {
                 throw ConditionalCheckError.default(
                     Channel.name,
                     this.id,
@@ -435,7 +438,7 @@ export class Channel {
                 AND ScmActor = ${conn.json(this.scmActor)}
                 AND KeyAgreementParameters = ${conn.json(this.keyAgreementParameters)}
                 AND keyAgreementSignatures is NOT NULL
-                AND keyAgreementSignatures->>'webApp' = ${conn.json(this.keyAgreementSignatures.webApp)}
+                AND keyAgreementSignatures->>'webApp' = ${this.keyAgreementSignatures.webApp}
                 AND keyAgreementSignatures->>'scm' IS NULL
                 AND SessionKey is NULL
                 FOR UPDATE
@@ -577,5 +580,17 @@ export class Channel {
         );
         return signature;
         //const res = await conn`
+    }
+
+    public toJSON() {
+        return {
+            id: this.id,
+            requestId: this.requestId,
+            type: this.type,
+            scmActor: this.scmActor,
+            keyAgreementParameters: this.keyAgreementParameters,
+            keyAgreementSignatures: this.keyAgreementSignatures,
+            sessionKey: this.sessionKey
+        }
     }
 }
