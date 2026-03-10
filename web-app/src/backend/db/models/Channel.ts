@@ -14,7 +14,7 @@ export enum EChannelType {
 
 type ScmActor = Pick<BerytusSecretManagerActor, 'ed25519Key'>;
 
-type KeyAgreementParameters = {
+export type KeyAgreementParametersJson = {
     [key: string]: JSONValue;
     readonly session: Omit<BerytusKeyExchangeSession, 'fingerprint' | 'unmaskAllowlist'> & {
         fingerprint: Omit<BerytusKeyExchangeSession['fingerprint'], 'salt' | 'value'> & {
@@ -47,7 +47,7 @@ interface PGetChannel {
     channeltype: EChannelType;
     channelrequestid: BigInt;
     scmactor: ScmActor;
-    keyagreementparameters: KeyAgreementParameters | null;
+    keyagreementparameters: KeyAgreementParametersJson | null;
     keyagreementsignatures: KeyAgreementSignatures | null;
     sessionkey: SessionKey | null;
 }
@@ -57,7 +57,7 @@ export class Channel {
     public readonly requestId: BigInt;
     public readonly type: EChannelType;
     public readonly scmActor: ScmActor;
-    #keyAgreementParameters: KeyAgreementParameters | null;
+    #keyAgreementParameters: KeyAgreementParametersJson | null;
     #keyAgreementSignatures: KeyAgreementSignatures | null;
     #sessionKey: SessionKey | null;
 
@@ -66,7 +66,7 @@ export class Channel {
         requestId: BigInt,
         type: EChannelType,
         scmActor: ScmActor,
-        keyAgreementParameters: KeyAgreementParameters | null = null,
+        keyAgreementParameters: KeyAgreementParametersJson | null = null,
         keyAgreementSignatures: KeyAgreementSignatures | null = null,
         sessionKey: SessionKey | null = null
     ) {
@@ -92,7 +92,7 @@ export class Channel {
     }
 
     public e2eeEstablished(): this is Channel & {
-        keyAgreementParameters: KeyAgreementParameters;
+        keyAgreementParameters: KeyAgreementParametersJson;
         keyAgreementSignatures: KeyAgreementSignatures;
         sessionKey: SessionKey;
     } {
@@ -220,7 +220,7 @@ export class Channel {
     }
 
     public async setKeyAgreementParameters(
-        params: KeyAgreementParameters,
+        params: KeyAgreementParametersJson,
         existingConn?: PoolConnection
     ): Promise<void> {
         if (existingConn) {
@@ -233,7 +233,7 @@ export class Channel {
 
     async #setKeyAgreementParameters(
         conn: PoolConnection,
-        params: KeyAgreementParameters,
+        params: KeyAgreementParametersJson,
     ): Promise<void> {
         const request = await ChannelRequest.getRequest(this.requestId, conn);
         if (! request.supportsE2EE()) {
@@ -533,53 +533,6 @@ export class Channel {
             );
         }
         this.#sessionKey = sessionKey;
-    }
-
-    // TODO(berytus): Move this to a handler
-    async #signKeyAgreementParameters(
-        conn: PoolConnection
-    ): Promise<ArrayBuffer> {
-        if (this.keyAgreementSignatures !== null) {
-            return Uint8Array
-                // @ts-ignore: Node 25+
-                .fromBase64(this.keyAgreementSignatures.webApp)
-                .buffer;
-        }
-        if (this.keyAgreementParameters === null) {
-            throw ConditionalCheckError.default(
-                Channel.name,
-                this.id,
-                'ChannelID',
-                "Key agreement parameters have not been set for the channel."
-            );
-        }
-        // sign the key agreement parameters in the same
-        // key order provided. Stringify with no space padding.
-        const paramsStr = JSON.stringify(this.keyAgreementParameters);
-        const paramsBuf = new TextEncoder().encode(paramsStr);
-        const request = await ChannelRequest.getRequest(this.requestId, conn);
-        releaseAssert(
-            request.supportsE2EE(),
-            "ChannelRequest must support E2EE for signing key agreement parameters"
-        );
-        const webAppEd25519B64 = request.webAppActor.ed25519Key;
-        const webAppEd25519Buf: Uint8Array = Uint8Array
-            // @ts-ignore: Node 25+
-            .fromBase64(webAppEd25519B64);
-        const cryptoKey = await webcrypto.subtle.importKey(
-            "pkcs8",
-            webAppEd25519Buf,
-            "Ed25519",
-            false,
-            ["sign"]
-        );
-        const signature = await webcrypto.subtle.sign(
-            "Ed25519",
-            cryptoKey,
-            paramsBuf
-        );
-        return signature;
-        //const res = await conn`
     }
 
     public toJSON() {
