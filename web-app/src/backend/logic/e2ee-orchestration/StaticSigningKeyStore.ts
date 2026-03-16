@@ -1,22 +1,11 @@
-import type { ISigningKeyStore } from "./types";
-
-const privateKeyPkcs8 = "";
-const publicKeySpki = "";
+import type { ISigningKeyStore, KeyMaterial } from "./types";
+import { signingKeySpki, signingKeyPkcs8 } from "@root/backend/env/e2ee.js";
 
 export class StaticSigningKeyStore implements ISigningKeyStore {
-    public async exportAsSpkiString(): Promise<string> {
-        return publicKeySpki;
+    async getPrivateKeyMaterial(): Promise<KeyMaterial> {
+        return signingKeyPkcs8;
     }
-    public async getSigningCryptoKey(): Promise<CryptoKey> {
-        return await crypto.subtle.importKey(
-            "pkcs8",
-            Uint8Array
-                // @ts-ignore: Node 25+
-                .fromBase64(privateKeyPkcs8)
-                .buffer,
-            "Ed25519",
-            false,
-            ["sign"]
-        );
+    async getPublicKeyMaterial(): Promise<KeyMaterial> {
+        return signingKeySpki;
     }
 }

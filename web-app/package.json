@@ -15,7 +15,7 @@
     "generate-webidl-ts": "./generate-webidl-ts.sh",
     "dev:flyway": "./src/bin/flyway.ts",
     "dev:flyway:migrate": "./src/bin/migrate-db.ts",
-    "test": "NODE_ENV=development mocha test/prepare-db.ts test/suite/**/*.test.ts",
+    "test": "NODE_ENV=development mocha test/prepare-env.ts test/prepare-db.ts test/suite/**/*.test.ts",
     "netlify": "netlify"
   },
   "dependencies": {
