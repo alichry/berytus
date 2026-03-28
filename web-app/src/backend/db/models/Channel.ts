@@ -6,13 +6,14 @@ import { ChannelRequest } from "./ChannelRequest.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import { webcrypto } from "node:crypto";
 import { isDeepStrictEqual } from 'node:util';
+import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
 
 export enum EChannelType {
     NonE2EE = "NonE2EE",
     E2EE = "E2EE",
 }
 
-type ScmActor = Pick<BerytusSecretManagerActor, 'ed25519Key'>;
+type ScmActor = Pick<BerytusSecretManagerActor, 'ed25519Key'> | null;
 
 export type KeyAgreementParametersJson = {
     [key: string]: JSONValue;
@@ -73,7 +74,7 @@ export class Channel {
         this.id = id;
         this.requestId = requestId;
         this.type = type;
-        this.scmActor = Object.freeze({ ...scmActor});
+        this.scmActor = scmActor === null ? null : Object.freeze({ ...scmActor});
         this.#keyAgreementParameters = keyAgreementParameters;
         this.#keyAgreementSignatures = keyAgreementSignatures;
         this.#sessionKey = sessionKey;
@@ -150,7 +151,7 @@ export class Channel {
     public static async create(
         channelId: string,
         channelRequestId: BigInt,
-        scmActor: BerytusSecretManagerActor,
+        scmActor: ScmActor,
         existingConn?: PoolConnection
     ): Promise<Channel> {
         if (existingConn) {
@@ -173,12 +174,17 @@ export class Channel {
         conn: PoolConnection,
         channelId: string,
         channelRequestId: BigInt,
-        scmActor: ScmActor
+        scmActor: ScmActor | null
     ): Promise<Channel> {
         const request = await ChannelRequest.getRequest(channelRequestId, conn);
         const type = request.supportsE2EE()
             ? EChannelType.E2EE
             : EChannelType.NonE2EE;
+        if (null === scmActor && type === EChannelType.E2EE) {
+            throw new InvalidArgError(
+                "Crypto ScmActor must be provided for E2EE channels."
+            );
+        }
         const res = await conn`
             WITH cte_request AS (
                 SELECT * FROM ${table('berytus_channel_request')}
@@ -245,6 +251,7 @@ export class Channel {
                 "is being used to establish E2EE."
             );
         }
+        releaseAssert(null !== this.scmActor, "null !== this.scmActor");
         const checks = [
             ['channelId', params.session.id, this.id],
             ['unmaskAllowlist', params.session.unmaskAllowlist, request.unmaskAllowlist],
@@ -308,7 +315,7 @@ export class Channel {
                 "does not exist, or the channel is not (or no longer due " +
                 "to a concurrent update) in a valid state for setting " +
                 "key agreement parameters."
-            )
+            );
         }
         this.#keyAgreementParameters = params;
     }
