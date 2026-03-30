@@ -24,8 +24,8 @@ public:
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> GetOtp(JSContext* aCx,
-                                              const nsAString& aForeignIdentityFieldIds,
-                                              ErrorResult& aRv);
+                                   const StringOrBerytusEncryptedPacket& aForeignIdentityFieldIds,
+                                   ErrorResult& aRv);
   already_AddRefed<Promise> AbortWithIncorrectOtpError(
       JSContext* aCx,
       ErrorResult& aRv

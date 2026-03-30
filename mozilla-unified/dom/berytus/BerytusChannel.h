@@ -113,7 +113,7 @@ public:
     JS::MutableHandle<JSObject*> aRetVal,
     ErrorResult& aRv);
 
-  void GetID(nsString& aRv) const;
+  void GetId(nsString& aRv) const;
 
   // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).
   already_AddRefed<BerytusWebAppActor> WebApp() const;

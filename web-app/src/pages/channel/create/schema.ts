@@ -5,7 +5,7 @@ export const Body = z.object({
     channelRequestId: z.string(),
     scmActor: z.object({
         ed25519Key: z.string()
-    }).nullable()
+    })
 });
 
 export type Body = z.infer<typeof Body>;

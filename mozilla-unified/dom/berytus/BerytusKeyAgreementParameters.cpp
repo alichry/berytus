@@ -674,7 +674,7 @@ already_AddRefed<Fingerprint> Fingerprint::Create(
   }
   // id:
   nsString channelId;
-  aChannel->GetID(channelId);
+  aChannel->GetId(channelId);
   auto utf8Id = NS_ConvertUTF16toUTF8(channelId);
   if (NS_WARN_IF(!toDigest.AppendElements(utf8Id.BeginReading(), utf8Id.Length(), fallible))) {
     aRv.ThrowTypeError("Out of memory");
@@ -790,7 +790,7 @@ already_AddRefed<Session> Session::Create(
     ErrorResult& aRv) {
   MOZ_ASSERT(aChannel);
   nsString sessionId;
-  aChannel->GetID(sessionId);
+  aChannel->GetId(sessionId);
   std::time_t timestamp = std::time(nullptr);
   nsIGlobalObject* global = aChannel->GetParentObject();
   MOZ_ASSERT(global);

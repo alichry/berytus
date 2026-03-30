@@ -36,12 +36,23 @@ BerytusDigitalSignatureChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject
 
 already_AddRefed<Promise> BerytusDigitalSignatureChallenge::SelectKey(
     JSContext* aCx,
-    const nsAString& aKeyFieldId,
+    const StringOrBerytusEncryptedPacket& aKeyFieldId,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aKeyFieldId, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
+  if (aKeyFieldId.IsString()) {
+    if (NS_WARN_IF(!ToJSValue(aCx, aKeyFieldId.GetAsString(), &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  } else {
+    MOZ_ASSERT(aKeyFieldId.IsBerytusEncryptedPacket());
+    const auto& val = OwningNonNull(aKeyFieldId.GetAsBerytusEncryptedPacket());
+    berytus::BerytusEncryptedPacket packetProxy;
+    berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
+    if (NS_WARN_IF(!berytus::ToJSVal(aCx, packetProxy, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
   }
   // TODO(berytus): Resolve with a BerytusKeyFieldValue
   return SendMessageRaw(aCx, u"SelectKey"_ns, JS::HandleValue(payload), aRv);

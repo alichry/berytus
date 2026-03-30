@@ -1,4 +1,5 @@
-import { AbstractAccountStageHandler } from "../AbstractAccountHandler";
+import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
+import { AbstractAccountStageHandler } from "../AbstractAccountHandler.js";
 import type { TypedStageHandler } from "@root/berytus/types";
 
 const version = 2000 as const;
@@ -8,6 +9,10 @@ const steps = ["createChannel", "login", "addFields", "save"] as const;
 
 export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof steps[number]>
     implements TypedStageHandler<EmployeeHandlerV2000> {
+
+    public constructor() {
+        super(new NonE2EEHandler());
+    }
 
     get version(): number {
         return version;
@@ -26,6 +31,9 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
     }
 
     async createChannel() {
+        //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.prepare();
+        //! EXPORT_FN_IGNORE_END
         /*! Domain-based credential mapping actor */
         const actor = new BerytusAnonymousWebAppActor();
         //!
@@ -41,6 +49,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         //!
         //! EXPORT_FN_IGNORE_START
         this.channel = channel;
+        await this.channelHandler.init(this.channel);
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
     }

@@ -4,6 +4,7 @@ import { Result as NewResult } from "@root/pages/login/[category]/[version]/id/s
 import { Result as PendingResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/pending-message/schema";
 import { Result as ProcessMessageResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
 import { Result as FinishResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/finish/schema";
+import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
 
 // TODO: Check if we still have to change prototype.name
 export class AuthError extends Error {}
@@ -12,34 +13,6 @@ export class AuthAccountNotFoundError extends AuthError {}
 AuthAccountNotFoundError.prototype.name = 'AuthAccountNotFoundError';
 export class AuthIncorrectResponseError extends AuthError {}
 AuthIncorrectResponseError.prototype.name = "AuthIncorrectResponseError";
-
-const populateFormData = (fdata: FormData, value: unknown, key?: string) => {
-    if (typeof value === "object" && value !== null && !(value instanceof Blob)) {
-        for (const [k, v] of Object.entries(value)) {
-            if (/(\[|\])/.test(String(k))) {
-                throw new Error(
-                    `Keys cannot contain square brackets when `
-                    + `using multipart form data. Invalid key: ${k}`
-                );
-            }
-            populateFormData(fdata, v, key ? `${key}[${k}]` : k);
-        }
-        return;
-    }
-    if (value instanceof ArrayBuffer) {
-        fdata.append(key!, new Blob([value], { type: "application/octet-stream" }));
-        return;
-    }
-    if (ArrayBuffer.isView(value) || value instanceof DataView) {
-        throw new Error(
-            "Expecting ArrayBuffer to be passed for binary data. "
-            + "Typed arrays and DataViews are not supported."
-        );
-    }
-    // @ts-ignore: Browser implementation should
-    // convert value to string if necessary.
-    fdata.append(key!, value);
-}
 
 export class AuthSessionHandler {
     readonly accountVersion: number;
@@ -61,16 +34,16 @@ export class AuthSessionHandler {
     static async create(
         accountVersion: number,
         accountCategory: string,
-        accountIdentity: FieldInput[]
+        accountIdentity: FieldInput[],
+        targetContentType: TargetContentType = "multipart"
     ) {
         const resp = await fetch(
             `/login/${accountCategory}/${accountVersion}/id`,
             {
                 method: "POST",
-                body: JSON.stringify({
-                    accountVersion,
+                ...buildRequestBodyAndHeaders({
                     fields: accountIdentity
-                })
+                }, targetContentType)
             }
         )
         if (! resp.ok) {
@@ -156,44 +129,19 @@ export class AuthSessionHandler {
 
     async sendResponse(
         response: unknown,
-        contentType: "json" | "multipart" | "blob" = "multipart"
+        targetContentType: TargetContentType = "multipart"
     ) {
         if (! this.currentChallengeId) {
             throw new Error(
                 "Cannot send response, challenge is not active"
             );
         }
-        let body, contentTypeHeader;
-        if (contentType === "json") {
-            body = JSON.stringify(response);
-            contentTypeHeader = "application/json";
-        } else if (contentType === "multipart") {
-            if (typeof response !== "object" || response === null) {
-                throw new Error(
-                    "Expecting response to be a non-null object "
-                    + "when contentType is multipart."
-                );
-            }
-            body = new FormData();
-            contentTypeHeader = "multipart/form-data";
-            populateFormData(body, response);
-        } else {
-            if (! (response instanceof Blob)) {
-                throw new Error(
-                    "Expecting response to be a Blob when contentType is blob."
-                );
-            }
-            body = response;
-            contentTypeHeader = response.type;
-        }
+
         const resp = await fetch(
             `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,
             {
                 method: "POST",
-                headers: {
-                    ['Content-Type']: contentTypeHeader
-                },
-                body
+                ...buildRequestBodyAndHeaders(response, targetContentType)
             }
         )
         if (! resp.ok) {

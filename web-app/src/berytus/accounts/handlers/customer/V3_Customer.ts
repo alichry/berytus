@@ -2,11 +2,27 @@ import { AbstractAccountStageHandler } from "../AbstractAccountHandler";
 import type { TypedStageHandler } from "@root/berytus/types";
 import { assert, assertIsString } from "../assertions";
 import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler";
+import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
 
 const version = 3 as const;
 const category = "Customer" as const;
 const description = "Username Identification and Digital Signature Authentication" as const;
-const steps = ["createChannel", "login", "addFields", "validateFields", "metadata", "save", "transitionToAuth", "createIdentificationChallenge", "identification", "createDsChallenge", "selectKey", "signNonce", "finishLogin", "closeChannel"] as const;
+const steps = [
+    "createChannel",
+    "login",
+    "addFields",
+    "validateFields",
+    "metadata",
+    "save",
+    "transitionToAuth",
+    "createIdentificationChallenge",
+    "identification",
+    "createDsChallenge",
+    "selectKey",
+    "signNonce",
+    "finishLogin",
+    "closeChannel"
+] as const;
 
 const armorKey = (body: ArrayBuffer, type: "PUBLIC" | "PRIVATE" = "PUBLIC") => {
     let res = `-----BEGIN ${type} KEY-----\n`;
@@ -30,6 +46,10 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
     implements TypedStageHandler<CustomerHandlerV3> {
     protected authHandler?: AuthSessionHandler;
 
+    public constructor() {
+        super(new NonE2EEHandler());
+    }
+
     get version(): number {
         return version;
     }
@@ -47,6 +67,9 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
     }
 
     async createChannel() {
+        //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.prepare();
+        //! EXPORT_FN_IGNORE_END
         /*! Domain-based credential mapping actor */
         const actor = new BerytusAnonymousWebAppActor();
         //!
@@ -62,6 +85,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         //!
         //! EXPORT_FN_IGNORE_START
         this.channel = channel;
+        await this.channelHandler.init(this.channel);
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -190,8 +214,8 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
                 id: "key",
                 value: {
                     publicKey: key.publicKey instanceof ArrayBuffer
-                        ? armorKey(key.publicKey)
-                        : await key.publicKey.text() // returns _concealed_
+                        ? new Blob([key.publicKey], { type: "application/octet-stream" })
+                        : key.publicKey
                 }
             }];
             const attrs: Record<string, string> = {};
@@ -461,6 +485,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         }
         //! EXPORT_FN_IGNORE_END
         await channel.close();
+        await this.channelHandler.close();
         //! EXPORT_FN_IGNORE_START
         return { finished: true as const }
         //! EXPORT_FN_IGNORE_END

@@ -33,12 +33,46 @@ BerytusIdentificationChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject*>
 
 already_AddRefed<Promise> BerytusIdentificationChallenge::GetIdentityFields(
     JSContext* aCx,
-    const Sequence<nsString>& aIdentityFieldIds,
+    const Sequence<OwningStringOrBerytusEncryptedPacket>& aIdentityFieldIds,
     ErrorResult& aRv) {
-  JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aIdentityFieldIds, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
+  if (aIdentityFieldIds.IsEmpty()) {
+    aRv.ThrowTypeError("At least one identity field identifier must be provided");
     return nullptr;
+  }
+  JS::Rooted<JS::Value> payload(aCx);
+  Sequence<nsString> asStrings;
+  Sequence<OwningNonNull<BerytusEncryptedPacket>> asPackets;
+  for (const auto& item : aIdentityFieldIds) {
+    if (item.IsString()) {
+      if (asPackets.Length() > 0) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return nullptr;
+      }
+      if (NS_WARN_IF(!asStrings.AppendElement(item.GetAsString(), fallible))) {
+        aRv.ThrowTypeError("Mixed types in identity field identifiers are not allowed");
+        return nullptr;
+      }
+    } else {
+      if (asStrings.Length() > 0) {
+        aRv.ThrowTypeError("Mixed types in identity field identifiers are not allowed");
+        return nullptr;
+      }
+      if (NS_WARN_IF(!asPackets.AppendElement(item.GetAsBerytusEncryptedPacket(), fallible))) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return nullptr;
+      }
+    }
+  }
+  if (asStrings.Length() > 0) {
+    if (NS_WARN_IF(!ToJSValue(aCx, asStrings, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  } else {
+    if (NS_WARN_IF(!ToJSValue(aCx, asPackets, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
   }
   return SendMessageRaw(aCx, u"GetIdentityFields"_ns, JS::HandleValue(payload), aRv);
 }

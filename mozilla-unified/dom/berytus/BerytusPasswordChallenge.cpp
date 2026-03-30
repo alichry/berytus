@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/BerytusPasswordChallenge.h"
 #include "mozilla/dom/ToJSValue.h"
+#include "mozilla/fallible.h"
 
 namespace mozilla::dom {
 
@@ -33,12 +34,46 @@ BerytusPasswordChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGive
 
 already_AddRefed<Promise> BerytusPasswordChallenge::GetPasswordFields(
     JSContext* aCx,
-    const Sequence<nsString>& aPasswordFieldIds,
+    const Sequence<OwningStringOrBerytusEncryptedPacket>& aPasswordFieldIds,
     ErrorResult& aRv) {
-  JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aPasswordFieldIds, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
+  if (aPasswordFieldIds.IsEmpty()) {
+    aRv.ThrowTypeError("At least one password field identifier must be provided");
     return nullptr;
+  }
+  JS::Rooted<JS::Value> payload(aCx);
+  Sequence<nsString> asStrings;
+  Sequence<OwningNonNull<BerytusEncryptedPacket>> asPackets;
+  for (const auto& item : aPasswordFieldIds) {
+    if (item.IsString()) {
+      if (asPackets.Length() > 0) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return nullptr;
+      }
+      if (NS_WARN_IF(!asStrings.AppendElement(item.GetAsString(), fallible))) {
+        aRv.ThrowTypeError("Mixed types in password field identifiers are not allowed");
+        return nullptr;
+      }
+    } else {
+      if (asStrings.Length() > 0) {
+        aRv.ThrowTypeError("Mixed types in password field identifiers are not allowed");
+        return nullptr;
+      }
+      if (NS_WARN_IF(!asPackets.AppendElement(item.GetAsBerytusEncryptedPacket(), fallible))) {
+        aRv.Throw(NS_ERROR_FAILURE);
+        return nullptr;
+      }
+    }
+  }
+  if (asStrings.Length() > 0) {
+    if (NS_WARN_IF(!ToJSValue(aCx, asStrings, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  } else {
+    if (NS_WARN_IF(!ToJSValue(aCx, asPackets, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
   }
   return SendMessageRaw(aCx, u"GetPasswordFields"_ns, JS::HandleValue(payload), aRv);
 }

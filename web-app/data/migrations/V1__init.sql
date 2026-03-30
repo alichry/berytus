@@ -1,5 +1,7 @@
 CREATE TYPE EChannelType AS ENUM('NonE2EE', 'E2EE');
 
+CREATE TYPE EChannelStatus AS ENUM('Active', 'Closed');
+
 CREATE TABLE berytus_channel_request(
     RequestID BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL,
     WebAppActor JSONB NOT NULL, -- ed25519 public key or origin
@@ -14,6 +16,7 @@ CREATE TABLE berytus_channel(
     ChannelType EChannelType DEFAULT 'NonE2EE' NOT NULL,
     ChannelRequestID BIGINT NOT NULL,
     ScmActor JSONB NOT NULL,
+    ChannelStatus EChannelStatus DEFAULT 'Active' NOT NULL,
     KeyAgreementParameters JSONB DEFAULT NULL,
     KeyAgreementSignatures JSONB DEFAULT NULL,
     SessionKey JSONB DEFAULT NULL,

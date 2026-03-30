@@ -661,7 +661,7 @@ already_AddRefed<Promise> BerytusChannel::EnableEndToEndEncryption(ErrorResult& 
   return outPromise.forget();
 }
 
-void BerytusChannel::GetID(nsString& aRv) const {
+void BerytusChannel::GetId(nsString& aRv) const {
   aRv.Assign(mId);
 }
 

@@ -152,6 +152,10 @@ const ensureUnionsAreAliases = async (
                 const valueOpt = getAliasAndDef(opt.valueType);
                 optAlias = `Record_${opt.keyType}_${valueOpt.optAlias}`;
                 optDef = `Record<${opt.keyType}, ${valueOpt.optDef}>`;
+            } else if (opt.type === "Array") {
+                const itemOpt = getAliasAndDef(opt.itemType);
+                optAlias = `ArrayOf_${itemOpt.optAlias}_`;
+                optDef = `Array<${itemOpt.optDef}>`;
             } else {
                 optAlias = opt.type;
                 optDef = opt.type;

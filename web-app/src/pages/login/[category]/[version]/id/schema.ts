@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { Field } from '../common';
 
 export const ReqBody = z.object({
-    accountVersion: z.number(),
     fields: z.array(Field),
 });
 

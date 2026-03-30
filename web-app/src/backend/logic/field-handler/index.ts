@@ -1,12 +1,26 @@
 import { AccountDefField, EFieldType } from "@root/backend/db/models/AccountDefField";
-import type { FieldInput } from "@root/backend/db/types";
+import type { UserFieldInput } from "./types";
 import { PasswordHandler } from "./PasswordHandler";
 import { DigitalSignatureHandler } from "./DigitalSignatureHandler";
+import type { FieldInput as DbFieldInput } from "@root/backend/db/types";
+import * as z from "zod";
+
+const jsonValueLeafSchema = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+]);
+const jsonValueSchema = z.union([
+    jsonValueLeafSchema,
+    z.array(jsonValueLeafSchema),
+    z.record(jsonValueLeafSchema)
+]);
 
 export const transformField = async (
     accountVersion: number,
-    fieldInput: FieldInput
-) => {
+    fieldInput: UserFieldInput
+): Promise<DbFieldInput> => {
     const fieldDef = await AccountDefField.getField(
         accountVersion,
         fieldInput.id
@@ -17,6 +31,9 @@ export const transformField = async (
         case EFieldType.Key:
             return new DigitalSignatureHandler().transform(fieldInput);
         default:
-            return fieldInput;
+            return await z.object({
+                id: z.string(),
+                value: jsonValueSchema
+            }).parseAsync(fieldInput);
     }
 }

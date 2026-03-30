@@ -2,6 +2,7 @@ import { AbstractAccountStageHandler } from "../AbstractAccountHandler";
 import type { TypedStageHandler } from "@root/berytus/types";
 import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler";
 import { assert, assertIsString } from "../assertions";
+import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
 
 const version = 1 as const;
 const category = "Customer" as const;
@@ -27,6 +28,10 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
     implements TypedStageHandler<CustomerHandlerV1> {
     protected authHandler?: AuthSessionHandler;
 
+    public constructor() {
+        super(new NonE2EEHandler());
+    }
+
     get version(): number {
         return version;
     }
@@ -44,6 +49,9 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
     }
 
     async createChannel() {
+        //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.prepare();
+        //! EXPORT_FN_IGNORE_END
         /*! Domain-based credential mapping actor */
         const actor = new BerytusAnonymousWebAppActor();
         //!
@@ -59,6 +67,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //!
         //! EXPORT_FN_IGNORE_START
         this.channel = channel;
+        await this.channelHandler.init(this.channel);
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -249,6 +258,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         }
         //! EXPORT_FN_IGNORE_END
         await channel.close();
+        await this.channelHandler.close();
         //! EXPORT_FN_IGNORE_START
         return { finished: true as const }
         //! EXPORT_FN_IGNORE_END

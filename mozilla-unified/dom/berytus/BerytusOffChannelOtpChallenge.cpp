@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/BerytusOffChannelOtpChallenge.h"
 #include "mozilla/dom/ToJSValue.h"
+#include "mozilla/berytus/AgentProxyUtils.h"
 
 namespace mozilla::dom {
 
@@ -33,12 +34,23 @@ BerytusOffChannelOtpChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject*> 
 
 already_AddRefed<Promise> BerytusOffChannelOtpChallenge::GetOtp(
     JSContext* aCx,
-    const nsAString& aForeignIdentityField,
+    const StringOrBerytusEncryptedPacket& aForeignIdentityField,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aForeignIdentityField, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
+  if (aForeignIdentityField.IsString()) {
+    if (NS_WARN_IF(!ToJSValue(aCx, aForeignIdentityField.GetAsString(), &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  } else {
+    MOZ_ASSERT(aForeignIdentityField.IsBerytusEncryptedPacket());
+    const auto& val = OwningNonNull(aForeignIdentityField.GetAsBerytusEncryptedPacket());
+    berytus::BerytusEncryptedPacket packetProxy;
+    berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
+    if (NS_WARN_IF(!berytus::ToJSVal(aCx, packetProxy, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
   }
   return SendMessageRaw(aCx, u"GetOtp"_ns, JS::HandleValue(payload), aRv);
 }

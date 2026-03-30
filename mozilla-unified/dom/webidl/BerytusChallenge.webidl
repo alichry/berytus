@@ -19,6 +19,8 @@ enum BerytusChallengeAbortionCode {
 
 typedef DOMString BerytusChallengeId;
 
+typedef (DOMString or BerytusEncryptedPacket) StringOrPacketUnion;
+
 [SecureContext, Exposed=(Window)]
 interface BerytusChallenge {
   readonly attribute BerytusChallengeId id;
@@ -49,7 +51,7 @@ dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
    * Implementation should ensure it is of type:
    *   (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>)
    */
-  required record<DOMString, (DOMString or BerytusEncryptedPacket)> response;
+  required record<DOMString, StringOrPacketUnion> response;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -59,7 +61,11 @@ interface BerytusIdentificationChallenge : BerytusChallenge {
 
   [Throws]
   Promise<BerytusChallengeGetIdentityFieldsMessageResponse> getIdentityFields(
-    sequence<DOMString> identityFieldIds
+    /*
+     * implementation should validate it is of type
+     * sequence<DOMString> or sequence<BerytusEncryptedPacket>
+     */
+    sequence<StringOrPacketUnion> identityFieldIds
   );
   [Throws]
   Promise<undefined> abortWithIdentityDoesNotExistsError();
@@ -70,7 +76,7 @@ dictionary BerytusChallengeGetPasswordFieldsMessageResponse {
    * Implementation should ensure it is of type:
    *   (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>)
    */
-  required record<DOMString, (DOMString or BerytusEncryptedPacket)> response;
+  required record<DOMString, StringOrPacketUnion> response;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -80,7 +86,11 @@ interface BerytusPasswordChallenge : BerytusChallenge {
 
   [Throws]
   Promise<BerytusChallengeGetPasswordFieldsMessageResponse> getPasswordFields(
-    sequence<DOMString> passwordFieldIds
+    /*
+     * implementation should validate it is of type
+     * sequence<DOMString> or sequence<BerytusEncryptedPacket>
+     */
+    sequence<StringOrPacketUnion> passwordFieldIds
   );
   [Throws]
   Promise<undefined> abortWithIncorrectPasswordError();
@@ -103,7 +113,7 @@ interface BerytusDigitalSignatureChallenge : BerytusChallenge {
 
   [Throws]
   Promise<BerytusChallengeSelectKeyMessageResponse> selectKey(
-    DOMString keyFieldId
+    StringOrPacketUnion keyFieldId
   );
   [Throws]
   Promise<BerytusChallengeSignNonceMessageResponse> signNonce(
@@ -125,7 +135,7 @@ dictionary BerytusChallengeSelectSecurePasswordMessageResponse {
     * value could be wrapped in a BerytusEncryptedPacket, depending
     * whether app-level E2EE is enabled.
     */
-  required (DOMString or BerytusEncryptedPacket) response;
+  required StringOrPacketUnion response;
 };
 
 [GenerateInit]
@@ -177,7 +187,7 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
 
   [Throws]
   Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword(
-    DOMString securePasswordFieldId
+    StringOrPacketUnion securePasswordFieldId
   );
 
   /**
@@ -218,7 +228,7 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
 
 [GenerateInit]
 dictionary BerytusChallengeGetOtpMessageResponse {
-  required (DOMString or BerytusEncryptedPacket) response;
+  required StringOrPacketUnion response;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -228,7 +238,7 @@ interface BerytusOffChannelOtpChallenge : BerytusChallenge {
 
   [Throws]
   Promise<BerytusChallengeGetOtpMessageResponse> getOtp(
-    DOMString foreignIdentityFieldId
+    StringOrPacketUnion foreignIdentityFieldId
   );
   [Throws]
   Promise<undefined> abortWithIncorrectOtpError();

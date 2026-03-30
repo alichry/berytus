@@ -2,7 +2,7 @@ import * as chai  from 'chai';
 import { createAccountDefs } from "@test/seed/account-defs.js";
 import chaiAsPromised from 'chai-as-promised';
 import { createAccounts } from '@test/seed/account.js';
-import { createAccountChallengeDefs, getAccountChallengeDefs, type ChallengeDefs } from '@test/seed/account-challenge-defs.js';
+import { createAccountChallengeDefs, getAccountChallengeDefs } from '@test/seed/account-challenge-defs.js';
 import { createAuthSessions, getAuthSessions } from '@test/seed/auth-session.js';
 import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challenge.js';
 import { createAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
@@ -175,7 +175,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
             });
             const nonceData = [0x1, 0x2, 0x3];
             // @ts-ignore
-            const randomBytesStub: typeof randomBytes = (size: number, cb: unknown) => {
+            const randomBytesStub: typeof randomBytes = (_size: number, cb: unknown) => {
                 const buf = Buffer.from(nonceData);
                 if (typeof cb !== "undefined") {
                     throw new Error("callback not supprted");
@@ -198,10 +198,10 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                     SelectKey: {
                         id: keyFieldId,
                         value: {
-                            publicKey: testKey.public.raw
+                            publicKey: new Blob([testKey.public.raw], { type: "application/octet-stream" })
                         }
                     },
-                    SignNonce: signedNonceBuf
+                    SignNonce: new Blob([signedNonceBuf], { type: "application/octet-stream" })
                 },
                 messages: await composeMessages(session, challengeDef, nonceData, {
                     SelectKey: {

@@ -52,12 +52,23 @@ BerytusSecureRemotePasswordChallenge::WrapObject(JSContext* aCx, JS::Handle<JSOb
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::SelectSecurePassword(
     JSContext* aCx,
-    const nsAString& aSecurePasswordFieldId,
+    const mozilla::dom::StringOrBerytusEncryptedPacket& aSecurePasswordFieldId,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aSecurePasswordFieldId, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
+  if (aSecurePasswordFieldId.IsString()) {
+    if (NS_WARN_IF(!ToJSValue(aCx, aSecurePasswordFieldId.GetAsString(), &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
+  } else {
+    MOZ_ASSERT(aSecurePasswordFieldId.IsBerytusEncryptedPacket());
+    const auto& val = OwningNonNull(aSecurePasswordFieldId.GetAsBerytusEncryptedPacket());
+    berytus::BerytusEncryptedPacket packetProxy;
+    berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
+    if (NS_WARN_IF(!berytus::ToJSVal(aCx, packetProxy, &payload))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return nullptr;
+    }
   }
   return SendMessageRaw(aCx, u"SelectSecurePassword"_ns, JS::HandleValue(payload), aRv);
 }

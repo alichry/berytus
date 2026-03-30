@@ -15,9 +15,10 @@ const allowedOrigins = [
     "poc-e2ee.berytus.io"
 ];
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ request }) => {
     const { type } =  Body.parse(await request.json());
-    const origin = request.headers.get("origin");
+    const originHeader = request.headers.get("origin");
+    const origin = originHeader ? new URL('/', originHeader).hostname : null;
     if (null === origin || ! allowedOrigins.includes(origin)) {
         return new Response(
             JSON.stringify({
@@ -47,7 +48,10 @@ export const POST: APIRoute = async ({ params, request }) => {
         webAppActor = { origin };
         webAppX25519 = null;
     }
-    const unmaskAllowlist: string[] = [];
+    const unmaskAllowlist: string[] | null =
+        webAppX25519
+            ? [] // TODO(berytus): <--
+            : null;
     const channelRequest = await ChannelRequest.create(
         webAppActor,
         webAppX25519,

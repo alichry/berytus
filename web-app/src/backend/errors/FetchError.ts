@@ -3,6 +3,7 @@ import { HttpError } from "./HttpError";
 export class FetchError extends HttpError {
     contentType: string | null;
     body: Promise<object | string>;
+    serverErrorMessage?: string;
 
     constructor(
         resp: Response,
@@ -14,13 +15,17 @@ export class FetchError extends HttpError {
         this.body = resp.text()
             .then((text) => {
                 try {
-                    const data = JSON.stringify(text);
+                    const data = JSON.parse(text);
                     return data;
                 } catch (_) {
                     return text;
                 }
             })
             .catch(() => "");
+        this.getServerErrorMessage()
+            .then(msg => {
+                this.serverErrorMessage = msg;
+            });
     }
 
     async getServerErrorMessage(): Promise<string | undefined> {

@@ -12,6 +12,8 @@
 
 namespace mozilla::dom {
 
+class StringOrBerytusEncryptedPacket;
+
 class BerytusDigitalSignatureChallenge final : public BerytusChallenge {
 public:
   NS_DECL_ISUPPORTS_INHERITED
@@ -29,7 +31,7 @@ public:
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> SelectKey(JSContext* aCx,
-                                      const nsAString& aKeyFieldId,
+                                      const StringOrBerytusEncryptedPacket& aKeyFieldId,
                                       ErrorResult& aRv);
   already_AddRefed<Promise> SignNonce(JSContext* aCx,
                                       const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aNonce,

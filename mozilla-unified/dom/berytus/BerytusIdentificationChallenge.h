@@ -24,7 +24,7 @@ public:
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> GetIdentityFields(JSContext* aCx,
-                                              const Sequence<nsString>& aIdentityFieldIds,
+                                              const Sequence<OwningStringOrBerytusEncryptedPacket>& aIdentityFieldIds,
                                               ErrorResult& aRv);
   already_AddRefed<Promise> AbortWithIdentityDoesNotExistsError(
       JSContext* aCx,

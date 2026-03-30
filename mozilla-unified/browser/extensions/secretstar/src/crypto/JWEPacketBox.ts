@@ -34,6 +34,10 @@ export default class JWEPacketCipherBox extends AbstractCipherBox<BerytusEncrypt
     }
 
     isCiphertextType(ciph: unknown): ciph is BerytusEncryptedPacket {
+        return JWEPacketCipherBox.isCiphertextType(ciph);
+    }
+
+    public static isCiphertextType(ciph: unknown): ciph is BerytusEncryptedPacket {
         return typeof ciph === "object" &&
             ciph !== null
             && "type" in ciph

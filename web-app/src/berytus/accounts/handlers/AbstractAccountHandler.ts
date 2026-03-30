@@ -1,8 +1,11 @@
 import { EStageHandlerType, type IAccountStageHandler, type IAccountStageState, type StepResult } from "@root/berytus/types";
 import { FetchError } from "@root/backend/errors/FetchError";
 import type { Body as CreateBody } from "@root/pages/login/[category]/[version]/create/schema";
+import type { AbstractChannelHandler } from "@root/berytus/channel/AbstractChannelHandler.js";
+import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
 
 export abstract class AbstractAccountStageHandler<Step extends string> implements IAccountStageHandler {
+    protected channelHandler: AbstractChannelHandler;
     protected channel?: BerytusChannel;
     protected operation?: BerytusAccountCreationOperation | BerytusAccountAuthenticationOperation;
     public readonly type!: EStageHandlerType.Account;
@@ -11,6 +14,10 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         identityFields: [],
         credentialFields: []
     };
+
+    constructor(channelHandler: AbstractChannelHandler) {
+        this.channelHandler = channelHandler;
+    }
 
     get label(): string {
         return `${this.category}.V${this.version}`;
@@ -99,7 +106,10 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         }
     }
 
-    async accountExists(field: BerytusField): Promise<boolean> {
+    async accountExists(
+        field: BerytusField,
+        targetContentType: TargetContentType = "multipart"
+    ): Promise<boolean> {
         if (field.type !== "ForeignIdentity" && field.type !== "Identity") {
             throw new Error('Bad field passed.');
         }
@@ -107,14 +117,11 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
             `/login/${this.category}/${this.version}/exists`,
             {
                 method: "POST",
-                headers: {
-                    "content-type": "application/json"
-                },
-                body: JSON.stringify({
+                ...buildRequestBodyAndHeaders({
                     fields: [
                         { id: field.id, value: field.value }
                     ]
-                })
+                }, targetContentType)
             }
         );
         if (! res.ok) {
@@ -127,7 +134,11 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         return body.exists;
     }
 
-    async createAccount(fields: CreateBody["fields"], userAttributes: Record<string, string>): Promise<void> {
+    async createAccount(
+        fields: CreateBody["fields"],
+        userAttributes: Record<string, string>,
+        targetContentType: TargetContentType = "multipart"
+    ): Promise<void> {
         // for (const field of this.operation!.fields.values()) {
         //     fields.push({
         //         id: field.id,
@@ -142,10 +153,7 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
             `/login/${this.category}/${this.version}/create`,
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body)
+               ...buildRequestBodyAndHeaders(body, targetContentType)
             }
         )
         if (! resp.ok) {

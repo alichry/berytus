@@ -1,5 +1,4 @@
-import type { FieldInput } from "@root/backend/db/types";
-import type { IFieldHandler } from "./types";
+import type { IFieldHandler, UserFieldInput } from "./types";
 import { scrypt as scryptCb, randomBytes } from "crypto";
 import { promisify } from "util";
 import { z } from "zod";
@@ -11,11 +10,6 @@ export const StoredPassword = z.object({
 });
 
 export type StoredPassword = z.infer<typeof StoredPassword>;
-
-const PassedPasswordFieldInput = z.object({
-    id: z.string(),
-    value: z.string()
-});
 
 export class PasswordHandler implements IFieldHandler {
 
@@ -42,7 +36,7 @@ export class PasswordHandler implements IFieldHandler {
         return key.toString('hex') === storedPassword.hash;
     }
 
-    async transform(field: FieldInput) {
+    async transform(field: UserFieldInput) {
         const password = await z.string().parseAsync(field.value);
         const hashed = await PasswordHandler.hash(password);
         return {

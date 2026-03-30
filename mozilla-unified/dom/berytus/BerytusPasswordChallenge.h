@@ -11,6 +11,8 @@
 
 namespace mozilla::dom {
 
+class OwningStringOrBerytusEncryptedPacket;
+
 class BerytusPasswordChallenge final : public BerytusChallenge {
 public:
   NS_DECL_ISUPPORTS_INHERITED
@@ -24,7 +26,7 @@ public:
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> GetPasswordFields(JSContext* aCx,
-                                              const Sequence<nsString>& aPasswordFieldIds,
+                                              const Sequence<OwningStringOrBerytusEncryptedPacket>& aPasswordFieldIds,
                                               ErrorResult& aRv);
   already_AddRefed<Promise> AbortWithIncorrectPasswordError(
       JSContext* aCx,

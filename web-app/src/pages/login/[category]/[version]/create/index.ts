@@ -5,9 +5,9 @@ import { AccountUserAttributes } from '@root/backend/db/models/AccountUserAttrib
 import { Body } from './schema';
 
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ params, locals }) => {
     const { version } = params;
-    const { fields, userAttributes } = Body.parse(await request.json());
+    const { fields, userAttributes } = Body.parse(locals.requestBody);
 
     const transformedFields = await Promise.all(
         fields.map(f => transformField(Number(version), f))

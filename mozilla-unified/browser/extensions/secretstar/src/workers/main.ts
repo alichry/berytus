@@ -10,8 +10,9 @@ import { Channel, isChannelE2EReady } from "@root/db/Channel";
 import { ERejectionCode, EOperationType, EMetadataStatus, RequestType } from "@berytus/enums";
 import type { KeyAgreementParameters, PreliminaryRequestContext } from "@berytus/types";
 import { userAttributesLabels } from "@root/ui/utils/userAttributesLabels";
-import { toClearFieldValue } from "./field-utils";
+import { isNonEmptyArrayOfPackets, toClearFieldValue, toClearMessageRequestPayload } from "./e2ee-utils";
 import { openPageActionPopupIfNecessary } from "./pageAction-popup-fix";
+import JWEPacketCipherBox from "@root/crypto/JWEPacketBox";
 
 console.debug("secretstar(bg): loaded");
 
@@ -686,15 +687,28 @@ browser.berytus.registerRequestHandler({
             await showUi(context, sessionId, relativePath, sessionRecordPromise);
             const sessionRecord = await sessionRecordPromise;
             let payload;
-            if (typeof args.payload === "string") {
-                payload = args.payload;
-            } else if (args.payload instanceof ArrayBuffer) {
-                payload = ab2base64(args.payload);
-            } else if (ArrayBuffer.isView(args.payload)) {
+            if (
+                JWEPacketCipherBox.isCiphertextType(args.payload) ||
+                isNonEmptyArrayOfPackets(args.payload)
+            ) {
+                payload = toClearMessageRequestPayload(
+                    sessionRecord,
+                    context.channel.id,
+                    challengeId,
+                    messageId,
+                    args.payload
+                );
+            }
+            // TODO(berytus): Refactor the below.
+            if (typeof payload === "string") {
+                payload = payload;
+            } else if (payload instanceof ArrayBuffer) {
+                payload = ab2base64(payload);
+            } else if (ArrayBuffer.isView(payload)) {
                 console.warn("TODO(berytus): Remove ArrayBufferView support");
                 context.response.reject(ERejectionCode.GeneralError);
                 return;
-            } else if (Array.isArray(args.payload)) {
+            } else if (Array.isArray(payload)) {
                 payload = args.payload;
             } else {
                 console.warn("TODO(berytus): Support Encrypted Packet");

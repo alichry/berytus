@@ -174,6 +174,8 @@ dictionary BerytusKeyAgreementInput {
 
 [SecureContext, Exposed=(Window)]
 interface BerytusChannel {
+    readonly attribute DOMString id;
+
     readonly attribute boolean active;
 
     readonly attribute BerytusWebAppActor webApp;

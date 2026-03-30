@@ -1422,6 +1422,17 @@
         "type": "any"
       },
       {
+        "id": "StringOrPacketUnion",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
+          }
+        ]
+      },
+      {
         "id": "BerytusSendGetIdentityFieldsMessage",
         "type": "object",
         "properties": {
@@ -1437,7 +1448,7 @@
           "payload": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "StringOrPacketUnion"
             }
           }
         }
@@ -1458,7 +1469,7 @@
           "payload": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "StringOrPacketUnion"
             }
           }
         }
@@ -1477,12 +1488,12 @@
             ]
           },
           "payload": {
-            "type": "string"
+            "$ref": "StringOrPacketUnion"
           }
         }
       },
       {
-        "id": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
+        "id": "BerytusEncryptedPacketOrArrayBufferOrArrayBufferView",
         "choices": [
           {
             "type": "object",
@@ -1513,7 +1524,7 @@
             ]
           },
           "payload": {
-            "$ref": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "BerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
           }
         }
       },
@@ -1531,12 +1542,12 @@
             ]
           },
           "payload": {
-            "type": "string"
+            "$ref": "StringOrPacketUnion"
           }
         }
       },
       {
-        "id": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
+        "id": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView",
         "choices": [
           {
             "type": "string"
@@ -1570,7 +1581,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
           }
         }
       },
@@ -1588,7 +1599,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
           }
         }
       },
@@ -1606,7 +1617,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
           }
         }
       },
@@ -1624,7 +1635,7 @@
             ]
           },
           "payload": {
-            "type": "string"
+            "$ref": "StringOrPacketUnion"
           }
         }
       },
@@ -1661,24 +1672,13 @@
         ]
       },
       {
-        "id": "stringOrBerytusEncryptedPacket",
-        "choices": [
-          {
-            "type": "string"
-          },
-          {
-            "$ref": "BerytusEncryptedPacket"
-          }
-        ]
-      },
-      {
         "id": "BerytusChallengeGetIdentityFieldsMessageResponse",
         "type": "object",
         "properties": {
           "response": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "stringOrBerytusEncryptedPacket"
+              "$ref": "StringOrPacketUnion"
             }
           }
         }
@@ -1690,7 +1690,7 @@
           "response": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "stringOrBerytusEncryptedPacket"
+              "$ref": "StringOrPacketUnion"
             }
           }
         }
@@ -1718,7 +1718,7 @@
         "type": "object",
         "properties": {
           "response": {
-            "$ref": "stringOrBerytusEncryptedPacket"
+            "$ref": "StringOrPacketUnion"
           }
         }
       },
@@ -1766,7 +1766,7 @@
         "type": "object",
         "properties": {
           "response": {
-            "$ref": "stringOrBerytusEncryptedPacket"
+            "$ref": "StringOrPacketUnion"
           }
         }
       },

@@ -105,6 +105,7 @@ describe('Berytus Channel', () => {
         const channelId = "abc";
         const scmActor = { ed25519Key: "hello" };
         const channel = await Channel.create(channelId, request.id, scmActor);
+        expect(channel.scmActor).to.deep.equal(scmActor);
         const scmX25519 = "QAID"
         const kap = {
             session: {
@@ -124,7 +125,7 @@ describe('Berytus Channel', () => {
                 name: "Ed25519",
                 public: {
                     webApp: request.webAppActor.ed25519Key,
-                    scm: channel.scmActor.ed25519Key,
+                    scm: scmActor.ed25519Key,
                 }
             },
             exchange: {

@@ -29,7 +29,9 @@ import objectPath from 'object-path';
 export const handleRequest = async (context: APIContext) => {
     const parsedUrl = new URL(context.request.url);
     if (
-        !(/^\/login\/.*\/.*\/auth\/.*\/challenge\/.*\/respond-message$/
+        !(/^\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/respond-message$/
+            .test(parsedUrl.pathname)) &&
+        !(/^\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(create|id|exists)$/
             .test(parsedUrl.pathname))
     ) {
         return;
@@ -37,21 +39,28 @@ export const handleRequest = async (context: APIContext) => {
     if (context.request.method !== "POST") {
         return;
     }
-    // TODO(berytus): Support blob in addition to multipart
-    if (context.request.headers.get("Content-Type") !== "multipart/form-data") {
+    const contentTypeHeader = context.request.headers.get("Content-Type");
+    if (! contentTypeHeader) {
         return;
+    }
+    if (contentTypeHeader.startsWith("application/octet-stream")) {
+        // cleartext blob!
+        context.locals.requestBody = await context.request.blob();
+        return;
+    }
+    // TODO(bertyus): Support ciphertext blob
+    if (contentTypeHeader.startsWith("multipart/form-data;")) {
+        const formData = await context.request.formData();
+        const obj: { $?: RequestBody; } = {};
+        formData.forEach((value, key) => {
+            objectPath.set(obj, `$.${key}`, value);
+        });
+        context.locals.requestBody = obj.$;
     }
     const channelId = context.request.headers.get("X-Berytus-Channel-Id");
-    if (channelId === null) {
-        return;
+    if (channelId !== null) {
+        // TODO(berytus): try to decrypt ciphertext, if any.
     }
-    const formData = await context.request.formData();
-    const obj = {};
-    formData.forEach((value, key) => {
-        objectPath.set(obj, key, value);
-    });
-
-    context.locals.requestBody = obj;
 }
 
 export const handleResponse = async (context: APIContext) => {

@@ -39,7 +39,7 @@ const SelectKeyResponse = PublicKeyFieldInput;
 
 type SelectKeyResponse = z.infer<typeof SelectKeyResponse>;
 
-const SignNonceResponse = z.instanceof(ArrayBuffer);
+const SignNonceResponse = z.instanceof(Blob);
 
 type SignNonceResponse = z.infer<typeof SignNonceResponse>;
 
@@ -120,9 +120,11 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 if (expected.id !== fieldId) {
                     throw new Error('Malformed message response.');
                 }
-                const passedPublicKeyAsBase64 = Buffer.from(
-                    passedValue.publicKey
-                ).toString('base64');
+                const passedPublicKeyAsBase64: string = (await
+                    passedValue.publicKey.bytes()
+                )
+                    // @ts-ignore: Node 25+
+                    .toBase64();
                 const expectedPublicKeyAsBase64 = ArmoredKeyUtils.extractBase64(
                     expected.value.publicKey, "public"
                 );
@@ -138,7 +140,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 const key = await KeyUtils.importArmoredKeyForVerification(
                     (processedMessages.SelectKey!.expected as SelectKeyExpected).value.publicKey,
                 );
-                const res = await SignUtils.verify(key, sig, nonce);
+                const res = await SignUtils.verify(key, await sig.bytes(), nonce);
                 return res
                     ? `Ok` as const
                     : `Error:InvalidSignature` as const;
@@ -162,7 +164,9 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                     id,
                     value: {
                         publicKey: ArmoredKeyUtils.armorBase64(
-                            Buffer.from(value.publicKey).toString('base64'),
+                            (await value.publicKey.bytes())
+                                // @ts-ignore: Node 25+
+                                .toBase64(),
                             "public"
                         )
                     }
@@ -170,7 +174,10 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
             }
             case "SignNonce": {
                 const sig = response as SignNonceResponse;
-                const sigBase64 = Buffer.from(sig).toString('base64');
+                const sigBase64: string =
+                    (await sig.bytes())
+                        // @ts-ignore: Node 25+
+                        .toBase64();
                 return sigBase64;
             }
             default:

@@ -3,7 +3,9 @@ import { z } from "zod";
 export const FieldValue = z.union([
     z.string(),
     z.object({
-        publicKey: z.string()
+        publicKey: z.instanceof(Blob)
+        // ^ regardless of whether e2ee is enabled
+        // or not, format is the same :)
     }).strict().required()
 ]);
 

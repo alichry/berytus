@@ -32,7 +32,7 @@ import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
  * format we want to store in the database (MessagePayload).
  */
 export type InputMessagePayload = MessagePayload /* JSONValue */
-    | ArrayBuffer
+    | Blob
     | {
       readonly [prop: string | number]:
       | undefined

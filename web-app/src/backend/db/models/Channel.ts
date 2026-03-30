@@ -1,19 +1,22 @@
 import { table, toPostgresBigInt, useConnection, type PoolConnection } from "@root/backend/db/pool.js";
-import { releaseAssert } from "@root/backend/utils/assert.js";
 import type { JSONValue } from "../types";
 import { ConditionalCheckError } from "../errors/ConditionalCheckError.js";
 import { ChannelRequest } from "./ChannelRequest.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
-import { webcrypto } from "node:crypto";
 import { isDeepStrictEqual } from 'node:util';
-import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
+import { IllegalStateError } from "@root/backend/errors/IllegalStateError.js";
 
 export enum EChannelType {
     NonE2EE = "NonE2EE",
     E2EE = "E2EE",
 }
 
-type ScmActor = Pick<BerytusSecretManagerActor, 'ed25519Key'> | null;
+export enum EChannelStatus {
+    Active = 'Active',
+    Closed = 'Closed'
+}
+
+type ScmActor = Pick<BerytusSecretManagerActor, 'ed25519Key'>;
 
 export type KeyAgreementParametersJson = {
     [key: string]: JSONValue;
@@ -51,6 +54,7 @@ interface PGetChannel {
     keyagreementparameters: KeyAgreementParametersJson | null;
     keyagreementsignatures: KeyAgreementSignatures | null;
     sessionkey: SessionKey | null;
+    channelstatus: EChannelStatus;
 }
 
 export class Channel {
@@ -58,23 +62,27 @@ export class Channel {
     public readonly requestId: BigInt;
     public readonly type: EChannelType;
     public readonly scmActor: ScmActor;
+    #status: EChannelStatus;
     #keyAgreementParameters: KeyAgreementParametersJson | null;
     #keyAgreementSignatures: KeyAgreementSignatures | null;
     #sessionKey: SessionKey | null;
+
 
     protected constructor(
         id: string,
         requestId: BigInt,
         type: EChannelType,
         scmActor: ScmActor,
+        status: EChannelStatus,
         keyAgreementParameters: KeyAgreementParametersJson | null = null,
         keyAgreementSignatures: KeyAgreementSignatures | null = null,
-        sessionKey: SessionKey | null = null
+        sessionKey: SessionKey | null = null,
     ) {
         this.id = id;
         this.requestId = requestId;
         this.type = type;
-        this.scmActor = scmActor === null ? null : Object.freeze({ ...scmActor});
+        this.#status = status;
+        this.scmActor = Object.freeze({ ...scmActor});
         this.#keyAgreementParameters = keyAgreementParameters;
         this.#keyAgreementSignatures = keyAgreementSignatures;
         this.#sessionKey = sessionKey;
@@ -126,7 +134,8 @@ export class Channel {
         const res = await conn<PGetChannel[]>`
             SELECT ChannelID, ChannelType, ChannelRequestID,
                    ScmActor, KeyAgreementParameters,
-                   KeyAgreementSignatures, SessionKey
+                   KeyAgreementSignatures, SessionKey,
+                   ChannelStatus
             FROM ${table('berytus_channel')}
             WHERE ChannelID = ${channelId}
         `;
@@ -142,6 +151,7 @@ export class Channel {
             res[0].channelrequestid,
             res[0].channeltype,
             res[0].scmactor,
+            res[0].channelstatus,
             res[0].keyagreementparameters,
             res[0].keyagreementsignatures,
             res[0].sessionkey
@@ -174,17 +184,12 @@ export class Channel {
         conn: PoolConnection,
         channelId: string,
         channelRequestId: BigInt,
-        scmActor: ScmActor | null
+        scmActor: ScmActor
     ): Promise<Channel> {
         const request = await ChannelRequest.getRequest(channelRequestId, conn);
         const type = request.supportsE2EE()
             ? EChannelType.E2EE
             : EChannelType.NonE2EE;
-        if (null === scmActor && type === EChannelType.E2EE) {
-            throw new InvalidArgError(
-                "Crypto ScmActor must be provided for E2EE channels."
-            );
-        }
         const res = await conn`
             WITH cte_request AS (
                 SELECT * FROM ${table('berytus_channel_request')}
@@ -199,11 +204,12 @@ export class Channel {
                 FOR UPDATE
             )
             INSERT INTO ${table('berytus_channel')}
-            (ChannelID, ChannelType, ChannelRequestID, ScmActor)
+            (ChannelID, ChannelType, ChannelRequestID, ScmActor, ChannelStatus)
             SELECT  ${channelId},
                     ${type},
                     ${toPostgresBigInt(channelRequestId)},
-                    ${conn.json(scmActor)}
+                    ${conn.json(scmActor)},
+                    ${EChannelStatus.Active}
             WHERE (SELECT TRUE FROM cte_request)
             AND NOT EXISTS (SELECT TRUE FROM cte_other_channel)
         `;
@@ -221,7 +227,8 @@ export class Channel {
             channelId,
             channelRequestId,
             type,
-            scmActor
+            scmActor,
+            EChannelStatus.Active
         );
     }
 
@@ -241,6 +248,9 @@ export class Channel {
         conn: PoolConnection,
         params: KeyAgreementParametersJson,
     ): Promise<void> {
+        if (this.#status !== EChannelStatus.Active) {
+            throw new IllegalStateError("Channel is not in an activate state");
+        }
         const request = await ChannelRequest.getRequest(this.requestId, conn);
         if (! request.supportsE2EE()) {
             throw ConditionalCheckError.default(
@@ -251,7 +261,6 @@ export class Channel {
                 "is being used to establish E2EE."
             );
         }
-        releaseAssert(null !== this.scmActor, "null !== this.scmActor");
         const checks = [
             ['channelId', params.session.id, this.id],
             ['unmaskAllowlist', params.session.unmaskAllowlist, request.unmaskAllowlist],
@@ -290,6 +299,7 @@ export class Channel {
                 AND ChannelType = ${EChannelType.E2EE}
                 AND ChannelRequestID = ${toPostgresBigInt(this.requestId)}
                 AND ScmActor = ${conn.json(this.scmActor)}
+                AND ChannelStatus = ${this.#status}
                 AND KeyAgreementParameters is NULL
                 AND keyAgreementSignatures is NULL
                 AND SessionKey is NULL
@@ -336,6 +346,9 @@ export class Channel {
         conn: PoolConnection,
         sigBase64: string,
     ): Promise<void> {
+        if (this.#status !== EChannelStatus.Active) {
+            throw new IllegalStateError("Channel is not in an activate state");
+        }
         const signatures: KeyAgreementSignatures = {
             webApp: sigBase64,
             scm: null
@@ -363,6 +376,7 @@ export class Channel {
                 AND ChannelType = ${EChannelType.E2EE}
                 AND ChannelRequestID = ${toPostgresBigInt(this.requestId)}
                 AND ScmActor = ${conn.json(this.scmActor)}
+                AND ChannelStatus = ${this.#status}
                 AND KeyAgreementParameters = ${conn.json(this.keyAgreementParameters)}
                 AND keyAgreementSignatures is NULL
                 AND SessionKey is NULL
@@ -403,6 +417,9 @@ export class Channel {
         conn: PoolConnection,
         sigBase64: string
     ): Promise<void> {
+        if (this.#status !== EChannelStatus.Active) {
+            throw new IllegalStateError("Channel is not in an activate state");
+        }
         // KAP must be set
         // KAS must be not null
         // KAS->>scm must be null
@@ -443,6 +460,7 @@ export class Channel {
                 AND ChannelType = ${EChannelType.E2EE}
                 AND ChannelRequestID = ${toPostgresBigInt(this.requestId)}
                 AND ScmActor = ${conn.json(this.scmActor)}
+                AND ChannelStatus = ${this.#status}
                 AND KeyAgreementParameters = ${conn.json(this.keyAgreementParameters)}
                 AND keyAgreementSignatures is NOT NULL
                 AND keyAgreementSignatures->>'webApp' = ${this.keyAgreementSignatures.webApp}
@@ -485,6 +503,9 @@ export class Channel {
         conn: PoolConnection,
         sessionKey: SessionKey
     ): Promise<void> {
+        if (this.#status !== EChannelStatus.Active) {
+            throw new IllegalStateError("Channel is not in an activate state");
+        }
         if (this.keyAgreementParameters === null) {
             throw ConditionalCheckError.default(
                 Channel.name,
@@ -518,6 +539,7 @@ export class Channel {
                 AND ChannelType = ${EChannelType.E2EE}
                 AND ChannelRequestID = ${toPostgresBigInt(this.requestId)}
                 AND ScmActor = ${conn.json(this.scmActor)}
+                AND ChannelStatus = ${this.#status}
                 AND KeyAgreementParameters = ${conn.json(this.keyAgreementParameters)}
                 AND keyAgreementSignatures = ${conn.json(this.keyAgreementSignatures)}
                 AND SessionKey is NULL
@@ -540,6 +562,51 @@ export class Channel {
             );
         }
         this.#sessionKey = sessionKey;
+    }
+
+    public async closeChannel(
+        existingConn?: PoolConnection
+    ) {
+        if (existingConn) {
+            return this.#closeChannel(existingConn);
+        }
+        return useConnection(
+            conn => this.#closeChannel(conn)
+        );
+    }
+
+    async #closeChannel(conn: PoolConnection) {
+        if (this.#status !== EChannelStatus.Active) {
+            throw new IllegalStateError("Channel is not in an activate state");
+        }
+        const res = await conn`
+            WITH cte_channel AS (
+                SELECT * FROM ${table('berytus_channel')}
+                WHERE ChannelID = ${this.id}
+                AND ChannelType = ${this.type}
+                AND ChannelRequestID = ${toPostgresBigInt(this.requestId)}
+                AND ScmActor = ${conn.json(this.scmActor)}
+                AND ChannelStatus = ${this.#status}
+                AND KeyAgreementParameters IS NOT DISTINCT FROM ${conn.json(this.keyAgreementParameters)}
+                AND keyAgreementSignatures IS NOT DISTINCT FROM ${conn.json(this.keyAgreementSignatures)}
+                AND SessionKey IS NOT DISTINCT FROM ${conn.json(this.sessionKey)}
+                FOR UPDATE
+            )
+            UPDATE ${table('berytus_channel')}
+            SET ChannelStatus = ${EChannelStatus.Closed}
+            WHERE ChannelID = ${this.id}
+            AND (SELECT TRUE FROM cte_channel)
+        `;
+        if (res.count === 0) {
+            throw ConditionalCheckError.default(
+                Channel.name,
+                this.id,
+                "ChannelID",
+                "Failed to close channel. Either the channel " +
+                "does not exist (anymore), or the channel is not (or no longer due " +
+                "to a concurrent update) in its expected state"
+            );
+        }
     }
 
     public toJSON() {

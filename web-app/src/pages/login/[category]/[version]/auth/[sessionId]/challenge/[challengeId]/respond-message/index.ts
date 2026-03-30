@@ -11,7 +11,7 @@ import { debugAssert, releaseAssert } from '@root/backend/utils/assert.js';
 export const POST: APIRoute<
     Record<string, any>,
     { sessionId: string; challengeId: string; }
-> = async ({ request, params, locals }) => {
+> = async ({ locals, params }) => {
     releaseAssert(typeof params["sessionId"] === "string");
     releaseAssert(typeof params["challengeId"] === "string");
     const { sessionId, challengeId } = params;
@@ -38,10 +38,8 @@ export const POST: APIRoute<
         if (! msg) {
             throw new Error("Expecting next message to be non-null!");
         }
-        let msgResponse;
-        try {
-            msgResponse = await request.json();
-        } catch (e) {
+        let msgResponse = locals.requestBody;
+        if (! msgResponse) {
             return new Response(JSON.stringify({
                 "error": "Invalid request body."
             }), {
@@ -49,7 +47,7 @@ export const POST: APIRoute<
                 headers: {
                     "Content-Type": "application/json"
                 }
-            })
+            });
         }
         const statusMsg = await handler.processPendingMessageResponse(
             msgResponse

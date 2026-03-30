@@ -7,10 +7,8 @@ import { pool, table } from '@root/backend/db/pool.js';
 import { strict as assert } from 'node:assert';
 import { AuthChallenge, EAuthOutcome } from '@root/backend/db/models/AuthChallenge.js';
 import { createAuthSessions, getAuthSessions } from '@test/seed/auth-session.js';
-import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challenge.js';
-import { createAuthChallengeMessages, getAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
-import { AuthError } from '@root/backend/db/errors/AuthError.js';
-import { InvalidArgError } from '@root/backend/errors/InvalidArgError.js';
+import { createAuthChallenges } from '@test/seed/auth-challenge.js';
+import { createAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
 

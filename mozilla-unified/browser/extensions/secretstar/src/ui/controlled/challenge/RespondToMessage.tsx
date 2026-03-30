@@ -82,7 +82,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
     const { cipherbox, loading: cipherboxLoading } = useCipherbox(query?.channel);
     const preResolveCb = useCallback(async (value: RespondToChallengeMessageResult): Promise<RespondToChallengeMessageResult> => {
         if (cipherboxLoading) {
-            throw new InternalError("Cipherbox not loaded in CreateField preResolve()");
+            throw new InternalError("Cipherbox not loaded in RespondToMessage preResolve()");
         }
         if (! cipherbox) {
             return value; // e2e not enabled
