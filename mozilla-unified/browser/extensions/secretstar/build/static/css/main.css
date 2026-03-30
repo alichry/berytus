@@ -474,6 +474,8 @@ video {
 }@media (min-width: 1536px){.container{
     max-width: 1536px;
   }
+}.static{
+  position: static;
 }.absolute{
   position: absolute;
 }.relative{
