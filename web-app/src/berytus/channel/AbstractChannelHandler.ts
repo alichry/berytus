@@ -33,6 +33,13 @@ export abstract class AbstractChannelHandler {
     channelRequestId?: string;
 
     /**
+     * The channel's key agreement input. It is set after calling prepare()
+     * It contains the web app's X25519 public key and unmask allowlist
+     * (if any).
+     */
+    kapInput?: BerytusKeyAgreementInput;
+
+    /**
      * The native channel. It set after calling init()
      */
     channel?: BerytusChannel;
@@ -58,6 +65,12 @@ export abstract class AbstractChannelHandler {
         this.webAppActor = resp.webAppActor;
         this.state = EChannelHandlerState.Prepared;
         this.channelRequestId = resp.channelRequestId;
+        if (resp.webAppX25519) {
+            this.kapInput = {
+                public: resp.webAppX25519,
+                unmaskAllowlist: resp.unmaskAllowlist || []
+            }
+        }
         return resp;
     }
 

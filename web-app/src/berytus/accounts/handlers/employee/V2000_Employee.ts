@@ -1,6 +1,7 @@
-import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
+import { E2EEHandler } from "@root/berytus/channel/handlers/E2EEHandler.js";
 import { AbstractAccountStageHandler } from "../AbstractAccountHandler.js";
 import type { TypedStageHandler } from "@root/berytus/types";
+import { assert } from "../assertions.js";
 
 const version = 2000 as const;
 const category = "Employee" as const;
@@ -11,7 +12,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
     implements TypedStageHandler<EmployeeHandlerV2000> {
 
     public constructor() {
-        super(new NonE2EEHandler());
+        super(new E2EEHandler());
     }
 
     get version(): number {
@@ -33,9 +34,15 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
     async createChannel() {
         //! EXPORT_FN_IGNORE_START
         await this.channelHandler.prepare();
+        assert(this.channelHandler.webAppActor);
+        assert('ed25519Key' in this.channelHandler.webAppActor);
+        const ed25519Key = this.channelHandler.webAppActor.ed25519Key;
+        assert(ed25519Key === 'MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE==');
         //! EXPORT_FN_IGNORE_END
-        /*! Domain-based credential mapping actor */
-        const actor = new BerytusAnonymousWebAppActor();
+        /*! Key-based credential mapping actor */
+        const actor = new BerytusCryptoWebAppActor(
+            "MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE="
+        );
         //!
         const channel = await BerytusChannel.create({
             webApp: actor,
@@ -43,7 +50,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 account: {
                     schemaVersion: 2000,
                     category: "Employee"
-                }
+                },
+                enableEndToEndEncryption: true
             }
         });
         //!
@@ -51,6 +59,29 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         this.channel = channel;
         await this.channelHandler.init(this.channel);
         return { nextStep: "login" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async setupE2EE() {
+        //! EXPORT_FN_IGNORE_START
+        const getX25519PublicKey = async () => {
+            assert(this.channelHandler.kapInput);
+            return this.channelHandler.kapInput.public;
+        }
+        const getUnmaskAllowlist = async () => {
+            assert(this.channelHandler.kapInput);
+            return this.channelHandler.kapInput.unmaskAllowlist;
+        }
+        assert(this.channel);
+        //! EXPORT_FN_IGNORE_END
+        /*! Use Web app-specific routines getX25519PublicKey
+            and getUnmaskAllowlist to prepare KAP. */
+        const kap = await this.channel.prepareKeyAgreementParameters({
+            public: await getX25519PublicKey(),
+            unmaskAllowlist: await getUnmaskAllowlist()
+        });
+        //! EXPORT_FN_IGNORE_START
+        assert(this.channel.keyAgreementParams);
         //! EXPORT_FN_IGNORE_END
     }
 

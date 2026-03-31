@@ -76,7 +76,7 @@ export class E2EEHandler {
         selfExchangePrivateKey: KeyMaterial,
     ): Promise<KeyMaterial> {
         const peerKeyMaterial = kap.exchange.public.scm;
-        const { publicKey: peerX25519PubKey} =
+        const { publicKey: peerX25519PubKey } =
             await this.#exchangeKeyLoader.importKey(
                 { publicKey: peerKeyMaterial }
             );

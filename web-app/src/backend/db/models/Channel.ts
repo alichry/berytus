@@ -42,9 +42,7 @@ type KeyAgreementSignatures = {
                         // parameters are signed by the web app first.
 }
 
-type SessionKey = {
-    [key: string]: JSONValue;
-};
+type SessionKey = JSONValue;
 
 interface PGetChannel {
     channelid: string;
