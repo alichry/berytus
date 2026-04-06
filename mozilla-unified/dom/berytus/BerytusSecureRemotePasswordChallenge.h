@@ -45,7 +45,6 @@ public:
 
   already_AddRefed<Promise> SelectSecurePassword(
       JSContext* aCx,
-      const mozilla::dom::StringOrBerytusEncryptedPacket& aSecurePasswordFieldId,
       ErrorResult& aRv);
 
   already_AddRefed<Promise> ExchangePublicKeys(

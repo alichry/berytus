@@ -206,8 +206,9 @@ class AccountAuthenticationRequestHandler implements AccountAuthenticationReques
     respondToChallengeMessage(context: RequestContextWithLoginOperation & ResponseContext<'accountAuthentication', 'respondToChallengeMessage'>, args: RespondToChallengeMessageArgs): void {
         switch (args.challenge.type) {
             case "Identification": {
+                const fields = args.challenge.parameters.fields;
                 const result: Record<string, string> = {};
-                (args.payload as Array<string>).forEach(fieldId => {
+                fields.forEach(fieldId => {
                     result[fieldId] = "user123";
                 });
                 context.response.resolve({
@@ -216,8 +217,9 @@ class AccountAuthenticationRequestHandler implements AccountAuthenticationReques
                 return;
             }
             case "Password": {
+                const fields = args.challenge.parameters.fields;
                 const result: Record<string, string> = {};
-                (args.payload as Array<string>).forEach(fieldId => {
+                fields.forEach(fieldId => {
                     result[fieldId] = "pass123";
                 });
                 context.response.resolve({

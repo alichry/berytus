@@ -45,6 +45,14 @@ interface BerytusChallenge {
   Promise<undefined> abortWithGenericWebAppFailureError();
 };
 
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusIdentificationChallengeParameters {
+  /**
+   * List of identity field ids, used to guide retrieval.
+   */
+  required sequence<DOMString> fields;
+};
+
 [GenerateInit]
 dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
   /**
@@ -57,16 +65,10 @@ dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
 [SecureContext, Exposed=(Window)]
 interface BerytusIdentificationChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusIdentificationChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeGetIdentityFieldsMessageResponse> getIdentityFields(
-    /*
-     * implementation should validate it is of type
-     * sequence<DOMString> or sequence<BerytusEncryptedPacket>
-     */
-    sequence<StringOrPacketUnion> identityFieldIds
-  );
+  Promise<BerytusChallengeGetIdentityFieldsMessageResponse> getIdentityFields();
   [Throws]
   Promise<undefined> abortWithIdentityDoesNotExistsError();
 };
@@ -79,19 +81,21 @@ dictionary BerytusChallengeGetPasswordFieldsMessageResponse {
   required record<DOMString, StringOrPacketUnion> response;
 };
 
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusPasswordChallengeParameters {
+  /**
+   * List of password field ids, used to guide retrieval.
+   */
+  required sequence<DOMString> fields;
+};
+
 [SecureContext, Exposed=(Window)]
 interface BerytusPasswordChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusPasswordChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeGetPasswordFieldsMessageResponse> getPasswordFields(
-    /*
-     * implementation should validate it is of type
-     * sequence<DOMString> or sequence<BerytusEncryptedPacket>
-     */
-    sequence<StringOrPacketUnion> passwordFieldIds
-  );
+  Promise<BerytusChallengeGetPasswordFieldsMessageResponse> getPasswordFields();
   [Throws]
   Promise<undefined> abortWithIncorrectPasswordError();
 };
@@ -106,15 +110,21 @@ dictionary BerytusChallengeSignNonceMessageResponse {
   required (ArrayBuffer or BerytusEncryptedPacket) response;
 };
 
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusDigitalSignatureChallengeParameters {
+  /**
+   * The key field id to assume, used to guide key selection.
+   */
+  required DOMString field;
+};
+
 [SecureContext, Exposed=(Window)]
 interface BerytusDigitalSignatureChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusDigitalSignatureChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeSelectKeyMessageResponse> selectKey(
-    StringOrPacketUnion keyFieldId
-  );
+  Promise<BerytusChallengeSelectKeyMessageResponse> selectKey();
   [Throws]
   Promise<BerytusChallengeSignNonceMessageResponse> signNonce(
     (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) nonce
@@ -152,11 +162,16 @@ dictionary BerytusChallengeExchangePublicKeysMessageResponse {
 
 enum BerytusSecureRemotePasswordChallengeEncodingType {
   "None",
-  "Hex"
+  "Hex" // TODO(berytus): Looks like implementation could
+        // reject 'Hex' encoding if e2ee is enabled.
 };
 
 [GenerateInit, GenerateConversionToJS]
 dictionary BerytusSecureRemotePasswordChallengeParameters {
+  /**
+   * The secure password field id, used to guide field selection.
+   */
+  required DOMString field;
   /**
    * Defaults to "None"
    */
@@ -186,9 +201,7 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
   constructor(DOMString id, optional BerytusSecureRemotePasswordChallengeParameters parameters = {});
 
   [Throws]
-  Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword(
-    StringOrPacketUnion securePasswordFieldId
-  );
+  Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword();
 
   /**
    * SRP:B - As a hex string or as an ArrayBuffer(View). By default,
@@ -231,22 +244,24 @@ dictionary BerytusChallengeGetOtpMessageResponse {
   required StringOrPacketUnion response;
 };
 
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusOffChannelOtpChallengeParameters {
+  /**
+   * The foreign identity field id
+   */
+  required DOMString field;
+};
+
 [SecureContext, Exposed=(Window)]
 interface BerytusOffChannelOtpChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusOffChannelOtpChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeGetOtpMessageResponse> getOtp(
-    StringOrPacketUnion foreignIdentityFieldId
-  );
+  Promise<BerytusChallengeGetOtpMessageResponse> getOtp();
   [Throws]
   Promise<undefined> abortWithIncorrectOtpError();
 };
-
-// TODO(berytus): field Ids specifiied in
-// getOtp, getPasswordFields, getIdentityFields
-// should be defined in the parameters of the challenge.
 
 // NOTE(berytus): Web App Poc depends on the below.
 

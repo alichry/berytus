@@ -19,14 +19,27 @@ NS_INTERFACE_MAP_END_INHERITING(BerytusChallenge)
 
 BerytusDigitalSignatureChallenge::BerytusDigitalSignatureChallenge(
     nsIGlobalObject* aGlobal,
-    const nsAString& aID) : BerytusChallenge(aGlobal,
+    const nsAString& aID,
+    BerytusDigitalSignatureChallengeParameters&& aParameters) : BerytusChallenge(aGlobal,
                                              BerytusChallengeType::DigitalSignature,
-                                             aID) {}
+                                             aID), mParameters(std::move(aParameters)) {}
 
 BerytusDigitalSignatureChallenge::~BerytusDigitalSignatureChallenge() {}
 
 void BerytusDigitalSignatureChallenge::CacheParameters(JSContext* aCx, ErrorResult& aRv) {
-  mCachedParameters = nullptr;
+  if (mCachedParameters) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mParameters.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedParameters = options.toObjectOrNull();
+}
+
+BerytusDigitalSignatureChallengeParameters const& BerytusDigitalSignatureChallenge::Parameters() const {
+  return mParameters;
 }
 
 JSObject*
@@ -36,25 +49,9 @@ BerytusDigitalSignatureChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject
 
 already_AddRefed<Promise> BerytusDigitalSignatureChallenge::SelectKey(
     JSContext* aCx,
-    const StringOrBerytusEncryptedPacket& aKeyFieldId,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (aKeyFieldId.IsString()) {
-    if (NS_WARN_IF(!ToJSValue(aCx, aKeyFieldId.GetAsString(), &payload))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return nullptr;
-    }
-  } else {
-    MOZ_ASSERT(aKeyFieldId.IsBerytusEncryptedPacket());
-    const auto& val = OwningNonNull(aKeyFieldId.GetAsBerytusEncryptedPacket());
-    berytus::BerytusEncryptedPacket packetProxy;
-    berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
-    if (NS_WARN_IF(!berytus::ToJSVal(aCx, packetProxy, &payload))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return nullptr;
-    }
-  }
-  // TODO(berytus): Resolve with a BerytusKeyFieldValue
+  payload.setNull();
   return SendMessageRaw(aCx, u"SelectKey"_ns, JS::HandleValue(payload), aRv);
 }
 
@@ -110,6 +107,7 @@ already_AddRefed<Promise> BerytusDigitalSignatureChallenge::AbortWithInvalidSign
 already_AddRefed<BerytusDigitalSignatureChallenge> BerytusDigitalSignatureChallenge::Constructor(
   const GlobalObject& aGlobal,
   const nsAString& aId,
+  const BerytusDigitalSignatureChallengeParameters& aParameters,
   ErrorResult& aRv
 ) {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
@@ -117,9 +115,14 @@ already_AddRefed<BerytusDigitalSignatureChallenge> BerytusDigitalSignatureChalle
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
+  BerytusDigitalSignatureChallengeParameters copiedParams;
+  if (NS_WARN_IF(!copiedParams.mField.Assign(aParameters.mField, fallible))) {
+    aRv.ThrowInvalidStateError("Out of memory");
+    return nullptr;
+  }
   return do_AddRef(
     new BerytusDigitalSignatureChallenge(
-      global, aId));
+      global, aId, std::move(copiedParams)));
 }
 
 } // namespace mozilla::dom

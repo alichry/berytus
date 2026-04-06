@@ -168,8 +168,9 @@ class AccountAuthenticationRequestHandler {
     respondToChallengeMessage(context, args) {
         switch (args.challenge.type) {
             case "Identification": {
+                const fields = args.challenge.parameters.fields;
                 const result = {};
-                args.payload.forEach(fieldId => {
+                fields.forEach(fieldId => {
                     result[fieldId] = "user123";
                 });
                 context.response.resolve({
@@ -178,8 +179,9 @@ class AccountAuthenticationRequestHandler {
                 return;
             }
             case "Password": {
+                const fields = args.challenge.parameters.fields;
                 const result = {};
-                args.payload.forEach(fieldId => {
+                fields.forEach(fieldId => {
                     result[fieldId] = "pass123";
                 });
                 context.response.resolve({

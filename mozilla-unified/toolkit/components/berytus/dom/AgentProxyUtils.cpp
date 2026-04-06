@@ -42,7 +42,11 @@
 #include "mozilla/dom/BerytusSharedKeyField.h"
 #include "mozilla/dom/BerytusChannel.h"
 #include "mozilla/dom/BerytusChallenge.h"
+#include "mozilla/dom/BerytusIdentificationChallenge.h"
+#include "mozilla/dom/BerytusPasswordChallenge.h"
+#include "mozilla/dom/BerytusDigitalSignatureChallenge.h"
 #include "mozilla/dom/BerytusSecureRemotePasswordChallenge.h"
+#include "mozilla/dom/BerytusOffChannelOtpChallenge.h"
 #include "mozilla/dom/Document.h"
 
 namespace mozilla::berytus {
@@ -1186,18 +1190,27 @@ void ToProxy::BerytusChallengeInfoUnion(
     case dom::BerytusChallengeType::Identification: {
       berytus::BerytusIdentificationChallengeInfo info;
       aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusIdentificationChallenge> ch =
+        static_cast<dom::BerytusIdentificationChallenge*>(aChallenge.get());
+      info.mParameters.mFields.Assign(ch->Parameters().mFields);
       aRetVal.Init(std::move(info));
       return;
     }
     case dom::BerytusChallengeType::DigitalSignature: {
       berytus::BerytusDigitalSignatureChallengeInfo info;
       aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusDigitalSignatureChallenge> ch =
+        static_cast<dom::BerytusDigitalSignatureChallenge*>(aChallenge.get());
+      info.mParameters.mField.Assign(ch->Parameters().mField);
       aRetVal.Init(std::move(info));
       return;
     }
     case dom::BerytusChallengeType::Password: {
       berytus::BerytusPasswordChallengeInfo info;
       aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusPasswordChallenge> ch =
+        static_cast<dom::BerytusPasswordChallenge*>(aChallenge.get());
+      info.mParameters.mFields.Assign(ch->Parameters().mFields);
       aRetVal.Init(std::move(info));
       return;
     }
@@ -1207,6 +1220,7 @@ void ToProxy::BerytusChallengeInfoUnion(
       RefPtr<dom::BerytusSecureRemotePasswordChallenge> ch =
         static_cast<dom::BerytusSecureRemotePasswordChallenge*>(aChallenge.get());
       const auto& params = ch->Parameters();
+      info.mParameters.mField.Assign(params.mField);
       if (!params.mEncoding.WasPassed()) {
         info.mParameters.mEncoding.Init(Nothing());
       } else {
@@ -1234,6 +1248,9 @@ void ToProxy::BerytusChallengeInfoUnion(
     case dom::BerytusChallengeType::OffChannelOtp: {
       berytus::BerytusOffChannelOtpChallengeInfo info;
       aChallenge->GetId(info.mId);
+            RefPtr<dom::BerytusOffChannelOtpChallenge> ch =
+        static_cast<dom::BerytusOffChannelOtpChallenge*>(aChallenge.get());
+      info.mParameters.mField.Assign(ch->Parameters().mField);
       aRetVal.Init(std::move(info));
       return;
     }

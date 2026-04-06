@@ -44,7 +44,7 @@ const SignNonceResponse = z.instanceof(Blob);
 type SignNonceResponse = z.infer<typeof SignNonceResponse>;
 
 export const DigitalSignatureChallengeParameters = z.object({
-    keyFieldId: z.string()
+    field: z.string()
 });
 export type DigitalSignatureChallengeParameters = z.infer<typeof DigitalSignatureChallengeParameters>;
 
@@ -90,16 +90,16 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
         const field = await AccountField.getField(
             this.challengeDef.accountVersion,
             this.session.accountId,
-            this.challengeParameters.keyFieldId,
+            this.challengeParameters.field,
             this.conn
         );
         const expected: SelectKeyExpected = {
-            id: this.challengeParameters.keyFieldId,
+            id: this.challengeParameters.field,
             value: await ArmoredPublicKeyFieldValue.parseAsync(field.fieldValue)
         }
         const initialMessageDraft = {
             messageName: "SelectKey" as const,
-            request: this.challengeParameters.keyFieldId,
+            request: this.challengeParameters.field,
             expected,
         };
         return initialMessageDraft;

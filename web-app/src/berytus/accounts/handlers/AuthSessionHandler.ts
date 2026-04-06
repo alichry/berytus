@@ -1,6 +1,7 @@
 import type { FieldInput } from "@root/backend/db/types";
 import { FetchError } from "@root/backend/errors/FetchError";
-import { Result as NewResult } from "@root/pages/login/[category]/[version]/id/schema";
+import { Result as NewSessionResult } from "@root/pages/login/[category]/[version]/id/schema";
+import { Result as NewChallengeResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/new/schema";
 import { Result as PendingResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/pending-message/schema";
 import { Result as ProcessMessageResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
 import { Result as FinishResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/finish/schema";
@@ -19,6 +20,7 @@ export class AuthSessionHandler {
     readonly accountCategory: string;
     readonly sessionId: BigInt;
     currentChallengeId?: string;
+    currentChallengeParameters?: object;
     lastChallengeOutcome?: ProcessMessageResult['outcome'];
 
     protected constructor(
@@ -59,9 +61,9 @@ export class AuthSessionHandler {
             }
             throw base;
         }
-        let data: NewResult;
+        let data: NewSessionResult;
         try {
-            data = NewResult.parse(await resp.json());
+            data = NewSessionResult.parse(await resp.json());
         } catch (e) {
             throw new Error(
                 'Unable to create AuthSessionHandler. Malformed HTTTP response.'
@@ -94,8 +96,13 @@ export class AuthSessionHandler {
                 'Unable to start a new challenge, received failing HTTP status code.'
             );
         }
+        const result = await NewChallengeResult.parseAsync(
+            await resp.json()
+        );
         this.currentChallengeId = challengeId;
+        this.currentChallengeParameters = result.parameters;
         this.lastChallengeOutcome = "Pending";
+        return result.parameters;
     }
 
     async pendingMessage() {
@@ -162,6 +169,7 @@ export class AuthSessionHandler {
         this.lastChallengeOutcome = data.outcome;
         if (data.outcome !== "Pending") {
             this.currentChallengeId = undefined;
+            this.currentChallengeParameters = undefined;
         }
         if (data.statusMsg !== 'Ok') {
             throw new AuthIncorrectResponseError(data.statusMsg);

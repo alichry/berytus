@@ -75,9 +75,9 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
             return null;
         }
         const expected: Expected = [];
-        const { passwordFieldIds } = this.challengeParameters;
-        for (let i = 0; i < passwordFieldIds.length; i++) {
-            const fieldId = passwordFieldIds[i];
+        const { fields } = this.challengeParameters;
+        for (let i = 0; i < fields.length; i++) {
+            const fieldId = fields[i];
             const field = await AccountField.getField(
                 this.challengeDef.accountVersion,
                 this.session.accountId,
@@ -94,7 +94,7 @@ export class PasswordChallengeHandler extends AbstractChallengeHandler<MessageNa
 
         const initialMessageDraft = {
             messageName: "GetPasswordFields" as const,
-            request: passwordFieldIds,
+            request: fields,
             expected,
         };
         return initialMessageDraft;

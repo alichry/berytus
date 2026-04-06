@@ -7,11 +7,11 @@ const stmts = [
     `INSERT INTO berytus_account_def_auth_challenge
     (AccountVersion, ChallengeID, ChallengeType, ChallengeParameters)
     VALUES
-    (1, 'password', 'Password', '{ "passwordFieldIds": ["password"] }'),
+    (1, 'password', 'Password', '{ "fields": ["password"] }'),
     (2, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }'),
-    (3, 'digital-signature', 'DigitalSignature', '{ "keyFieldId": "key" }'),
+    (3, 'digital-signature', 'DigitalSignature', '{ "field": "key" }'),
     (4, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }'),
-    (4, 'digital-signature', 'DigitalSignature', '{ "keyFieldId": "key" }'),
+    (4, 'digital-signature', 'DigitalSignature', '{ "field": "key" }'),
     (1000, 'email-code', 'OffChannelOtp', '{ "todo": true }'),
     (1000, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }'),
     (1001, 'email-code', 'OffChannelOtp', '{ "todo": true }'),

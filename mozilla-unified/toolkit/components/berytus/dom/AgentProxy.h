@@ -1138,20 +1138,30 @@ template<>
 bool ToJSVal<StaticString13>(JSContext* aCx, const StaticString13& aValue, JS::MutableHandle<JS::Value> aRv);
 
 using StaticString_Identification = StaticString13;
-
-struct JSNull {};
+struct BerytusIdentificationChallengeParameters {
+  nsTArray<nsString> mFields;
+  BerytusIdentificationChallengeParameters() = default;
+  BerytusIdentificationChallengeParameters(nsTArray<nsString>&& aFields) : mFields(std::move(aFields)) {}
+  BerytusIdentificationChallengeParameters(BerytusIdentificationChallengeParameters&& aOther) : mFields(std::move(aOther.mFields))  {}
+  BerytusIdentificationChallengeParameters& operator=(BerytusIdentificationChallengeParameters&& aOther) {
+    mFields = std::move(aOther.mFields);
+    return *this;
+  }
+  
+  ~BerytusIdentificationChallengeParameters() {}
+};
 template<>
-bool JSValIs<JSNull>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+bool JSValIs<BerytusIdentificationChallengeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>
-bool FromJSVal<JSNull>(JSContext* aCx, JS::Handle<JS::Value> aValue, JSNull& aRv);
+bool FromJSVal<BerytusIdentificationChallengeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusIdentificationChallengeParameters& aRv);
 template<>
-bool ToJSVal<JSNull>(JSContext* aCx, const JSNull& aValue, JS::MutableHandle<JS::Value> aRv);
+bool ToJSVal<BerytusIdentificationChallengeParameters>(JSContext* aCx, const BerytusIdentificationChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusIdentificationChallengeInfo {
   nsString mId;
   StaticString13 mType;
-  JSNull mParameters;
+  BerytusIdentificationChallengeParameters mParameters;
   BerytusIdentificationChallengeInfo() = default;
-  BerytusIdentificationChallengeInfo(nsString&& aId, StaticString13&& aType, JSNull&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
+  BerytusIdentificationChallengeInfo(nsString&& aId, StaticString13&& aType, BerytusIdentificationChallengeParameters&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
   BerytusIdentificationChallengeInfo(BerytusIdentificationChallengeInfo&& aOther) : mId(std::move(aOther.mId)), mType(std::move(aOther.mType)), mParameters(std::move(aOther.mParameters))  {}
   BerytusIdentificationChallengeInfo& operator=(BerytusIdentificationChallengeInfo&& aOther) {
     mId = std::move(aOther.mId);
@@ -1184,12 +1194,30 @@ template<>
 bool ToJSVal<StaticString14>(JSContext* aCx, const StaticString14& aValue, JS::MutableHandle<JS::Value> aRv);
 
 using StaticString_Password = StaticString14;
+struct BerytusPasswordChallengeParameters {
+  nsTArray<nsString> mFields;
+  BerytusPasswordChallengeParameters() = default;
+  BerytusPasswordChallengeParameters(nsTArray<nsString>&& aFields) : mFields(std::move(aFields)) {}
+  BerytusPasswordChallengeParameters(BerytusPasswordChallengeParameters&& aOther) : mFields(std::move(aOther.mFields))  {}
+  BerytusPasswordChallengeParameters& operator=(BerytusPasswordChallengeParameters&& aOther) {
+    mFields = std::move(aOther.mFields);
+    return *this;
+  }
+  
+  ~BerytusPasswordChallengeParameters() {}
+};
+template<>
+bool JSValIs<BerytusPasswordChallengeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<BerytusPasswordChallengeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusPasswordChallengeParameters& aRv);
+template<>
+bool ToJSVal<BerytusPasswordChallengeParameters>(JSContext* aCx, const BerytusPasswordChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusPasswordChallengeInfo {
   nsString mId;
   StaticString14 mType;
-  JSNull mParameters;
+  BerytusPasswordChallengeParameters mParameters;
   BerytusPasswordChallengeInfo() = default;
-  BerytusPasswordChallengeInfo(nsString&& aId, StaticString14&& aType, JSNull&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
+  BerytusPasswordChallengeInfo(nsString&& aId, StaticString14&& aType, BerytusPasswordChallengeParameters&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
   BerytusPasswordChallengeInfo(BerytusPasswordChallengeInfo&& aOther) : mId(std::move(aOther.mId)), mType(std::move(aOther.mType)), mParameters(std::move(aOther.mParameters))  {}
   BerytusPasswordChallengeInfo& operator=(BerytusPasswordChallengeInfo&& aOther) {
     mId = std::move(aOther.mId);
@@ -1222,12 +1250,30 @@ template<>
 bool ToJSVal<StaticString15>(JSContext* aCx, const StaticString15& aValue, JS::MutableHandle<JS::Value> aRv);
 
 using StaticString_DigitalSignature = StaticString15;
+struct BerytusDigitalSignatureChallengeParameters {
+  nsString mField;
+  BerytusDigitalSignatureChallengeParameters() = default;
+  BerytusDigitalSignatureChallengeParameters(nsString&& aField) : mField(std::move(aField)) {}
+  BerytusDigitalSignatureChallengeParameters(BerytusDigitalSignatureChallengeParameters&& aOther) : mField(std::move(aOther.mField))  {}
+  BerytusDigitalSignatureChallengeParameters& operator=(BerytusDigitalSignatureChallengeParameters&& aOther) {
+    mField = std::move(aOther.mField);
+    return *this;
+  }
+  
+  ~BerytusDigitalSignatureChallengeParameters() {}
+};
+template<>
+bool JSValIs<BerytusDigitalSignatureChallengeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<BerytusDigitalSignatureChallengeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusDigitalSignatureChallengeParameters& aRv);
+template<>
+bool ToJSVal<BerytusDigitalSignatureChallengeParameters>(JSContext* aCx, const BerytusDigitalSignatureChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusDigitalSignatureChallengeInfo {
   nsString mId;
   StaticString15 mType;
-  JSNull mParameters;
+  BerytusDigitalSignatureChallengeParameters mParameters;
   BerytusDigitalSignatureChallengeInfo() = default;
-  BerytusDigitalSignatureChallengeInfo(nsString&& aId, StaticString15&& aType, JSNull&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
+  BerytusDigitalSignatureChallengeInfo(nsString&& aId, StaticString15&& aType, BerytusDigitalSignatureChallengeParameters&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
   BerytusDigitalSignatureChallengeInfo(BerytusDigitalSignatureChallengeInfo&& aOther) : mId(std::move(aOther.mId)), mType(std::move(aOther.mType)), mParameters(std::move(aOther.mParameters))  {}
   BerytusDigitalSignatureChallengeInfo& operator=(BerytusDigitalSignatureChallengeInfo&& aOther) {
     mId = std::move(aOther.mId);
@@ -1334,12 +1380,14 @@ bool FromJSVal<SafeVariant<StaticString17, StaticString18, Nothing>>(JSContext* 
 template<>
 bool ToJSVal<SafeVariant<StaticString17, StaticString18, Nothing>>(JSContext* aCx, const SafeVariant<StaticString17, StaticString18, Nothing>& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusSecureRemotePasswordChallengeParameters {
+  nsString mField;
   SafeVariant<StaticString17, StaticString18, Nothing> mEncoding;
   BerytusSecureRemotePasswordChallengeParameters() = default;
-  BerytusSecureRemotePasswordChallengeParameters(SafeVariant<StaticString17, StaticString18, Nothing>&& aEncoding) : mEncoding(std::move(aEncoding)) {}
-  BerytusSecureRemotePasswordChallengeParameters(BerytusSecureRemotePasswordChallengeParameters&& aOther) : mEncoding(std::move(aOther.mEncoding))  {}
+  BerytusSecureRemotePasswordChallengeParameters(nsString&& aField, SafeVariant<StaticString17, StaticString18, Nothing>&& aEncoding) : mField(std::move(aField)), mEncoding(std::move(aEncoding)) {}
+  BerytusSecureRemotePasswordChallengeParameters(BerytusSecureRemotePasswordChallengeParameters&& aOther) : mField(std::move(aOther.mField)), mEncoding(std::move(aOther.mEncoding))  {}
   BerytusSecureRemotePasswordChallengeParameters& operator=(BerytusSecureRemotePasswordChallengeParameters&& aOther) {
-    mEncoding = std::move(aOther.mEncoding);
+    mField = std::move(aOther.mField);
+  mEncoding = std::move(aOther.mEncoding);
     return *this;
   }
   
@@ -1389,12 +1437,30 @@ template<>
 bool ToJSVal<StaticString19>(JSContext* aCx, const StaticString19& aValue, JS::MutableHandle<JS::Value> aRv);
 
 using StaticString_OffChannelOtp = StaticString19;
+struct BerytusOffChannelOtpChallengeParameters {
+  nsString mField;
+  BerytusOffChannelOtpChallengeParameters() = default;
+  BerytusOffChannelOtpChallengeParameters(nsString&& aField) : mField(std::move(aField)) {}
+  BerytusOffChannelOtpChallengeParameters(BerytusOffChannelOtpChallengeParameters&& aOther) : mField(std::move(aOther.mField))  {}
+  BerytusOffChannelOtpChallengeParameters& operator=(BerytusOffChannelOtpChallengeParameters&& aOther) {
+    mField = std::move(aOther.mField);
+    return *this;
+  }
+  
+  ~BerytusOffChannelOtpChallengeParameters() {}
+};
+template<>
+bool JSValIs<BerytusOffChannelOtpChallengeParameters>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<BerytusOffChannelOtpChallengeParameters>(JSContext* aCx, JS::Handle<JS::Value> aValue, BerytusOffChannelOtpChallengeParameters& aRv);
+template<>
+bool ToJSVal<BerytusOffChannelOtpChallengeParameters>(JSContext* aCx, const BerytusOffChannelOtpChallengeParameters& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusOffChannelOtpChallengeInfo {
   nsString mId;
   StaticString19 mType;
-  JSNull mParameters;
+  BerytusOffChannelOtpChallengeParameters mParameters;
   BerytusOffChannelOtpChallengeInfo() = default;
-  BerytusOffChannelOtpChallengeInfo(nsString&& aId, StaticString19&& aType, JSNull&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
+  BerytusOffChannelOtpChallengeInfo(nsString&& aId, StaticString19&& aType, BerytusOffChannelOtpChallengeParameters&& aParameters) : mId(std::move(aId)), mType(std::move(aType)), mParameters(std::move(aParameters)) {}
   BerytusOffChannelOtpChallengeInfo(BerytusOffChannelOtpChallengeInfo&& aOther) : mId(std::move(aOther.mId)), mType(std::move(aOther.mType)), mParameters(std::move(aOther.mParameters))  {}
   BerytusOffChannelOtpChallengeInfo& operator=(BerytusOffChannelOtpChallengeInfo&& aOther) {
     mId = std::move(aOther.mId);
@@ -1894,6 +1960,14 @@ template<>
 bool ToJSVal<StaticString21>(JSContext* aCx, const StaticString21& aValue, JS::MutableHandle<JS::Value> aRv);
 
 using StaticString_ForeignIdentity = StaticString21;
+
+struct JSNull {};
+template<>
+bool JSValIs<JSNull>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<JSNull>(JSContext* aCx, JS::Handle<JS::Value> aValue, JSNull& aRv);
+template<>
+bool ToJSVal<JSNull>(JSContext* aCx, const JSNull& aValue, JS::MutableHandle<JS::Value> aRv);
 template<>
 class SafeVariant<JSNull, nsString, BerytusEncryptedPacket> {
 public:
@@ -2800,53 +2874,12 @@ template<>
 bool ToJSVal<StaticString34>(JSContext* aCx, const StaticString34& aValue, JS::MutableHandle<JS::Value> aRv);
 
 using StaticString_GetIdentityFields = StaticString34;
-template<>
-class SafeVariant<nsString, BerytusEncryptedPacket> {
-public:
-  SafeVariant() : mVariant(nullptr) {}
-  SafeVariant(SafeVariant<nsString, BerytusEncryptedPacket>&& aOther) : mVariant(std::move(aOther.mVariant)) {
-    aOther.mVariant = nullptr;
-  }
-  SafeVariant& operator=(SafeVariant&& aOther) {
-    mVariant = std::move(aOther.mVariant);
-    aOther.mVariant = nullptr;
-    return *this;
-  }
-  ~SafeVariant() {
-    delete mVariant;
-  };
-  template <typename... Args>
-  void Init(Args&&... aTs) {
-    MOZ_ASSERT(!mVariant);
-    mVariant = new Variant<nsString, BerytusEncryptedPacket>(std::forward<Args>(aTs)...);
-  }
-  bool Inited() const {
-    return mVariant;
-  }
-  mozilla::Variant<nsString, BerytusEncryptedPacket> const* InternalValue() const { return mVariant; }
-  mozilla::Variant<nsString, BerytusEncryptedPacket>* InternalValue() { return mVariant; }
-  
-protected:
-  mozilla::Variant<nsString, BerytusEncryptedPacket>* mVariant;
-};
-template<>
-bool JSValIs<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-template<>
-bool FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket>& aRv);
-template<>
-bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv);
-template<>
-bool JSValIs<nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
-template<>
-bool FromJSVal<nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext* aCx, const JS::Handle<JS::Value> aValue, nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>& aRv);
-template<>
-bool ToJSVal<nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext* aCx, const nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>& aValue, JS::MutableHandle<JS::Value> aRv);
 struct BerytusSendGetIdentityFieldsMessage {
   BerytusIdentificationChallengeInfo mChallenge;
   StaticString34 mName;
-  nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>> mPayload;
+  JSNull mPayload;
   BerytusSendGetIdentityFieldsMessage() = default;
-  BerytusSendGetIdentityFieldsMessage(BerytusIdentificationChallengeInfo&& aChallenge, StaticString34&& aName, nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
+  BerytusSendGetIdentityFieldsMessage(BerytusIdentificationChallengeInfo&& aChallenge, StaticString34&& aName, JSNull&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
   BerytusSendGetIdentityFieldsMessage(BerytusSendGetIdentityFieldsMessage&& aOther) : mChallenge(std::move(aOther.mChallenge)), mName(std::move(aOther.mName)), mPayload(std::move(aOther.mPayload))  {}
   BerytusSendGetIdentityFieldsMessage& operator=(BerytusSendGetIdentityFieldsMessage&& aOther) {
     mChallenge = std::move(aOther.mChallenge);
@@ -2882,9 +2915,9 @@ using StaticString_GetPasswordFields = StaticString35;
 struct BerytusSendGetPasswordFieldsMessage {
   BerytusPasswordChallengeInfo mChallenge;
   StaticString35 mName;
-  nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>> mPayload;
+  JSNull mPayload;
   BerytusSendGetPasswordFieldsMessage() = default;
-  BerytusSendGetPasswordFieldsMessage(BerytusPasswordChallengeInfo&& aChallenge, StaticString35&& aName, nsTArray<SafeVariant<nsString, BerytusEncryptedPacket>>&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
+  BerytusSendGetPasswordFieldsMessage(BerytusPasswordChallengeInfo&& aChallenge, StaticString35&& aName, JSNull&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
   BerytusSendGetPasswordFieldsMessage(BerytusSendGetPasswordFieldsMessage&& aOther) : mChallenge(std::move(aOther.mChallenge)), mName(std::move(aOther.mName)), mPayload(std::move(aOther.mPayload))  {}
   BerytusSendGetPasswordFieldsMessage& operator=(BerytusSendGetPasswordFieldsMessage&& aOther) {
     mChallenge = std::move(aOther.mChallenge);
@@ -2920,9 +2953,9 @@ using StaticString_SelectKey = StaticString36;
 struct BerytusSendSelectKeyMessage {
   BerytusDigitalSignatureChallengeInfo mChallenge;
   StaticString36 mName;
-  SafeVariant<nsString, BerytusEncryptedPacket> mPayload;
+  JSNull mPayload;
   BerytusSendSelectKeyMessage() = default;
-  BerytusSendSelectKeyMessage(BerytusDigitalSignatureChallengeInfo&& aChallenge, StaticString36&& aName, SafeVariant<nsString, BerytusEncryptedPacket>&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
+  BerytusSendSelectKeyMessage(BerytusDigitalSignatureChallengeInfo&& aChallenge, StaticString36&& aName, JSNull&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
   BerytusSendSelectKeyMessage(BerytusSendSelectKeyMessage&& aOther) : mChallenge(std::move(aOther.mChallenge)), mName(std::move(aOther.mName)), mPayload(std::move(aOther.mPayload))  {}
   BerytusSendSelectKeyMessage& operator=(BerytusSendSelectKeyMessage&& aOther) {
     mChallenge = std::move(aOther.mChallenge);
@@ -3031,9 +3064,9 @@ using StaticString_SelectSecurePassword = StaticString38;
 struct BerytusSendSelectSecurePasswordMessage {
   BerytusSecureRemotePasswordChallengeInfo mChallenge;
   StaticString38 mName;
-  SafeVariant<nsString, BerytusEncryptedPacket> mPayload;
+  JSNull mPayload;
   BerytusSendSelectSecurePasswordMessage() = default;
-  BerytusSendSelectSecurePasswordMessage(BerytusSecureRemotePasswordChallengeInfo&& aChallenge, StaticString38&& aName, SafeVariant<nsString, BerytusEncryptedPacket>&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
+  BerytusSendSelectSecurePasswordMessage(BerytusSecureRemotePasswordChallengeInfo&& aChallenge, StaticString38&& aName, JSNull&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
   BerytusSendSelectSecurePasswordMessage(BerytusSendSelectSecurePasswordMessage&& aOther) : mChallenge(std::move(aOther.mChallenge)), mName(std::move(aOther.mName)), mPayload(std::move(aOther.mPayload))  {}
   BerytusSendSelectSecurePasswordMessage& operator=(BerytusSendSelectSecurePasswordMessage&& aOther) {
     mChallenge = std::move(aOther.mChallenge);
@@ -3183,9 +3216,9 @@ using StaticString_GetOtp = StaticString42;
 struct BerytusSendGetOtpMessage {
   BerytusOffChannelOtpChallengeInfo mChallenge;
   StaticString42 mName;
-  SafeVariant<nsString, BerytusEncryptedPacket> mPayload;
+  JSNull mPayload;
   BerytusSendGetOtpMessage() = default;
-  BerytusSendGetOtpMessage(BerytusOffChannelOtpChallengeInfo&& aChallenge, StaticString42&& aName, SafeVariant<nsString, BerytusEncryptedPacket>&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
+  BerytusSendGetOtpMessage(BerytusOffChannelOtpChallengeInfo&& aChallenge, StaticString42&& aName, JSNull&& aPayload) : mChallenge(std::move(aChallenge)), mName(std::move(aName)), mPayload(std::move(aPayload)) {}
   BerytusSendGetOtpMessage(BerytusSendGetOtpMessage&& aOther) : mChallenge(std::move(aOther.mChallenge)), mName(std::move(aOther.mName)), mPayload(std::move(aOther.mPayload))  {}
   BerytusSendGetOtpMessage& operator=(BerytusSendGetOtpMessage&& aOther) {
     mChallenge = std::move(aOther.mChallenge);
@@ -3237,6 +3270,41 @@ template<>
 bool FromJSVal<SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aRv);
 template<>
 bool ToJSVal<SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>>(JSContext* aCx, const SafeVariant<BerytusSendGetIdentityFieldsMessage, BerytusSendGetPasswordFieldsMessage, BerytusSendSelectKeyMessage, BerytusSendSignNonceMessage, BerytusSendSelectSecurePasswordMessage, BerytusSendExchangePublicKeysMessage, BerytusSendComputeClientProofMessage, BerytusSendVerifyServerProofMessage, BerytusSendGetOtpMessage>& aValue, JS::MutableHandle<JS::Value> aRv);
+template<>
+class SafeVariant<nsString, BerytusEncryptedPacket> {
+public:
+  SafeVariant() : mVariant(nullptr) {}
+  SafeVariant(SafeVariant<nsString, BerytusEncryptedPacket>&& aOther) : mVariant(std::move(aOther.mVariant)) {
+    aOther.mVariant = nullptr;
+  }
+  SafeVariant& operator=(SafeVariant&& aOther) {
+    mVariant = std::move(aOther.mVariant);
+    aOther.mVariant = nullptr;
+    return *this;
+  }
+  ~SafeVariant() {
+    delete mVariant;
+  };
+  template <typename... Args>
+  void Init(Args&&... aTs) {
+    MOZ_ASSERT(!mVariant);
+    mVariant = new Variant<nsString, BerytusEncryptedPacket>(std::forward<Args>(aTs)...);
+  }
+  bool Inited() const {
+    return mVariant;
+  }
+  mozilla::Variant<nsString, BerytusEncryptedPacket> const* InternalValue() const { return mVariant; }
+  mozilla::Variant<nsString, BerytusEncryptedPacket>* InternalValue() { return mVariant; }
+  
+protected:
+  mozilla::Variant<nsString, BerytusEncryptedPacket>* mVariant;
+};
+template<>
+bool JSValIs<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
+template<>
+bool FromJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext* aCx, JS::Handle<JS::Value> aValue, SafeVariant<nsString, BerytusEncryptedPacket>& aRv);
+template<>
+bool ToJSVal<SafeVariant<nsString, BerytusEncryptedPacket>>(JSContext* aCx, const SafeVariant<nsString, BerytusEncryptedPacket>& aValue, JS::MutableHandle<JS::Value> aRv);
 template<>
 bool JSValIs<Record<nsString, SafeVariant<nsString, BerytusEncryptedPacket>>>(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv);
 template<>

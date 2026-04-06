@@ -42,7 +42,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
         assert(session.outcome === EAuthOutcome.Pending);
         assert(challengeDef.challengeType === EChallengeType.DigitalSignature);
         const keyFieldId =
-            challengeDef.challengeParameters["keyFieldId"];
+            challengeDef.challengeParameters["field"];
         expect(keyFieldId).to.be.a('string');
         const keyField = await AccountField.getField(
             session.accountVersion,
@@ -162,7 +162,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                 challengeDef
             } = await getSessionAndChallengeDef();
             const keyFieldId =
-            challengeDef.challengeParameters["keyFieldId"];
+            challengeDef.challengeParameters["field"];
             expect(keyFieldId).to.be.a('string');
             const keyField = await AccountField.getField(
                 session.accountVersion,

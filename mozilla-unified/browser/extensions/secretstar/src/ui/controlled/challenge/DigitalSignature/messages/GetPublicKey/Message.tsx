@@ -1,5 +1,5 @@
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
-import { string } from "yup";
+import { object, string } from "yup";
 import { BaseMessageProps } from "../../../common/types";
 import Form from './Form';
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
@@ -10,9 +10,9 @@ export interface MessageProps extends BaseMessageProps {
     onSubmit(privateKeyBuf: ArrayBuffer, publicKeyBuf: ArrayBuffer): void;
 }
 
-const payloadSchema = string()
-    .label("KeyFieldId")
-    .required();
+const parametersSchema = object({
+    field: string().required()
+});
 
 export default function Message({
     session,
@@ -24,8 +24,8 @@ export default function Message({
     const {
         loading: validationLoading,
         error: validationError,
-        value: keyFieldId
-    } = useYupValidation(payloadSchema, message.payload);
+        value: parameters
+    } = useYupValidation(parametersSchema, challenge.parameters);
 
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
@@ -35,7 +35,7 @@ export default function Message({
                 <MdCenteredSpinner />
             ) : <Form
                     accountId={session.selectedAccountId}
-                    keyFieldId={keyFieldId}
+                    keyFieldId={parameters.field}
                     seamless={settings.seamless.login}
                     onSubmit={(privateKeyBuf, publicKeyBuf) => {
                         onSubmit(privateKeyBuf, publicKeyBuf);

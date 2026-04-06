@@ -60,11 +60,67 @@ bool BerytusChallenge::Connected() const {
   return mChannel && mOperation;
 }
 
-void BerytusChallenge::Connect(const RefPtr<BerytusChannel>& aChannel,
-                               const RefPtr<BerytusLoginOperation>& aOperation) {
-  mChannel = aChannel;
-  mOperation = aOperation;
-  mActive = true;
+RefPtr<BerytusChallenge::ConnectResult> BerytusChallenge::Connect(
+    const RefPtr<BerytusChannel>& aChannel,
+    const RefPtr<BerytusLoginOperation>& aOperation) {
+  MOZ_ASSERT(mGlobal);
+  MOZ_ASSERT(!mChannel);
+  MOZ_ASSERT(!mOperation);
+  MOZ_ASSERT(aChannel);
+  MOZ_ASSERT(aOperation);
+  MOZ_ASSERT(aOperation->Active());
+  MOZ_ASSERT(aChannel->Active());
+  berytus::AgentProxy& agent = aChannel->Agent();
+  MOZ_ASSERT(!agent.IsDisabled());
+  berytus::RequestContextWithOperation reqCtx;
+  nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(
+      mGlobal, aChannel, aOperation, reqCtx);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return ConnectResult::CreateAndReject(berytus::Failure(rv), __func__);
+  }
+  berytus::ApproveChallengeRequestArgs reqArgs;
+  berytus::utils::ToProxy::BerytusChallengeInfoUnion(
+      this, reqArgs.mChallenge);
+  // JS::Rooted<JS::Value> info(aCx);
+  // BuildChallengeInfo(aCx, &info, aRv);
+  // if (NS_WARN_IF(aRv.Failed())) {
+  //   return nullptr;
+  // }
+  // JSObject* obj = JS_NewPlainObject(aCx);
+  // if (NS_WARN_IF(!obj)) {
+  //   aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
+  //   return nullptr;
+  // }
+  // JS::Rooted<JSObject*> reqArgsObj(aCx, obj);
+  // if (NS_WARN_IF(!JS_SetProperty(aCx, reqArgsObj, "challenge", info))) {
+  //   aRv.Throw(NS_ERROR_FAILURE);
+  //   return nullptr;
+  // }
+  // JS::Rooted<JS::Value> reqArgs(aCx, JS::ObjectValue(*reqArgsObj));
+  // RefPtr<Promise> prom = agent.CallSendQuery(aCx,
+  //                     u"accountAuthentication"_ns,
+  //                     u"approveChallengeRequest"_ns,
+  //                     reqCtx,
+  //                     reqArgs,
+  //                     aRv);
+  // if (NS_WARN_IF(aRv.Failed())) {
+  //   return nullptr;
+  // }
+  RefPtr<berytus::AccountAuthenticationApproveChallengeRequestResult> prom =
+    agent.AccountAuthentication_ApproveChallengeRequest(reqCtx, reqArgs);
+  MOZ_ASSERT(prom);
+  return prom->Then(
+    GetCurrentSerialEventTarget(), __func__,
+    [this, channel = RefPtr{aChannel}, operation = RefPtr{aOperation}](void*) {
+      mChannel = channel;
+      mOperation = operation;
+      mActive = true;
+      return BerytusChallenge::ConnectResult::CreateAndResolve(nullptr, __func__);
+    },
+    [](berytus::Failure&& aFr) {
+      return BerytusChallenge::ConnectResult::CreateAndReject(std::move(aFr), __func__);
+    }
+  );
 }
 
 BerytusChannel* BerytusChallenge::Channel() {

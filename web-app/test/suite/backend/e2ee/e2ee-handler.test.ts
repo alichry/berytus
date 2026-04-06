@@ -92,8 +92,9 @@ describe("Berytus E2EE Handler", () => {
         const handler = new E2EEHandler(
             mockSigningKeyStore(testCase.webAppKeys.ed25519.public, testCase.webAppKeys.ed25519.private),
         );
-        const signature = await handler.signKeyAgreementParameters(testCase.kap);
+        const { signature, message } = await handler.signKeyAgreementParameters(testCase.kap);
         expect(signature).to.equal(testCase.webAppSignature);
+        expect(new TextDecoder().decode(message)).to.deep.equal(testCase.signatureMessage);
         const verificationResult = await handler.verifyPeerKapSignature(
             testCase.kap,
             testCase.scmSignature

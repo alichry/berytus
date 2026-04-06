@@ -104,8 +104,8 @@ INSERT INTO berytus_account_def_key_field_id
 INSERT INTO berytus_account_def_auth_challenge
 (AccountVersion, ChallengeID, ChallengeType, ChallengeParameters)
 VALUES
-(1, 'password', 'Password', '{ "passwordFieldIds": ["password"] }'),
-(3, 'digital-signature', 'DigitalSignature', '{ "keyFieldId": "key" }');
+(1, 'password', 'Password', '{ "fields": ["password"] }'),
+(3, 'digital-signature', 'DigitalSignature', '{ "field": "key" }');
 
 /*
 INSERT INTO berytus_account_field

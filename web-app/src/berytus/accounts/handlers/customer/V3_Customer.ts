@@ -268,7 +268,10 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        const idCh = new BerytusIdentificationChallenge("id");
+        const idCh = new BerytusIdentificationChallenge(
+            "id", /*! challenge id */
+            { fields: ['username'] } /*! idt fields to retrieve */
+        );
         await operation.challenge(idCh);
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "identification" as const };
@@ -299,7 +302,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             }
         }
         //! EXPORT_FN_IGNORE_END
-        const { response: { username } } = await idCh.getIdentityFields(['username']);
+        const { response: { username } } = await idCh.getIdentityFields();
         //! EXPORT_FN_IGNORE_START
         assertIsString(username);
         //! EXPORT_FN_IGNORE_END
@@ -328,7 +331,10 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        const dsCh = new BerytusDigitalSignatureChallenge("ds");
+        const dsCh = new BerytusDigitalSignatureChallenge(
+            "ds", /*! challenge id */
+            { field: "key" } /*! key field to assume */
+        );
         await operation.challenge(dsCh)
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "selectKey" as const };
@@ -347,9 +353,14 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
                 throw new Error("Expecting authHandler to be set.");
             }
             try {
-                await this.authHandler.newChallenge(
+                const chParams = await this.authHandler.newChallenge(
                     "digital-signature"
                 );
+                if (!("field" in chParams) || chParams.field !== "key") {
+                    throw new Error(
+                        "Inconsistency between client and server challenge parameters"
+                    );
+                }
                 assert(key.publicKey instanceof ArrayBuffer);
                 await this.authHandler.sendResponse({
                     id: "key",
@@ -366,7 +377,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             }
         };
         //! EXPORT_FN_IGNORE_END
-        const { response: key } = await dsCh.selectKey('key');
+        const { response: key } = await dsCh.selectKey();
         /*!
          * We use a web app-specific routine, `validateKey`, to
          * check whether the secret manager-suppied public key

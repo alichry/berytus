@@ -714,7 +714,7 @@ browser.berytus.registerRequestHandler({
                 payload = args.payload;
             }
             // TODO(berytus): Refactor the below.
-            if (typeof payload === "string") {
+            if (typeof payload === "string" || payload === null) {
                 payload = payload;
             } else if (payload instanceof ArrayBuffer) {
                 payload = ab2base64(payload);

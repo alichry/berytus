@@ -1271,7 +1271,9 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": {
+              "fields": ["username"]
+            },
             "messages": {}
           }
         }
@@ -1414,13 +1416,11 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": { "fields": ["username"] },
             "messages": {
               "GetIdentityFields": {
                 "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
-                "payload": [
-                  "username"
-                ]
+                "payload": null
               }
             }
           }
@@ -1568,13 +1568,13 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": {
+              "fields": ["username"]
+            },
             "messages": {
               "GetIdentityFields": {
                 "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
-                "payload": [
-                  "username"
-                ]
+                "payload": null
               }
             },
             "closed": true
@@ -1727,13 +1727,11 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": {"fields": ["username"]},
             "messages": {
               "GetIdentityFields": {
                 "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
-                "payload": [
-                  "username"
-                ]
+                "payload": null
               }
             },
             "closed": true
@@ -1741,7 +1739,7 @@ const _sessions: Array<PhaseEntry> = [
           "pass": {
             "id": "pass",
             "type": "Password" as EBerytusChallengeType.Password,
-            "parameters": null,
+            "parameters": {"fields": ["password"]},
             "messages": {}
           }
         }
@@ -1896,13 +1894,11 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": {"fields": ["username"]},
             "messages": {
               "GetIdentityFields": {
                 "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
-                "payload": [
-                  "username"
-                ]
+                "payload": null
               }
             },
             "closed": true
@@ -1910,13 +1906,11 @@ const _sessions: Array<PhaseEntry> = [
           "pass": {
             "id": "pass",
             "type": "Password" as EBerytusChallengeType.Password,
-            "parameters": null,
+            "parameters": {"fields": ["password"]},
             "messages": {
               "GetPasswordFields": {
                 "name": "GetPasswordFields" as EBerytusPasswordChallengeMessageName.GetPasswordFields,
-                "payload": [
-                  "password"
-                ]
+                "payload": null
               }
             }
           }
@@ -2076,13 +2070,11 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": {"fields": ["username"]},
             "messages": {
               "GetIdentityFields": {
                 "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
-                "payload": [
-                  "username"
-                ]
+                "payload": null
               }
             },
             "closed": true
@@ -2090,13 +2082,11 @@ const _sessions: Array<PhaseEntry> = [
           "pass": {
             "id": "pass",
             "type": "Password" as EBerytusChallengeType.Password,
-            "parameters": null,
+            "parameters": {"fields": ["password"]},
             "messages": {
               "GetPasswordFields": {
                 "name": "GetPasswordFields" as EBerytusPasswordChallengeMessageName.GetPasswordFields,
-                "payload": [
-                  "password"
-                ]
+                "payload": null
               }
             },
             "closed": true
@@ -2261,13 +2251,11 @@ const _sessions: Array<PhaseEntry> = [
           "id": {
             "id": "id",
             "type": "Identification" as EBerytusChallengeType.Identification,
-            "parameters": null,
+            "parameters": {"fields": ["username"]},
             "messages": {
               "GetIdentityFields": {
                 "name": "GetIdentityFields" as EBerytusIdentificationChallengeMessageName.GetIdentityFields,
-                "payload": [
-                  "username"
-                ]
+                "payload": null
               }
             },
             "closed": true
@@ -2275,11 +2263,11 @@ const _sessions: Array<PhaseEntry> = [
           "ds": {
             "id": "ds",
             "type": "DigitalSignature" as EBerytusChallengeType.DigitalSignature,
-            "parameters": null,
+            "parameters": {"field": "key"},
             "messages": {
               "SelectKey": {
                 "name": "SelectKey" as EBerytusDigitalSignatureChallengeMessageName.SelectKey,
-                "payload": "key"
+                "payload": null
               },
               "SignNonce": {
                 "name": "SignNonce" as EBerytusDigitalSignatureChallengeMessageName.SignNonce,

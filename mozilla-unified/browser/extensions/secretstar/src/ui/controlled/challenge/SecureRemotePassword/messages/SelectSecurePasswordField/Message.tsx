@@ -1,6 +1,6 @@
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import Form, { FormProps } from "./Form";
-import { string } from "yup";
+import { object, string } from "yup";
 import Notice from "@root/ui/components/Notice";
 import Spinner from "@root/ui/components/Spinner";
 import { BaseMessageProps } from "../../../common/types";
@@ -11,9 +11,9 @@ export interface MessageProps extends BaseMessageProps {
     onSubmit: FormProps['onSubmit'];
 }
 
-const payloadSchema = string()
-    .label("SecurePasswordFieldId")
-    .required();
+const parametersSchema = object({
+    field: string().required()
+});
 
 export default function Message({
     session,
@@ -25,8 +25,8 @@ export default function Message({
     const {
         loading: validationLoading,
         error: validationError,
-        value: securePasswordFieldId
-    } = useYupValidation(payloadSchema, message.payload);
+        value: parameters
+    } = useYupValidation(parametersSchema, challenge.parameters);
 
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
@@ -38,7 +38,7 @@ export default function Message({
                 <Notice type="error" text={`Error: There is no selected account for this challenge!`} />
             ) : <Form
                     accountId={session.selectedAccountId}
-                    securePasswordFieldId={securePasswordFieldId}
+                    securePasswordFieldId={parameters.field}
                     seamless={settings.seamless.login}
                     onSubmit={(v) => onSubmit(v)}
                 />

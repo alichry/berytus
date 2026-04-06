@@ -18,9 +18,11 @@ class BerytusDigitalSignatureChallenge final : public BerytusChallenge {
 public:
   NS_DECL_ISUPPORTS_INHERITED
   BerytusDigitalSignatureChallenge(nsIGlobalObject* aGlobal,
-                                   const nsAString& aID);
+                                   const nsAString& aID,
+                                   BerytusDigitalSignatureChallengeParameters&& aParameters);
 protected:
   ~BerytusDigitalSignatureChallenge();
+  BerytusDigitalSignatureChallengeParameters mParameters;
   void CacheParameters(JSContext* aCx, ErrorResult& aRv) override;
   bool PayloadToJSValue(
     JSContext* aCx,
@@ -28,10 +30,11 @@ protected:
     JS::MutableHandle<JS::Value> aRetVal
   );
 public:
+  BerytusDigitalSignatureChallengeParameters const& Parameters() const;
+  
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> SelectKey(JSContext* aCx,
-                                      const StringOrBerytusEncryptedPacket& aKeyFieldId,
                                       ErrorResult& aRv);
   already_AddRefed<Promise> SignNonce(JSContext* aCx,
                                       const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aNonce,
@@ -48,6 +51,7 @@ public:
   static already_AddRefed<BerytusDigitalSignatureChallenge> Constructor(
     const GlobalObject& aGlobal,
     const nsAString& aId,
+    const BerytusDigitalSignatureChallengeParameters& aParameters,
     ErrorResult& aRv
   );
 };

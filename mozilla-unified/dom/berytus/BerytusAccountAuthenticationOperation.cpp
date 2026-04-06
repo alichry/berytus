@@ -83,51 +83,29 @@ already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Challenge(
     aRv.ThrowInvalidStateError("Channel no longer active");
     return nullptr;
   }
-  berytus::AgentProxy& agent = mChannel->Agent();
-  MOZ_ASSERT(!agent.IsDisabled());
-  berytus::RequestContextWithOperation reqCtx;
-  nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(mGlobal, mChannel, this, reqCtx);
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    aRv.Throw(rv);
-    return nullptr;
-  }
-  berytus::ApproveChallengeRequestArgs reqArgs;
-  berytus::utils::ToProxy::BerytusChallengeInfoUnion(aChallenge, reqArgs.mChallenge);
-  // TODO(berytus): Use BuildChallengeInfo
-  RefPtr<Promise> prom = agent.CallSendQuery(aCx,
-                      u"accountAuthentication"_ns,
-                      u"approveChallengeRequest"_ns,
-                      reqCtx,
-                      &reqArgs,
-                      aRv);
+  MOZ_ASSERT(!mChannel->Agent().IsDisabled());
+  RefPtr<Promise> outPromise = Promise::Create(mGlobal, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
-  auto onResolve = [this, aChallenge](JSContext* aCx, JS::Handle<JS::Value> aValue,
-                      ErrorResult& aRv,
-                      const nsCOMPtr<nsIGlobalObject>& aGlobal) -> already_AddRefed<Promise> {
-    mChallenges->AddChallenge(aChallenge, aRv);
-    if (NS_WARN_IF(aRv.Failed())) {
-      return nullptr;
+  RefPtr<BerytusChallenge::ConnectResult> prom = aChallenge->Connect(
+      mChannel, this);
+  auto onResolve = [this, aChallenge, outPromise](void*) {
+    ErrorResult rv;
+    mChallenges->AddChallenge(aChallenge, rv);
+    if (NS_WARN_IF(rv.Failed())) {
+      outPromise->MaybeReject(std::move(rv));
+      return;
     }
-    aChallenge->Connect(mChannel, this);
-    return Promise::CreateResolvedWithUndefined(aGlobal, aRv);
+    outPromise->MaybeResolveWithUndefined();
   };
-  auto onReject = [](JSContext* aCx, JS::Handle<JS::Value> aValue,
-                     ErrorResult& aRv,
-                     const nsCOMPtr<nsIGlobalObject>& aGlobal) {
-    berytus::Failure fr;
-    FromJSVal(aCx, aValue, fr);
-    ErrorResult err = fr.ToErrorResult();
-    return mozilla::dom::Promise::CreateRejectedWithErrorResult(aGlobal, err);
+  auto onReject = [outPromise](const berytus::Failure& aFr) {
+    ErrorResult rv = aFr.ToErrorResult();
+    outPromise->MaybeReject(std::move(rv));
   };
-  Result<RefPtr<dom::Promise>, nsresult> thenRes =
-    prom->ThenCatchWithCycleCollectedArgs(std::move(onResolve), std::move(onReject), nsCOMPtr{mGlobal});
-  if (NS_WARN_IF(thenRes.isErr())) {
-    aRv.Throw(thenRes.unwrapErr());
-    return nullptr;
-  }
-  return thenRes.unwrap().forget();
+  prom->Then(GetCurrentSerialEventTarget(), __func__,
+             std::move(onResolve), std::move(onReject));
+  return outPromise.forget();
 }
 
 // Return a raw pointer here to avoid refcounting, but make sure it's safe (the object should be kept alive by the callee).

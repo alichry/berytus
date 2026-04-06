@@ -16,14 +16,28 @@ NS_INTERFACE_MAP_END_INHERITING(BerytusChallenge)
 
 BerytusIdentificationChallenge::BerytusIdentificationChallenge(
     nsIGlobalObject* aGlobal,
-    const nsAString& aID) : BerytusChallenge(aGlobal,
+    const nsAString& aID,
+    BerytusIdentificationChallengeParameters&& aParameters) : BerytusChallenge(aGlobal,
                                              BerytusChallengeType::Identification,
-                                             aID) {}
+                                             aID),
+                                             mParameters(std::move(aParameters)) {}
 
 BerytusIdentificationChallenge::~BerytusIdentificationChallenge() {}
 
 void BerytusIdentificationChallenge::CacheParameters(JSContext* aCx, ErrorResult& aRv) {
-  mCachedParameters = nullptr;
+  if (mCachedParameters) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mParameters.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedParameters = options.toObjectOrNull();
+}
+
+BerytusIdentificationChallengeParameters const& BerytusIdentificationChallenge::Parameters() const {
+  return mParameters;
 }
 
 JSObject*
@@ -33,47 +47,9 @@ BerytusIdentificationChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject*>
 
 already_AddRefed<Promise> BerytusIdentificationChallenge::GetIdentityFields(
     JSContext* aCx,
-    const Sequence<OwningStringOrBerytusEncryptedPacket>& aIdentityFieldIds,
     ErrorResult& aRv) {
-  if (aIdentityFieldIds.IsEmpty()) {
-    aRv.ThrowTypeError("At least one identity field identifier must be provided");
-    return nullptr;
-  }
   JS::Rooted<JS::Value> payload(aCx);
-  Sequence<nsString> asStrings;
-  Sequence<OwningNonNull<BerytusEncryptedPacket>> asPackets;
-  for (const auto& item : aIdentityFieldIds) {
-    if (item.IsString()) {
-      if (asPackets.Length() > 0) {
-        aRv.Throw(NS_ERROR_FAILURE);
-        return nullptr;
-      }
-      if (NS_WARN_IF(!asStrings.AppendElement(item.GetAsString(), fallible))) {
-        aRv.ThrowTypeError("Mixed types in identity field identifiers are not allowed");
-        return nullptr;
-      }
-    } else {
-      if (asStrings.Length() > 0) {
-        aRv.ThrowTypeError("Mixed types in identity field identifiers are not allowed");
-        return nullptr;
-      }
-      if (NS_WARN_IF(!asPackets.AppendElement(item.GetAsBerytusEncryptedPacket(), fallible))) {
-        aRv.Throw(NS_ERROR_FAILURE);
-        return nullptr;
-      }
-    }
-  }
-  if (asStrings.Length() > 0) {
-    if (NS_WARN_IF(!ToJSValue(aCx, asStrings, &payload))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return nullptr;
-    }
-  } else {
-    if (NS_WARN_IF(!ToJSValue(aCx, asPackets, &payload))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return nullptr;
-    }
-  }
+  payload.setNull();
   return SendMessageRaw(aCx, u"GetIdentityFields"_ns, JS::HandleValue(payload), aRv);
 }
 
@@ -87,6 +63,7 @@ already_AddRefed<Promise> BerytusIdentificationChallenge::AbortWithIdentityDoesN
 already_AddRefed<BerytusIdentificationChallenge> BerytusIdentificationChallenge::Constructor(
   const GlobalObject& aGlobal,
   const nsAString& aId,
+  const BerytusIdentificationChallengeParameters& aParameters,
   ErrorResult& aRv
 ) {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
@@ -94,9 +71,18 @@ already_AddRefed<BerytusIdentificationChallenge> BerytusIdentificationChallenge:
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
+  if (aParameters.mFields.Length() == 0) {
+    aRv.ThrowTypeError("Parameter `field` must be a non-empty list of field ids");
+    return nullptr;
+  }
+  BerytusIdentificationChallengeParameters copiedParams;
+  if (NS_WARN_IF(!copiedParams.mFields.Assign(aParameters.mFields))) {
+    aRv.ThrowInvalidStateError("Out of memory");
+    return nullptr;
+  }
   return do_AddRef(
     new BerytusIdentificationChallenge(
-      global, aId));
+      global, aId, std::move(copiedParams)));
 }
 
 } // namespace mozilla::dom

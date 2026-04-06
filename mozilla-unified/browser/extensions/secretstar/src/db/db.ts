@@ -31,7 +31,7 @@ export interface PutField extends FieldInfo {
 }
 
 export interface ChallengeMessage extends Omit<BerytusSendMessageUnion, 'challenge' | 'payload'> {
-  payload: string | string[];
+  payload: null | string | string[];
 }
 
 export type Challenge = BerytusChallengeInfoUnion & {

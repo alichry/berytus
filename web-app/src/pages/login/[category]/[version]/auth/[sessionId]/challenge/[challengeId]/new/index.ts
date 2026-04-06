@@ -33,7 +33,16 @@ export const POST: APIRoute<
     );
     try {
         await handler.save(); // save the first, pending message.
-        return new Response(JSON.stringify({}));
+        return new Response(
+            JSON.stringify({
+                parameters: handler.challengeDef.challengeParameters
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
     } finally {
         handler.destroy();
     }

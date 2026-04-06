@@ -111,7 +111,7 @@ export const toClearMessageRequestPayload = async (
     let challenge = session.challenges
         ? session.challenges[challengeId]
         : undefined;
-    if (! challenge ) {
+    if (! challenge) {
         throw new Error('toClearMessageRequestPayload(): Unable to find challenge by id ' + challengeId);
     }
     switch (messageName) {
@@ -160,6 +160,9 @@ export const toClearMessageRequestPayload = async (
             return new TextDecoder().decode(new Uint8Array(decrypted));
         }
         case "ExchangePublicKeys": {
+            if (challenge.type !== "SecureRemotePassword") {
+                throw new Error('toClearMessageRequestPayload(): Expected SRP challenge for message ' + messageName);
+            }
             if (! box.isCiphertextType(requestPayload)) {
                 throw new Error("toClearMessageRequestPayload(): Expected JWE packet payload for message " + messageName);
             }
@@ -181,6 +184,9 @@ export const toClearMessageRequestPayload = async (
             return decrypted;
         }
         case "ComputeClientProof": {
+            if (challenge.type !== "SecureRemotePassword") {
+                throw new Error('toClearMessageRequestPayload(): Expected SRP challenge for message ' + messageName);
+            }
             if (! box.isCiphertextType(requestPayload)) {
                 throw new Error("toClearMessageRequestPayload(): Expected JWE packet payload for message " + messageName);
             }
@@ -202,6 +208,9 @@ export const toClearMessageRequestPayload = async (
             return decrypted;
         }
         case "VerifyServerProof": {
+            if (challenge.type !== "SecureRemotePassword") {
+                throw new Error('toClearMessageRequestPayload(): Expected SRP challenge for message ' + messageName);
+            }
             if (! box.isCiphertextType(requestPayload)) {
                 throw new Error("toClearMessageRequestPayload(): Expected JWE packet payload for message " + messageName);
             }

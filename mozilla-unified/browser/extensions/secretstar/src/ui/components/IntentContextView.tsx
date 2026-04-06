@@ -21,14 +21,15 @@ export default function IntentContextView(props: IntentContextViewProps) {
                 [
                     <p>Domain</p>,
                     <p>{props.uri.hostname}</p>
-                ],
+                ] as const
+            ].concat(props.webAppKey ? [
                 [
                     <p>Web App Key</p>,
                     <p className='text-[#57ff99] bg-black select-text py-0.5 px-1.5 rounded'>
                         {props.webAppKey}
                     </p>
-                ]
-            ]}
+                ] as const
+            ] : [])}
         />
     </div>
 }

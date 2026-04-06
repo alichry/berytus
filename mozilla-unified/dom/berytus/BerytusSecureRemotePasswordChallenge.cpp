@@ -52,24 +52,9 @@ BerytusSecureRemotePasswordChallenge::WrapObject(JSContext* aCx, JS::Handle<JSOb
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::SelectSecurePassword(
     JSContext* aCx,
-    const mozilla::dom::StringOrBerytusEncryptedPacket& aSecurePasswordFieldId,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (aSecurePasswordFieldId.IsString()) {
-    if (NS_WARN_IF(!ToJSValue(aCx, aSecurePasswordFieldId.GetAsString(), &payload))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return nullptr;
-    }
-  } else {
-    MOZ_ASSERT(aSecurePasswordFieldId.IsBerytusEncryptedPacket());
-    const auto& val = OwningNonNull(aSecurePasswordFieldId.GetAsBerytusEncryptedPacket());
-    berytus::BerytusEncryptedPacket packetProxy;
-    berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
-    if (NS_WARN_IF(!berytus::ToJSVal(aCx, packetProxy, &payload))) {
-      aRv.Throw(NS_ERROR_FAILURE);
-      return nullptr;
-    }
-  }
+  payload.setNull();
   return SendMessageRaw(aCx, u"SelectSecurePassword"_ns, JS::HandleValue(payload), aRv);
 }
 
@@ -206,6 +191,10 @@ already_AddRefed<BerytusSecureRemotePasswordChallenge> BerytusSecureRemotePasswo
     return nullptr;
   }
   BerytusSecureRemotePasswordChallengeParameters copiedParams;
+  if (NS_WARN_IF(!copiedParams.mField.Assign(aParameters.mField, fallible))) {
+    aRv.ThrowInvalidStateError("Out of memory");
+    return nullptr;
+  }
   if (aParameters.mEncoding.WasPassed()) {
     copiedParams.mEncoding.Construct(aParameters.mEncoding.Value());
   }

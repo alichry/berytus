@@ -567,6 +567,18 @@
         }
       },
       {
+        "id": "BerytusIdentificationChallengeParameters",
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
         "id": "BerytusIdentificationChallengeInfo",
         "type": "object",
         "properties": {
@@ -580,7 +592,19 @@
             ]
           },
           "parameters": {
-            "type": "null"
+            "$ref": "BerytusIdentificationChallengeParameters"
+          }
+        }
+      },
+      {
+        "id": "BerytusPasswordChallengeParameters",
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -598,7 +622,16 @@
             ]
           },
           "parameters": {
-            "type": "null"
+            "$ref": "BerytusPasswordChallengeParameters"
+          }
+        }
+      },
+      {
+        "id": "BerytusDigitalSignatureChallengeParameters",
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
           }
         }
       },
@@ -616,7 +649,7 @@
             ]
           },
           "parameters": {
-            "type": "null"
+            "$ref": "BerytusDigitalSignatureChallengeParameters"
           }
         }
       },
@@ -641,6 +674,9 @@
         "id": "BerytusSecureRemotePasswordChallengeParameters",
         "type": "object",
         "properties": {
+          "field": {
+            "type": "string"
+          },
           "encoding": {
             "$ref": "BerytusSecureRemotePasswordChallengeEncodingType",
             "optional": true
@@ -666,6 +702,15 @@
         }
       },
       {
+        "id": "BerytusOffChannelOtpChallengeParameters",
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          }
+        }
+      },
+      {
         "id": "BerytusOffChannelOtpChallengeInfo",
         "type": "object",
         "properties": {
@@ -679,7 +724,7 @@
             ]
           },
           "parameters": {
-            "type": "null"
+            "$ref": "BerytusOffChannelOtpChallengeParameters"
           }
         }
       },
@@ -1422,17 +1467,6 @@
         "type": "any"
       },
       {
-        "id": "StringOrPacketUnion",
-        "choices": [
-          {
-            "type": "string"
-          },
-          {
-            "$ref": "BerytusEncryptedPacket"
-          }
-        ]
-      },
-      {
         "id": "BerytusSendGetIdentityFieldsMessage",
         "type": "object",
         "properties": {
@@ -1446,10 +1480,7 @@
             ]
           },
           "payload": {
-            "type": "array",
-            "items": {
-              "$ref": "StringOrPacketUnion"
-            }
+            "type": "null"
           }
         }
       },
@@ -1467,10 +1498,7 @@
             ]
           },
           "payload": {
-            "type": "array",
-            "items": {
-              "$ref": "StringOrPacketUnion"
-            }
+            "type": "null"
           }
         }
       },
@@ -1488,12 +1516,12 @@
             ]
           },
           "payload": {
-            "$ref": "StringOrPacketUnion"
+            "type": "null"
           }
         }
       },
       {
-        "id": "BerytusEncryptedPacketOrArrayBufferOrArrayBufferView",
+        "id": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
         "choices": [
           {
             "type": "object",
@@ -1524,7 +1552,7 @@
             ]
           },
           "payload": {
-            "$ref": "BerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
+            "$ref": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1542,12 +1570,12 @@
             ]
           },
           "payload": {
-            "$ref": "StringOrPacketUnion"
+            "type": "null"
           }
         }
       },
       {
-        "id": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView",
+        "id": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
         "choices": [
           {
             "type": "string"
@@ -1581,7 +1609,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
+            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1599,7 +1627,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
+            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1617,7 +1645,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrBerytusEncryptedPacketOrArrayBufferOrArrayBufferView"
+            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1635,7 +1663,7 @@
             ]
           },
           "payload": {
-            "$ref": "StringOrPacketUnion"
+            "type": "null"
           }
         }
       },
@@ -1668,6 +1696,17 @@
           },
           {
             "$ref": "BerytusSendGetOtpMessage"
+          }
+        ]
+      },
+      {
+        "id": "StringOrPacketUnion",
+        "choices": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "BerytusEncryptedPacket"
           }
         ]
       },

@@ -273,20 +273,26 @@ declare global {
 	    abortWithUserInterruptError(): Promise<undefined>;
 	    abortWithGenericWebAppFailureError(): Promise<undefined>;
 	}
+	interface BerytusIdentificationChallengeParameters {
+	    fields: Array<string>;
+	}
 	interface BerytusChallengeGetIdentityFieldsMessageResponse {
 	    response: Record<string, StringOrPacketUnion>;
 	}
 	interface BerytusIdentificationChallenge extends BerytusChallenge {
-	    new (id: string);
-	    getIdentityFields(identityFieldIds: Array<StringOrPacketUnion>): Promise<BerytusChallengeGetIdentityFieldsMessageResponse>;
+	    new (id: string, parameters: BerytusIdentificationChallengeParameters);
+	    getIdentityFields(): Promise<BerytusChallengeGetIdentityFieldsMessageResponse>;
 	    abortWithIdentityDoesNotExistsError(): Promise<undefined>;
 	}
 	interface BerytusChallengeGetPasswordFieldsMessageResponse {
 	    response: Record<string, StringOrPacketUnion>;
 	}
+	interface BerytusPasswordChallengeParameters {
+	    fields: Array<string>;
+	}
 	interface BerytusPasswordChallenge extends BerytusChallenge {
-	    new (id: string);
-	    getPasswordFields(passwordFieldIds: Array<StringOrPacketUnion>): Promise<BerytusChallengeGetPasswordFieldsMessageResponse>;
+	    new (id: string, parameters: BerytusPasswordChallengeParameters);
+	    getPasswordFields(): Promise<BerytusChallengeGetPasswordFieldsMessageResponse>;
 	    abortWithIncorrectPasswordError(): Promise<undefined>;
 	}
 	interface BerytusChallengeSelectKeyMessageResponse {
@@ -295,9 +301,12 @@ declare global {
 	interface BerytusChallengeSignNonceMessageResponse {
 	    response: ArrayBuffer | BerytusEncryptedPacket;
 	}
+	interface BerytusDigitalSignatureChallengeParameters {
+	    field: string;
+	}
 	interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
-	    new (id: string);
-	    selectKey(keyFieldId: StringOrPacketUnion): Promise<BerytusChallengeSelectKeyMessageResponse>;
+	    new (id: string, parameters: BerytusDigitalSignatureChallengeParameters);
+	    selectKey(): Promise<BerytusChallengeSelectKeyMessageResponse>;
 	    signNonce(nonce: ArrayBuffer | ArrayBufferView | BerytusEncryptedPacket): Promise<BerytusChallengeSignNonceMessageResponse>;
 	    abortWithPublicKeyMismatchError(): Promise<undefined>;
 	    abortWithInvalidSignatureError(): Promise<undefined>;
@@ -310,6 +319,7 @@ declare global {
 	}
 	type BerytusSecureRemotePasswordChallengeEncodingType = "None" | "Hex";
 	interface BerytusSecureRemotePasswordChallengeParameters {
+	    field: string;
 	    encoding?: BerytusSecureRemotePasswordChallengeEncodingType;
 	}
 	interface BerytusChallengeComputeClientProofMessageResponse {
@@ -319,7 +329,7 @@ declare global {
 	}
 	interface BerytusSecureRemotePasswordChallenge extends BerytusChallenge {
 	    new (id: string, parameters?: BerytusSecureRemotePasswordChallengeParameters);
-	    selectSecurePassword(securePasswordFieldId: StringOrPacketUnion): Promise<BerytusChallengeSelectSecurePasswordMessageResponse>;
+	    selectSecurePassword(): Promise<BerytusChallengeSelectSecurePasswordMessageResponse>;
 	    exchangePublicKeys(webAppServerPublicKeyB: ArrayBuffer | ArrayBufferView | string | BerytusEncryptedPacket): Promise<BerytusChallengeExchangePublicKeysMessageResponse>;
 	    computeClientProof(salt: ArrayBuffer | ArrayBufferView | string | BerytusEncryptedPacket): Promise<BerytusChallengeComputeClientProofMessageResponse>;
 	    verifyServerProof(serverProofM2: ArrayBuffer | ArrayBufferView | string | BerytusEncryptedPacket): Promise<BerytusChallengeVerifyServerProofMessageResponse>;
@@ -328,9 +338,12 @@ declare global {
 	interface BerytusChallengeGetOtpMessageResponse {
 	    response: StringOrPacketUnion;
 	}
+	interface BerytusOffChannelOtpChallengeParameters {
+	    field: string;
+	}
 	interface BerytusOffChannelOtpChallenge extends BerytusChallenge {
-	    new (id: string);
-	    getOtp(foreignIdentityFieldId: StringOrPacketUnion): Promise<BerytusChallengeGetOtpMessageResponse>;
+	    new (id: string, parameters: BerytusOffChannelOtpChallengeParameters);
+	    getOtp(): Promise<BerytusChallengeGetOtpMessageResponse>;
 	    abortWithIncorrectOtpError(): Promise<undefined>;
 	}
 	type BerytusIdentificationChallengeMessageName = "GetIdentityFields";

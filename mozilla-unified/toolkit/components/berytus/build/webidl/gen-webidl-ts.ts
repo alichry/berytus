@@ -436,7 +436,7 @@ interface Berytus${chName}ChallengeInfo {
                 newIntfs.push(
                     `\
 interface BerytusChallenge${messageName}MessageRequest {
-    payload: ${arg.getType().getText()}
+    payload: ${arg ? arg.getType().getText() : 'null'}
 }`
                 );
                 newIntfs.push(

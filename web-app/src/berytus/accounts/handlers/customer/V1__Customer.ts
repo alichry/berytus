@@ -109,7 +109,10 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        const idCh = new BerytusIdentificationChallenge("id");
+        const idCh = new BerytusIdentificationChallenge(
+            "id", /*! challenge id */
+            { fields: ['username'] } /*! idt fields to retrieve */
+        );
         await operation.challenge(idCh);
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "identification" as const };
@@ -140,7 +143,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             }
         }
         //! EXPORT_FN_IGNORE_END
-        const { response: { username } } = await idCh.getIdentityFields(['username']);
+        const { response: { username } } = await idCh.getIdentityFields();
         //! EXPORT_FN_IGNORE_START
         assertIsString(username);
         //! EXPORT_FN_IGNORE_END
@@ -169,7 +172,10 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        const passCh = new BerytusPasswordChallenge("pass");
+        const passCh = new BerytusPasswordChallenge(
+            "pass", /*! challenge id */
+            { fields: ["password"] } /*! pwd fields to retrieve */
+        );
         await operation.challenge(passCh)
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "passwordAuth" as const };
@@ -190,16 +196,24 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
                 throw new Error("Expecting authHandler to be set.");
             }
             try {
-                await this.authHandler.newChallenge(
+                const chParams = await this.authHandler.newChallenge(
                     "password"
                 );
+                if (
+                    !("fields" in chParams) ||
+                    ! Array.isArray(chParams.fields) ||
+                    chParams.fields.length !== 1 ||
+                    chParams.fields[0] !== "password"
+                ) {
+                    throw new Error("Inconsistency between client and server challenge parameters");
+                }
                 await this.authHandler.sendResponse([
                     {
                         id: "password",
                         value: password
                     }
                 ], "multipart");
-                const res= await this.authHandler.finish();
+                const res = await this.authHandler.finish();
                 res.userAttributes.forEach(u => {
                     this.loginState.userAttributes[u.id] = u.value;
                 });
@@ -212,7 +226,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             }
         };
         //! EXPORT_FN_IGNORE_END
-        const { response: { password } } = await passCh.getPasswordFields(['password']);
+        const { response: { password } } = await passCh.getPasswordFields();
         //! EXPORT_FN_IGNORE_START
         assert(typeof password === "string" || password instanceof BerytusJWEPacket);
         //! EXPORT_FN_IGNORE_END
