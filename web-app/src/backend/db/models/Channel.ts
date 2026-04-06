@@ -5,6 +5,7 @@ import { ChannelRequest } from "./ChannelRequest.js";
 import { EntityNotFoundError } from "../errors/EntityNotFoundError.js";
 import { isDeepStrictEqual } from 'node:util';
 import { IllegalStateError } from "@root/backend/errors/IllegalStateError.js";
+import canonicalStringify from "canonical-json";
 
 export enum EChannelType {
     NonE2EE = "NonE2EE",
@@ -144,13 +145,18 @@ export class Channel {
                 "ChannelID"
             );
         }
+        // NOTE(berytus): postgres stores KeyAgreementParameters
+        // not necessarily in the same key-order provided during
+        // insertion. Here, we transform the stored KAP back
+        // into its canonical form
+        const kap = JSON.parse(canonicalStringify(res[0].keyagreementparameters)!);
         return new Channel(
             res[0].channelid,
             res[0].channelrequestid,
             res[0].channeltype,
             res[0].scmactor,
             res[0].channelstatus,
-            res[0].keyagreementparameters,
+            kap,
             res[0].keyagreementsignatures,
             res[0].sessionkey
         );

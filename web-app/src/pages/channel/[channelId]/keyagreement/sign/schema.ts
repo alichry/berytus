@@ -38,6 +38,8 @@ export const KeyAgreementParameters = z.object({
     }),
 });
 
+export type KeyAgreementParameters = z.infer<typeof KeyAgreementParameters>;
+
 export const Body = z.object({
     canonicalJson: z.string().refine(str => {
         try {
@@ -48,3 +50,9 @@ export const Body = z.object({
         }
     }, { message: "canonicalJson must be a valid JSON string" }),
 });
+
+export const Result = z.object({
+    signature: z.string()
+});
+
+export type Result = z.infer<typeof Result>;

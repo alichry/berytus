@@ -107,20 +107,18 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
     }
 
     async accountExists(
-        field: BerytusField,
+        fields: BerytusField[],
         targetContentType: TargetContentType = "multipart"
     ): Promise<boolean> {
-        if (field.type !== "ForeignIdentity" && field.type !== "Identity") {
-            throw new Error('Bad field passed.');
+        if (fields.some(field => field.type !== "ForeignIdentity" && field.type !== "Identity")) {
+            throw new Error('Bad field passed. Only Identity and ForeignIdentity fields are allowed.');
         }
         const res = await fetch(
             `/login/${this.category}/${this.version}/exists`,
             {
                 method: "POST",
                 ...buildRequestBodyAndHeaders({
-                    fields: [
-                        { id: field.id, value: field.value }
-                    ]
+                    fields: fields.map(field => ({ id: field.id, value: field.value }))
                 }, targetContentType)
             }
         );

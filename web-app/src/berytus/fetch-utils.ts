@@ -59,9 +59,6 @@ export const buildRequestBodyAndHeaders = (
         body = requestBody;
         contentTypeHeader = requestBody.type;
     }
-    if (typeof requestBody === "object" && null !== requestBody && "value" in requestBody && typeof requestBody.value === "object" && "publicKey" in (requestBody as any).value) {
-        const s =1;
-    }
     const headers = {
         ...(contentTypeHeader !== "multipart/form-data" ? {
             // Note(berytus): Do not explicitly set content-type

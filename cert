@@ -8,9 +8,23 @@
 
 set -e
 
+# To add the self-signed cert to Mozilla's trust store:
+# brew install nss
+# brew install nspr
+# ls -alh /usr/local/lib | grep nspr
+# ls -alh /usr/local/lib | grep nssutil
+# command -v addbuiltin
+# echo $PWD # must be path/to/mozilla-unified/security/nss/lib/ckfw/builtins
+# BERYTUS_PATH="path/to/berytus"
+# atob -i "${BERYTUS_PATH}/lab/server/subj.cert.pem" | addbuiltin -t C,, -n "Berytus Lab (Local)" >> certdata.txt
+# atob -i "${BERYTUS_PATH}/web-app/cert-local/subj.cert.pem" | addbuiltin -t C,, -n "Berytus Web App PoC (Local)" >> certdata.txt
+# atob -i "${BERYTUS_PATH}/web-app/cert-public/subj.cert.pem" | addbuiltin -t C,, -n "Berytus Web App PoC (Public)" >> certdata.txt
+# # mach build picks up certdata.txt, no need to build NSS
+
 usage="X509+Berytus self-signed certificate producer usage:
 
-    cert -a DOMAIN [-a DOMAIN{2}] [...] [-a DOMAIN{N}] \\
+    cert [-n COMMON_NAME]
+         -a DOMAIN [-a DOMAIN{2}] [...] [-a DOMAIN{N}] \\
          -k KEY_ENTRY [-k KEY_ENTRY{2}] [...] [-k KEY_ENTRY{N}] \\
          OUT_DIR
 
@@ -59,6 +73,7 @@ maxshift () {
 
 valcl() {
     # $@ -> the cl
+    # @out common_name
     # @out domains
     # @out input_entries_urls
     # @out input_entries_keys
@@ -67,6 +82,7 @@ valcl() {
         printUsage
         exit 0
     fi
+    common_name="Example"
     domains=()
     input_entries_urls=()
     input_entries_keys=()
@@ -81,6 +97,10 @@ valcl() {
             -h|--help)
                 printUsage
                 exit 0
+                ;;
+            -n)
+                common_name="$2"
+                shift `maxshift 2 "$#"`
                 ;;
             -a)
                 domains+=("$2")
@@ -149,6 +169,10 @@ genSubjectKey() {
 }
 
 createCsr() {
+    if [ -z "$common_name" ]; then
+        echo "Error: \$common_name not set. This happens with -n is used with an empty value." >&2
+        return 1
+    fi
     if [ -z "$out_dir" ]; then
         echo "Error: \$out_dir not set." >&2
         return 1
@@ -161,8 +185,8 @@ createCsr() {
         echo "Error: \$input_entries_urls not set." >&2
         return 1
     fi
-    if [ -z "${input_entries_keys[*]}" ]; then
-        echo "Error: \$input_entries_keys '${input_entries_keys[*]}' not set." >&2
+    if [ "${#input_entries_keys[@]}" -ne "${#input_entries_urls[@]}" ]; then
+        echo "Error: mismatch between number of URLs and keys." >&2
         return 1
     fi
     if [ -z "$subjectPubKeyDer" ]; then
@@ -259,7 +283,7 @@ EOF
     openssl req \
         -new -key "$subjectPrivKey" \
         -config "$openssl_cnf" \
-        -subj '/C=UK/CN=Example/' \
+        -subj "/C=UK/CN=${common_name}/" \
         -out "$subjectCsr"
 }
 
@@ -276,7 +300,7 @@ signCsr() {
     openssl x509 -req -in "$subjectCsr" \
         -out "$subjectCert" \
         -key "$subjectPrivKey" \
-        -sha256 -days 365 \
+        -sha256 -days 3650 \
         -copy_extensions=copyall
 }
 

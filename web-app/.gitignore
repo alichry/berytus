@@ -1,3 +1,5 @@
+./cert-public
+
 # build output
 dist/
 # generated types

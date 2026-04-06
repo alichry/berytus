@@ -36,6 +36,7 @@ dom/fetch/Request.cpp
 dom/fetch/FetchDriver.h
 dom/fetch/FetchDriver.cpp
 dom/file/Blob.h
+security/nss/lib/ckfw/builtins/certdata.txt
 toolkit/modules/ActorManagerParent.sys.mjs
 browser/base/content/navigator-toolbox.inc.xhtml
 browser/base/content/popup-notifications.inc

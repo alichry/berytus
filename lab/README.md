@@ -11,7 +11,9 @@ The lab comes with a default X509 certificate that includes the Berytus extensio
 in the top-level directory of this repository. For example:
 
 ```sh
-./cert -a localhost -a 127.0.0.1 -k https://localhost/app/a/* -k https://localhost/app/b/* lab/server
+./cert -n "Berytus Lab (Local)" -a localhost -a 127.0.0.1 -k https://localhost/app/a/* -k https://localhost/app/b/* lab/server
+# inspect the certificate extension:
+openssl x509 -noout -text -certopt ext_dump -in lab/server/subj.cert.pem
 ```
 
 ### Entering the lab

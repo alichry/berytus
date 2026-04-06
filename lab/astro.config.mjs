@@ -21,10 +21,10 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss(), svgr()],
     server: {
-      https: {
+      https: process.env.SERVER_CERT_PATH ? {
         key: fs.readFileSync(process.env.SERVER_KEY_PATH),
         cert: fs.readFileSync(process.env.SERVER_CERT_PATH),
-      },
+      } : undefined,
     }
   }
 });

@@ -55,7 +55,7 @@ export const POST: APIRoute = async ({ request, params }) => {
             return new Response(JSON.stringify({
                 error: e.message
             }), {
-                status: 409,
+                status: e instanceof IllegalStateError ? 409 : 400,
                 headers: {
                     "Content-Type": "application/json"
                 }

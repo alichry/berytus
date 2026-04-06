@@ -406,6 +406,7 @@ const SEC_ASN1Template AllowlistTemplate[] = {
 };
 
 CERTCertExtension* FindBerytusExtension(CERTCertificate* aCert) {
+  MOZ_ASSERT(aCert);
   CERTCertExtension **extensions, *extension;
   // SECItem oid = {
   //     siDEROID,
@@ -488,6 +489,11 @@ already_AddRefed<BerytusX509Extension> BerytusX509Extension::Create(
   if (NS_WARN_IF(NS_FAILED(rv))) {
     aRv = rv;
     return nullptr;
+  }
+  if (! securityInfo) {
+    MOZ_LOG(sLogger, LogLevel::Info,
+            ("No securityinfo found on channel (i.e. no certificate)"));
+    return do_AddRef(new BerytusX509Extension(nsTArray<RefPtr<SigningKeyEntry>>()));
   }
   nsIX509Cert* x509Cert;
   rv = securityInfo->GetServerCert(&x509Cert);

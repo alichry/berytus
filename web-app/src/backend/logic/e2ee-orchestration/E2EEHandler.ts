@@ -33,7 +33,7 @@ export class E2EEHandler {
      */
     public async signKeyAgreementParameters(
         kap: KeyAgreementParametersJson
-    ): Promise<string> {
+    ): Promise<{ signature: string; message: ArrayBuffer }> {
         releaseAssert(
             (await this.#signingKeyStore.getPublicKeyMaterial()) ===
                 kap.authentication.public.webApp);
@@ -41,14 +41,18 @@ export class E2EEHandler {
         const { privateKey: key } = await this.#signingKeyLoader.importKey({
             privateKey: keyMaterial
         });
+        const message = new TextEncoder().encode(JSON.stringify(kap));
         const signedBuf = await subtle.sign(
             "Ed25519",
             key,
-            new TextEncoder().encode(JSON.stringify(kap))
+            message
         );
-        return new Uint8Array(signedBuf)
-            // @ts-ignore: Node 25+
-            .toBase64();
+        return {
+            signature: new Uint8Array(signedBuf)
+                // @ts-ignore: Node 25+
+                .toBase64(),
+            message: message.buffer
+        };
     }
 
     public async verifyPeerKapSignature(

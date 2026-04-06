@@ -1,18 +1,17 @@
 import type { APIRoute } from 'astro';
 import { Channel } from '@root/backend/db/models/Channel.js';
-import { releaseAssert } from '@root/backend/utils/assert.js';
+import { debugAssert, releaseAssert } from '@root/backend/utils/assert.js';
 import { EntityNotFoundError } from '@root/backend/db/errors/EntityNotFoundError.js';
 import { E2EEHandler } from '@root/backend/logic/e2ee-orchestration/E2EEHandler';
 import { Body, KeyAgreementParameters } from './schema';
 import { IllegalStateError } from '@root/backend/errors/IllegalStateError';
 import { InvalidArgError } from '@root/backend/errors/InvalidArgError';
 import { ChannelRequest } from '@root/backend/db/models/ChannelRequest';
+import { ZodError } from 'zod';
 
 export const POST: APIRoute = async ({ request, params }) => {
     const { channelId } = params;
     releaseAssert(typeof channelId === "string");
-    const input = await Body.parseAsync(await request.json());
-    const kap = await KeyAgreementParameters.parseAsync(JSON.parse(input.canonicalJson));
     let channel;
     try {
         channel = await Channel.getChannel(channelId);
@@ -30,6 +29,10 @@ export const POST: APIRoute = async ({ request, params }) => {
         throw err;
     }
     try {
+        const input = await Body.parseAsync(await request.json());
+        const kap: KeyAgreementParameters = JSON.parse(input.canonicalJson);
+        debugAssert(assert => assert(JSON.stringify(kap) === input.canonicalJson));
+        await KeyAgreementParameters.parseAsync(kap);
         const channelRequest = await ChannelRequest.getRequest(channel.requestId);
         if (! channelRequest.supportsE2EE()) {
             throw new IllegalStateError(
@@ -37,11 +40,12 @@ export const POST: APIRoute = async ({ request, params }) => {
             );
         }
         const handler = new E2EEHandler();
-        const signed = await handler.signKeyAgreementParameters(kap);
+        const { signature, message } = await handler.signKeyAgreementParameters(kap);
+        debugAssert(assert => assert(new TextDecoder().decode(message) === input.canonicalJson));
         await channel.setKeyAgreementParameters(kap);
-        await channel.setWebAppKapSignature(signed);
+         await channel.setWebAppKapSignature(signature);
         return new Response(JSON.stringify({
-            signature: signed
+            signature
         }), {
             status: 200,
             headers: {
@@ -49,11 +53,15 @@ export const POST: APIRoute = async ({ request, params }) => {
             }
         });
     } catch (e) {
-        if (e instanceof IllegalStateError || e instanceof InvalidArgError) {
+        if (
+            e instanceof IllegalStateError ||
+            e instanceof InvalidArgError ||
+            e instanceof ZodError
+        ) {
             return new Response(JSON.stringify({
                 error: e.message
             }), {
-                status: 409,
+                status: e instanceof IllegalStateError ? 409 : 400,
                 headers: {
                     "Content-Type": "application/json"
                 }

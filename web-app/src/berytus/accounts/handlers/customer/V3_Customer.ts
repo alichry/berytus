@@ -148,7 +148,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
-        const usernameExists = this.accountExists.bind(this);
+        const usernameExists = (field: BerytusField) => this.accountExists([field]);
         //! EXPORT_FN_IGNORE_END
         const usernameField = operation.fields.get('username');
         if (! usernameField) {

@@ -103,6 +103,8 @@ void Hash(const CryptoBuffer& aData, CryptoBuffer& aResult, ErrorResult& aRv) {
 template <typename T>
 void ToCanonicalJSON(const T& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
+void ToCanonicalJSON(const nsAString& aValue, nsString& aJson, ErrorResult& aRv);
+template<>
 void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
 void ToCanonicalJSON(const nsLiteralString& aValue, nsString& aJson, ErrorResult& aRv);
@@ -130,7 +132,7 @@ template<typename U>
 void ToCanonicalJSON(const Span<U>& aValue, nsString&  aJson, ErrorResult& aRv);
 
 template<>
-void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const nsAString& aValue, nsString& aJson, ErrorResult& aRv) {
   if (NS_WARN_IF(!aJson.Append(u"\""_ns, fallible))) {
     aRv.ThrowTypeError("Out of memory");
     return;
@@ -141,11 +143,6 @@ void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) 
     switch (ch) {
       case u'"': {
         char16_t token[] = u"\\\"";
-        toAppend.Rebind(token, (sizeof(token) - sizeof(char16_t)) / sizeof(char16_t));
-        break;
-      }
-      case u'/': {
-        char16_t token[] = u"\\/";
         toAppend.Rebind(token, (sizeof(token) - sizeof(char16_t)) / sizeof(char16_t));
         break;
       }
@@ -201,6 +198,10 @@ void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) 
   }
 }
 template<>
+void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) {
+  return ToCanonicalJSON(static_cast<const nsAString&>(aValue), aJson, aRv);
+}
+template<>
 void ToCanonicalJSON(const nsLiteralString& aValue, nsString& aJson, ErrorResult& aRv) {
   return ToCanonicalJSON(static_cast<const nsString&>(aValue), aJson, aRv);
 }
@@ -253,8 +254,16 @@ void ToCanonicalJSON(const uint64_t& aValue, nsString& aJson, ErrorResult& aRv) 
 
 template<>
 void ToCanonicalJSON(const CryptoBuffer& aValue, nsString& aJson, ErrorResult& aRv) {
-  Span<const uint8_t> view(aValue);
-  ToCanonicalJSON(view, aJson, aRv);
+  nsAutoCString b64;
+  nsresult rv = Base64Encode(reinterpret_cast<const char*>(aValue.Elements()),
+                             aValue.Length(), b64);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.ThrowTypeError("Base64 encoding failed in ToCanonicalJSON.");
+    return;
+  }
+  NS_ConvertUTF8toUTF16 b64UTF16(b64);
+  ToCanonicalJSON(static_cast<const nsAString&>(b64UTF16), aJson, aRv);
+  NS_ENSURE_TRUE(!aRv.Failed(), );
 }
 
 template<typename U>
@@ -853,11 +862,6 @@ void ToCanonicalJSON(const RefPtr<Session>& aValue, nsString& aJson, ErrorResult
   NS_ENSURE_TRUE_VOID(writer.Begin());
 
   NS_ENSURE_TRUE_VOID(\
-    writer.Key(u"unmaskAllowlist"_ns));
-  NS_ENSURE_TRUE_VOID(\
-    writer.Value(aValue->GetUnmaskAllowlist()));
-
-  NS_ENSURE_TRUE_VOID(\
     writer.Key(u"fingerprint"_ns));
   NS_ENSURE_TRUE_VOID(\
     writer.Value(aValue->GetFingerprint()));
@@ -871,6 +875,11 @@ void ToCanonicalJSON(const RefPtr<Session>& aValue, nsString& aJson, ErrorResult
     writer.Key(u"timestamp"_ns));
   NS_ENSURE_TRUE_VOID(\
     writer.Value(aValue->GetTimestamp()));
+
+  NS_ENSURE_TRUE_VOID(\
+    writer.Key(u"unmaskAllowlist"_ns));
+  NS_ENSURE_TRUE_VOID(\
+    writer.Value(aValue->GetUnmaskAllowlist()));
 
   NS_ENSURE_TRUE_VOID(writer.End());
 }

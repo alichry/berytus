@@ -8,7 +8,14 @@ export const debugAssert = (cb: (assert: Assert) => void) => {
     if (! isDev()) {
         return;
     }
-    cb(assert);
+    try {
+        cb(assert);
+    } catch (e) {
+        console.debug(`❌ Debug assertion: ${cb.toString()}`);
+        throw e;
+    }
+    console.debug(`✅ Debug assertion: ${cb.toString()}`);
+
 }
 
 export const releaseAssert: Assert = new Proxy(assert, {
