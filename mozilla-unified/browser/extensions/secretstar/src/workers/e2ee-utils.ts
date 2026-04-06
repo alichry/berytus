@@ -209,10 +209,13 @@ export const toClearMessageRequestPayload = async (
             if (decrypted === null) {
                 throw new Error('toClearMessageRequestPayload(): CipherBox refused to decrypt.');
             }
-            // TODO(berytus): Get the encoding from the challenge params
-            // if hex is used, turn the arraybuffer to hex string
-            // otherwise, just return the array buffer.
-            if (true === true) {
+            if (challenge.parameters == null) {
+                throw new Error(
+                    'toClearMessageRequestPayload(): SRP Challenge '
+                    + 'parameters are missing.'
+                );
+            }
+            if (challenge.parameters.encoding === "Hex") {
                 // @ts-ignore: NOTE(berytus): toBase64() is
                 // now widely available in modern browsers!
                 return new Uint8Array(decrypted).toBase64();

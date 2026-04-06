@@ -167,13 +167,25 @@ browser.berytus.registerRequestHandler({
             const parameters: KeyAgreementParameters = (() => {
                 const obj = JSON.parse(args.canonicalJson);
                 obj.session.fingerprint.salt =
-                    new Uint8Array(obj.session.fingerprint.salt).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.session.fingerprint.salt)
+                        .buffer;
                 obj.session.fingerprint.value =
-                    new Uint8Array(obj.session.fingerprint.value).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.session.fingerprint.value)
+                        .buffer;
                 obj.derivation.salt =
-                    new Uint8Array(obj.derivation.salt).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.derivation.salt)
+                        .buffer;
                 obj.derivation.info =
-                    new Uint8Array(obj.derivation.info).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.derivation.info)
+                        .buffer;
                 return obj;
             })();
             if (parameters.authentication.public.scm !== channel.scmEd25519.public) {
@@ -698,6 +710,8 @@ browser.berytus.registerRequestHandler({
                     messageId,
                     args.payload
                 );
+            } else {
+                payload = args.payload;
             }
             // TODO(berytus): Refactor the below.
             if (typeof payload === "string") {

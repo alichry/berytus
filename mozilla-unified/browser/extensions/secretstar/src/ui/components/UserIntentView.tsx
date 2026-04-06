@@ -13,6 +13,7 @@ import type { UriParams } from '@berytus/types';
 
 export interface UserIntentProps {
     uri: UriParams;
+    webAppKey?: string;
     checkpointCapability: (typeof ELoginUserIntent)[keyof typeof ELoginUserIntent];
     onIntent(intent: typeof ELoginUserIntent['Authenticate'], selectedAccount: Account): void;
     onIntent(intent: typeof ELoginUserIntent['Register'], selectedAccount?: undefined): void;
@@ -20,7 +21,7 @@ export interface UserIntentProps {
     accounts?: Array<Account>;
 }
 
-export default function UserIntent({ accounts, uri, checkpointCapability, onIntent, onCancel }: UserIntentProps) {
+export default function UserIntent({ accounts, uri, webAppKey, checkpointCapability, onIntent, onCancel }: UserIntentProps) {
     //browser.authRealm.resolveRequest(requestId, sessionInfo.EUserIntentAuthenticate);
     // this is executed after AuthRealm
     return (
@@ -29,6 +30,7 @@ export default function UserIntent({ accounts, uri, checkpointCapability, onInte
             <CommonBodyContainer>
                 <IntentContextView
                     uri={uri}
+                    webAppKey={webAppKey}
                     className="pb-3 mb-3 border-b-[0.5px] border-[#dfdfdf]"
                 />
                 {/* <IntentActionSplit
