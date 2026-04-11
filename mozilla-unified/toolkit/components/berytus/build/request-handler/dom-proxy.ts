@@ -1291,7 +1291,7 @@ bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgu
   } while (false);
   `).join("\n")}
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }`
         }

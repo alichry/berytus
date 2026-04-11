@@ -14,9 +14,10 @@ import { EBerytusFieldType, ERejectionCode } from "@berytus/enums";
 import { InternalError } from '@root/errors/InternalError';
 
 const isSecurePasswordOptions = (
+    type: EBerytusFieldType,
     opts: FieldInfo['options']
 ): opts is BerytusSecurePasswordFieldOptions => {
-    return "salt" in opts;
+    return type === EBerytusFieldType.SecurePassword;
 }
 
 export interface CreateFieldProps {
@@ -151,7 +152,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             resolveWith = {
                 publicKey: publicKeyBuf
             };
-        } else if (isSecurePasswordOptions(field.options)) {
+        } else if (isSecurePasswordOptions(field.type, field.options)) {
             const client = new JsrpClient();
             const { identityFieldId } = field.options;
             const identityField =

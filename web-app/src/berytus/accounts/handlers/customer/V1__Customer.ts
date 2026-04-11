@@ -130,6 +130,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         const accountExists = async (username: string): Promise<boolean> => {
             try {
                 this.authHandler = await AuthSessionHandler.create(
+                    this.channel!.id,
                     this.version,
                     this.category,
                     [{ id: "username", value: username }]

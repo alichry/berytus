@@ -1,5 +1,9 @@
 import type { APIContext } from "astro";
 import objectPath from 'object-path';
+import JWECompactCipherBox from "../crypto/JWECompactBox";
+import { AesGcmKeyLoader } from "../logic/e2ee-orchestration/AesGcmKeyLoader";
+import { Channel } from "../db/models/Channel";
+import { releaseAssert } from "../utils/assert";
 
 /*
  * Goal: define an e2ee midleware such that:
@@ -28,12 +32,9 @@ import objectPath from 'object-path';
 
 export const handleRequest = async (context: APIContext) => {
     const parsedUrl = new URL(context.request.url);
-    if (
-        !(/^\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/respond-message$/
-            .test(parsedUrl.pathname)) &&
-        !(/^\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(create|id|exists)$/
-            .test(parsedUrl.pathname))
-    ) {
+    const pathPattern = /^\/channel\/(?<channelId>{[a-zA-Z0-9\-_]+})\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(create|id|exists|auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/respond-message)$/
+    const matchRes = pathPattern.exec(decodeURI(parsedUrl.pathname));
+    if (matchRes == null) {
         return;
     }
     if (context.request.method !== "POST") {
@@ -48,6 +49,12 @@ export const handleRequest = async (context: APIContext) => {
         context.locals.requestBody = await context.request.blob();
         return;
     }
+    if (contentTypeHeader === "application/jose") {
+        context.locals.requestBody = new Blob(
+            [await context.request.arrayBuffer()],
+            { type: contentTypeHeader }
+        );
+    }
     // TODO(bertyus): Support ciphertext blob
     if (contentTypeHeader.startsWith("multipart/form-data;")) {
         const formData = await context.request.formData();
@@ -57,12 +64,66 @@ export const handleRequest = async (context: APIContext) => {
         });
         context.locals.requestBody = obj.$;
     }
+    if (undefined === context.locals.requestBody) {
+        // do nothing, unrecognised mimetype
+        return;
+    }
     const channelId = context.request.headers.get("X-Berytus-Channel-Id");
     if (channelId !== null) {
         // TODO(berytus): try to decrypt ciphertext, if any.
+        // context.locals.requestBody is either a Blob (ciphertext)
+        // or a formdata.
     }
 }
 
-export const handleResponse = async (context: APIContext) => {
-    // TODO(berytus): Here
+export const handleResponse = async (context: APIContext, resp: Response) => {
+    const parsedUrl = new URL(context.request.url);
+    const pathPattern = /^\/channel\/(?<channelId>{[a-zA-Z0-9\-_]+})\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(constants|auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/pending-message)$/
+    const matchRes = pathPattern.exec(decodeURI(parsedUrl.pathname));
+    if (matchRes == null) {
+        return;
+    }
+    if (context.request.method !== "POST") {
+        return resp;
+    }
+    const channelId = matchRes.groups!.channelId;
+    const contentTypeHeader = resp.headers.get("Content-Type");
+    if (! contentTypeHeader) {
+        return resp;
+    }
+    if (resp.status !== 200) {
+        return resp;
+    }
+    const keyMaterial = (await Channel.getChannel(channelId)).sessionKey;
+    releaseAssert(typeof keyMaterial === 'string');
+    const key = await (new AesGcmKeyLoader().importKey(keyMaterial));
+    const box = new JWECompactCipherBox({ key });
+    const headers: Record<string, string> = {};
+    resp.headers.entries().forEach(([key, value]) => {
+        if (key.toLowerCase() === 'content-type') {
+            return resp;
+        }
+        headers[key] = value;
+    });
+    if (
+        contentTypeHeader === "application/octet-stream" ||
+        contentTypeHeader.startsWith("text/plain")
+    ) {
+        // cleartext blob, encrypt and return application/jose
+        return new Response(await box.encrypt(await resp.arrayBuffer()), {
+            status: 200,
+            headers: {
+                ...headers,
+                'Content-Type': 'application/jose'
+            }
+        });
+    }
+    if (contentTypeHeader === 'application/json') {
+        const body = await box.encryptDictionary(await resp.json());
+        return new Response(JSON.stringify(body), {
+            status: 200,
+            headers
+        });
+    }
+    return resp;
 }

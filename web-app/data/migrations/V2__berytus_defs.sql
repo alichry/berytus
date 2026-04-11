@@ -139,3 +139,9 @@ INSERT INTO berytus_account_field
 (24, 2000, "username", '"matty"'),
 (24, 2000, "securePassword", '"securePassMatty"');
 */
+
+INSERT INTO berytus_account_constant
+(AccountVersion, ConstantName, Value)
+VALUES
+(2000, 'partyId.ClassA', '0001')
+;

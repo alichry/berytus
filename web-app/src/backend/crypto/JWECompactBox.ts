@@ -8,9 +8,9 @@ interface BaseJWECompactCipherBoxOptions {
 }
 
 interface JWECompactCipherBoxOptions extends BaseJWECompactCipherBoxOptions,
-    Omit<CipherBoxOptions<string, ArrayBuffer>, "encrypt" | "decrypt"> {}
+    Omit<CipherBoxOptions<string, Blob>, "encrypt" | "decrypt"> {}
 
-export default class JWECompactCipherBox extends AbstractCipherBox<string, ArrayBuffer> {
+export default class JWECompactCipherBox extends AbstractCipherBox<string, Blob> {
     #opts: BaseJWECompactCipherBoxOptions;
 
     constructor(opts: JWECompactCipherBoxOptions) {
@@ -61,7 +61,7 @@ export default class JWECompactCipherBox extends AbstractCipherBox<string, Array
     }
 
     async #encrypt(
-        datum: string | ArrayBufferLike | ArrayBufferView,
+        datum: string | ArrayBufferLike | ArrayBufferView | Blob,
         path?: ReadonlyArray<string>
     ): Promise<string> {
         if (this.#opts.avoidReEncryption && this.isCiphertextType(datum, path)) {
@@ -99,6 +99,11 @@ export default class JWECompactCipherBox extends AbstractCipherBox<string, Array
                 plaintext: new Uint8Array(datum.buffer),
                 mimeType: "application/octet-stream"
             };
+        } else if (datum instanceof Blob) {
+            content = {
+                plaintext: await datum.bytes(),
+                mimeType: datum.type || "application/octet-stream"
+            };
         }
         if (! content) {
             throw new Error(`Cannot encrypt datum of unsupported '${typeof datum}' type.`);
@@ -118,13 +123,13 @@ export default class JWECompactCipherBox extends AbstractCipherBox<string, Array
         return jweCompact;
     }
 
-    async #decrypt(datum: string, path?: ReadonlyArray<string>): Promise<ArrayBuffer> {
-        const { plaintext } = await compactDecrypt(datum, this.#opts.key);
-        if (plaintext.buffer instanceof ArrayBuffer) {
-            return plaintext.buffer;
+    async #decrypt(datum: string, path?: ReadonlyArray<string>): Promise<Blob> {
+        const { plaintext, protectedHeader } = await compactDecrypt(datum, this.#opts.key);
+        if (!(plaintext.buffer instanceof ArrayBuffer)) {
+            throw new Error(
+                'jose returned plaintext of unsupported data type. Maybe a SharedArrayBuffer?'
+            );
         }
-        throw new Error(
-            'jose returned plaintext of unsupported data type. Maybe a SharedArrayBuffer?'
-        );
+        return new Blob([plaintext.buffer], { type: protectedHeader.cty })
     }
 }

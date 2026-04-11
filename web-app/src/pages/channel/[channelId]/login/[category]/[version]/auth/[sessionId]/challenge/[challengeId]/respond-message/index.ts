@@ -4,7 +4,7 @@ import type { Result } from './schema.js';
 import {
     validatePendingSessionState,
     validatePendingChallengeState
-} from '@root/pages/login/[category]/[version]/auth/[sessionId]/utils.state-validation.js';
+} from '@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/utils.state-validation.js';
 import { UserError } from '@root/backend/errors/UserError.js';
 import { debugAssert, releaseAssert } from '@root/backend/utils/assert.js';
 

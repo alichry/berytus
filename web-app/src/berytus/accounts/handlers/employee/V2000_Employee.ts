@@ -2,10 +2,11 @@ import { E2EEHandler } from "@root/berytus/channel/handlers/E2EEHandler.js";
 import { AbstractAccountStageHandler } from "../AbstractAccountHandler.js";
 import type { TypedStageHandler } from "@root/berytus/types";
 import { assert } from "../assertions.js";
+import { FetchError } from "@root/backend/errors/FetchError.js";
 
 const version = 2000 as const;
 const category = "Employee" as const;
-const description = "(E2EE) Composite Username Identification and Password Authentication" as const;
+const description = "(E2EE) Composite Username Identification and Secure Password Authentication" as const;
 const steps = [
     "createChannel",
     "setupE2EE",
@@ -110,6 +111,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         /*! Use web app-specific routine to derive session key,
             storing it in the database. */
         await deriveSessionKey(this.channel);
+        /*! Finally, enable E2EE */
+        await this.channel.enableEndToEndEncryption();
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
@@ -150,9 +153,31 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         const actor = channel!.webApp;
         const operation = this.operation!;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        const getEncryptedPartyId = async () => {
+            const resp = await fetch(
+                `/channel/${this.channel!.id}/login/${this.category}/${this.version}/constants`,
+                {
+                    method: "POST",
+                    body: JSON.stringify(["partyId.ClassA"])
+                }
+            );
+            if (! resp.ok) {
+                throw new FetchError(resp, 'failed to retrieve encrypted partyId');
+            }
+            const body = await resp.json();
+            if (!("partyId.ClassA" in body)) {
+                throw new Error(
+                    "Expected partyId.ClassA to exist in constants dictionary, got otherwise."
+                );
+            }
+            const partyId = body["partyId.ClassA"];
+            return new BerytusJWEPacket(partyId);
+        }
         //! EXPORT_FN_IGNORE_END
-        const partyId = "1234-5678" // assume we are registering accounts
-                                    // underr party 1234-5678
+        const partyId = await getEncryptedPartyId();
+        //! assume we are registering accounts
+        //! under party 0001.
+        console.assert(partyId instanceof BerytusJWEPacket);
         const fields = await operation.addFields(
             new BerytusIdentityField(
                 'partyId',

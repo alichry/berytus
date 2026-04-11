@@ -6,6 +6,7 @@
 
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "ErrorList.h"
+#include "js/PropertyAndElement.h"
 #include "js/Value.h"
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/Assertions.h"
@@ -23,6 +24,7 @@
 #include "mozilla/dom/RootedDictionary.h"
 #include "nsError.h"
 #include "nsIGlobalObject.h"
+#include "nsString.h"
 #include "nsStringFwd.h"
 #include "mozilla/dom/BerytusFieldMap.h"
 #include "mozilla/dom/BerytusAccount.h"
@@ -871,16 +873,33 @@ void FromProxy::SetFieldValueMatcher::operator()(
 bool ToProxy::BerytusField(JSContext* aCx,
                            const RefPtr<dom::BerytusField>& aField,
                            FieldProxy& aRetVal) {
-  JS::Rooted<JS::Value> jsField(aCx);
-  // TODO(berytus): Investigate whether using DOMReflectors
-  // is a security risk -- could a mal web app override properties
-  // in the reflector?
-  if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, aField, &jsField))) {
+  JS::Rooted<JSObject*> jsFieldOptionsObj(aCx);
+  ErrorResult rv;
+  aField->GetOptions(aCx, &jsFieldOptionsObj, rv);
+  if (NS_WARN_IF(rv.Failed())) {
+    rv.StealNSResult(); // NOTE(berytus): Bad. at least log it.
     return false;
+  }
+  JS::Rooted<JS::Value> jsFieldOptions(aCx, JS::ObjectOrNullValue(jsFieldOptionsObj));
+  JS::Rooted<JS::Value> jsFieldValue(aCx);
+  OptionalFieldValueUnionProxy valueUnionProxy;
+  if (NS_WARN_IF(!berytus::utils::ToProxy::BerytusOptionalFieldValueUnion(
+          aCx, aField->GetValue(), valueUnionProxy))) {
+    return false;
+  }
+  if (NS_WARN_IF(!berytus::ToJSVal(aCx, valueUnionProxy, &jsFieldValue))) {
+    return false;
+  }
+  if (jsFieldValue.isUndefined()) {
+    jsFieldValue.setNull();
   }
   if (aField->Type() == dom::BerytusFieldType::Identity) {
     berytus::BerytusIdentityField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(VariantType<berytus::BerytusIdentityField>{}, std::move(proxyField));
@@ -888,7 +907,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::ForeignIdentity) {
     berytus::BerytusForeignIdentityField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -896,7 +919,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Password) {
     berytus::BerytusPasswordField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -904,7 +931,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::SecurePassword) {
     berytus::BerytusSecurePasswordField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -912,7 +943,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Key) {
     berytus::BerytusKeyField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -920,7 +955,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::SharedKey) {
     berytus::BerytusSharedKeyField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -933,13 +972,15 @@ bool ToProxy::BerytusField(JSContext* aCx,
 bool ToProxy::BerytusEncryptedPacket(JSContext* aCx,
                                      const RefPtr<dom::BerytusEncryptedPacket>& aPacket,
                                      EncryptedPacketProxy& aRetVal) {
-  JS::Rooted<JS::Value> jsPacket(aCx);
-  if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, aPacket, &jsPacket))) {
+  nsCString jwe;
+  // NOTE(berytus): currently, packets coming from the web app are never
+  // masked; hence, the exposed buffer is always the JWE (or
+  // whatever provided during construction).
+  auto bytes = aPacket->Exposed();
+  if (NS_WARN_IF(!jwe.Assign((const char*)bytes.Elements(), bytes.Length(), fallible))) {
     return false;
   }
-  if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsPacket, aRetVal))) {
-    return false;
-  }
+  aRetVal.mValue.Assign(NS_ConvertASCIItoUTF16(jwe));
   return true;
 }
 
@@ -954,10 +995,14 @@ bool ToProxy::BerytusOptionalFieldValueUnion(JSContext* aCx,
   if (value.IsBerytusFieldValueDictionary()) {
     const auto& dict = value.GetAsBerytusFieldValueDictionary();
     JS::Rooted<JS::Value> jsDict(aCx);
+    // NOTE(berytus): Using DOMReflector might be a security risk
     if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, dict, &jsDict))) {
       return false;
     }
     switch (dict->Type()) {
+      // NOTE(berytus): Below will fail if packets are sent since the
+      // DOMReflector value prop is not consistenct with the WebExt type.
+      // TODO(berytus): Fix this, eliminating the use of DOMReflector.
       case dom::BerytusFieldType::SecurePassword: {
         BerytusSecurePasswordFieldValue fvProxy;
         if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsDict, fvProxy))) {

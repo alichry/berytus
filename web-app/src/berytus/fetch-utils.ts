@@ -1,6 +1,6 @@
 export type TargetContentType = "json" | "multipart" | "blob";
 
-const populateFormData = (fdata: FormData, value: unknown, key?: string) => {
+export const populateFormData = (fdata: FormData, value: unknown, key?: string) => {
     if (value instanceof ArrayBuffer) {
         fdata.append(key!, new Blob([value], { type: "application/octet-stream" }));
         return;

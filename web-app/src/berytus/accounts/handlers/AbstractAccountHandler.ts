@@ -1,6 +1,6 @@
 import { EStageHandlerType, type IAccountStageHandler, type IAccountStageState, type StepResult } from "@root/berytus/types";
 import { FetchError } from "@root/backend/errors/FetchError";
-import type { Body as CreateBody } from "@root/pages/login/[category]/[version]/create/schema";
+import type { Body as CreateBody } from "@root/pages/channel/[channelId]/login/[category]/[version]/create/schema";
 import type { AbstractChannelHandler } from "@root/berytus/channel/AbstractChannelHandler.js";
 import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
 
@@ -114,7 +114,7 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
             throw new Error('Bad field passed. Only Identity and ForeignIdentity fields are allowed.');
         }
         const res = await fetch(
-            `/login/${this.category}/${this.version}/exists`,
+            `/channel/${this.channel!.id}/login/${this.category}/${this.version}/exists`,
             {
                 method: "POST",
                 ...buildRequestBodyAndHeaders({
@@ -148,7 +148,7 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
             userAttributes
         };
         const resp = await fetch(
-            `/login/${this.category}/${this.version}/create`,
+            `/channel/${this.channel!.id}/login/${this.category}/${this.version}/create`,
             {
                 method: "POST",
                ...buildRequestBodyAndHeaders(body, targetContentType)

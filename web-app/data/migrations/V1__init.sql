@@ -203,6 +203,15 @@ CREATE TABLE berytus_account_auth_challenge_message(
         FOREIGN KEY (SessionID) REFERENCES berytus_account_auth_session(SessionID)
 );
 
+CREATE TABLE berytus_account_constant (
+    AccountVersion INT NOT NULL,
+    ConstantName VARCHAR(256) NOT NULL,
+    Value VARCHAR(256) NOT NULL,
+    PRIMARY KEY (AccountVersion, ConstantName),
+    CONSTRAINT fk_bac_AccountVersion
+        FOREIGN KEY (AccountVersion) REFERENCES berytus_account_def(AccountVersion)
+);
+
 /*
 MariaDB [(..)]> SELECT * FROM berytus_account_field_dictionary;
 +----------------+-----------+------------------------------------------------------------------------------------+

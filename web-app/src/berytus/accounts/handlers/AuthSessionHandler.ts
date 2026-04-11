@@ -1,10 +1,10 @@
 import type { FieldInput } from "@root/backend/db/types";
 import { FetchError } from "@root/backend/errors/FetchError";
-import { Result as NewSessionResult } from "@root/pages/login/[category]/[version]/id/schema";
-import { Result as NewChallengeResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/new/schema";
-import { Result as PendingResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/pending-message/schema";
-import { Result as ProcessMessageResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
-import { Result as FinishResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/finish/schema";
+import { Result as NewSessionResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/id/schema";
+import { Result as NewChallengeResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/new/schema";
+import { Result as PendingResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/pending-message/schema";
+import { Result as ProcessMessageResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
+import { Result as FinishResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/finish/schema";
 import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
 
 // TODO: Check if we still have to change prototype.name
@@ -16,6 +16,7 @@ export class AuthIncorrectResponseError extends AuthError {}
 AuthIncorrectResponseError.prototype.name = "AuthIncorrectResponseError";
 
 export class AuthSessionHandler {
+    readonly channelId: string;
     readonly accountVersion: number;
     readonly accountCategory: string;
     readonly sessionId: BigInt;
@@ -24,23 +25,26 @@ export class AuthSessionHandler {
     lastChallengeOutcome?: ProcessMessageResult['outcome'];
 
     protected constructor(
+        channelId: string,
         accountVersion: number,
         accountCategory: string,
         sessionId: BigInt
     ) {
+        this.channelId = channelId;
         this.accountVersion = accountVersion;
         this.accountCategory = accountCategory;
         this.sessionId = sessionId;
     }
 
     static async create(
+        channelId: string,
         accountVersion: number,
         accountCategory: string,
         accountIdentity: FieldInput[],
         targetContentType: TargetContentType = "multipart"
     ) {
         const resp = await fetch(
-            `/login/${accountCategory}/${accountVersion}/id`,
+            `/channel/${channelId}/login/${accountCategory}/${accountVersion}/id`,
             {
                 method: "POST",
                 ...buildRequestBodyAndHeaders({
@@ -70,6 +74,7 @@ export class AuthSessionHandler {
             );
         }
         return new AuthSessionHandler(
+            channelId,
             accountVersion,
             accountCategory,
             BigInt(data.sessionId),
@@ -85,7 +90,7 @@ export class AuthSessionHandler {
             );
         }
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${challengeId}/new`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${challengeId}/new`,
             {
                 method: "POST"
             }
@@ -112,7 +117,7 @@ export class AuthSessionHandler {
             );
         }
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/pending-message`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/pending-message`,
             {
                 method: "GET"
             }
@@ -145,7 +150,7 @@ export class AuthSessionHandler {
         }
 
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,
             {
                 method: "POST",
                 ...buildRequestBodyAndHeaders(response, targetContentType)
@@ -178,7 +183,7 @@ export class AuthSessionHandler {
 
     async finish(): Promise<FinishResult> {
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/finish`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/finish`,
             {
                 method: "POST"
             }

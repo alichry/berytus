@@ -198,14 +198,7 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
         if (! this.isCiphertextType(datum)) {
             throw new Error(`decrypt() cannot decrypt '${typeof datum}' type in ${path}.`);
         }
-        if (
-            typeof datum === "string" ||
-            datum instanceof ArrayBuffer ||
-            ArrayBuffer.isView(datum)
-        ) {
-            return this.#options.decrypt(datum, path);
-        }
-        throw new Error(`Bad isCiphertextType() implementation.`);
+        return this.#options.decrypt(datum, path);
     }
 
     async encrypt(
