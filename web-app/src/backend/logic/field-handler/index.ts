@@ -4,6 +4,7 @@ import { PasswordHandler } from "./PasswordHandler";
 import { DigitalSignatureHandler } from "./DigitalSignatureHandler";
 import type { FieldInput as DbFieldInput } from "@root/backend/db/types";
 import * as z from "zod";
+import { SecurePasswordHandler } from "./SecurePasswordHandler";
 
 const jsonValueLeafSchema = z.union([
     z.string(),
@@ -30,6 +31,8 @@ export const transformField = async (
             return new PasswordHandler().transform(fieldInput);
         case EFieldType.Key:
             return new DigitalSignatureHandler().transform(fieldInput);
+        case EFieldType.SecurePassword:
+            return new SecurePasswordHandler().transform(fieldInput);
         default:
             return await z.object({
                 id: z.string(),

@@ -151,9 +151,11 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         const usernameExists = (field: BerytusField) => this.accountExists([field]);
         //! EXPORT_FN_IGNORE_END
         const usernameField = operation.fields.get('username');
+        //! EXPORT_FN_IGNORE_START
         if (! usernameField) {
             throw new Error("Expecting username field to be set in validateFields!");
         }
+        //! EXPORT_FN_IGNORE_END
         /*!
          * We use a web app-specific routine, `usernameExists`,
          * to check whether the username exists or not.

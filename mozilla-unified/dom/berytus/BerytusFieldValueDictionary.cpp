@@ -35,4 +35,6 @@ bool BerytusFieldValueDictionary::IsForField(const BerytusFieldType& aType)
   return Type() == aType;
 }
 
+void BerytusFieldValueDictionary::Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) {}
+
 } // namespace mozilla::dom

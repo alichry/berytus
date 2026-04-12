@@ -70,8 +70,7 @@ BerytusEncryptedPacket::BerytusEncryptedPacket(
             aExposedContent.mBuf.get(),
             aExposedContent.mLen,
             u"BerytusJWEPacket"_ns,
-            // TODO(berytus): Content type should always be application/jose
-            aConceal ? u"application/jose"_ns : u"text/plain"_ns,
+            u"application/jose"_ns,
             RTPCallerType::Normal).take()),
         mGlobal(aGlobal), /* mGlobal will live as long as it does under Blob */
         mExposedContent(Span<uint8_t>(aExposedContent.mBuf.release(), aExposedContent.mLen)),
@@ -217,11 +216,14 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
   ErrorResult& aRv
 ) {
   if (aSrc.IsBlob()) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p> is an Blob", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
     RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(
       aSrc.GetAsBlob());
     if (!packet) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p> is NOT BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
       return false;
     }
+    MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p> is a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
     bool hasUnmasked;
     RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl,hasUnmasked, aRv);
     if (NS_WARN_IF(aRv.Failed())) {
@@ -232,34 +234,51 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
     return hasUnmasked;
   }
   if (aSrc.IsFormData()) {
+    MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p> is a FormData", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
     const auto& fd = aSrc.GetAsFormData();
-    bool unmaskNeeded = !fd->ForEach([](const nsString&,
+    bool unmaskNeeded = !fd->ForEach([&aReqUrl, &aSrc](const nsString& aKey,
                              const OwningBlobOrDirectoryOrUSVString& aValue) -> bool {
       if (!aValue.IsBlob()) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData::%s is NOT a Blob", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(aKey).BeginReading()));
         return true;
       }
-      return !(bool(TryDowncastBlob<BerytusEncryptedPacket>(aValue.GetAsBlob())));
+      const auto& blob = aValue.GetAsBlob();
+      MOZ_ASSERT(blob.get());
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData::%s is a Blob (fileId=%lld)", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(aKey).BeginReading(), blob->GetFileId()));
+      RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(blob.get());
+      if (packet) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData::%s is a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(aKey).BeginReading()));
+        return false;
+      }
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData::%s is NOT a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(aKey).BeginReading()));
+      return true;
     });
     if (!unmaskNeeded) {
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData does NOT contain a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
       aDest.SetAsFormData() = fd;
       return false;
     }
+    MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData contains a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
     const RefPtr<FormData> unmaskedFd = fd->Clone();
     bool anyHasUnmasked = false;
     for (auto& entry : unmaskedFd->mFormData) {
       if (!entry.value.IsBlob()) {
         continue;
       }
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Trying to Unmask %.s", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
       RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(
           entry.value.GetAsBlob());
       if (!packet) {
+        MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Member %.s is not a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
         continue;
       }
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Member %.s is a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
       bool hasUnmasked;
       RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl, hasUnmasked, aRv);
       if (NS_WARN_IF(aRv.Failed())) {
         return false;
       }
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Unmasked Member %.s", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
       MOZ_ASSERT(maybeUnmaskedBlob);
       entry.value.SetAsBlob() = maybeUnmaskedBlob;
       anyHasUnmasked = anyHasUnmasked || hasUnmasked;
@@ -267,6 +286,7 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
     aDest.SetAsFormData() = unmaskedFd;
     return anyHasUnmasked;
   }
+  MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p> is not a Blob/FormData", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
   return false;
 }
 

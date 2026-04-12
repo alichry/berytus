@@ -12,6 +12,8 @@ const steps = [
     "setupE2EE",
     "login",
     "addFields",
+    "validateFields",
+    "metadata",
     "save"
 ] as const;
 
@@ -202,7 +204,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
             )
         );
         //! EXPORT_FN_IGNORE_START
-        return { nextStep: "save" as const };
+        return { nextStep: "validateFields" as const };
         //! EXPORT_FN_IGNORE_END
     }
 
@@ -214,13 +216,17 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
             this.accountExists([partyId, username]);
         //! EXPORT_FN_IGNORE_END
         const partyIdField = operation.fields.get('partyId');
+        //! EXPORT_FN_IGNORE_START
         if (! partyIdField) {
             throw new Error("Expecting partyId field to be set in validateFields!");
         }
+        //! EXPORT_FN_IGNORE_END
         const usernameField = operation.fields.get('username');
+        //! EXPORT_FN_IGNORE_START
         if (! usernameField) {
             throw new Error("Expecting username field to be set in validateFields!");
         }
+        //! EXPORT_FN_IGNORE_END
         /*!
          * We use a web app-specific routine, `usernameExists`,
          * to check whether the username exists or not.
@@ -229,8 +235,9 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
          */
         while (await accountExists(partyIdField, usernameField)) {
             /*!
-             * The provided username is registered under the party, reject it and request
-             * a new revision. Once rejectAndReviseFields() resolves,
+             * The provided username is registered under the party,
+             * reject it and request a new revision. Once
+             * rejectAndReviseFields() resolves,
              * `usernameField.value` reflects the new field value.
              */
             await operation.rejectAndReviseFields({
@@ -250,7 +257,95 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         //! EXPORT_FN_IGNORE_END
     }
 
+    async metadata() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        await operation.setCategory("Customer");
+        await operation.setVersion(1);
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "save" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
     async save() {
-        return { finished: true as const }
+        //! EXPORT_FN_IGNORE_START
+        let operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        const registerAccountInBackEnd = (
+            partyId: BerytusEncryptedPacket,
+            username: BerytusEncryptedPacket,
+            securePassword: BerytusSecurePasswordFieldValue,
+            attrsMap: BerytusUserAttributeMap
+        ) => {
+            const fields = [
+                {
+                    id: "partyId",
+                    value: partyId
+                },
+                {
+                    id: "username",
+                    value: username
+                },
+                {
+                    id: "securePassword",
+                    value: {
+                        salt: securePassword.salt instanceof ArrayBuffer
+                            ? new Blob([securePassword.salt], { type: "application/octet-stream" })
+                            : securePassword.salt,
+                        verifier: securePassword.verifier instanceof ArrayBuffer
+                            ? new Blob([securePassword.verifier], { type: "application/octet-stream" })
+                            : securePassword.verifier,
+                    }
+                }
+            ];
+            const attrs: Record<string, string | Blob> = {};
+            for (const [key, obj] of attrsMap) {
+                attrs[key] = typeof obj.value === "string"
+                    ? obj.value
+                    : obj.value instanceof ArrayBuffer
+                    ? new Blob([obj.value], { type: obj.mimeType || undefined })
+                    : obj.value;
+            }
+            return this.createAccount(fields, attrs);
+        }
+        //! EXPORT_FN_IGNORE_END
+        const partyIdField = operation.fields.get('partyId');
+        //! EXPORT_FN_IGNORE_START
+        if (! partyIdField) {
+            throw new Error("Expecting partyId field to be set in save()!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        const usernameField = operation.fields.get('username');
+        //! EXPORT_FN_IGNORE_START
+        if (! usernameField) {
+            throw new Error("Expecting username field to be set in save()!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        const securePasswordField = operation.fields.get('securePassword');
+        //! EXPORT_FN_IGNORE_START
+        if (! securePasswordField) {
+            throw new Error("Expecting securePassword field to be set in save()!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        /*!
+         * We use a web app-specific routine, `registerAccountInBackEnd`,
+         * to register the account in the backend. This dispatches an HTTP
+         * request containing the account username and password fields.
+         * @var registerAccountInBackEnd
+         * @type {(username: string, password: string): Promise<void>}
+         */
+        await registerAccountInBackEnd(
+            partyIdField.value as BerytusEncryptedPacket,
+            usernameField.value as BerytusEncryptedPacket,
+            securePasswordField.value as BerytusSecurePasswordFieldValue,
+            operation.userAttributes
+        );
+        await operation.setStatus("Created");
+        await operation.save();
+        //! EXPORT_FN_IGNORE_START
+        return { finished: true as const };
+        //! EXPORT_FN_IGNORE_END
     }
 }

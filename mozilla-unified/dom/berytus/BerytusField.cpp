@@ -252,7 +252,13 @@ void BerytusField::SetValueImpl(JSContext* aCx,
     return;
   }
   if (aValue.Value().IsBerytusFieldValueDictionary()) {
-    mFieldValue.SetValue().SetAsBerytusFieldValueDictionary() = aValue.Value().GetAsBerytusFieldValueDictionary();
+    const auto& fieldValue = aValue.Value().GetAsBerytusFieldValueDictionary();
+    if (mChannel) {
+      RefPtr<BerytusChannel> ch = mChannel.get();
+      fieldValue->Attach(ch, aRv);
+      NS_ENSURE_TRUE_VOID(!aRv.Failed());
+    }
+    mFieldValue.SetValue().SetAsBerytusFieldValueDictionary() = fieldValue;
     return;
   }
   MOZ_ASSERT(false, "Unrecognised field value union member");

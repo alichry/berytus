@@ -14,6 +14,7 @@ type JSONValue = /* based on JSONValue from 'postgres' */
 
 type RequestBody = JSONValue
     | Blob
+    | readonly RequestBody[]
     | {
       readonly [prop: string | number]:
       | undefined

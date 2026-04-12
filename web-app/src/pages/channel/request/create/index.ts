@@ -18,8 +18,9 @@ const allowedOrigins = [
 export const POST: APIRoute = async ({ request }) => {
     const { type } =  Body.parse(await request.json());
     const originHeader = request.headers.get("origin");
-    const origin = originHeader ? new URL('/', originHeader).hostname : null;
-    if (null === origin || ! allowedOrigins.includes(origin)) {
+    const originUrl = originHeader ? new URL('/', originHeader) : null;
+    const origin = originUrl?.hostname;
+    if (! origin || ! allowedOrigins.includes(origin)) {
         return new Response(
             JSON.stringify({
                 error: `Invalid origin (${origin})`
@@ -50,7 +51,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
     const unmaskAllowlist: string[] | null =
         webAppX25519
-            ? [] // TODO(berytus): <--
+            ? [
+                `${originUrl.protocol}//${originUrl.host}/*`
+            ]
             : null;
     const channelRequest = await ChannelRequest.create(
         webAppActor,

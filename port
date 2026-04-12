@@ -29,6 +29,7 @@ dom/webidl/Navigator.webidl
 dom/webidl/moz.build
 dom/bindings/Bindings.conf
 dom/base/FormData.h
+dom/base/FormData.cpp
 dom/base/Navigator.cpp
 dom/base/Navigator.h
 dom/fetch/Request.h

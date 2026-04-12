@@ -66,6 +66,8 @@ public:
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JS::Value> aRetVal,
               ErrorResult& aRv) override;
+
+  void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) override;
 };
 
 } // namespace mozilla::dom

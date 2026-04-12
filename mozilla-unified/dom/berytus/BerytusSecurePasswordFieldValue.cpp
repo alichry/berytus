@@ -6,6 +6,7 @@
 
 #include "BerytusFieldValueDictionary.h"
 #include "mozilla/dom/BerytusBuffer.h"
+#include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "mozilla/dom/BerytusSecurePasswordFieldBinding.h"
 #include "mozilla/dom/BerytusSecurePasswordFieldValue.h"
 
@@ -54,6 +55,26 @@ void BerytusSecurePasswordFieldValue::GetVerifier(
   OwningArrayBufferOrBerytusEncryptedPacket& aRetVal,
   ErrorResult& aRv) const {
   mVerifier->Get(aCx, aRetVal, aRv);
+}
+
+void BerytusSecurePasswordFieldValue::Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) {
+  RefPtr<BerytusEncryptedPacket> np = nullptr;
+  Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>> salt(np);
+  Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>> verifier(np);
+  mSalt->ToVariant(salt);
+  mVerifier->ToVariant(verifier);
+  if (salt.is<RefPtr<BerytusEncryptedPacket>>()) {
+    auto packet = salt.as<RefPtr<BerytusEncryptedPacket>>();
+    MOZ_ASSERT(packet);
+    packet->Attach(aChannel, aRv);
+    NS_ENSURE_TRUE_VOID(!aRv.Failed());
+  }
+  if (verifier.is<RefPtr<BerytusEncryptedPacket>>()) {
+    auto packet = verifier.as<RefPtr<BerytusEncryptedPacket>>();
+    MOZ_ASSERT(packet);
+    packet->Attach(aChannel, aRv);
+    NS_ENSURE_TRUE_VOID(!aRv.Failed());
+  }
 }
 
 void BerytusSecurePasswordFieldValue::ToJSON(

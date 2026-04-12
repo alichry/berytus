@@ -8,12 +8,17 @@
 
 type EncryptFunction<CT> = (datum: string | ArrayBufferLike, propPath?: ReadonlyArray<string>) => Promise<CT>;
 type DecryptFunction<CT, DT> = (datum: CT, propPath?: ReadonlyArray<string>) => Promise<DT>;
+type TransformDecrytpedFunction<DT> = (value: DT, propPath?: ReadonlyArray<string>) => Promise<unknown>;
 
 export interface CipherBoxOptions<CipherType, DecipherType> {
     ignoreProp?: (propPath: ReadonlyArray<string>) => boolean;
     ignoreValue?: (value: unknown) => boolean;
     encrypt: EncryptFunction<CipherType>;
     decrypt: DecryptFunction<CipherType, DecipherType>;
+    /**
+     * Only applies when calling decryptDictionary()
+     */
+    transformDecrypted?: TransformDecrytpedFunction<DecipherType>;
 }
 
 export type EncryptedDictionary<T extends object, CT> =
@@ -159,11 +164,19 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                 );
                 continue;
             }
+            if (! this.isCiphertextType(input[key])) {
+                output[key] = input[key];
+                continue;
+            }
             promises.push(
                 this.decrypt(input[key] as any, path.concat(key))
-                    .then(decrypted => {
+                    .then(async decrypted => {
                         if (decrypted === null) {
                             output[key] = input[key];
+                            return;
+                        }
+                        if (this.#options.transformDecrypted) {
+                            output[key] = await this.#options.transformDecrypted(decrypted, path);
                             return;
                         }
                         output[key] = decrypted;
@@ -206,17 +219,10 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
         if (! this.isCiphertextType(datum, path)) {
             throw new Error(`decrypt() cannot decrypt '${typeof datum}' type in ${path}.`);
         }
-        if (
-            typeof datum === "string" ||
-            datum instanceof ArrayBuffer ||
-            ArrayBuffer.isView(datum)
-        ) {
-            return this.#options.decrypt(
-                datum,
-                path.length === 0 ? undefined: path
-            );
-        }
-        throw new Error(`Bad isCiphertextType() implementation.`);
+        return this.#options.decrypt(
+            datum,
+            path.length === 0 ? undefined: path
+        );
     }
 
     async encrypt(

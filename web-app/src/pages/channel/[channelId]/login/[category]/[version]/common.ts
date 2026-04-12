@@ -6,6 +6,12 @@ export const FieldValue = z.union([
         publicKey: z.instanceof(Blob)
         // ^ regardless of whether e2ee is enabled
         // or not, format is the same :)
+    }).strict().required(),
+    z.object({
+        salt: z.instanceof(Blob),
+        verifier: z.instanceof(Blob)
+        // ^ regardless of whether e2ee is enabled
+        // or not, format is the same :)
     }).strict().required()
 ]);
 

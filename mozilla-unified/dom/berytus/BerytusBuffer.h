@@ -56,6 +56,8 @@ protected:
     nsresult& aRv
   );
 
+  void ToVariant(Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>>& aRetVal);
+
   void Get(JSContext* aCx,
            OwningArrayBufferOrBerytusEncryptedPacket& aRetVal,
            ErrorResult& aRv);

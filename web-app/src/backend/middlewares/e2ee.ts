@@ -4,6 +4,7 @@ import JWECompactCipherBox from "../crypto/JWECompactBox";
 import { AesGcmKeyLoader } from "../logic/e2ee-orchestration/AesGcmKeyLoader";
 import { Channel } from "../db/models/Channel";
 import { releaseAssert } from "../utils/assert";
+import { InvalidArgError } from "../errors/InvalidArgError";
 
 /*
  * Goal: define an e2ee midleware such that:
@@ -37,6 +38,7 @@ export const handleRequest = async (context: APIContext) => {
     if (matchRes == null) {
         return;
     }
+    const channelId = matchRes.groups!.channelId;
     if (context.request.method !== "POST") {
         return;
     }
@@ -55,25 +57,61 @@ export const handleRequest = async (context: APIContext) => {
             { type: contentTypeHeader }
         );
     }
-    // TODO(bertyus): Support ciphertext blob
     if (contentTypeHeader.startsWith("multipart/form-data;")) {
         const formData = await context.request.formData();
         const obj: { $?: RequestBody; } = {};
-        formData.forEach((value, key) => {
+        for (let [key, value] of formData.entries()) {
+            // current Cipherbox implementation expects
+            // ciphertypes as strings. Check each blob's content-type,
+            // if it's jose, then set value to text()
+            if (value instanceof Blob && value.type === "application/jose") {
+                value = await value.text();
+            }
             objectPath.set(obj, `$.${key}`, value);
-        });
+        }
         context.locals.requestBody = obj.$;
     }
     if (undefined === context.locals.requestBody) {
         // do nothing, unrecognised mimetype
         return;
     }
-    const channelId = context.request.headers.get("X-Berytus-Channel-Id");
-    if (channelId !== null) {
-        // TODO(berytus): try to decrypt ciphertext, if any.
-        // context.locals.requestBody is either a Blob (ciphertext)
-        // or a formdata.
+    const channelIdHeader = context.request.headers.get("X-Berytus-Channel-Id");
+    if (channelIdHeader === null) {
+        return;
     }
+    // TODO(berytus): FIXME channelId in path parameter
+    // is not consistent with X-Berytus-Channel-Id
+    // if (channelIdHeader !== channelId) {
+    //     throw new InvalidArgError(
+    //         "X-Berytus-Channel-Id header must be consistent with the channelId URL parameter. "
+    //         + `Path Parameter: ${channelId} -- X-Berytus-Channel-Id: ${channelIdHeader}`
+    //     );
+    // }
+    const keyMaterial = (await Channel.getChannel(channelId)).sessionKey;
+    releaseAssert(typeof keyMaterial === 'string');
+    const key = await (new AesGcmKeyLoader().importKey(keyMaterial));
+    const box = new JWECompactCipherBox({
+        key,
+        async transformDecrypted(value) {
+            if (value.type === "text/plain" || value.type?.startsWith("text/plain;")) {
+                return await value.text();
+            }
+            return value;
+        }
+    });
+    // context.locals.requestBody is either a Blob (ciphertext)
+    // or a formdata.
+    if (context.locals.requestBody instanceof Blob) {
+        const decrypted = await box.decrypt(await context.locals.requestBody.text());
+        if (decrypted !== null) {
+            context.locals.requestBody = decrypted;
+        }
+        return;
+    }
+    releaseAssert(typeof context.locals.requestBody === "object");
+    releaseAssert(context.locals.requestBody !== null);
+    const decryptedDict = await box.decryptDictionary(context.locals.requestBody);
+    context.locals.requestBody = decryptedDict;
 }
 
 export const handleResponse = async (context: APIContext, resp: Response) => {
@@ -81,7 +119,7 @@ export const handleResponse = async (context: APIContext, resp: Response) => {
     const pathPattern = /^\/channel\/(?<channelId>{[a-zA-Z0-9\-_]+})\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(constants|auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/pending-message)$/
     const matchRes = pathPattern.exec(decodeURI(parsedUrl.pathname));
     if (matchRes == null) {
-        return;
+        return resp;
     }
     if (context.request.method !== "POST") {
         return resp;

@@ -4,6 +4,16 @@ import type { Body as CreateBody } from "@root/pages/channel/[channelId]/login/[
 import type { AbstractChannelHandler } from "@root/berytus/channel/AbstractChannelHandler.js";
 import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
 
+export type ClientCreateBody = Omit<CreateBody, 'fields'> & {
+    fields: ReadonlyArray<CreateBody['fields'][0] | {
+        id: string;
+        value: BerytusEncryptedPacket;
+        // Allow client to send an encrypted packet, e2ee middleware
+        // should convert it to its cleartext format
+        // before attempting to CreateBody.parseAsync()
+    }>
+}
+
 export abstract class AbstractAccountStageHandler<Step extends string> implements IAccountStageHandler {
     protected channelHandler: AbstractChannelHandler;
     protected channel?: BerytusChannel;
@@ -133,17 +143,11 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
     }
 
     async createAccount(
-        fields: CreateBody["fields"],
-        userAttributes: Record<string, string>,
+        fields: ClientCreateBody["fields"],
+        userAttributes: Record<string, string | Blob>,
         targetContentType: TargetContentType = "multipart"
     ): Promise<void> {
-        // for (const field of this.operation!.fields.values()) {
-        //     fields.push({
-        //         id: field.id,
-        //         value: field.value
-        //     })
-        // }
-        const body: CreateBody = {
+        const body: ClientCreateBody = {
             fields,
             userAttributes
         };

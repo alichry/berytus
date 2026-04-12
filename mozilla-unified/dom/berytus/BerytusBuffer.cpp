@@ -6,6 +6,8 @@
 
 #include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/AlreadyAddRefed.h"
+#include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "mozilla/dom/CryptoBuffer.h"
 #include "mozilla/dom/UnionTypes.h" // OwningArrayBufferOrBerytusEncryptedPacket
 #include "mozilla/Base64.h"
 #include "mozilla/dom/ToJSValue.h"
@@ -112,6 +114,14 @@ void BerytusBuffer::ToJSON(JSContext* aCx,
     return;
   }
   aRetVal.setString(str);
+}
+
+void BerytusBuffer::ToVariant(Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>>& aRetVal) {
+  if (mAsPacket) {
+    aRetVal.emplace<RefPtr<BerytusEncryptedPacket>>(mAsPacket);
+    return;
+  }
+  aRetVal.emplace<const CryptoBuffer*>(&mAsBuffer);
 }
 
 template <typename... T>

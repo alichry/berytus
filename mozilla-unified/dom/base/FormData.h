@@ -49,6 +49,8 @@ class FormData final : public nsISupports,
 
   void SetNameFilePair(FormDataTuple* aData, const nsAString& aName,
                        File* aFile);
+  void SetNameBlobPair(FormDataTuple* aData, const nsAString& aName,
+                   Blob* aBlob);
 
   void SetNameDirectoryPair(FormDataTuple* aData, const nsAString& aName,
                             Directory* aDirectory);

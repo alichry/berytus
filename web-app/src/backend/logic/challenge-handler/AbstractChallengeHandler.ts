@@ -33,6 +33,7 @@ import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
  */
 export type InputMessagePayload = MessagePayload /* JSONValue */
     | Blob
+    | readonly InputMessagePayload[]
     | {
       readonly [prop: string | number]:
       | undefined

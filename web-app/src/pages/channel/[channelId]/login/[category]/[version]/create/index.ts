@@ -16,9 +16,28 @@ export const POST: APIRoute = async ({ params, locals }) => {
         Number(version),
         transformedFields
     );
+    const transformedUserAttributes: Record<string, string> = {};
+    await Promise.all(
+        Object.keys(userAttributes).map(async key => {
+            if (typeof userAttributes[key] === "string") {
+                transformedUserAttributes[key] = userAttributes[key];
+                return;
+            }
+            if (
+                userAttributes[key].type === "text/plain"
+                || userAttributes[key].type.startsWith("text/plain;")
+            ) {
+                transformedUserAttributes[key] = await userAttributes[key].text();
+                return;
+            }
+            transformedUserAttributes[key] = new Uint8Array(await userAttributes[key].arrayBuffer())
+                // @ts-ignore: Node 25+
+                .toBase64()
+        })
+    );
     await AccountUserAttributes.createUserAttributes(
         acc.accountId,
-        userAttributes
+        transformedUserAttributes
     );
 
     return new Response(JSON.stringify({}), {
