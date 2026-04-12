@@ -151,6 +151,10 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                 );
                 continue;
             }
+            if (! this.isCiphertextType(input[key])) {
+                output[key] = input[key];
+                continue;
+            }
             promises.push(
                 this.decrypt(input[key] as any, key)
                     .then(decrypted => {
