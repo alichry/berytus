@@ -1,13 +1,6 @@
 import type { UserFieldInput, IFieldHandler } from "./types";
 import { z } from "zod";
 
-export const EncodedSecurePasswordFieldValue = z.object({
-    salt: z.string(), // base64-encoded string
-    verifier: z.string() // base64-encoded string
-}).required();
-
-export type EncodedSecurePasswordFieldValue = z.infer<typeof EncodedSecurePasswordFieldValue>;
-
 export const SecurePasswordFieldInput = z.object({
     id: z.string(),
     value: z.object({
@@ -16,14 +9,23 @@ export const SecurePasswordFieldInput = z.object({
     })
 }).required();
 
-export interface TransformedSecurePasswordFieldInput {
-    id: string;
+export const EncodedSecurePasswordFieldValue = z.object({
+    salt: z.string(), // base64-encoded string
+    verifier: z.string() // base64-encoded string
+}).required();
+
+export type EncodedSecurePasswordFieldValue = z.infer<typeof EncodedSecurePasswordFieldValue>;
+
+export const StoredSecurePasswordField = z.object({
+    id: z.string(),
     value: EncodedSecurePasswordFieldValue
-}
+}).required();
+
+export type StoredSecurePasswordField = z.infer<typeof StoredSecurePasswordField>;
 
 export class SecurePasswordHandler implements IFieldHandler {
 
-    async transform(field: UserFieldInput): Promise<TransformedSecurePasswordFieldInput> {
+    async transform(field: UserFieldInput): Promise<StoredSecurePasswordField> {
         const { id, value } = await SecurePasswordFieldInput.parseAsync(field);
         return {
             id,

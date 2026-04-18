@@ -1,5 +1,5 @@
 import { strict as assert, AssertionError } from "node:assert";
-import { isDev } from "../env/app.js";
+import { isDev, logDebugAssertions } from "../env/app.js";
 import { InternalError } from "../errors/InternalError.js";
 
 export type Assert = typeof assert;
@@ -11,11 +11,14 @@ export const debugAssert = (cb: (assert: Assert) => void) => {
     try {
         cb(assert);
     } catch (e) {
-        console.debug(`❌ Debug assertion: ${cb.toString()}`);
+        if (logDebugAssertions) {
+            console.debug(`❌ Debug assertion: ${cb.toString()}`);
+        }
         throw e;
     }
-    console.debug(`✅ Debug assertion: ${cb.toString()}`);
-
+    if (logDebugAssertions) {
+        console.debug(`✅ Debug assertion: ${cb.toString()}`);
+    }
 }
 
 export const releaseAssert: Assert = new Proxy(assert, {

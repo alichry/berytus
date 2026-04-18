@@ -1,4 +1,3 @@
-import type { FieldInput } from "@root/backend/db/types";
 import { FetchError } from "@root/backend/errors/FetchError";
 import { Result as NewSessionResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/id/schema";
 import { Result as NewChallengeResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/new/schema";
@@ -6,6 +5,12 @@ import { Result as PendingResult } from "@root/pages/channel/[channelId]/login/[
 import { Result as ProcessMessageResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
 import { Result as FinishResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/finish/schema";
 import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
+import type { JSONValueWithBlob } from "@root/shared-types";
+
+type ClientFieldInput = {
+    id: string;
+    value: JSONValueWithBlob;
+}
 
 // TODO: Check if we still have to change prototype.name
 export class AuthError extends Error {}
@@ -40,7 +45,7 @@ export class AuthSessionHandler {
         channelId: string,
         accountVersion: number,
         accountCategory: string,
-        accountIdentity: FieldInput[],
+        accountIdentity: ClientFieldInput[],
         targetContentType: TargetContentType = "multipart"
     ) {
         const resp = await fetch(

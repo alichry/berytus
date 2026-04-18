@@ -143,11 +143,11 @@ describe("Berytus Digital Signature Challenge Handler", () => {
             if (! challengeDef) {
                 continue;
             }
-            const hasPasswordCh = challenges.find(
+            const hasDsCh = challenges.find(
                 c => c.challengeId === challengeDef.challengeId
                     && c.sessionId === session.sessionId
             );
-            if (hasPasswordCh) {
+            if (hasDsCh) {
                 continue;
             }
             return { session, challengeDef };
@@ -162,7 +162,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                 challengeDef
             } = await getSessionAndChallengeDef();
             const keyFieldId =
-            challengeDef.challengeParameters["field"];
+                challengeDef.challengeParameters["field"];
             expect(keyFieldId).to.be.a('string');
             const keyField = await AccountField.getField(
                 session.accountVersion,

@@ -8,14 +8,14 @@ const stmts = [
     (AccountVersion, ChallengeID, ChallengeType, ChallengeParameters)
     VALUES
     (1, 'password', 'Password', '{ "fields": ["password"] }'),
-    (2, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }'),
+    (2, 'secure-remote-password', 'SecureRemotePassword', '{ "field": "securePassword" }'),
     (3, 'digital-signature', 'DigitalSignature', '{ "field": "key" }'),
-    (4, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }'),
+    (4, 'secure-remote-password', 'SecureRemotePassword', '{ "field": "securePassword" }'),
     (4, 'digital-signature', 'DigitalSignature', '{ "field": "key" }'),
     (1000, 'email-code', 'OffChannelOtp', '{ "todo": true }'),
-    (1000, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }'),
+    (1000, 'secure-remote-password', 'SecureRemotePassword', '{ "field": "securePassword" }'),
     (1001, 'email-code', 'OffChannelOtp', '{ "todo": true }'),
-    (2000, 'secure-remote-password', 'SecureRemotePassword', '{ "todo": true }');`
+    (2000, 'secure-remote-password', 'SecureRemotePassword', '{ "field": "securePassword" }');`
 ];
 
 let cachedAccountChallengeDefs: Array<{

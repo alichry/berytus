@@ -5,6 +5,7 @@ import { AesGcmKeyLoader } from "../logic/e2ee-orchestration/AesGcmKeyLoader";
 import { Channel } from "../db/models/Channel";
 import { releaseAssert } from "../utils/assert";
 import { InvalidArgError } from "../errors/InvalidArgError";
+import type { JSONValueWithBlob } from "@root/shared-types";
 
 /*
  * Goal: define an e2ee midleware such that:
@@ -59,7 +60,7 @@ export const handleRequest = async (context: APIContext) => {
     }
     if (contentTypeHeader.startsWith("multipart/form-data;")) {
         const formData = await context.request.formData();
-        const obj: { $?: RequestBody; } = {};
+        const obj: { $?: JSONValueWithBlob; } = {};
         for (let [key, value] of formData.entries()) {
             // current Cipherbox implementation expects
             // ciphertypes as strings. Check each blob's content-type,

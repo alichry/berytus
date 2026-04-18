@@ -169,7 +169,7 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                 continue;
             }
             promises.push(
-                this.decrypt(input[key] as any, path.concat(key))
+                this.decrypt(input[key], path.concat(key))
                     .then(async decrypted => {
                         if (decrypted === null) {
                             output[key] = input[key];

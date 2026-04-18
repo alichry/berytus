@@ -3,6 +3,7 @@ import { PasswordChallengeHandler } from "./PasswordChallengeHandler.js";
 import { AuthSession } from "@root/backend/db/models/AuthSession.js";
 import { AbstractChallengeHandler, type CCHDependencies } from "./AbstractChallengeHandler.js";
 import { DigitalSignatureChallengeHandler } from "./DigitalSignatureChallengeHandler.js";
+import { SecureRemotePasswordChallengeHandler } from "./SecureRemotePasswordChallengeHandler.js";
 import type { PoolConnection } from "@root/backend/db/pool.js";
 export const setupChallenge = async (
     sessionId: BigInt,
@@ -32,6 +33,8 @@ const getHandlerCtor = (challengeType: EChallengeType) => {
             return PasswordChallengeHandler;
         case EChallengeType.DigitalSignature:
             return DigitalSignatureChallengeHandler;
+        case EChallengeType.SecureRemotePassword:
+            return SecureRemotePasswordChallengeHandler;
         default:
             throw new Error("Could not determine challenge handler");
     }

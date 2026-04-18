@@ -1,5 +1,6 @@
 import { E2EEHandler } from "@root/berytus/channel/handlers/E2EEHandler.js";
 import { AbstractAccountStageHandler } from "../AbstractAccountHandler.js";
+import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler.js";
 import type { TypedStageHandler } from "@root/berytus/types";
 import { assert } from "../assertions.js";
 import { FetchError } from "@root/backend/errors/FetchError.js";
@@ -14,11 +15,22 @@ const steps = [
     "addFields",
     "validateFields",
     "metadata",
-    "save"
+    "save",
+    "transitionToAuth",
+    "createIdentificationChallenge",
+    "identification",
+    "createSrpChallenge",
+    "selectSecurePassword",
+    "exchangePublicKeys",
+    "computeClientProof",
+    "verifyServerProof",
+    "finishLogin",
+    "closeChannel"
 ] as const;
 
 export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof steps[number]>
     implements TypedStageHandler<EmployeeHandlerV2000> {
+    protected authHandler?: AuthSessionHandler;
 
     public constructor() {
         super(new E2EEHandler());
@@ -200,7 +212,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
             ),
             new BerytusSecurePasswordField(
                 'securePassword',
-                { identityFieldId: "partyId" }
+                { identityFieldId: "username" }
             )
         );
         //! EXPORT_FN_IGNORE_START
@@ -345,7 +357,152 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         await operation.setStatus("Created");
         await operation.save();
         //! EXPORT_FN_IGNORE_START
-        return { finished: true as const };
+        return { "nextStep": "transitionToAuth" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async transitionToAuth() {
+        //! EXPORT_FN_IGNORE_START
+        let operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        /*!
+            * Here, after saving the account, the web application
+            * can turn the account creation operation into an
+            * account authentication operation for the saved account.
+            */
+        operation = await operation.transitionToAuthOperation();
+        //! EXPORT_FN_IGNORE_START
+        this.operation = operation;
+        return { "nextStep": "createIdentificationChallenge" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async createIdentificationChallenge() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        const idCh = new BerytusIdentificationChallenge(
+            "id", /*! challenge id */
+            { fields: ['partyId', 'username'] } /*! idt fields to retrieve */
+        );
+        await operation.challenge(idCh);
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "identification" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async identification() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const idCh = operation.challenges.get('id') as BerytusIdentificationChallenge;
+        if (! idCh) {
+            throw new Error("ID challenge not set.");
+        }
+        const accountExists = async (
+            partyId: BerytusEncryptedPacket,
+            username: BerytusEncryptedPacket
+        ): Promise<boolean> => {
+            try {
+                this.authHandler = await AuthSessionHandler.create(
+                    this.channel!.id,
+                    this.version,
+                    this.category,
+                    [
+                        { id: "partyId", value: partyId },
+                        { id: "username", value: username }
+                    ]
+                );
+                return true;
+            } catch (e) {
+                if (e instanceof AuthAccountNotFoundError) {
+                    return false;
+                }
+                throw e;
+            }
+        }
+        //! EXPORT_FN_IGNORE_END
+        const { response: { partyId, username } } = await idCh.getIdentityFields();
+        //! EXPORT_FN_IGNORE_START
+        if (typeof partyId === "string") {
+            throw new Error("Expected partyId to be encrypted");
+        }
+        if (typeof username === "string") {
+            throw new Error("Expected username to be encrypted");
+        }
+        //! EXPORT_FN_IGNORE_END
+        /*!
+            * We use a web app-specific routine, `accountExists`,
+            * to check whether the account exists or not given its username.
+            * @var accountExists
+            * @type {(username: string): Promise<boolean>}
+            */
+        if (! await accountExists(partyId, username)) {
+            await idCh.abortWithIdentityDoesNotExistsError();
+            throw new Error("User failed to pass identification challenge");
+        }
+        await idCh.seal();
+        //! EXPORT_FN_IGNORE_START
+        this.loginState.identityFields.push({
+            id: 'partyId',
+            value: await partyId.text()
+        });
+        this.loginState.identityFields.push({
+            id: 'username',
+            value: await username.text()
+        });
+        return { nextStep: "createSrpChallenge" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async selectSecurePassword() {
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "exchangePublicKeys" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async exchangePublicKeys() {
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "computeClientProof" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async computeClientProof() {
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "verifyServerProof" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async verifyServerProof() {
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "finishLogin" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async finishLogin() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        await operation.finish();
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "closeChannel" as const }
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async closeChannel() {
+        //! EXPORT_FN_IGNORE_START
+        const channel = this.channel;
+        if (! channel) {
+            throw new Error("Expecting channel to be set during closeChannel");
+        }
+        //! EXPORT_FN_IGNORE_END
+        await channel.close();
+        await this.channelHandler.close();
+        //! EXPORT_FN_IGNORE_START
+        return { finished: true as const }
         //! EXPORT_FN_IGNORE_END
     }
 }

@@ -20,6 +20,9 @@ import { debugAssert } from "@root/backend/utils/assert.js";
 import { UpsertChallengeAndMessages } from "@root/backend/db/actions/UpsertChallengeAndMessages.js";
 import { EntityNotFoundError } from "@root/backend/db/errors/EntityNotFoundError.js";
 import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
+import type { ISrpStore } from "@root/backend/crypto/SrpServer";
+import { ZodError } from "zod";
+import type { JSONValueWithBlob } from "@root/shared-types";
 
 /**
  * The payload type sent by the client before storage in the database.
@@ -31,14 +34,7 @@ import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
  * transform the client-sent payload (InputMessagePayload) into the
  * format we want to store in the database (MessagePayload).
  */
-export type InputMessagePayload = MessagePayload /* JSONValue */
-    | Blob
-    | readonly InputMessagePayload[]
-    | {
-      readonly [prop: string | number]:
-      | undefined
-      | InputMessagePayload
-    };
+export type InputMessagePayload = JSONValueWithBlob;
 
 export interface MessageDraft<MN extends AuthChallengeMessageName> {
     messageName: MN;
@@ -48,6 +44,7 @@ export interface MessageDraft<MN extends AuthChallengeMessageName> {
 
 export interface CCHDependencies {
     randomBytes?: typeof import("node:crypto").randomBytes;
+    srpStore?: ISrpStore;
 }
 
 export interface CommonChallengeHandlerConstructor<MN extends AuthChallengeMessageName> {
@@ -278,15 +275,26 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
                 "ensurePendingMessage() before processPendingMessageResponse()?"
             );
         }
-        const statusMsg = await this.validateMessageResponse(
-            processedMessages,
-            pendingMessage,
-            response
-        );
-        pendingMessage.response = await this.transformResponseForStorage(
-            pendingMessage,
-            response
-        );
+        let statusMsg;
+        try {
+            statusMsg = await this.validateMessageResponse(
+                processedMessages,
+                pendingMessage,
+                response
+            );
+        } catch (e) {
+            if (!(e instanceof ZodError)) {
+                throw e;
+            }
+            statusMsg = `Error:MalformedResponse` as const;
+        }
+
+        if (statusMsg == 'Ok') {
+            pendingMessage.response = await this.transformResponseForStorage(
+                pendingMessage,
+                response
+            );
+        }
         pendingMessage.statusMsg = statusMsg;
         // append next prospective, pending message.
         await this.ensurePendingMessage();
