@@ -6,6 +6,7 @@ import { Channel } from "../db/models/Channel";
 import { releaseAssert } from "../utils/assert";
 import { InvalidArgError } from "../errors/InvalidArgError";
 import type { JSONValueWithBlob } from "@root/shared-types";
+import { IllegalStateError } from "../errors/IllegalStateError";
 
 /*
  * Goal: define an e2ee midleware such that:
@@ -52,11 +53,18 @@ export const handleRequest = async (context: APIContext) => {
         context.locals.requestBody = await context.request.blob();
         return;
     }
+    if (contentTypeHeader === "text/plain" || contentTypeHeader.startsWith("text/plain;")) {
+        // cleatext string
+        context.locals.requestBody = await context.request.text();
+        return;
+    }
     if (contentTypeHeader === "application/jose") {
-        context.locals.requestBody = new Blob(
-            [await context.request.arrayBuffer()],
-            { type: contentTypeHeader }
-        );
+        // ciphertext blob.
+        // current Cipherbox implementation expects
+        // ciphertypes as strings. Therefore,
+        // simply read the JWE into string so that
+        // it can be decrypted.
+        context.locals.requestBody = await context.request.text();
     }
     if (contentTypeHeader.startsWith("multipart/form-data;")) {
         const formData = await context.request.formData();
@@ -89,80 +97,193 @@ export const handleRequest = async (context: APIContext) => {
     //     );
     // }
     const keyMaterial = (await Channel.getChannel(channelId)).sessionKey;
-    releaseAssert(typeof keyMaterial === 'string');
+    releaseAssert(typeof keyMaterial === 'string', "typeof keyMaterial === 'string'");
     const key = await (new AesGcmKeyLoader().importKey(keyMaterial));
-    const box = new JWECompactCipherBox({
-        key,
-        async transformDecrypted(value) {
-            if (value.type === "text/plain" || value.type?.startsWith("text/plain;")) {
+    const transformDecrypted = async (value: Blob) => {
+        if (value.type === "text/plain" || value.type?.startsWith("text/plain;")) {
                 return await value.text();
             }
             return value;
-        }
+    }
+    const box = new JWECompactCipherBox({
+        key,
+        transformDecrypted
     });
-    // context.locals.requestBody is either a Blob (ciphertext)
-    // or a formdata.
-    if (context.locals.requestBody instanceof Blob) {
-        const decrypted = await box.decrypt(await context.locals.requestBody.text());
+    // context.locals.requestBody is either a stringified JWE
+    // or a formdata with stringified JWEs.
+    if (typeof context.locals.requestBody === "string") {
+        const decrypted = await box.decrypt(context.locals.requestBody);
         if (decrypted !== null) {
-            context.locals.requestBody = decrypted;
+            context.locals.requestBody = await transformDecrypted(decrypted);
         }
         return;
     }
-    releaseAssert(typeof context.locals.requestBody === "object");
-    releaseAssert(context.locals.requestBody !== null);
+    releaseAssert(typeof context.locals.requestBody === "object", 'typeof context.locals.requestBody === "object"');
+    releaseAssert(context.locals.requestBody !== null, "context.locals.requestBody !== null");
     const decryptedDict = await box.decryptDictionary(context.locals.requestBody);
     context.locals.requestBody = decryptedDict;
 }
 
+export enum ECipherBlueprintType {
+    Plain,
+    Dictionary,
+}
+
+export enum ECipherBlueprintTransformer {
+    UTF8Encoder,
+    Base64Decoder,
+}
+
+export type CipherBlueprintProperty =
+    | string
+    | { path: string; transformer?: ECipherBlueprintTransformer };
+
+type CipherBlueprintPlain = {
+    type: ECipherBlueprintType.Plain;
+    transformer?: ECipherBlueprintTransformer;
+}
+
+type CipherBlueprintDictionary = {
+    type: ECipherBlueprintType.Dictionary;
+    transformer?: ECipherBlueprintTransformer;
+    props: readonly CipherBlueprintProperty[]
+}
+
+export type CipherBlueprint = CipherBlueprintPlain | CipherBlueprintDictionary;
+
+const blueprints: CipherBlueprint[] = [
+    {
+        type: ECipherBlueprintType.Dictionary,
+        transformer: ECipherBlueprintTransformer.Base64Decoder,
+        props: [
+            "nextMessage.request"
+        ]
+    }
+]
+
+function* blueprintProperties(blueprint: CipherBlueprintDictionary) {
+    for (const prop of blueprint.props) {
+        if (typeof prop === "string") {
+            return { path: prop, transformer: blueprint.transformer };
+        }
+        const { path, transformer } = prop;
+        return { path, transformer: transformer || blueprint.transformer };
+    }
+}
+
+const transformDatum = async (
+    datum: unknown,
+    transformer: ECipherBlueprintTransformer
+) => {
+    switch (transformer) {
+        case ECipherBlueprintTransformer.UTF8Encoder: {
+            if (typeof datum !== "string") {
+                throw new InvalidArgError(
+                    "Expected datum to be a string; got otherwise"
+                );
+            }
+            return new Blob(
+                [new TextEncoder().encode(datum).buffer],
+                { type: "text/plain;charset=UTF-8" }
+            );
+        }
+        case ECipherBlueprintTransformer.Base64Decoder: {
+            if (typeof datum !== "string") {
+                throw new InvalidArgError(
+                    "Expected datum to be a string; got otherwise"
+                );
+            }
+            return new Blob(
+                [Uint8Array
+                    // @ts-ignore: Node 25+
+                    .fromBase64(datum)
+                    .buffer],
+                { type: "application/octet-stream" }
+            );
+        }
+        default:
+            throw new IllegalStateError(
+                "Unrecognised transformer type " + transformer
+            );
+    }
+}
+
+const processDictionary = async (
+    box: JWECompactCipherBox,
+    blueprint: CipherBlueprintDictionary,
+    dict: Record<string, unknown>,
+) => {
+    for (const { path, transformer } of blueprintProperties(blueprint)) {
+        let value = objectPath.get(dict, path);
+        const inputDatum = transformer ? transformDatum(value, transformer) : value;
+        const encrypted = box.encrypt(inputDatum);
+        objectPath.set(dict, path, encrypted);
+    }
+}
+
+const headersToJson = (headers: Headers): Record<string, string> => {
+    const result: Record<string, string> = {};
+    headers.entries().forEach(([key, value]) => {
+        result[key] = value;
+    });
+    return result;
+}
+
 export const handleResponse = async (context: APIContext, resp: Response) => {
-    const parsedUrl = new URL(context.request.url);
-    const pathPattern = /^\/channel\/(?<channelId>{[a-zA-Z0-9\-_]+})\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(constants|auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/pending-message)$/
-    const matchRes = pathPattern.exec(decodeURI(parsedUrl.pathname));
-    if (matchRes == null) {
-        return resp;
-    }
-    if (context.request.method !== "POST") {
-        return resp;
-    }
-    const channelId = matchRes.groups!.channelId;
-    const contentTypeHeader = resp.headers.get("Content-Type");
-    if (! contentTypeHeader) {
-        return resp;
-    }
     if (resp.status !== 200) {
         return resp;
     }
+    const { channelId } = context.params;
+    const contentTypeHeader = resp.headers.get("Content-Type");
+    const blueprint: CipherBlueprint = context.cipherBlueprint;
+    if (! contentTypeHeader || ! channelId || ! blueprint) {
+        return resp;
+    }
     const keyMaterial = (await Channel.getChannel(channelId)).sessionKey;
-    releaseAssert(typeof keyMaterial === 'string');
+    releaseAssert(typeof keyMaterial === 'string', "typeof keyMaterial === 'string'");
     const key = await (new AesGcmKeyLoader().importKey(keyMaterial));
     const box = new JWECompactCipherBox({ key });
-    const headers: Record<string, string> = {};
-    resp.headers.entries().forEach(([key, value]) => {
-        if (key.toLowerCase() === 'content-type') {
-            return resp;
-        }
-        headers[key] = value;
-    });
-    if (
-        contentTypeHeader === "application/octet-stream" ||
-        contentTypeHeader.startsWith("text/plain")
-    ) {
-        // cleartext blob, encrypt and return application/jose
-        return new Response(await box.encrypt(await resp.arrayBuffer()), {
-            status: 200,
-            headers: {
-                ...headers,
-                'Content-Type': 'application/jose'
+    switch (blueprint.type) {
+        case ECipherBlueprintType.Plain:
+            if (
+                contentTypeHeader === "application/octet-stream" ||
+                contentTypeHeader === "text/plain" ||
+                contentTypeHeader.startsWith("text/plain;")
+            ) {
+                return new Response(await box.encrypt(await resp.blob()), {
+                    status: 200,
+                    headers: {
+                        ...headersToJson(resp.headers),
+                        'content-type': 'application/jose'
+                    }
+                });
             }
-        });
+            throw new InvalidArgError(
+                'Unsupported content-type'
+            );
+        case ECipherBlueprintType.Dictionary: {
+            if (contentTypeHeader === 'application/json') {
+                const dict = await resp.json();
+                processDictionary(box, blueprint, dict);
+                return new Response(JSON.stringify(dict), {
+                    status: 200,
+                    headers: resp.headers
+                });
+            }
+            throw new InvalidArgError(
+                'Unsupported content-type'
+            );
+        }
+        default:
+            throw new IllegalStateError("Unrecognised blueprint type");
     }
-    if (contentTypeHeader === 'application/json') {
-        const body = await box.encryptDictionary(await resp.json());
-        return new Response(JSON.stringify(body), {
-            status: 200,
-            headers
-        });
-    }
-    return resp;
 }
+
+// const parsedUrl = new URL(context.request.url);
+// const pathPattern = /^\/channel\/(?<channelId>{[a-zA-Z0-9\-_]+})\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(constants|auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/pending-message)$/
+// const matchRes = pathPattern.exec(decodeURI(parsedUrl.pathname));
+// if (matchRes == null) {
+//     return resp;
+// }
+
+

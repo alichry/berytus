@@ -126,7 +126,7 @@ const getExpectedM1 = async ({
     }
     server.setA(Buffer.from(valueA));
     const expectedValueM1 = server._M1;
-    releaseAssert(expectedValueM1);
+    releaseAssert(expectedValueM1, "expectedValueM1");
     return {
         expectedValueM1: nodeBufferToArrayBuffer(expectedValueM1)
     }

@@ -156,7 +156,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         } else {
             /*! Handle authentication operation */
             //! EXPORT_FN_IGNORE_START
-            return { nextStep: "addFields" as const };
+            return { nextStep: "createIdentificationChallenge" as const };
             //! EXPORT_FN_IGNORE_END
         }
     }
@@ -274,8 +274,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         const operation = this.operation;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
         //! EXPORT_FN_IGNORE_END
-        await operation.setCategory("Customer");
-        await operation.setVersion(1);
+        await operation.setCategory("Employee");
+        await operation.setVersion(2000);
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "save" as const };
         //! EXPORT_FN_IGNORE_END
@@ -457,7 +457,75 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         //! EXPORT_FN_IGNORE_END
     }
 
+    async createSrpChallenge() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        const srpCh = new BerytusSecureRemotePasswordChallenge(
+            "srp", /*! challenge id */
+            { field: "securePassword" } /*! sp field to assume */
+        );
+        await operation.challenge(srpCh);
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "selectSecurePassword" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
     async selectSecurePassword() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const validateSrpIdentity = async (identity: StringOrPacketUnion) => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            try {
+                const chParams = await this.authHandler.newChallenge(
+                    "secure-remote-password"
+                );
+                if (!("field" in chParams) || chParams.field !== "securePassword") {
+                    throw new Error(
+                        "Inconsistency between client and server challenge parameters"
+                    );
+                }
+                await this.authHandler.sendResponse(identity,
+                    identity instanceof Blob ? 'blob' : 'text'
+                );
+                return true;
+            } catch (e) {
+                if (e instanceof AuthIncorrectResponseError) {
+                    return false;
+                }
+                throw e;
+            }
+        }
+        //! EXPORT_FN_IGNORE_END
+        const { response: identity } = await srpCh.selectSecurePassword();
+        console.assert(identity instanceof BerytusJWEPacket);
+        /**!
+         * We use a web app-specific routine, `validateSrpIdentity`, to
+         * check whether the secret manager-suppied identity value
+         * of the associated secure password field matches the one
+         * stored in the backend.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
+         * @var validateSrpIdentity
+         * @type {(identity: BerytusEncryptedPacket): Promise<boolean>}
+         */
+        if (! await validateSrpIdentity(identity)) {
+            // TODO(berytus): We should have abortWithInvalidIdentity
+            await srpCh.abortWithGenericWebAppFailureError();
+            throw new Error(
+                "User failed to pass the secure remote passwod challenge; " +
+                "reason: Identity Mismatch."
+            );
+        }
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "exchangePublicKeys" as const };
         //! EXPORT_FN_IGNORE_END
@@ -465,17 +533,241 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
 
     async exchangePublicKeys() {
         //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const getServerPublicKey = async (): Promise<ArrayBuffer | BerytusEncryptedPacket> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName, request } = pendingMessage.nextMessage;
+            if (messageName !== "ExchangePublicKeys") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ExchangePublicKeys, got " + messageName
+                );
+            }
+            if (typeof request !== "string") {
+                throw new Error(
+                    "Expected base64-encoded SRP:B in message draft's request"
+                );
+            }
+            // if e2ee is enabled, so request is a JWE
+            if (this.channel!.constraints?.enableEndToEndEncryption) {
+                return new BerytusJWEPacket(request);
+            }
+            // otherwise, request is base64 encoded.
+            return Uint8Array.fromBase64(request).buffer;
+        }
+        const sendClientPublicKey = async (valueA: ArrayBuffer | BerytusEncryptedPacket) => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName } = pendingMessage.nextMessage;
+            if (messageName !== "ExchangePublicKeys") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ExchangePublicKeys, got " + messageName
+                );
+            }
+            await this.authHandler.sendResponse(
+                valueA instanceof ArrayBuffer
+                    ? new Blob([valueA], { type: "application/octet-stream" } )
+                    : valueA,
+                "blob"
+            );
+        }
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `getServerPublicKey`, to
+         * retrieve SRP:B (informally as the server's ephemeral public key).
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
+         * @var getServerPublicKey
+         * @type {(): Promise<BerytusEncryptedPacket>}
+         */
+        const serverPublicKey = await getServerPublicKey();
+        console.assert(serverPublicKey instanceof BerytusJWEPacket);
+        /*!
+         * We send the SRP:B to the secret manager and retrieve SRP:A
+         * (the client's ephemeral public key).
+         */
+        const { response: clientPublicKey } = await
+            srpCh.exchangePublicKeys(serverPublicKey);
+        //! EXPORT_FN_IGNORE_START
+        assert(typeof clientPublicKey !== "string");
+        //! EXPORT_FN_IGNORE_END
+        console.assert(clientPublicKey instanceof BerytusJWEPacket);
+        /**!
+         * We use a web app-specific routine, `sendClientPublicKey`, to
+         * send SRP:A to the backend. Henceforth, both parties (the scm
+         * and web app) can compute a shared secret.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
+         * @var sendClientPublicKey
+         * @type {(valueA: BerytusEncryptedPacket): Promise<void>}
+         */
+        await sendClientPublicKey(clientPublicKey);
+        //! EXPORT_FN_IGNORE_START
         return { nextStep: "computeClientProof" as const };
         //! EXPORT_FN_IGNORE_END
     }
 
     async computeClientProof() {
         //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const getSaltFromServer = async (): Promise<ArrayBuffer | BerytusEncryptedPacket> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName, request } = pendingMessage.nextMessage;
+            if (messageName !== "ComputeClientProof") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ComputeClientProof, got " + messageName
+                );
+            }
+            if (typeof request !== "string") {
+                throw new Error(
+                    "Expected base64-encoded salt in message draft's request"
+                );
+            }
+            // if e2ee is enabled, so request is a JWE
+            if (this.channel!.constraints?.enableEndToEndEncryption) {
+                return new BerytusJWEPacket(request);
+            }
+            // otherwise, request is base64 encoded.
+            return Uint8Array.fromBase64(request).buffer;
+        }
+        const verifyClientProof = async (
+            valueM1: ArrayBuffer | BerytusEncryptedPacket
+        ): Promise<boolean> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName } = pendingMessage.nextMessage;
+            if (messageName !== "ComputeClientProof") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ComputeClientProof, got " + messageName
+                );
+            }
+            try {
+                await this.authHandler.sendResponse(
+                    valueM1 instanceof ArrayBuffer
+                        ? new Blob([valueM1], { type: "application/octet-stream" } )
+                        : valueM1,
+                    "blob"
+                );
+                return true;
+            } catch (e) {
+                if (e instanceof AuthIncorrectResponseError) {
+                    return false;
+                }
+                throw e;
+            }
+        }
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `getSaltFromServer`, to
+         * retrieve the salt used during account creation.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
+         * @var getSaltFromServer
+         * @type {(): Promise<BerytusEncryptedPacket>}
+         */
+        const salt = await getSaltFromServer();
+        console.assert(salt instanceof BerytusJWEPacket);
+        //! EXPORT_FN_IGNORE_START
+        assert(salt instanceof BerytusJWEPacket);
+        //! EXPORT_FN_IGNORE_END
+        const { response: clientProof } = await
+            srpCh.computeClientProof(salt);
+        console.assert(clientProof instanceof BerytusJWEPacket);
+        //! EXPORT_FN_IGNORE_START
+        assert(typeof clientProof !== "string");
+        assert(clientProof instanceof BerytusJWEPacket);
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `verifyClientProof`, to
+         * send the computed proof by the secret manager to the backend
+         * and verify its authenticity. If false is returned, the proof
+         * is invalid.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
+         * @var verifyClientProof
+         * @type {(valueM1: BerytusEncryptedPacket): Promise<boolean>}
+         */
+        if (false === await verifyClientProof(clientProof)) {
+            await srpCh.abortWithInvalidProofError();
+        }
+        //! EXPORT_FN_IGNORE_START
         return { nextStep: "verifyServerProof" as const };
         //! EXPORT_FN_IGNORE_END
     }
 
     async verifyServerProof() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const getServerProof = async (): Promise<ArrayBuffer | BerytusEncryptedPacket> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName, request } = pendingMessage.nextMessage;
+            if (messageName !== "VerifyServerProof") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be VerifyServerProof, got " + messageName
+                );
+            }
+            if (typeof request !== "string") {
+                throw new Error(
+                    "Expected base64-encoded valueM2 in message draft's request"
+                );
+            }
+            // if e2ee is enabled, so request is a JWE
+            if (this.channel!.constraints?.enableEndToEndEncryption) {
+                return new BerytusJWEPacket(request);
+            }
+            // otherwise, request is base64 encoded.
+            return Uint8Array.fromBase64(request).buffer;
+        }
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `getServerProof`, to
+         * retrieve the server proof (SRP:M2). Using M2, the scm can
+         * verify the authenticity of the web app backend.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
+         * @var getServerProof
+         * @type {(): Promise<BerytusEncryptedPacket>}
+         */
+        const serverProof = await getServerProof();
+        console.assert(serverProof instanceof BerytusJWEPacket);
+        await srpCh.verifyServerProof(serverProof);
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "finishLogin" as const };
         //! EXPORT_FN_IGNORE_END

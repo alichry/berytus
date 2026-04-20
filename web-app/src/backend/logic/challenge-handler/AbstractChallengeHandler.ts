@@ -227,7 +227,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         return this.#challenge;
     }
 
-    async ensurePendingMessage(): Promise<ChallengePendingMessage<MN> | null> {
+    protected async ensurePendingMessage(): Promise<ChallengePendingMessage<MN> | null> {
         const { processedMessages, pendingMessage } = await this.getMessages();
         if (pendingMessage) {
             return pendingMessage;
@@ -288,16 +288,15 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
             }
             statusMsg = `Error:MalformedResponse` as const;
         }
-
+        pendingMessage.statusMsg = statusMsg;
         if (statusMsg == 'Ok') {
             pendingMessage.response = await this.transformResponseForStorage(
                 pendingMessage,
                 response
             );
+            // append next prospective, pending message.
+            await this.ensurePendingMessage();
         }
-        pendingMessage.statusMsg = statusMsg;
-        // append next prospective, pending message.
-        await this.ensurePendingMessage();
         return statusMsg;
     }
 

@@ -1,5 +1,7 @@
 /// <reference types="astro/client" />
-import { JSONValueWithBlob } from "./shared-types";
+import type { CipherBlueprint } from "./backend/middlewares/e2ee";
+import type { JSONValueWithBlob } from "./shared-types";
+
 
 declare namespace App {
     interface Locals {
@@ -7,5 +9,7 @@ declare namespace App {
          * Only set for API routes that *CAN* accept ciphertext
          */
         requestBody?: JSONValueWithBlob;
+
+        cipherBlueprint?: CipherBlueprint;
     }
 }

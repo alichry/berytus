@@ -1,4 +1,4 @@
-export type TargetContentType = "json" | "multipart" | "blob";
+export type TargetContentType = "json" | "multipart" | "blob" | "text";
 
 export const populateFormData = (fdata: FormData, value: unknown, key?: string) => {
     if (value instanceof ArrayBuffer) {
@@ -50,6 +50,14 @@ export const buildRequestBodyAndHeaders = (
         body = new FormData();
         contentTypeHeader = "multipart/form-data";
         populateFormData(body, requestBody);
+    } else if (targetContentType === "text") {
+        if (typeof requestBody !== "string") {
+            throw new Error(
+                "Expecting response to be a Blob when contentType is text."
+            );
+        }
+        body = requestBody;
+        contentTypeHeader = "text/plain";
     } else {
         if (! (requestBody instanceof Blob)) {
             throw new Error(
