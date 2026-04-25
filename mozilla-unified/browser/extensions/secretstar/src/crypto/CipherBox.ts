@@ -156,7 +156,7 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                 continue;
             }
             promises.push(
-                this.decrypt(input[key] as any, key)
+                this.decrypt(input[key] as CipherType, key)
                     .then(decrypted => {
                         if (decrypted === null) {
                             output[key] = input[key];

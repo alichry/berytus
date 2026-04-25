@@ -703,7 +703,7 @@ browser.berytus.registerRequestHandler({
                 JWEPacketCipherBox.isCiphertextType(args.payload) ||
                 isNonEmptyArrayOfPackets(args.payload)
             ) {
-                payload = toClearMessageRequestPayload(
+                payload = await toClearMessageRequestPayload(
                     sessionRecord,
                     context.channel.id,
                     challengeId,

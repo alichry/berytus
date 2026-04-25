@@ -1,7 +1,6 @@
 import { isSrpChallenge } from "@root/db";
 import { BaseMessageProps } from "../../../common/types";
 import { useEffect, useState } from "react";
-import JsrpClient from "@root/JsrpClient";
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
 import { SRP, SrpClient } from "fast-srp-hap";
@@ -31,28 +30,24 @@ export default function Message({ challenge, message, onSubmit }: MessageProps) 
                     setError(new Error("Passed challenge is not an SRP challenge"));
                     return;
                 }
-                const { clientPrivateKeyHexa, serverPublicKeyHexB } = challenge.srpState;
-                if (! clientPrivateKeyHexa) {
+                const { clientPrivateKeya, serverPublicKeyB } = challenge.srpState;
+                if (! clientPrivateKeya) {
                     setError(new Error("Passed challenge does not have the client private key set!"));
                     return;
                 }
-                if (! serverPublicKeyHexB) {
+                if (! serverPublicKeyB) {
                     setError(new Error("Passed challenge does not have the server public key set!"));
                     return;
                 }
-
                 const client = new SrpClient(SRP.params[4096],
-                    Buffer.from(salt, 'hex'),
+                    Buffer.from(salt, 'base64'),
                     Buffer.from(challenge.srpState.fields.username, 'ascii'),
                     Buffer.from(challenge.srpState.fields.password, 'ascii'),
-                    Buffer.from(clientPrivateKeyHexa, 'hex'),
-                    false
+                    Buffer.from(clientPrivateKeya, 'base64')
                 );
-
-                client.setB(Buffer.from(serverPublicKeyHexB, 'hex'));
+                client.setB(Buffer.from(serverPublicKeyB, 'base64'));
                 const clientProof = client.computeM1();
-
-                onSubmit(salt, clientProof.toString('hex'));
+                onSubmit(salt, clientProof.toString('base64'));
             } catch (e) {
                 console.error(e);
                 setError(e as Error);

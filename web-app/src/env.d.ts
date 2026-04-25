@@ -1,15 +1,12 @@
 /// <reference types="astro/client" />
-import type { CipherBlueprint } from "./backend/middlewares/e2ee";
-import type { JSONValueWithBlob } from "./shared-types";
-
 
 declare namespace App {
     interface Locals {
         /**
          * Only set for API routes that *CAN* accept ciphertext
          */
-        requestBody?: JSONValueWithBlob;
+        requestBody?: import("./shared-types").JSONValueWithBlob;
 
-        cipherBlueprint?: CipherBlueprint;
+        cipherBlueprint?: import("./backend/middlewares/e2ee").CipherBlueprint;
     }
 }

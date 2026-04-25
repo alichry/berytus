@@ -45,7 +45,11 @@ export const GET: APIRoute<
                 request: msg.request
             }
         };
-        return new Response(JSON.stringify(result));
+        return new Response(JSON.stringify(result), {
+            headers: {
+                'content-type': 'application/json'
+            }
+        });
     } finally {
         handler.destroy();
     }

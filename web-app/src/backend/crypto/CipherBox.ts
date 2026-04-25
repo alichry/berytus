@@ -6,9 +6,14 @@
  *   context-aware checks.
  */
 
-type EncryptFunction<CT> = (datum: string | ArrayBufferLike, propPath?: ReadonlyArray<string>) => Promise<CT>;
+type EncryptFunction<CT> = (datum: string | ArrayBufferLike | Blob, propPath?: ReadonlyArray<string>) => Promise<CT>;
 type DecryptFunction<CT, DT> = (datum: CT, propPath?: ReadonlyArray<string>) => Promise<DT>;
-type TransformDecrytpedFunction<DT> = (value: DT, propPath?: ReadonlyArray<string>) => Promise<unknown>;
+type TransformPreEncryptionFunction<CT> = (value: unknown, propPath?: ReadonlyArray<string>) => Promise<unknown>;
+type TransformPostDecryptionFunction<DT> = (value: DT, propPath?: ReadonlyArray<string>) => Promise<unknown>;
+type Transformers<CT, DT> = {
+    preEncryption?: TransformPreEncryptionFunction<CT>;
+    postDecryption?: TransformPostDecryptionFunction<DT>;
+}
 
 export interface CipherBoxOptions<CipherType, DecipherType> {
     ignoreProp?: (propPath: ReadonlyArray<string>) => boolean;
@@ -18,7 +23,7 @@ export interface CipherBoxOptions<CipherType, DecipherType> {
     /**
      * Only applies when calling decryptDictionary()
      */
-    transformDecrypted?: TransformDecrytpedFunction<DecipherType>;
+    transformers?: Transformers<CipherType, DecipherType>;
 }
 
 export type EncryptedDictionary<T extends object, CT> =
@@ -64,7 +69,8 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
     async #encryptDictionary<O extends object>(
         input: O,
         output: Record<string, any>,
-        path: ReadonlyArray<string> = []
+        path: ReadonlyArray<string> = [],
+        overrideTransformers?: Pick<Transformers<CipherType, DecipherType>, "preEncryption">
     ): Promise<void> {
         if (input === null) {
             throw new Error("Passed dictionary is null.");
@@ -105,16 +111,31 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                     this.#encryptDictionary(
                         input[key] as object,
                         output[key],
-                        path.concat(key)
+                        path.concat(key),
+                        overrideTransformers
                     )
                 );
                 continue;
             }
+            let valueToEncrypt: unknown = input[key];
+            const preEncryptTransformer = overrideTransformers?.preEncryption
+                || this.#options.transformers?.preEncryption;
+            if (preEncryptTransformer) {
+                valueToEncrypt = await preEncryptTransformer(valueToEncrypt);
+                if (this.isCiphertextType(valueToEncrypt, path.concat(key))) {
+                    throw new Error(
+                        "Encountered an already encrypted field "
+                        + "after calling preEncryptTransformer(). "
+                        + "encryptDictionary() assuems all fields "
+                        + "are plaintext."
+                    );
+                }
+            }
             promises.push(
-                this.encrypt(input[key], path.concat(key))
+                this.encrypt(valueToEncrypt, path.concat(key))
                     .then(encrypted => {
                         if (encrypted === null) {
-                            output[key] = input[key];
+                            output[key] = valueToEncrypt;
                             return;
                         }
                         output[key] = encrypted;
@@ -175,8 +196,8 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                             output[key] = input[key];
                             return;
                         }
-                        if (this.#options.transformDecrypted) {
-                            output[key] = await this.#options.transformDecrypted(decrypted, path);
+                        if (this.#options.transformers?.postDecryption) {
+                            output[key] = await this.#options.transformers.postDecryption(decrypted, path);
                             return;
                         }
                         output[key] = decrypted;
@@ -188,12 +209,15 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
     }
 
     public async encryptDictionary<O extends object>(
-        obj: O
+        obj: O,
+        overrideTransformers?: Pick<Transformers<CipherType, DecipherType>, "preEncryption">
     ): Promise<EncryptedDictionary<O, CipherType>> {
         const output = {};
         await this.#encryptDictionary(
             obj,
-            output
+            output,
+            [],
+            overrideTransformers
         );
         return output as EncryptedDictionary<O, CipherType>;
     }
@@ -254,6 +278,10 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
                 }
                 if (ArrayBuffer.isView(datum)) {
                     input = datum.buffer;
+                    break;
+                }
+                if (datum instanceof Blob) {
+                    input = datum;
                     break;
                 }
             default:

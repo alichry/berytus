@@ -36,6 +36,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         super(new E2EEHandler());
     }
 
+    get isE2EE() { return true; }
+
     get version(): number {
         return version;
     }
@@ -561,7 +563,10 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 return new BerytusJWEPacket(request);
             }
             // otherwise, request is base64 encoded.
-            return Uint8Array.fromBase64(request).buffer;
+            return Uint8Array
+                // @ts-ignore: Available in modern browsers
+                .fromBase64(request)
+                .buffer;
         }
         const sendClientPublicKey = async (valueA: ArrayBuffer | BerytusEncryptedPacket) => {
             if (!this.authHandler) {
@@ -650,7 +655,10 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 return new BerytusJWEPacket(request);
             }
             // otherwise, request is base64 encoded.
-            return Uint8Array.fromBase64(request).buffer;
+            return Uint8Array
+                // @ts-ignore: Available in modern browsers
+                .fromBase64(request)
+                .buffer;
         }
         const verifyClientProof = async (
             valueM1: ArrayBuffer | BerytusEncryptedPacket
@@ -716,6 +724,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
          */
         if (false === await verifyClientProof(clientProof)) {
             await srpCh.abortWithInvalidProofError();
+            throw new Error("Web app-rejected client proof computed by SCM");
         }
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "verifyServerProof" as const };
@@ -752,7 +761,10 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 return new BerytusJWEPacket(request);
             }
             // otherwise, request is base64 encoded.
-            return Uint8Array.fromBase64(request).buffer;
+            return Uint8Array
+                // @ts-ignore: Available in Modern Firefox
+                .fromBase64(request)
+                .buffer;
         }
         //! EXPORT_FN_IGNORE_END
         /**!
@@ -767,7 +779,22 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
          */
         const serverProof = await getServerProof();
         console.assert(serverProof instanceof BerytusJWEPacket);
-        await srpCh.verifyServerProof(serverProof);
+        try {
+            await srpCh.verifyServerProof(serverProof);
+        } catch (e) {
+            //! EXPORT_FN_IGNORE_START
+            await this.authHandler!.sendResponse(false, 'json');
+            //! EXPORT_FN_IGNORE_END
+            // TODO(berytus): Berytus should close the challenge
+            // following a rejection
+            /*! if the SCM deems the server proof as invalid,
+             *  an exception is thrown.
+             */
+            throw e;
+        }
+        //! EXPORT_FN_IGNORE_START
+        await this.authHandler!.sendResponse(true, 'json');
+        //! EXPORT_FN_IGNORE_END
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "finishLogin" as const };
         //! EXPORT_FN_IGNORE_END
@@ -792,8 +819,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         }
         //! EXPORT_FN_IGNORE_END
         await channel.close();
-        await this.channelHandler.close();
         //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.close();
         return { finished: true as const }
         //! EXPORT_FN_IGNORE_END
     }

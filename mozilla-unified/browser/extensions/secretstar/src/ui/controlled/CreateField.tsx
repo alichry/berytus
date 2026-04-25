@@ -5,8 +5,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
 import CreateFieldView from "../components/CreateFieldView";
-import JsrpClient from '../../JsrpClient';
-import { ab2base64, ab2str, base64ToArrayBuffer, formatBase64AsPem, pemToBuf, privateKeyBufToPublicKeyBuf, str2ab } from "@root/key-utils";
+import { SRP } from "fast-srp-hap";
+import { ab2base64, ab2str, formatBase64AsPem, nodeBufferToArrayBuffer, pemToBuf, privateKeyBufToPublicKeyBuf, str2ab } from "@root/key-utils";
 import { randomFieldValue } from '@root/utils';
 import type { AddFieldResult, FieldInfo } from '@berytus/types';
 import { BerytusFieldValueUnion, BerytusForeignIdentityFieldOptions, BerytusSecurePasswordFieldOptions } from "@berytus/types-extd";
@@ -90,7 +90,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         if (typeof value === "string") {
             return cipherbox.encrypt(value);
         }
-        return cipherbox.encryptDictionary(value);
+        return await cipherbox.encryptDictionary(value);
     }, [cipherbox, cipherboxLoading]);
     const { maybeResolve, maybeReject } = useRequest<"AccountCreation_AddField">(
         session?.requests[session?.requests.length - 1],
@@ -153,7 +153,6 @@ export default function CreateField({ rejected }: CreateFieldProps) {
                 publicKey: publicKeyBuf
             };
         } else if (isSecurePasswordOptions(field.type, field.options)) {
-            const client = new JsrpClient();
             const { identityFieldId } = field.options;
             const identityField =
                 (session.fields || [])
@@ -178,16 +177,26 @@ export default function CreateField({ rejected }: CreateFieldProps) {
                 maybeReject(ERejectionCode.GeneralError);
                 return false;
             }
-            const v = ab2str(value.buffer);
-            await client.init({ username: identityField.value, password: v });
-            const { salt, verifier } = await client.createVerifier();
+            // NOTE(berytus): if `new Uint8Array(32)` is used,
+            // the underlying ArrayBuffer can potentially
+            // allocate more than 32 bytes, e.g. 128 bytes.
+            // using `new Uint8Array(new ArrayBuffer(32))`
+            // does the trick.
+            const salt = new Uint8Array(new ArrayBuffer(32));
+            crypto.getRandomValues(salt);
+            const verifier = nodeBufferToArrayBuffer(SRP.computeVerifier(
+                SRP.params[4096],
+                Buffer.from(salt),
+                Buffer.from(identityField.value, 'ascii'),
+                Buffer.from(value.buffer)
+            ));
             newField = {
                 ...field,
-                value: v
+                value: ab2str(value.buffer)
             };
             resolveWith = {
-                salt: base64ToArrayBuffer(salt),
-                verifier: base64ToArrayBuffer(verifier)
+                salt: salt.buffer,
+                verifier
             };
         } else {
             const v = ab2str(value.buffer);

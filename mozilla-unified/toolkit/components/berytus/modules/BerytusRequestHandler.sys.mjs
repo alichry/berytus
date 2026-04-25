@@ -1298,6 +1298,9 @@ class E2EEMessagingValidator {
         if (typeof valueOrDict !== "object") {
             return 0;
         }
+        if (Object.keys(valueOrDict).length === 0) {
+            return 1;
+        }
         if ("type" in valueOrDict &&
             valueOrDict.type === "JWE" &&
             "value" in valueOrDict &&

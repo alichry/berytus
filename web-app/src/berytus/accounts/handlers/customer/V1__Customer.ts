@@ -32,6 +32,8 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         super(new NonE2EEHandler());
     }
 
+    get isE2EE() { return false; }
+
     get version(): number {
         return version;
     }

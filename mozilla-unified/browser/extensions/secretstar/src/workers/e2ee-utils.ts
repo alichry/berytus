@@ -176,11 +176,7 @@ export const toClearMessageRequestPayload = async (
                     + 'parameters are missing.'
                 );
             }
-            if (challenge.parameters.encoding === "Hex") {
-                // @ts-ignore: NOTE(berytus): toBase64() is
-                // now widely available in modern browsers!
-                return new Uint8Array(decrypted).toBase64();
-            }
+
             return decrypted;
         }
         case "ComputeClientProof": {
@@ -200,11 +196,6 @@ export const toClearMessageRequestPayload = async (
                     + 'parameters are missing.'
                 );
             }
-            if (challenge.parameters.encoding === "Hex") {
-                // @ts-ignore: NOTE(berytus): toBase64() is
-                // now widely available in modern browsers!
-                return new Uint8Array(decrypted).toBase64();
-            }
             return decrypted;
         }
         case "VerifyServerProof": {
@@ -223,11 +214,6 @@ export const toClearMessageRequestPayload = async (
                     'toClearMessageRequestPayload(): SRP Challenge '
                     + 'parameters are missing.'
                 );
-            }
-            if (challenge.parameters.encoding === "Hex") {
-                // @ts-ignore: NOTE(berytus): toBase64() is
-                // now widely available in modern browsers!
-                return new Uint8Array(decrypted).toBase64();
             }
             return decrypted;
         }

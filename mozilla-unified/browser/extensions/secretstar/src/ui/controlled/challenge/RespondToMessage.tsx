@@ -15,7 +15,7 @@ import ComputeClientProofMessage from "./SecureRemotePassword/messages/ComputeCl
 import VerifyServerProofMessage from "./SecureRemotePassword/messages/VerifyServerProof/Message";
 import GetPublicKeyMessage from "./DigitalSignature/messages/GetPublicKey/Message";
 import SignNonceMessage from "./DigitalSignature/messages/SignNonce/Message";
-import { ab2base64, bufToPem, decodeHex, formatSignatureBufToString } from "@root/key-utils";
+import { ab2base64, bufToPem, formatSignatureBufToString } from "@root/key-utils";
 import {
     EBerytusPasswordChallengeMessageName,
     EBerytusOffChannelOtpChallengeMessageName,
@@ -175,35 +175,19 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                     message={message}
                     settings={settings}
                     onSubmit={async (
-                        serverPublicKeyHexB,
-                        clientPublicKeyHexA,
-                        clientPrivateKeyHexa
+                        serverPublicKeyB,
+                        clientPublicKeyA,
+                        clientPrivateKeya
                     ) => {
-                        // const ch = challenge as SrpChallenge;
-                        // await db.sessions.update(session, {
-                        //     challenges: {
-                        //         ...session.challenges,
-                        //         [challenge.id]: {
-                        //             ...challenge,
-                        //             srpState: {
-                        //                 ...ch.srpState,
-                        //                 clientPrivateKeyHexa,
-                        //                 clientPublicKeyHexA,
-                        //                 serverPublicKeyHexB
-                        //             }
-                        //         }
-                        //     }
-                        // });
                         await db.sessions.update(session, {
-                            [`challenges.${challengeId}.srpState.clientPrivateKeyHexa`]: clientPrivateKeyHexa,
-                            [`challenges.${challengeId}.srpState.clientPublicKeyHexA`]: clientPublicKeyHexA,
-                            [`challenges.${challengeId}.srpState.serverPublicKeyHexB`]: serverPublicKeyHexB,
+                            [`challenges.${challengeId}.srpState.clientPrivateKeya`]: clientPrivateKeya,
+                            [`challenges.${challengeId}.srpState.clientPublicKeyA`]: clientPublicKeyA,
+                            [`challenges.${challengeId}.srpState.serverPublicKeyB`]: serverPublicKeyB,
                         });
-
                         submit({
-                            response: challenge.parameters.encoding === "Hex"
-                                ? clientPublicKeyHexA
-                                : decodeHex(clientPublicKeyHexA)
+                            response: Uint8Array
+                                // @ts-ignore:
+                                .fromBase64(clientPublicKeyA)
                         });
                     }}
                 />;
@@ -219,9 +203,9 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                             [`challenges.${challengeId}.srpState.clientProof`]: clientProof,
                         });
                         submit({
-                            response: challenge.parameters.encoding === "Hex"
-                                ? clientProof
-                                : decodeHex(clientProof)
+                            response: Uint8Array
+                                // @ts-ignore: Modern browsers
+                                .fromBase64(clientProof)
                         });
                     }}
                 />;

@@ -29,8 +29,10 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         this.channelHandler = channelHandler;
     }
 
+    abstract get isE2EE(): boolean;
+
     get label(): string {
-        return `${this.category}.V${this.version}`;
+        return `${this.isE2EE ? 'E2EE.' : ''}${this.category}.V${this.version}`;
     }
 
     abstract get version(): number;

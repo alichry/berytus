@@ -44,9 +44,9 @@ interface ComputeBResult {
     valueB: ArrayBuffer;
 }
 
-interface GetExpectedM1Input extends BaseMaterialWithValueA {}
+interface ComputeExpectedM1Input extends BaseMaterialWithValueA {}
 
-interface GetExpectedM1Result {
+interface ComputeExpectedM1Result {
     expectedValueM1: ArrayBuffer;
 }
 
@@ -91,8 +91,8 @@ const checkM1 = async ({
     if (identity) {
         server = new LibSrpServer(
             params, {
-                salt: Buffer.from(salt),
                 username: Buffer.from(identity),
+                salt: Buffer.from(salt),
                 verifier: Buffer.from(verifier)
             }, Buffer.from(secret)
         );
@@ -105,10 +105,10 @@ const checkM1 = async ({
     server.checkM1(Buffer.from(valueM1));
 }
 
-const getExpectedM1 = async ({
+const computeExpectedM1 = async ({
     parameterSet, salt, identity,
     verifier, secret, valueA
-}: GetExpectedM1Input): Promise<GetExpectedM1Result> => {
+}: ComputeExpectedM1Input): Promise<ComputeExpectedM1Result> => {
     const params = SRP.params[parameterSet];
     let server;
     if (identity) {
@@ -116,7 +116,7 @@ const getExpectedM1 = async ({
             params, {
                 salt: Buffer.from(salt),
                 username: Buffer.from(identity),
-                verifier: Buffer.from(verifier)
+                verifier: Buffer.from(verifier),
             }, Buffer.from(secret)
         );
     } else {
@@ -289,12 +289,13 @@ export class SrpServer {
         );
     }
 
-    public async computeB(): Promise<ComputeBResult> {
-        return await computeB({
+    public async computeB(): Promise<ArrayBuffer> {
+        const { valueB } = await computeB({
             parameterSet: this.#state.parameterSet,
             verifier: this.#state.verifier,
             secret: this.#state.secret
         });
+        return valueB;
     }
 
     public async setA(valueA: ArrayBuffer): Promise<void> {
@@ -307,6 +308,10 @@ export class SrpServer {
 
     public getSalt(): ArrayBuffer {
         return this.#state.salt;
+    }
+
+    public getIdentity(): ArrayBuffer | undefined {
+        return this.#state.identity;
     }
 
     public async checkM1(valueM1: ArrayBuffer): Promise<void> {
@@ -330,11 +335,11 @@ export class SrpServer {
         }
     }
 
-    public async getExpectedM1(): Promise<ArrayBuffer> {
+    public async computeExpectedM1(): Promise<ArrayBuffer> {
         if (! this.#state.valueA) {
             throw new Error("valueA is not set.");
         }
-        const { expectedValueM1 } = await getExpectedM1({
+        const { expectedValueM1 } = await computeExpectedM1({
             parameterSet: this.#state.parameterSet,
             secret: this.#state.secret,
             identity: this.#state.identity,
@@ -358,5 +363,20 @@ export class SrpServer {
             valueA: this.#state.valueA
         });
         return valueM2;
+    }
+
+    public async computeK(): Promise<ArrayBuffer> {
+        if (! this.#state.valueA) {
+            throw new Error("valueA is not set.");
+        }
+        const { valueK } = await computeK({
+            parameterSet: this.#state.parameterSet,
+            secret: this.#state.secret,
+            identity: this.#state.identity,
+            salt: this.#state.salt,
+            verifier: this.#state.verifier,
+            valueA: this.#state.valueA
+        });
+        return valueK;
     }
 }

@@ -17,7 +17,7 @@ export default class JWECompactCipherBox extends AbstractCipherBox<string, Blob>
         super({
             ignoreProp: opts.ignoreProp,
             ignoreValue: opts.ignoreValue,
-            transformDecrypted: opts.transformDecrypted,
+            transformers: opts.transformers,
             encrypt: (d, p) => {
                 return this.#encrypt(d, p);
             },

@@ -799,7 +799,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -3272,7 +3272,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -4636,7 +4636,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -5754,7 +5754,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -6355,7 +6355,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -7921,7 +7921,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -8183,7 +8183,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -8633,7 +8633,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -9095,7 +9095,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -9241,7 +9241,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -9761,7 +9761,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -10095,7 +10095,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -10439,7 +10439,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -10682,7 +10682,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -10884,7 +10884,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -11153,7 +11153,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -11875,7 +11875,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -12672,7 +12672,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -13857,7 +13857,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -13967,7 +13967,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -14485,7 +14485,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>
@@ -14983,7 +14983,7 @@ do {
   } while (false);
   
 
-  NS_WARNING_ASSERTION(true, "None of the subtypes returned a truthful IsValid()");
+  NS_WARNING_ASSERTION(false, "None of the subtypes returned a truthful IsValid()");
   return false;
 }
 template<>

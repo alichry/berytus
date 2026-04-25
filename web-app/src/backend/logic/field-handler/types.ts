@@ -1,4 +1,5 @@
 import type { FieldInput as DbFieldInput } from "@root/backend/db/types";
+import type { JSONValue } from "@root/shared-types";
 
 export type UserFieldValue = JSONValue
     | Blob

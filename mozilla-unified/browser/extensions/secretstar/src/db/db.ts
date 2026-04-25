@@ -44,9 +44,9 @@ export type SrpChallenge = Challenge & {
   type: EBerytusChallengeType.SecureRemotePassword;
   srpState: {
     fields: { username: string; password: string };
-    serverPublicKeyHexB?: string;
-    clientPrivateKeyHexa?: string;
-    clientPublicKeyHexA?: string; /* Not really needed in any computation, but good for debugging */
+    serverPublicKeyB?: string;
+    clientPrivateKeya?: string;
+    clientPublicKeyA?: string; /* Not really needed in any computation, but good for debugging */
     salt?: string;
     clientProof?: string;
     serverProofValid?: boolean;

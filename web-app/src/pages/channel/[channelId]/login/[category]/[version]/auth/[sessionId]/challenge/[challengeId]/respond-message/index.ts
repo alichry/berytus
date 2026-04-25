@@ -39,7 +39,7 @@ export const POST: APIRoute<
             throw new Error("Expecting next message to be non-null!");
         }
         let msgResponse = locals.requestBody;
-        if (! msgResponse) {
+        if (undefined === msgResponse) {
             return new Response(JSON.stringify({
                 "error": "Invalid request body."
             }), {

@@ -103,8 +103,9 @@ bool BerytusSecureRemotePasswordChallenge::PayloadToJSValue(
   MOZ_ASSERT(aSrc.IsBerytusEncryptedPacket());
   const auto& val = OwningNonNull(aSrc.GetAsBerytusEncryptedPacket());
   berytus::BerytusEncryptedPacket packetProxy;
-  berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
-  return berytus::ToJSVal(aCx, packetProxy, aRetVal);
+  NS_ENSURE_TRUE(berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy), false);
+  NS_ENSURE_TRUE(berytus::ToJSVal(aCx, packetProxy, aRetVal), false);
+  return true;
 }
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::ExchangePublicKeys(

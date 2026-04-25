@@ -98,7 +98,7 @@ export class SecureRemotePasswordChallengeHandler extends AbstractChallengeHandl
                 request: new Uint8Array(valueM2)
                     // @ts-ignore: Node 25+
                     .toBase64(),
-                expected: null,
+                expected: true,
             };
             return initialMessageDraft;
         }
@@ -109,7 +109,7 @@ export class SecureRemotePasswordChallengeHandler extends AbstractChallengeHandl
             );
             releaseAssert(srpServer.getA() instanceof ArrayBuffer);
             const saltBuf = srpServer.getSalt();
-            const expectedValueM1 = await srpServer.getExpectedM1();
+            const expectedValueM1 = await srpServer.computeExpectedM1();
             const initialMessageDraft = {
                 messageName: "ComputeClientProof" as const,
                 request: new Uint8Array(saltBuf)
@@ -146,7 +146,7 @@ export class SecureRemotePasswordChallengeHandler extends AbstractChallengeHandl
                 this.randomBytes,
                 this.srpStore
             );
-            const { valueB } = await srpServer.computeB();
+            const valueB = await srpServer.computeB();
             await srpServer.save();
             const initialMessageDraft = {
                 messageName: "ExchangePublicKeys" as const,
@@ -231,8 +231,11 @@ export class SecureRemotePasswordChallengeHandler extends AbstractChallengeHandl
                 return `Ok` as const;
             }
             case "VerifyServerProof": {
-                await z.null().parseAsync(response);
-                return `Ok` as const;
+                await z.boolean().parseAsync(response);
+                if (response === true) {
+                    return `Ok` as const;
+                }
+                return `Error:ClientServerProofValidationFailed` as const;
             }
             default:
                 throw new Error("Invalid message response; message name not recognised");
