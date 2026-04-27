@@ -1,3 +1,13 @@
+# 1. npm run netlify -- sites:create --name berytus
+# 2. npm run netlify -- sites:create --name berytus-e2ee
+# 3. Setup custom cert for berytus-e2ee in the Netlify UI
+#    Use the cert tool to generate the cert
+#    Note, netlify requires an intermrediate cert. However,
+#    the issued cert is self-signed with no parent. Simply
+#    add a dummy cert, e.g. the local one, as the intermediary.
+# 4. Setup postgres db
+
 [build]
   command = "npm run build:netlify"
   publish = "dist"
+  environment = { NODE_VERSION = "25.6.1" }

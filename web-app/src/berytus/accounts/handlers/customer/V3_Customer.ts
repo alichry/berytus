@@ -425,14 +425,9 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             const { nextMessage: {
                 request: nonceB64
             } } = await this.authHandler.pendingMessage();
-            const byteArray: Uint8Array =
-                // @ts-ignore: fromBase64 is Firefox only.
-                Uint8Array.fromBase64(
-                    nonceB64,
-                    {
-                        alphabet: "base64"
-                    }
-                );
+            const byteArray: Uint8Array = Uint8Array
+                    // @ts-ignore: fromBase64 is Firefox only.
+                    .fromBase64(nonceB64);
             // @ts-ignore: TODO(berytus): Check if views can be passed
             return byteArray.buffer;
         }

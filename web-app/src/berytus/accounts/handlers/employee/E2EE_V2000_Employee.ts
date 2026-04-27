@@ -60,11 +60,11 @@ export class EmployeeE2EEHandlerV2000 extends AbstractAccountStageHandler<typeof
         assert(this.channelHandler.webAppActor);
         assert('ed25519Key' in this.channelHandler.webAppActor);
         const ed25519Key = this.channelHandler.webAppActor.ed25519Key;
-        assert(ed25519Key === 'MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE=');
+        const getEd25519Key = async () => ed25519Key;
         //! EXPORT_FN_IGNORE_END
         /*! Key-based credential mapping actor */
         const actor = new BerytusCryptoWebAppActor(
-            "MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE="
+            await getEd25519Key() //! e.g., MCowBQY...
         );
         //!
         const channel = await BerytusChannel.create({
