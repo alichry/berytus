@@ -23,19 +23,9 @@ protected:
   ~BerytusSecureRemotePasswordChallenge();
   BerytusSecureRemotePasswordChallengeParameters mParameters;
   void CacheParameters(JSContext* aCx, ErrorResult& aRv) override;
-  /**
-   * @returns NS_ERROR_INVALID_ARG if aSrc is of a type that is not
-   *  suitable per the passed challenge parameters. It's possible
-   *  that the returned nsresult is a NS_ERROR_OUT_OF_MEM as
-   *  we decode Base64URL strings to a byte array to validate integrity
-   *  of the Base64URL string.
-   */
-  nsresult IsCorrectPayloadType(
-      const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aSrc
-  ) const;
   bool PayloadToJSValue(
     JSContext* aCx,
-    const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aSrc,
+    const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aSrc,
     JS::MutableHandle<JS::Value> aRetVal
   );
 public:
@@ -49,17 +39,17 @@ public:
 
   already_AddRefed<Promise> ExchangePublicKeys(
       JSContext* aCx,
-      const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aWebAppServerPublicKeyB,
+      const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aWebAppServerPublicKeyB,
       ErrorResult& aRv);
 
   already_AddRefed<Promise> ComputeClientProof(
       JSContext* aCx,
-      const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aSalt,
+      const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aSalt,
       ErrorResult& aRv);
 
   already_AddRefed<Promise> VerifyServerProof(
       JSContext* aCx,
-      const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aServerProofM2,
+      const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aServerProofM2,
       ErrorResult& aRv);
 
   already_AddRefed<Promise> AbortWithInvalidProofError(

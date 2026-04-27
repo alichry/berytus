@@ -225,7 +225,7 @@ export abstract class AbstractCipherBox<CipherType, DecipherType> {
     public async decryptDictionary<O extends object>(
         obj: O
     ): Promise<DecryptedDictionary<O, CipherType, DecipherType>> {
-        const output = {};
+        const output = Array.isArray(obj) ? [] : {};
         await this.#decryptDictionary(
             obj,
             output

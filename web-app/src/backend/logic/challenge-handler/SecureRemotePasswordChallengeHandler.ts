@@ -262,7 +262,8 @@ export class SecureRemotePasswordChallengeHandler extends AbstractChallengeHandl
                 return base64;
             }
             case "VerifyServerProof": {
-                return null;
+                releaseAssert(typeof response === "boolean");
+                return response;
             }
             default:
                 throw new Error(

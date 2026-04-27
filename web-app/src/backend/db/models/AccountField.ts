@@ -8,6 +8,11 @@ export interface PGetFieldValue {
     fieldvalue: JSONValue;
 }
 
+export interface PListFields {
+    fieldid: string;
+    fieldvalue: JSONValue;
+}
+
 export class AccountField {
     readonly accountVersion: number;
     readonly accountId: BigInt;
@@ -107,5 +112,45 @@ export class AccountField {
             );
         }
         this.fieldValue = fieldValue;
+    }
+
+    static async listFields(
+        accountVersion: number,
+        accountId: BigInt,
+        existingConn?: PoolConnection
+    ) {
+        if (existingConn) {
+            return AccountField.#listFields(
+                existingConn,
+                accountVersion,
+                accountId
+            );
+        }
+        return useConnection(
+            conn => AccountField.#listFields(
+                conn,
+                accountVersion,
+                accountId
+            )
+        );
+    }
+
+    static async #listFields(
+        conn: PoolConnection,
+        accountVersion: number,
+        accountId: BigInt
+    ): Promise<AccountField[]> {
+        const rows = await conn<PListFields[]>`
+            SELECT FieldID, FieldValue
+            FROM ${table('berytus_account_field')}
+            WHERE AccountVersion = ${accountVersion}
+            AND AccountID = ${toPostgresBigInt(accountId)}
+        `;
+        return rows.map(r => new AccountField(
+            accountVersion,
+            accountId,
+            r.fieldid,
+            r.fieldvalue
+        ));
     }
 }

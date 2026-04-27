@@ -188,6 +188,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                             response: Uint8Array
                                 // @ts-ignore:
                                 .fromBase64(clientPublicKeyA)
+                                .buffer
                         });
                     }}
                 />;
@@ -206,6 +207,7 @@ export default function RespondToMessage({}: RespondToMessageProps) {
                             response: Uint8Array
                                 // @ts-ignore: Modern browsers
                                 .fromBase64(clientProof)
+                                .buffer
                         });
                     }}
                 />;

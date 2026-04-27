@@ -61,53 +61,91 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         //! EXPORT_FN_IGNORE_END
     }
 
-    getState() {
+
+    protected async stringifyBerytusValue(
+        value: string
+                | ArrayBuffer
+                | BerytusEncryptedPacket
+                | null
+                | BerytusFieldValue
+                | BerytusKeyFieldValue
+                | BerytusSharedKeyFieldValue
+                | BerytusSecurePasswordFieldValue
+    ): Promise<string> {
+        if (typeof value === "string") {
+            return value;
+        }
+        if (value === null) {
+            return 'null';
+        }
+        if (value instanceof ArrayBuffer) {
+            return new Uint8Array(value)
+                // @ts-ignore: Modern browsers
+                .toBase64();
+        }
+        if ("salt" in value) {
+            return JSON.stringify({
+                salt: await this.stringifyBerytusValue(value.salt),
+                verifier: await this.stringifyBerytusValue(value.verifier),
+            }, null, 2);
+        }
+        if ("publicKey" in value) {
+            return JSON.stringify({
+                publicKey: await this.stringifyBerytusValue(value.publicKey),
+            }, null, 2);
+        }
+        if ("privateKey" in value) {
+            return JSON.stringify({
+                privateKey: await this.stringifyBerytusValue(value.privateKey),
+            }, null, 2);
+        }
+        if (value instanceof Blob) { // JWE
+            return await value.text();
+        }
+        return JSON.stringify(value, null, 2);
+    }
+
+    /**
+     * Call this after any change to user attribute/account fields.
+     * This would cache their representation in the state for
+     * synchronous retrieval. The operation is async as it
+     * potentially need to read blobs.
+     */
+    async cacheRegistrationFields() {
         if (! this.operation) {
             return;
-            // return {
-            //     channel: this.channel,
-            //     userAttributes: {},
-            //     identityFields: [],
-            //     credentialFields: [],
-            //     category: "",
-            //     version: 0,
-            //     status: "Pending" as const
-            // };
+        }
+        if (this.operation.intent !== "Register") {
+            return;
         }
         let userAttrs: Record<string, string> = {};
         let identityFields: { id: string; value: string}[] = [];
         let credentialFields: { id: string; value: string}[] = [];
-        if (this.operation.intent === "Register") {
-            for (const [_k, { id, value }] of this.operation.userAttributes) {
-                userAttrs[id] = typeof value === "string"
-                    ? value
-                    : JSON.stringify(value);
-            }
-            for (const [id, field] of this.operation.fields) {
-                const value = field.value;
-                if (field.type === "Identity" || field.type === "ForeignIdentity") {
-                    identityFields.push({
-                        id,
-                        value: typeof value === "string"
-                            ? value : JSON.stringify(value),
-                    });
-                    continue;
-                }
-                credentialFields.push({
+        for (const [_k, { id, value }] of this.operation.userAttributes) {
+            userAttrs[id] = await this.stringifyBerytusValue(value);
+        }
+        for (const [id, field] of this.operation.fields) {
+            const value = field.value;
+            if (field.type === "Identity" || field.type === "ForeignIdentity") {
+                identityFields.push({
                     id,
-                    value: typeof value === "string"
-                        ? value : JSON.stringify(value),
+                    value: await this.stringifyBerytusValue(value),
                 });
+                continue;
             }
-            return {
-                channel: this.channel,
-                userAttributes: userAttrs,
-                identityFields,
-                credentialFields,
-                category: this.operation.category,
-                version: this.operation.version,
-                status: this.operation.status,
-            };
+            credentialFields.push({
+                id,
+                value: await this.stringifyBerytusValue(value),
+            });
+        }
+        this.loginState.userAttributes = userAttrs;
+        this.loginState.identityFields = identityFields;
+        this.loginState.credentialFields = credentialFields;
+    }
+
+    getState() {
+        if (! this.operation) {
+            return;
         }
         return {
             channel: this.channel,

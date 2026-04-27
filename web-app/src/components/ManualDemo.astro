@@ -397,39 +397,80 @@ EOF
         >
             <div x-show="!!$store.stepWalker.state?.userAttributes.name || Object.keys($store.stepWalker.state?.identityFields || {}).length > 0" class="border-2 border-[#0f172a] px-4 pb-6 pt-2">
                 <div class="flex flex-row mb-2">
+                    <p class="text-xs italic text-slate-700" x-text="`Channel #${$store.stepWalker.state?.channel?.id}`"></p>
                     <div class="flex-1"></div>
                     <p class="underline text-lg text-slate-700 font-bold" x-text="`${$store.stepWalker.state?.category}.V${$store.stepWalker.state?.version}`"></p>
                 </div>
-                <div class="flex flex-row gap-12 overflow-x">
+                <div class="flex flex-row gap-12 overflow-auto pb-2">
                     <img
                         width={128}
                         class="rounded-full block h-[128px]"
                         x-bind:src={`state?.userAttributes.picture || "${defaultUserPng}"`}
                     ></img>
                     <div class="flex flex-col flex-wrap gap-1">
+                        <dialog x-ref="dialog_userattr_name" class="border-2 border-black px-4 py-4 z-10">
+                            <p class="mb-0.5 font-bold" x-text="'User Attribute #name'" />
+                            <textarea
+                                x-text="state?.userAttributes.name || ''"
+                                rows="5"
+                                cols="50"
+                                class="w-full p-[0.5rem] my-4 text-sm border border-black whitespace-pre wrap" />
+                            <form method="dialog" class="mt-4">
+                                <button class="border border-black p-4">OK</button>
+                            </form>
+                        </dialog>
                         <p
-                            class="text-lg text-slate-700 font-bold"
-                            x-text="(state?.userAttributes.name || '')"
+                            class="text-lg text-slate-700 font-bold truncate max-h-[3rem] h-fit w-fit max-w-[10rem] !whitespace-pre cursor-pointer"
+                            x-text="state?.userAttributes.name || ''"
+                            x-on:click="$refs.dialog_userattr_name.open = true"
                         ></p>
                         <template x-for="(value, id) in state?.userAttributes">
                             <!-- <div x-show="(id !== 'name' && id !== 'picture') "></div> -->
                             <div x-show="id === 'birthdate' || id === 'gender' || id === 'address'">
-                                <i class="text-base text-slate-400" x-text="`${id}`"></i>
-                                <p
-                                    class="text-base text-slate-700"
-                                    x-text="value"
-                                ></p>
+                                <div x-data="{ id: id, value: value }">
+                                    <dialog x-ref="dialog" class="border-2 border-black px-4 py-4 z-10">
+                                        <p class="mb-0.5 font-bold" x-text="'User Attribute #' + id" />
+                                        <textarea
+                                            x-text="value"
+                                            rows="5"
+                                            cols="50"
+                                            class="w-full p-[0.5rem] my-4 text-sm border border-black whitespace-pre wrap" />
+                                        <form method="dialog" class="mt-4">
+                                            <button class="border border-black p-4">OK</button>
+                                        </form>
+                                    </dialog>
+                                    <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                    <p
+                                        class="text-base text-slate-700 truncate max-h-[3rem] h-fit w-fit max-w-[10rem] !whitespace-pre cursor-pointer"
+                                        x-text="value"
+                                        x-on:click="$refs.dialog.open = true"
+                                    ></p>
+                                </div>
                             </div>
                         </template>
                         <details x-show="!!Object.keys(state?.userAttributes || {}).find(f => f !== 'name' && f !== 'picture' && f !== 'birthdate' && f !== 'gender' && f !== 'address')">
-                            <summary class="text-base text-slate-700">Optional</summary>
+                            <summary class="text-base text-slate-700 cursor-pointer">Optional</summary>
                             <template x-for="(value, id) in state?.userAttributes">
                                 <div x-show="id !== 'name' && id !== 'picture' && id !== 'birthdate' && id !== 'gender' && id !== 'address'">
-                                    <i class="text-base text-slate-400" x-text="`${id}`"></i>
-                                    <p
-                                        class="text-base text-slate-700"
-                                        x-text="value"
-                                    ></p>
+                                    <div x-data="{ id: id, value: value }">
+                                        <dialog x-ref="dialog" class="border-2 border-black px-4 py-4 z-10">
+                                            <p class="mb-0.5 font-bold" x-text="'User Attribute #' + id" />
+                                            <textarea
+                                                x-text="value"
+                                                rows="5"
+                                                cols="50"
+                                                class="w-full p-[0.5rem] my-4 text-sm border border-black whitespace-pre wrap" />
+                                            <form method="dialog" class="mt-4">
+                                                <button class="border border-black p-4">OK</button>
+                                            </form>
+                                        </dialog>
+                                        <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                        <p
+                                            class="text-base text-slate-700 truncate max-h-[3rem] h-fit w-fit max-w-[10rem] !whitespace-pre cursor-pointer"
+                                            x-text="value"
+                                            x-on:click="$refs.dialog.open = true"
+                                        ></p>
+                                    </div>
                                 </div>
                             </template>
                         </details>
@@ -443,17 +484,8 @@ EOF
                             <p class="text-lg text-slate-700 font-bold">Credentials</p>
                         </div>
                         <template x-for="{ id, value } in state?.identityFields">
-                            <div>
-                                <i class="text-base text-slate-400" x-text="`${id}`"></i>
-                                <p
-                                    class="text-base text-slate-700"
-                                    x-text="value"
-                                ></p>
-                            </div>
-                        </template>
-                        <template x-for="{ id, value } in state?.credentialFields">
-                            <div>
-                                <dialog x-ref="dialog" class="border-2 border-black px-4 py-4">
+                            <div x-data="{ id: id, value: value }">
+                                <dialog x-ref="dialog" class="border-2 border-black px-4 py-4 z-10">
                                     <p class="mb-0.5 font-bold" x-text="'Field #' + id" />
                                     <textarea
                                         x-text="value"
@@ -466,7 +498,28 @@ EOF
                                 </dialog>
                                 <i class="text-base text-slate-400" x-text="`${id}`"></i>
                                 <p
-                                    class="text-base text-slate-700 truncate !whitespace-pre max-w-24 max-h-8 cursor-pointer"
+                                    class="text-base text-slate-700 truncate max-h-[3rem] h-fit w-fit max-w-[10rem] !whitespace-pre max-w-24 max-h-8 cursor-pointer"
+                                    x-text="value"
+                                    x-on:click="$refs.dialog.open = true"
+                                ></p>
+                            </div>
+                        </template>
+                        <template x-for="{ id, value } in state?.credentialFields">
+                            <div x-data="{ id: id, value: value }">
+                                <dialog x-ref="dialog" class="border-2 border-black px-4 py-4 z-10">
+                                    <p class="mb-0.5 font-bold" x-text="'Field #' + id" />
+                                    <textarea
+                                        x-text="value"
+                                        rows="5"
+                                        cols="50"
+                                        class="w-full p-[0.5rem] my-4 text-sm border border-black whitespace-pre wrap" />
+                                    <form method="dialog" class="mt-4">
+                                        <button class="border border-black p-4">OK</button>
+                                    </form>
+                                </dialog>
+                                <i class="text-base text-slate-400" x-text="`${id}`"></i>
+                                <p
+                                    class="text-base text-slate-700 truncate max-h-[3rem] h-fit w-fit max-w-[10rem] !whitespace-pre max-w-24 max-h-8 cursor-pointer"
                                     x-text="value"
                                     x-on:click="$refs.dialog.open = true"
                                 ></p>
@@ -523,6 +576,16 @@ EOF
             >
                 Make sure you download/compile the lastest release
                 of Berytus/Firefox before running the code below.
+            </Notice>
+            <Notice
+                type="info"
+                x-show="!$store.stepWalker.started"
+                class="max-w-xl mx-auto"
+            >
+                If you're running an E2EE stage, make sure you
+                are under https://poc-e2ee.berytus.io as a
+                self-signed certificate containing the Berytus
+                x509 v3 extension is required.
             </Notice>
             <div
                 x-show="! $store.stepWalker.finished && $store.stepWalker.ready"

@@ -93,14 +93,12 @@ export const handleRequest = async (context: APIContext) => {
     if (channelIdHeader === null) {
         return;
     }
-    // TODO(berytus): FIXME channelId in path parameter
-    // is not consistent with X-Berytus-Channel-Id
-    // if (channelIdHeader !== channelId) {
-    //     throw new InvalidArgError(
-    //         "X-Berytus-Channel-Id header must be consistent with the channelId URL parameter. "
-    //         + `Path Parameter: ${channelId} -- X-Berytus-Channel-Id: ${channelIdHeader}`
-    //     );
-    // }
+    if (channelIdHeader !== channelId) {
+        throw new InvalidArgError(
+            "X-Berytus-Channel-Id header must be consistent with the channelId URL parameter. "
+            + `Path Parameter: ${channelId} -- X-Berytus-Channel-Id: ${channelIdHeader}`
+        );
+    }
     const keyMaterial = (await Channel.getChannel(channelId)).sessionKey;
     releaseAssert(typeof keyMaterial === 'string', "typeof keyMaterial === 'string'");
     const key = await (new AesGcmKeyLoader().importKey(keyMaterial));
@@ -272,7 +270,6 @@ const requestUrlMatches = (request: Request, pathPattern: RegExp) => {
     const parsedUrl = new URL(request.url);
     return pathPattern.exec(decodeURI(parsedUrl.pathname));
 }
-const pathPattern = /^\/channel\/(?<channelId>{[a-zA-Z0-9\-_]+})\/login\/[{}a-zA-Z0-9\-_]+\/[{}a-zA-Z0-9\-_]+\/(constants|auth\/[{}a-zA-Z0-9\-_]+\/challenge\/[{}a-zA-Z0-9\-_]+\/pending-message)$/
 
 const blueprints: CipherBlueprint[] = [
     {
@@ -320,6 +317,9 @@ export const handleResponse = async (context: APIContext, resp: Response) => {
         return resp;
     }
     const keyMaterial = (await Channel.getChannel(channelId)).sessionKey;
+    if (keyMaterial === null) {
+        return resp;
+    }
     releaseAssert(typeof keyMaterial === 'string', "typeof keyMaterial === 'string'");
     const key = await (new AesGcmKeyLoader().importKey(keyMaterial));
     const box = new JWECompactCipherBox({ key });

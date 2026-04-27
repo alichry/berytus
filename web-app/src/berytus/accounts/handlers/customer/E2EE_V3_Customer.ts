@@ -2,13 +2,14 @@ import { AbstractAccountStageHandler } from "../AbstractAccountHandler";
 import type { TypedStageHandler } from "@root/berytus/types";
 import { assert, assertIsString } from "../assertions";
 import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler";
-import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
+import { E2EEHandler } from "@root/berytus/channel/handlers/E2EEHandler.js";
 
 const version = 3 as const;
 const category = "Customer" as const;
-const description = "Username Identification and Digital Signature Authentication" as const;
+const description = "(E2EE) Username Identification and Digital Signature Authentication" as const;
 const steps = [
     "createChannel",
+    "setupE2EE",
     "login",
     "addFields",
     "validateFields",
@@ -42,15 +43,15 @@ const armorKey = (body: ArrayBuffer, type: "PUBLIC" | "PRIVATE" = "PUBLIC") => {
     return res;
 }
 
-export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[number]>
-    implements TypedStageHandler<CustomerHandlerV3> {
+export class CustomerE2EEHandlerV3 extends AbstractAccountStageHandler<typeof steps[number]>
+    implements TypedStageHandler<CustomerE2EEHandlerV3> {
     protected authHandler?: AuthSessionHandler;
 
     public constructor() {
-        super(new NonE2EEHandler());
+        super(new E2EEHandler());
     }
 
-    get isE2EE() { return false; }
+    get isE2EE() { return true; }
 
     get version(): number {
         return version;
@@ -72,8 +73,10 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         await this.channelHandler.prepare();
         //! EXPORT_FN_IGNORE_END
-        /*! Domain-based credential mapping actor */
-        const actor = new BerytusAnonymousWebAppActor();
+        /*! Key-based credential mapping actor */
+        const actor = new BerytusCryptoWebAppActor(
+            "MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE="
+        );
         //!
         const channel = await BerytusChannel.create({
             webApp: actor,
@@ -81,13 +84,63 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
                 account: {
                     schemaVersion: 3,
                     category: "Customer"
-                }
+                },
+                enableEndToEndEncryption: true
             }
         });
         //!
         //! EXPORT_FN_IGNORE_START
         this.channel = channel;
         await this.channelHandler.init(this.channel);
+        return { nextStep: "setupE2EE" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async setupE2EE() {
+        //! EXPORT_FN_IGNORE_START
+        const getX25519PublicKey = async () => {
+            assert(this.channelHandler.kapInput);
+            return this.channelHandler.kapInput.public;
+        }
+        const getUnmaskAllowlist = async () => {
+            assert(this.channelHandler.kapInput);
+            return this.channelHandler.kapInput.unmaskAllowlist;
+        }
+        const signKap = async (channel: BerytusChannel, kap: BerytusKeyAgreementParameters) => {
+            assert(this.channelHandler instanceof E2EEHandler);
+            return await this.channelHandler.signKap();
+        };
+        const verifyScmKapSignature = async (channel: BerytusChannel, scmSignature: ArrayBuffer) => {
+            assert(this.channelHandler instanceof E2EEHandler);
+            await this.channelHandler.verifyScmKapSignature(scmSignature);
+        }
+        const deriveSessionKey = async (channel: BerytusChannel) => {
+            assert(this.channelHandler instanceof E2EEHandler);
+            await this.channelHandler.deriveSessionKey();
+        }
+        assert(this.channel);
+        //! EXPORT_FN_IGNORE_END
+        /*! Use Web app-specific routines getX25519PublicKey
+            and getUnmaskAllowlist to prepare KAP. */
+        const kap = await this.channel.prepareKeyAgreementParameters({
+            public: await getX25519PublicKey(),
+            unmaskAllowlist: await getUnmaskAllowlist()
+        });
+        /*! Use web app-specific routine to sign KAP. The
+            signing process occurs in the backend. */
+        const signature = await signKap(this.channel, kap);
+        /*! Exchange signatures */
+        const scmSignature = await this.channel
+            .exchangeKeyAgreementSignatures(signature);
+        /*! Verify SCM signature using web app-specific routine. The
+            verification process occurs in the backend. */
+        await verifyScmKapSignature(this.channel, scmSignature);
+        /*! Use web app-specific routine to derive session key,
+            storing it in the database. */
+        await deriveSessionKey(this.channel);
+        /*! Finally, enable E2EE */
+        await this.channel.enableEndToEndEncryption();
+        //! EXPORT_FN_IGNORE_START
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -208,11 +261,12 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         let operation = this.operation;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
         const registerAccountInBackEnd = async (
-            username: string,
+            username: BerytusEncryptedPacket,
             key: BerytusKeyFieldValue,
             attrsMap: BerytusUserAttributeMap
         ) => {
-            assert(key.publicKey instanceof ArrayBuffer);
+            assert(username instanceof BerytusJWEPacket);
+            assert(key.publicKey instanceof BerytusJWEPacket);
             const fields = [{
                 id: "username",
                 value: username
@@ -220,7 +274,9 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             {
                 id: "key",
                 value: {
-                    publicKey: new Blob([key.publicKey], { type: "application/octet-stream" })
+                    publicKey: key.publicKey instanceof ArrayBuffer
+                        ? new Blob([key.publicKey], { type: "application/octet-stream" })
+                        : key.publicKey
                 }
             }];
             const attrs: Record<string, string | Blob> = {};
@@ -239,10 +295,10 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
          * to register the account in the backend. This dispatches an HTTP
          * request containing the account username and key fields.
          * @var registerAccountInBackEnd
-         * @type {(username: string, key: BerytusKeyFieldValue, userAttrs: BerytusUserAttributeMap): Promise<void>}
+         * @type {(username: BerytusEncryptedPacket, key: BerytusKeyFieldValue, userAttrs: BerytusUserAttributeMap): Promise<void>}
          */
         await registerAccountInBackEnd(
-            operation.fields.get('username')!.value as string,
+            operation.fields.get('username')!.value as BerytusEncryptedPacket,
             operation.fields.get('key')!.value as BerytusKeyFieldValue,
             operation.userAttributes
         );
@@ -296,7 +352,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         if (! idCh) {
             throw new Error("ID challenge not set.");
         }
-        const accountExists = async (username: string): Promise<boolean> => {
+        const accountExists = async (username: BerytusEncryptedPacket): Promise<boolean> => {
             try {
                 this.authHandler = await AuthSessionHandler.create(
                     this.channel!.id,
@@ -315,7 +371,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_END
         const { response: { username } } = await idCh.getIdentityFields();
         //! EXPORT_FN_IGNORE_START
-        assertIsString(username);
+        assert(typeof username !== "string");
         //! EXPORT_FN_IGNORE_END
         /*!
             * We use a web app-specific routine, `accountExists`,
@@ -358,8 +414,8 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         const dsCh = operation.challenges.get('ds') as BerytusDigitalSignatureChallenge;
         assert(!!dsCh);
-        const username = "";
-        const validateKey = async (username: string, key: BerytusKeyFieldValue) => {
+        const username = null;
+        const validateKey = async (username: null, key: BerytusKeyFieldValue) => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -372,7 +428,7 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
                         "Inconsistency between client and server challenge parameters"
                     );
                 }
-                assert(key.publicKey instanceof ArrayBuffer);
+                assert(key.publicKey instanceof BerytusJWEPacket);
                 await this.authHandler.sendResponse({
                     id: "key",
                     value: {
@@ -405,10 +461,12 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
             );
         }
         //! EXPORT_FN_IGNORE_START
-        assert(key.publicKey instanceof ArrayBuffer);
+        assert(key.publicKey instanceof BerytusJWEPacket);
         this.loginState.credentialFields.push({
             id: 'key',
-            value: armorKey(key.publicKey)
+            value: key.publicKey instanceof ArrayBuffer
+                ? armorKey(key.publicKey)
+                : await this.stringifyBerytusValue(key.publicKey)
         });
         return { nextStep: "signNonce" as const }
         //! EXPORT_FN_IGNORE_END
@@ -420,35 +478,31 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
         AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
         const dsCh = operation.challenges.get('ds') as BerytusDigitalSignatureChallenge;
         assert(!!dsCh);
-        const generateNonce = async (): Promise<ArrayBuffer> => {
+        const generateNonce = async (): Promise<BerytusEncryptedPacket> => {
             assert(!!this.authHandler);
             const { nextMessage: {
-                request: nonceB64
+                request: nonceJwe
             } } = await this.authHandler.pendingMessage();
-            const byteArray: Uint8Array =
-                // @ts-ignore: fromBase64 is Firefox only.
-                Uint8Array.fromBase64(
-                    nonceB64,
-                    {
-                        alphabet: "base64"
-                    }
-                );
-            // @ts-ignore: TODO(berytus): Check if views can be passed
-            return byteArray.buffer;
+            return new BerytusJWEPacket(nonceJwe);
         }
-        const verifySignature = async (signature: ArrayBuffer | BerytusEncryptedPacket): Promise<boolean> => {
+        const verifySignature = async (signature: BerytusEncryptedPacket): Promise<boolean> => {
             assert(!!this.authHandler);
             try {
                 await this.authHandler.sendResponse(
-                    signature instanceof ArrayBuffer
-                        ? new Blob([signature], { type: "application/octet-stream"})
-                        : signature,
+                    signature,
                     "blob"
                 );
-                const res= await this.authHandler.finish();
-                res.userAttributes.forEach(u => {
-                    this.loginState.userAttributes[u.id] = u.value;
+                const res = await this.authHandler.finish();
+                res.identity.forEach(idf => {
+                    this.loginState.identityFields.push({
+                        id: `${idf.id}.cleartext`,
+                        value: idf.value
+                    });
                 });
+                await Promise.all(res.userAttributes.map(async u => {
+                    this.loginState.userAttributes[u.id] =
+                        await this.stringifyBerytusValue(u.value);
+                }));
                 return true;
             } catch (e) {
                 if (e instanceof AuthIncorrectResponseError) {
@@ -463,15 +517,18 @@ export class CustomerHandlerV3 extends AbstractAccountStageHandler<typeof steps[
          * We use a web app-specific routine, `generateNonce`, to
          * generate a nonce for the secret manager to sign.
          * @var generateNonce
-         * @type {(): Promise<ArrayBuffer>}
+         * @type {(): Promise<BerytusEncryptedPacket>}
          */
         const nonce = await generateNonce();
         const { response: signature } = await dsCh.signNonce(nonce);
+        //! EXPORT_FN_IGNORE_START
+        assert(!(signature instanceof ArrayBuffer));
+        //! EXPORT_FN_IGNORE_END
         /*!
          * We use a web app-specific routine, `verifySignature`, to
          * validate the signature.
          * @var verifySignature
-         * @type {(signature: ArrayBuffer): Promise<boolean>}
+         * @type {(signature: BerytusEncryptedPacket): Promise<boolean>}
          */
         if (!(await verifySignature(signature))) {
             await dsCh.abortWithInvalidSignatureError();

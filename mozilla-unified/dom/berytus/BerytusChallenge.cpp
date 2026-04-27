@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/BerytusChallenge.h"
 #include "js/Array.h"
+#include "js/ArrayBuffer.h"
 #include "js/PropertyAndElement.h"
 #include "mozilla/dom/BerytusJWEPacket.h"
 #include "ErrorList.h"
@@ -612,14 +613,21 @@ void BerytusChallenge::SetupPacketsInResponse(JSContext* aCx,
     return;
   }
 
-  // (Base case 1) If object is a JWE packet proxy, transform it
-  // and stop.
   JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
-  bool matches = false;
-  MatchesJWEPacketProxy(aCx, obj, matches, aRv);
+
+  // (Base case 1) If object is an ArrayBuffer, return it as is.
+  if (JS::IsArrayBufferObject(obj)) {
+    aRetVal.set(aValue);
+    return;
+  }
+
+  // (Base case 2) If object is a JWE packet proxy, transform it
+  // and stop.
+  bool matchesJwe = false;
+  MatchesJWEPacketProxy(aCx, obj, matchesJwe, aRv);
   NS_ENSURE_TRUE_VOID(!aRv.Failed());
 
-  if (matches) {
+  if (matchesJwe) {
     CreateJWEPacketReflector(aCx, obj, aRetVal, aRv);
     NS_ENSURE_TRUE_VOID(!aRv.Failed());
     return;

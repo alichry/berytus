@@ -96,6 +96,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         if (operation.intent === 'Register') {
             /*! Handle registration operation */
             //! EXPORT_FN_IGNORE_START
+            await this.cacheRegistrationFields();
             return { nextStep: "addFields" as const };
             //! EXPORT_FN_IGNORE_END
         } else {
@@ -164,7 +165,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         this.loginState.identityFields.push({
             id: 'username',
-            value: username
+            value: await this.stringifyBerytusValue(username)
         });
         return { nextStep: "createPasswordChallenge" as const };
         //! EXPORT_FN_IGNORE_END
@@ -217,9 +218,10 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
                     }
                 ], "multipart");
                 const res = await this.authHandler.finish();
-                res.userAttributes.forEach(u => {
-                    this.loginState.userAttributes[u.id] = u.value;
-                });
+                await Promise.all(res.userAttributes.map(async u => {
+                    this.loginState.userAttributes[u.id] =
+                        await this.stringifyBerytusValue(u.value);
+                }));
                 return true;
             } catch (e) {
                 if (e instanceof AuthIncorrectResponseError) {
@@ -248,9 +250,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         this.loginState.credentialFields.push({
             id: 'password',
-            value: typeof password === "string"
-                ? password
-                : await password.text() // returns _concealed_
+            value: await this.stringifyBerytusValue(password)
         });
         return { nextStep: "finishLogin" as const }
         //! EXPORT_FN_IGNORE_END
@@ -275,8 +275,8 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         }
         //! EXPORT_FN_IGNORE_END
         await channel.close();
-        await this.channelHandler.close();
         //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.close();
         return { finished: true as const }
         //! EXPORT_FN_IGNORE_END
     }
@@ -300,6 +300,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             )
         );
         //! EXPORT_FN_IGNORE_START
+        await this.cacheRegistrationFields();
         return { nextStep: "validateFields" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -341,6 +342,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
             });
         }
         //! EXPORT_FN_IGNORE_START
+        await this.cacheRegistrationFields();
         return { nextStep: "metadata" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -374,11 +376,13 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
                 id: "password",
                 value: password
             }];
-            const attrs: Record<string, string> = {};
+            const attrs: Record<string, string | Blob> = {};
             for (const [key, obj] of attrsMap) {
                 attrs[key] = typeof obj.value === "string"
                     ? obj.value
-                    : JSON.stringify(obj.value)
+                    : obj.value instanceof ArrayBuffer
+                    ? new Blob([obj.value], { type: obj.mimeType || undefined })
+                    : obj.value;
             }
             return this.createAccount(fields, attrs);
         }
@@ -388,7 +392,7 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
          * to register the account in the backend. This dispatches an HTTP
          * request containing the account username and password fields.
          * @var registerAccountInBackEnd
-         * @type {(username: string, password: string): Promise<void>}
+         * @type {(username: string, password: string, userAttrs: BerytusUserAttributeMap): Promise<void>}
          */
         await registerAccountInBackEnd(
             operation.fields.get('username')!.value as string,
@@ -406,6 +410,9 @@ export class CustomerHandlerV1 extends AbstractAccountStageHandler<typeof steps[
         //! EXPORT_FN_IGNORE_START
         let operation = this.operation;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        this.loginState.userAttributes = {};
+        this.loginState.credentialFields = [];
+        this.loginState.identityFields = [];
         //! EXPORT_FN_IGNORE_END
         /*!
          * Here, after saving the account, the web application

@@ -89,9 +89,10 @@ protected:
 
   friend class BerytusChannelContainer;
   static bool TryUnmaskAnyPacketInFetchBody(
+    const nsCString& aReqUrl,
     const fetch::OwningBodyInit& aSrc,
     fetch::OwningBodyInit& aDest,
-    const nsCString& aReqUrl,
+    nsString& aRetChannelId,
     ErrorResult& aRv
   );
 
@@ -102,12 +103,14 @@ public:
     NS_DECL_CYCLE_COLLECTION_CLASS(PacketObserver)
     NS_DECL_NSIOBSERVER
 
-    PacketObserver(RefPtr<BerytusEncryptedPacket>& aPacket);
+    PacketObserver(nsIGlobalObject* aGlobal);
   protected:
     ~PacketObserver();
+    nsCOMPtr<nsIGlobalObject> mGlobal;
 
     // TODO(berytus): Switch to WeakPtr
-    RefPtr<BerytusEncryptedPacket> mPacket;
+    // i.e. no need to maintain entries following
+    // destruction of nsIChannel or InternalRequest.
     nsRefPtrHashtable<nsUint64HashKey, berytus::UnmaskPacket> mDetectedChannels;
     nsRefPtrHashtable<nsPtrHashKey<InternalRequest>, berytus::UnmaskPacket> mDetectedRequests;
   };

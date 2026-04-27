@@ -1,3 +1,7 @@
+// TODO(berytus): Ensure the side effects by CreateField and
+// PutField are idempotnt; i.e., if multiple retries occur
+// to add a field record to local storage, it should not result
+// in duplicates.
 import { useCallback, useEffect, useState } from 'react';
 import { Field, FieldValueRejection, Session, db } from "@root/db/db";
 import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox } from "@root/hooks";

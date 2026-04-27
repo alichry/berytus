@@ -949,19 +949,10 @@ dictionary BerytusChallengeSelectSecurePasswordMessageResponse {
 [GenerateInit]
 dictionary BerytusChallengeExchangePublicKeysMessageResponse {
   /**
-   * The client public key (SRP:A) - As hex string or as an ArrayBuffer(View).
-   * By default, no hex encoding is applied. To change this, specify the encoding
-   * type in the challenge parameters. In all cases, this value could
-   * be wrapped in a BerytusEncryptedPacket, depending whether app-level
-   * E2EE is enabled.
+   * The client public key (SRP:A) - As an ArrayBuffer(View) or wrapped
+   * in a BerytusEncryptedPacket if app-level E2EE is enabled.
    */
-  required (DOMString or ArrayBuffer or BerytusEncryptedPacket) response;
-};
-
-enum BerytusSecureRemotePasswordChallengeEncodingType {
-  "None",
-  "Hex" // TODO(berytus): Looks like implementation could
-        // reject 'Hex' encoding if e2ee is enabled.
+  required (ArrayBuffer or BerytusEncryptedPacket) response;
 };
 
 [GenerateInit, GenerateConversionToJS]
@@ -970,22 +961,15 @@ dictionary BerytusSecureRemotePasswordChallengeParameters {
    * The secure password field id, used to guide field selection.
    */
   required DOMString field;
-  /**
-   * Defaults to "None"
-   */
-  BerytusSecureRemotePasswordChallengeEncodingType encoding;
 };
 
 [GenerateInit]
 dictionary BerytusChallengeComputeClientProofMessageResponse {
   /**
-   * The client proof (SRP:M1) - As hex string or as an ArrayBuffer(View).
-   * By default, no hex encoding is applied. To change this, specify the encoding
-   * type in the challenge parameters. In all cases, this value could
-   * be wrapped in a BerytusEncryptedPacket, depending whether app-level
-   * E2EE is enabled.
+   * The client proof (SRP:M1) - As an ArrayBuffer(View) or wrapped
+   * in a BerytusEncryptedPacket if app-level E2EE is enabled.
    */
-  required (DOMString or ArrayBuffer or BerytusEncryptedPacket) response;
+  required (ArrayBuffer or BerytusEncryptedPacket) response;
 };
 
 [GenerateInit]
@@ -1002,36 +986,30 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
   Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword();
 
   /**
-   * SRP:B - As a hex string or as an ArrayBuffer(View). By default,
-   * no hex encoding should be applied. To change this, specify the encoding
-   * type in the challenge parameters. In all cases, this value should
-   * be wrapped in a BerytusEncryptedPacket if app-level E2EE is enabled.
+   * SRP:B - As an ArrayBuffer(View) or wrapped in a
+   * BerytusEncryptedPacket if app-level E2EE is enabled.
    */
   [Throws]
   Promise<BerytusChallengeExchangePublicKeysMessageResponse> exchangePublicKeys(
-    (ArrayBuffer or ArrayBufferView or DOMString or BerytusEncryptedPacket) webAppServerPublicKeyB
+    (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) webAppServerPublicKeyB
   );
 
   /**
-   * SRP:salt - As a hex string or as an ArrayBuffer(View). By default,
-   * no hex encoding should be applied. To change this, specify the encoding
-   * type in the challenge parameters. In all cases, this value should
-   * be wrapped in a BerytusEncryptedPacket if app-level E2EE is enabled.
+   * SRP:salt - As an ArrayBuffer(View) or wrapped in a
+   * BerytusEncryptedPacket if app-level E2EE is enabled.
    */
   [Throws]
   Promise<BerytusChallengeComputeClientProofMessageResponse> computeClientProof(
-    (ArrayBuffer or ArrayBufferView or DOMString or BerytusEncryptedPacket) salt
+    (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) salt
   );
 
   /**
-   * SRP:M2 - As a hex string or as an ArrayBuffer(View). By default,
-   * no hex encoding should be applied. To change this, specify the encoding
-   * type in the challenge parameters. In all cases, this value should
-   * be wrapped in a BerytusEncryptedPacket if app-level E2EE is enabled.
+   * SRP:M2 - As an ArrayBuffer(View) or wrapped in a
+   * BerytusEncryptedPacket if app-level E2EE is enabled.
    */
   [Throws]
   Promise<BerytusChallengeVerifyServerProofMessageResponse> verifyServerProof(
-    (ArrayBuffer or ArrayBufferView or DOMString or BerytusEncryptedPacket) serverProofM2
+    (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) serverProofM2
   );
   [Throws]
   Promise<undefined> abortWithInvalidProofError();

@@ -31,7 +31,7 @@ protected:
   );
 public:
   BerytusDigitalSignatureChallengeParameters const& Parameters() const;
-  
+
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> SelectKey(JSContext* aCx,

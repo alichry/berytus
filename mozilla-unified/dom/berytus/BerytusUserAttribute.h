@@ -10,13 +10,13 @@
 #include "js/TypeDecls.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/dom/BindingDeclarations.h"
-#include "mozilla/dom/UnionTypes.h" /* OwningStringOrArrayBufferOrBerytusEncryptedPacket */
 #include "nsCycleCollectionParticipant.h"
 #include "nsISupports.h"
 #include "nsWrapperCache.h"
 #include "nsIGlobalObject.h"
-#include "mozilla/dom/BerytusUserAttributeBinding.h" /* OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket */
 #include "mozilla/dom/BerytusChannel.h"
+#include "mozilla/dom/UnionTypes.h" // OwningStringOrArrayBufferOrBerytusEncryptedPacket aka ValueType
+#include "mozilla/dom/BerytusUserAttributeBinding.h" /* OwningStringOrArrayBufferViewOrArrayBufferOrBerytusEncryptedPacket */
 
 namespace mozilla::dom {
 

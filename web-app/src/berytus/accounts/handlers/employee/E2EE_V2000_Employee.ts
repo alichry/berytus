@@ -1,4 +1,4 @@
-import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
+import { E2EEHandler } from "@root/berytus/channel/handlers/E2EEHandler.js";
 import { AbstractAccountStageHandler } from "../AbstractAccountHandler.js";
 import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler.js";
 import type { TypedStageHandler } from "@root/berytus/types";
@@ -7,9 +7,10 @@ import { FetchError } from "@root/backend/errors/FetchError.js";
 
 const version = 2000 as const;
 const category = "Employee" as const;
-const description = "Composite Username Identification and Secure Password Authentication" as const;
+const description = "(E2EE) Composite Username Identification and Secure Password Authentication" as const;
 const steps = [
     "createChannel",
+    "setupE2EE",
     "login",
     "addFields",
     "validateFields",
@@ -27,15 +28,15 @@ const steps = [
     "closeChannel"
 ] as const;
 
-export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof steps[number]>
-    implements TypedStageHandler<EmployeeHandlerV2000> {
+export class EmployeeE2EEHandlerV2000 extends AbstractAccountStageHandler<typeof steps[number]>
+    implements TypedStageHandler<EmployeeE2EEHandlerV2000> {
     protected authHandler?: AuthSessionHandler;
 
     public constructor() {
-        super(new NonE2EEHandler());
+        super(new E2EEHandler());
     }
 
-    get isE2EE() { return false; }
+    get isE2EE() { return true; }
 
     get version(): number {
         return version;
@@ -56,9 +57,15 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
     async createChannel() {
         //! EXPORT_FN_IGNORE_START
         await this.channelHandler.prepare();
+        assert(this.channelHandler.webAppActor);
+        assert('ed25519Key' in this.channelHandler.webAppActor);
+        const ed25519Key = this.channelHandler.webAppActor.ed25519Key;
+        assert(ed25519Key === 'MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE=');
         //! EXPORT_FN_IGNORE_END
-        /*! Domain-based credential mapping actor */
-        const actor = new BerytusAnonymousWebAppActor();
+        /*! Key-based credential mapping actor */
+        const actor = new BerytusCryptoWebAppActor(
+            "MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE="
+        );
         //!
         const channel = await BerytusChannel.create({
             webApp: actor,
@@ -66,13 +73,63 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 account: {
                     schemaVersion: 2000,
                     category: "Employee"
-                }
+                },
+                enableEndToEndEncryption: true
             }
         });
         //!
         //! EXPORT_FN_IGNORE_START
         this.channel = channel;
         await this.channelHandler.init(this.channel);
+        return { nextStep: "setupE2EE" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async setupE2EE() {
+        //! EXPORT_FN_IGNORE_START
+        const getX25519PublicKey = async () => {
+            assert(this.channelHandler.kapInput);
+            return this.channelHandler.kapInput.public;
+        }
+        const getUnmaskAllowlist = async () => {
+            assert(this.channelHandler.kapInput);
+            return this.channelHandler.kapInput.unmaskAllowlist;
+        }
+        const signKap = async (channel: BerytusChannel, kap: BerytusKeyAgreementParameters) => {
+            assert(this.channelHandler instanceof E2EEHandler);
+            return await this.channelHandler.signKap();
+        };
+        const verifyScmKapSignature = async (channel: BerytusChannel, scmSignature: ArrayBuffer) => {
+            assert(this.channelHandler instanceof E2EEHandler);
+            await this.channelHandler.verifyScmKapSignature(scmSignature);
+        }
+        const deriveSessionKey = async (channel: BerytusChannel) => {
+            assert(this.channelHandler instanceof E2EEHandler);
+            await this.channelHandler.deriveSessionKey();
+        }
+        assert(this.channel);
+        //! EXPORT_FN_IGNORE_END
+        /*! Use Web app-specific routines getX25519PublicKey
+            and getUnmaskAllowlist to prepare KAP. */
+        const kap = await this.channel.prepareKeyAgreementParameters({
+            public: await getX25519PublicKey(),
+            unmaskAllowlist: await getUnmaskAllowlist()
+        });
+        /*! Use web app-specific routine to sign KAP. The
+            signing process occurs in the backend. */
+        const signature = await signKap(this.channel, kap);
+        /*! Exchange signatures */
+        const scmSignature = await this.channel
+            .exchangeKeyAgreementSignatures(signature);
+        /*! Verify SCM signature using web app-specific routine. The
+            verification process occurs in the backend. */
+        await verifyScmKapSignature(this.channel, scmSignature);
+        /*! Use web app-specific routine to derive session key,
+            storing it in the database. */
+        await deriveSessionKey(this.channel);
+        /*! Finally, enable E2EE */
+        await this.channel.enableEndToEndEncryption();
+        //! EXPORT_FN_IGNORE_START
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -113,7 +170,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         const actor = channel!.webApp;
         const operation = this.operation!;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
-        const getPartyId = async () => {
+        const getEncryptedPartyId = async () => {
             const resp = await fetch(
                 `/channel/${this.channel!.id}/login/${this.category}/${this.version}/constants`,
                 {
@@ -131,13 +188,13 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 );
             }
             const partyId = body["partyId.ClassA"];
-            return partyId;
+            return new BerytusJWEPacket(partyId);
         }
         //! EXPORT_FN_IGNORE_END
-        const partyId = await getPartyId();
+        const partyId = await getEncryptedPartyId();
         //! assume we are registering accounts
         //! under party 0001.
-        console.assert(partyId === "0001");
+        console.assert(partyId instanceof BerytusJWEPacket);
         const fields = await operation.addFields(
             new BerytusIdentityField(
                 'partyId',
@@ -234,8 +291,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         let operation = this.operation;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
         const registerAccountInBackEnd = (
-            partyId: string,
-            username: string,
+            partyId: BerytusEncryptedPacket,
+            username: BerytusEncryptedPacket,
             securePassword: BerytusSecurePasswordFieldValue,
             attrsMap: BerytusUserAttributeMap
         ) => {
@@ -294,11 +351,11 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
          * to register the account in the backend. This dispatches an HTTP
          * request containing the account username and password fields.
          * @var registerAccountInBackEnd
-         * @type {(partyId: string, username: string, securePassword: BerytusSecurePasswordFieldValue, userAttrs: BerytusUserAttributeMap): Promise<void>}
+         * @type {(partyId: BerytusEncryptedPacket, username: BerytusEncryptedPacket, securePassword: BerytusSecurePasswordFieldValue, userAttrs: BerytusUserAttributeMap): Promise<void>}
          */
         await registerAccountInBackEnd(
-            partyIdField.value as string,
-            usernameField.value as string,
+            partyIdField.value as BerytusEncryptedPacket,
+            usernameField.value as BerytusEncryptedPacket,
             securePasswordField.value as BerytusSecurePasswordFieldValue,
             operation.userAttributes
         );
@@ -353,8 +410,8 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
             throw new Error("ID challenge not set.");
         }
         const accountExists = async (
-            partyId: string,
-            username: string
+            partyId: BerytusEncryptedPacket,
+            username: BerytusEncryptedPacket
         ): Promise<boolean> => {
             try {
                 this.authHandler = await AuthSessionHandler.create(
@@ -377,8 +434,12 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         //! EXPORT_FN_IGNORE_END
         const { response: { partyId, username } } = await idCh.getIdentityFields();
         //! EXPORT_FN_IGNORE_START
-        assert(typeof partyId === "string");
-        assert(typeof username === "string");
+        if (typeof partyId === "string") {
+            throw new Error("Expected partyId to be encrypted");
+        }
+        if (typeof username === "string") {
+            throw new Error("Expected username to be encrypted");
+        }
         //! EXPORT_FN_IGNORE_END
         /*!
             * We use a web app-specific routine, `accountExists`,
@@ -427,7 +488,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         if (! srpCh) {
             throw new Error("SRP challenge not set.");
         }
-        const validateSrpIdentity = async (identity: string) => {
+        const validateSrpIdentity = async (identity: StringOrPacketUnion) => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -441,7 +502,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                     );
                 }
                 await this.authHandler.sendResponse(identity,
-                    'text'
+                    identity instanceof Blob ? 'blob' : 'text'
                 );
                 return true;
             } catch (e) {
@@ -453,16 +514,17 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         }
         //! EXPORT_FN_IGNORE_END
         const { response: identity } = await srpCh.selectSecurePassword();
-        //! EXPORT_FN_IGNORE_START
-        assert(typeof identity === "string");
-        //! EXPORT_FN_IGNORE_END
+        console.assert(identity instanceof BerytusJWEPacket);
         /**!
          * We use a web app-specific routine, `validateSrpIdentity`, to
          * check whether the secret manager-suppied identity value
          * of the associated secure password field matches the one
          * stored in the backend.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
          * @var validateSrpIdentity
-         * @type {(identity: string): Promise<boolean>}
+         * @type {(identity: BerytusEncryptedPacket): Promise<boolean>}
          */
         if (! await validateSrpIdentity(identity)) {
             // TODO(berytus): We should have abortWithInvalidIdentity
@@ -485,7 +547,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         if (! srpCh) {
             throw new Error("SRP challenge not set.");
         }
-        const getServerPublicKey = async (): Promise<ArrayBuffer> => {
+        const getServerPublicKey = async (): Promise<ArrayBuffer | BerytusEncryptedPacket> => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -502,12 +564,17 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                     "Expected base64-encoded SRP:B in message draft's request"
                 );
             }
+            // if e2ee is enabled, so request is a JWE
+            if (this.channel!.constraints?.enableEndToEndEncryption) {
+                return new BerytusJWEPacket(request);
+            }
+            // otherwise, request is base64 encoded.
             return Uint8Array
                 // @ts-ignore: Available in modern browsers
                 .fromBase64(request)
                 .buffer;
         }
-        const sendClientPublicKey = async (valueA: ArrayBuffer) => {
+        const sendClientPublicKey = async (valueA: ArrayBuffer | BerytusEncryptedPacket) => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -520,7 +587,9 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                 );
             }
             await this.authHandler.sendResponse(
-                new Blob([valueA], { type: "application/octet-stream" } ),
+                valueA instanceof ArrayBuffer
+                    ? new Blob([valueA], { type: "application/octet-stream" } )
+                    : valueA,
                 "blob"
             );
         }
@@ -528,11 +597,14 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         /**!
          * We use a web app-specific routine, `getServerPublicKey`, to
          * retrieve SRP:B (informally as the server's ephemeral public key).
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
          * @var getServerPublicKey
-         * @type {(): Promise<ArrayBuffer>}
+         * @type {(): Promise<BerytusEncryptedPacket>}
          */
         const serverPublicKey = await getServerPublicKey();
-        console.assert(serverPublicKey instanceof ArrayBuffer);
+        console.assert(serverPublicKey instanceof BerytusJWEPacket);
         /*!
          * We send the SRP:B to the secret manager and retrieve SRP:A
          * (the client's ephemeral public key).
@@ -540,15 +612,18 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         const { response: clientPublicKey } = await
             srpCh.exchangePublicKeys(serverPublicKey);
         //! EXPORT_FN_IGNORE_START
-        assert(clientPublicKey instanceof ArrayBuffer);
+        assert(typeof clientPublicKey !== "string");
         //! EXPORT_FN_IGNORE_END
-        console.assert(clientPublicKey instanceof ArrayBuffer);
+        console.assert(clientPublicKey instanceof BerytusJWEPacket);
         /**!
          * We use a web app-specific routine, `sendClientPublicKey`, to
          * send SRP:A to the backend. Henceforth, both parties (the scm
          * and web app) can compute a shared secret.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
          * @var sendClientPublicKey
-         * @type {(valueA: ArrayBuffer): Promise<void>}
+         * @type {(valueA: BerytusEncryptedPacket): Promise<void>}
          */
         await sendClientPublicKey(clientPublicKey);
         //! EXPORT_FN_IGNORE_START
@@ -564,7 +639,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         if (! srpCh) {
             throw new Error("SRP challenge not set.");
         }
-        const getSaltFromServer = async (): Promise<ArrayBuffer> => {
+        const getSaltFromServer = async (): Promise<ArrayBuffer | BerytusEncryptedPacket> => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -581,13 +656,18 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                     "Expected base64-encoded salt in message draft's request"
                 );
             }
+            // if e2ee is enabled, so request is a JWE
+            if (this.channel!.constraints?.enableEndToEndEncryption) {
+                return new BerytusJWEPacket(request);
+            }
+            // otherwise, request is base64 encoded.
             return Uint8Array
                 // @ts-ignore: Available in modern browsers
                 .fromBase64(request)
                 .buffer;
         }
         const verifyClientProof = async (
-            valueM1: ArrayBuffer
+            valueM1: ArrayBuffer | BerytusEncryptedPacket
         ): Promise<boolean> => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
@@ -602,7 +682,9 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
             }
             try {
                 await this.authHandler.sendResponse(
-                    new Blob([valueM1], { type: "application/octet-stream" }),
+                    valueM1 instanceof ArrayBuffer
+                        ? new Blob([valueM1], { type: "application/octet-stream" } )
+                        : valueM1,
                     "blob"
                 );
                 return true;
@@ -617,27 +699,34 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         /**!
          * We use a web app-specific routine, `getSaltFromServer`, to
          * retrieve the salt used during account creation.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
          * @var getSaltFromServer
-         * @type {(): Promise<ArrayBuffer>}
+         * @type {(): Promise<BerytusEncryptedPacket>}
          */
         const salt = await getSaltFromServer();
-        console.assert(salt instanceof ArrayBuffer);
+        console.assert(salt instanceof BerytusJWEPacket);
         //! EXPORT_FN_IGNORE_START
-        assert(salt instanceof ArrayBuffer);
+        assert(salt instanceof BerytusJWEPacket);
         //! EXPORT_FN_IGNORE_END
         const { response: clientProof } = await
             srpCh.computeClientProof(salt);
-        console.assert(clientProof instanceof ArrayBuffer);
+        console.assert(clientProof instanceof BerytusJWEPacket);
         //! EXPORT_FN_IGNORE_START
-        assert(clientProof instanceof ArrayBuffer);
+        assert(typeof clientProof !== "string");
+        assert(clientProof instanceof BerytusJWEPacket);
         //! EXPORT_FN_IGNORE_END
         /**!
          * We use a web app-specific routine, `verifyClientProof`, to
          * send the computed proof by the secret manager to the backend
          * and verify its authenticity. If false is returned, the proof
          * is invalid.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
          * @var verifyClientProof
-         * @type {(valueM1: ArrayBuffer): Promise<boolean>}
+         * @type {(valueM1: BerytusEncryptedPacket): Promise<boolean>}
          */
         if (false === await verifyClientProof(clientProof)) {
             await srpCh.abortWithInvalidProofError();
@@ -656,7 +745,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         if (! srpCh) {
             throw new Error("SRP challenge not set.");
         }
-        const getServerProof = async (): Promise<ArrayBuffer> => {
+        const getServerProof = async (): Promise<ArrayBuffer | BerytusEncryptedPacket> => {
             if (!this.authHandler) {
                 throw new Error("Expecting authHandler to be set.");
             }
@@ -673,6 +762,11 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
                     "Expected base64-encoded valueM2 in message draft's request"
                 );
             }
+            // if e2ee is enabled, so request is a JWE
+            if (this.channel!.constraints?.enableEndToEndEncryption) {
+                return new BerytusJWEPacket(request);
+            }
+            // otherwise, request is base64 encoded.
             return Uint8Array
                 // @ts-ignore: Available in Modern Firefox
                 .fromBase64(request)
@@ -683,11 +777,14 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
          * We use a web app-specific routine, `getServerProof`, to
          * retrieve the server proof (SRP:M2). Using M2, the scm can
          * verify the authenticity of the web app backend.
+         * Since E2EE is enabled, the value itself is encrypted by the
+         * channel's session key although it is not necessary for the
+         * Secure Remote Password Protocol.
          * @var getServerProof
-         * @type {(): Promise<ArrayBuffer>}
+         * @type {(): Promise<BerytusEncryptedPacket>}
          */
         const serverProof = await getServerProof();
-        console.assert(serverProof instanceof ArrayBuffer);
+        console.assert(serverProof instanceof BerytusJWEPacket);
         try {
             await srpCh.verifyServerProof(serverProof);
         } catch (e) {
@@ -705,6 +802,12 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         //! EXPORT_FN_IGNORE_START
         await this.authHandler!.sendResponse(true, 'json');
         const res = await this.authHandler!.finish();
+        res.identity.forEach(idf => {
+            this.loginState.identityFields.push({
+                id: `${idf.id}.cleartext`,
+                value: idf.value
+            });
+        });
         await Promise.all(res.userAttributes.map(async u => {
             this.loginState.userAttributes[u.id] =
                 await this.stringifyBerytusValue(u.value);

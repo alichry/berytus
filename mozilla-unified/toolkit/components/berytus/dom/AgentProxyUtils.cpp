@@ -1266,27 +1266,6 @@ void ToProxy::BerytusChallengeInfoUnion(
         static_cast<dom::BerytusSecureRemotePasswordChallenge*>(aChallenge.get());
       const auto& params = ch->Parameters();
       info.mParameters.mField.Assign(params.mField);
-      if (!params.mEncoding.WasPassed()) {
-        info.mParameters.mEncoding.Init(Nothing());
-      } else {
-        using S1 = berytus::StaticString_None;
-        using S2 = berytus::StaticString_Hex;
-        static_assert(std::u16string_view(S1::mLiteral.get()) == u"None"_ns);
-        static_assert(std::u16string_view(S2::mLiteral.get()) == u"Hex"_ns);
-        switch (params.mEncoding.Value()) {
-          case dom::BerytusSecureRemotePasswordChallengeEncodingType::None: {
-            info.mParameters.mEncoding.Init(S1());
-            break;
-          }
-          case dom::BerytusSecureRemotePasswordChallengeEncodingType::Hex: {
-            info.mParameters.mEncoding.Init(S2());
-            break;
-          }
-          default:
-            MOZ_RELEASE_ASSERT(false, "Unrecognisedd Encoding Type");
-            return;
-        }
-      }
       aRetVal.Init(std::move(info));
       return;
     }

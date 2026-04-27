@@ -654,32 +654,11 @@
         }
       },
       {
-        "id": "BerytusSecureRemotePasswordChallengeEncodingType",
-        "choices": [
-          {
-            "type": "string",
-            "enum": [
-              "None"
-            ]
-          },
-          {
-            "type": "string",
-            "enum": [
-              "Hex"
-            ]
-          }
-        ]
-      },
-      {
         "id": "BerytusSecureRemotePasswordChallengeParameters",
         "type": "object",
         "properties": {
           "field": {
             "type": "string"
-          },
-          "encoding": {
-            "$ref": "BerytusSecureRemotePasswordChallengeEncodingType",
-            "optional": true
           }
         }
       },
@@ -1575,27 +1554,6 @@
         }
       },
       {
-        "id": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket",
-        "choices": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
-          },
-          {
-            "type": "object",
-            "isInstanceOf": "ArrayBufferView",
-            "additionalProperties": true
-          },
-          {
-            "$ref": "BerytusEncryptedPacket"
-          }
-        ]
-      },
-      {
         "id": "BerytusSendExchangePublicKeysMessage",
         "type": "object",
         "properties": {
@@ -1609,7 +1567,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1627,7 +1585,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1645,7 +1603,7 @@
             ]
           },
           "payload": {
-            "$ref": "stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
+            "$ref": "ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1762,27 +1720,11 @@
         }
       },
       {
-        "id": "stringOrArrayBufferOrBerytusEncryptedPacket",
-        "choices": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "object",
-            "isInstanceOf": "ArrayBuffer",
-            "additionalProperties": true
-          },
-          {
-            "$ref": "BerytusEncryptedPacket"
-          }
-        ]
-      },
-      {
         "id": "BerytusChallengeExchangePublicKeysMessageResponse",
         "type": "object",
         "properties": {
           "response": {
-            "$ref": "stringOrArrayBufferOrBerytusEncryptedPacket"
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
           }
         }
       },
@@ -1791,7 +1733,7 @@
         "type": "object",
         "properties": {
           "response": {
-            "$ref": "stringOrArrayBufferOrBerytusEncryptedPacket"
+            "$ref": "ArrayBufferOrBerytusEncryptedPacket"
           }
         }
       },

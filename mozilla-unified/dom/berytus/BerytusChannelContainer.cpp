@@ -21,7 +21,7 @@ namespace mozilla::dom {
 
 
 // Only needed for refcounted objects.
-NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusChannelContainer, mGlobal, mPacketObservers)
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE(BerytusChannelContainer, mGlobal, mPacketObserver)
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusChannelContainer)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusChannelContainer)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusChannelContainer)
@@ -44,8 +44,12 @@ nsIGlobalObject* BerytusChannelContainer::GetParentObject() const {
   return mGlobal;
 }
 
-void BerytusChannelContainer::HoldObserver(RefPtr<PacketObserver>& aObserver) {
-  mPacketObservers.AppendElement(aObserver);
+bool BerytusChannelContainer::HasPacketObserver() const {
+  return mPacketObserver;
+}
+
+void BerytusChannelContainer::HoldPacketObserver(RefPtr<PacketObserver>& aObserver) {
+  mPacketObserver = aObserver;
 }
 
 already_AddRefed<BerytusChannelContainer> BerytusChannelContainer::GetInstance(

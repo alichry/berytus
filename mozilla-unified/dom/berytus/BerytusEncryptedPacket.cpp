@@ -7,6 +7,7 @@
 #include "mozilla/dom/BerytusEncryptedPacket.h"
 #include "BerytusEncryptedPacket.h"
 #include "BerytusKeyAgreementParameters.h"
+#include "mozilla/Assertions.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/Span.h"
 #include "mozilla/StaticPtr.h"
@@ -97,6 +98,7 @@ bool BerytusEncryptedPacket::Attached() const {
 void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
                                     ErrorResult& aRv) {
   MOZ_ASSERT(aChannel);
+  MOZ_ASSERT(aChannel->ID().Length() > 0);
   if (Attached()) {
     aRv.ThrowInvalidStateError("Packet already attached.");
     return;
@@ -128,11 +130,24 @@ void BerytusEncryptedPacket::Attach(RefPtr<BerytusChannel>& aChannel,
     aRv.Throw(NS_ERROR_FAILURE);
     return;
   }
-  RefPtr<BerytusEncryptedPacket> self = this;
-  RefPtr<PacketObserver> observer = new PacketObserver(self);
-  // TODO(berytus): Check... we should be using a WeakMap<BerytusEncryptedPacket, PacketObserver>
-  container->HoldObserver(observer);
   mAttachedChannelId.Assign(aChannel->ID());
+  MOZ_LOG(sLogger, LogLevel::Debug,
+          ("Attach(packet=%p, channel=%p, channelId=%s): Storing ChannelID",
+          this,
+          aChannel.get(),
+          NS_ConvertUTF16toUTF8(aChannel->ID()).BeginReading()));
+  if (container->HasPacketObserver()) {
+    return;
+  }
+  RefPtr<PacketObserver> observer = new PacketObserver(mGlobal);
+      MOZ_LOG(sLogger, LogLevel::Debug,
+          ("Attach(packet=%p, channel=%p, channelId=%s, container=%p): Creating PacketObserver<%p>",
+          this,
+          aChannel.get(),
+          NS_ConvertUTF16toUTF8(aChannel->ID()).BeginReading(),
+          container.get(),
+          observer.get()));
+  container->HoldPacketObserver(observer);
 }
 
 already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
@@ -210,9 +225,10 @@ already_AddRefed<Blob> BerytusEncryptedPacket::Unmask(
 }
 
 bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
+  const nsCString& aReqUrl,
   const fetch::OwningBodyInit& aSrc,
   fetch::OwningBodyInit& aDest,
-  const nsCString& aReqUrl,
+  nsString& aRetChannelId,
   ErrorResult& aRv
 ) {
   if (aSrc.IsBlob()) {
@@ -231,6 +247,10 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
     }
     MOZ_ASSERT(maybeUnmaskedBlob);
     aDest.SetAsBlob() = maybeUnmaskedBlob;
+    if (hasUnmasked) {
+      MOZ_ASSERT(packet->Attached());
+      aRetChannelId.Assign(packet->mAttachedChannelId);
+    }
     return hasUnmasked;
   }
   if (aSrc.IsFormData()) {
@@ -261,36 +281,49 @@ bool BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
     MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData contains a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
     const RefPtr<FormData> unmaskedFd = fd->Clone();
     bool anyHasUnmasked = false;
+    const nsString* channelId = nullptr;
     for (auto& entry : unmaskedFd->mFormData) {
       if (!entry.value.IsBlob()) {
         continue;
       }
-      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Trying to Unmask %.s", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Trying to Unmask %s", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
       RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(
           entry.value.GetAsBlob());
       if (!packet) {
-        MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Member %.s is not a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
+        MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Member %s is not a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
         continue;
       }
-      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Member %.s is a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Member %s is a BerytusEncryptedPacket", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
       bool hasUnmasked;
       RefPtr<Blob> maybeUnmaskedBlob = packet->Unmask(aReqUrl, hasUnmasked, aRv);
       if (NS_WARN_IF(aRv.Failed())) {
         return false;
       }
-      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Unmasked Member %.s", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
+      MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p>'s FormData: Unmasked Member %s", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc, NS_ConvertUTF16toUTF8(entry.name).BeginReading()));
       MOZ_ASSERT(maybeUnmaskedBlob);
       entry.value.SetAsBlob() = maybeUnmaskedBlob;
+      if (hasUnmasked) {
+        MOZ_ASSERT(packet->Attached());
+        if (channelId && !channelId->Equals(packet->mAttachedChannelId)) {
+          aRv.ThrowTypeError("Fetch request contained packets from different channels");
+          return false;
+        }
+        channelId = &packet->mAttachedChannelId;
+      }
       anyHasUnmasked = anyHasUnmasked || hasUnmasked;
     }
     aDest.SetAsFormData() = unmaskedFd;
+    if (anyHasUnmasked) {
+      MOZ_ASSERT(channelId);
+      aRetChannelId.Assign(*channelId);
+    }
     return anyHasUnmasked;
   }
   MOZ_LOG(sLogger, LogLevel::Debug, ("TryUnmaskAnyPacketInFetchBody(%.*s): Input<%p> is not a Blob/FormData", (int) aReqUrl.Length(), aReqUrl.BeginReading(), &aSrc));
   return false;
 }
 
-NS_IMPL_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver, mPacket, mDetectedRequests, mDetectedChannels)
+NS_IMPL_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver, mGlobal, mDetectedRequests, mDetectedChannels)
 NS_IMPL_CYCLE_COLLECTING_ADDREF(BerytusEncryptedPacket::PacketObserver)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(BerytusEncryptedPacket::PacketObserver)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver)
@@ -299,8 +332,8 @@ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(BerytusEncryptedPacket::PacketObserver)
 NS_INTERFACE_MAP_END
 
 BerytusEncryptedPacket::PacketObserver::PacketObserver(
-    RefPtr<BerytusEncryptedPacket>& aPacket)
-    : mPacket(aPacket) {
+    nsIGlobalObject* aGlobal)
+    : mGlobal(aGlobal) {
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
   MOZ_ASSERT(obs);
 
@@ -378,8 +411,9 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     internalRequest->GetURL(reqUrl);
     fetch::OwningBodyInit newReqBody;
     ErrorResult erv;
+    nsString associatedBerytusChannelId;
     bool unmasked = BerytusEncryptedPacket::TryUnmaskAnyPacketInFetchBody(
-        bodyInit, newReqBody, reqUrl, erv);
+        reqUrl, bodyInit, newReqBody, associatedBerytusChannelId, erv);
     if (NS_WARN_IF(erv.Failed())) {
       return erv.StealNSResult();
     }
@@ -395,7 +429,7 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
                                    contentTypeWithCharset, contentLength);
     NS_ENSURE_SUCCESS(rv, rv);
     RefPtr<berytus::UnmaskPacket> packet = new berytus::UnmaskPacket(
-      NS_ConvertUTF16toUTF8(mPacket->mAttachedChannelId),
+      NS_ConvertUTF16toUTF8(associatedBerytusChannelId),
       0,
       contentTypeWithCharset,
       contentLength,
@@ -404,7 +438,9 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     mDetectedRequests.InsertOrUpdate(
       internalRequest.unsafeGetRawPtr(),
       packet);
-    MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(url=%s, length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), reqUrl.get(), contentLength, contentTypeWithCharset.get()));
+    MOZ_LOG(sLogger,
+            LogLevel::Info,
+            ("Observe(%p, %p, %s): Created DetectedRequestEntry<%p, %p>(id=%s, url=%s, length=%llu, content-type=%s)", this, aSubject, aTopic, internalRequest.unsafeGetRawPtr(), packet.get(), packet->BerytusChannelId().BeginReading(), reqUrl.get(), contentLength, contentTypeWithCharset.get()));
     return NS_OK;
   }
   if (strcmp(aTopic, NS_FETCH_DRIVER_HTTP_FETCH_TOPIC) == 0) {
@@ -473,7 +509,7 @@ NS_IMETHODIMP BerytusEncryptedPacket::PacketObserver::Observe(nsISupports* aSubj
     MOZ_ASSERT(channelId == packet->HttpChannelId());
     MOZ_LOG(sLogger, LogLevel::Info, ("Observe(%p, %p, %s): Retrieved DetectedChannelEntry<%llu, %p>(length=%lld, content-type=%s)", this, aSubject, aTopic, channelId, packet.get(), packet->ContentLength(), packet->ContentType().get()));
     RefPtr<BerytusChannelContainer> container =
-      BerytusChannelContainer::GetInstance(mPacket->mGlobal->GetAsInnerWindow());
+      BerytusChannelContainer::GetInstance(mGlobal->GetAsInnerWindow());
     if (NS_WARN_IF(!container)) {
       return NS_ERROR_FAILURE;
     }

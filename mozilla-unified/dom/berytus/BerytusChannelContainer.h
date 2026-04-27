@@ -50,7 +50,8 @@ public:
   static already_AddRefed<BerytusChannelContainer> GetInstance(
       nsPIDOMWindowInner* aWindow);
 
-  void HoldObserver(RefPtr<PacketObserver>& aObserver);
+  bool HasPacketObserver() const;
+  void HoldPacketObserver(RefPtr<PacketObserver>& aObserver);
 
   bool IsSignedUrl(const nsCString& aReqUrl) const;
 
@@ -61,7 +62,7 @@ public:
 protected:
   ~BerytusChannelContainer();
   nsCOMPtr<nsIGlobalObject> mGlobal;
-  nsTArray<RefPtr<PacketObserver>> mPacketObservers;
+  RefPtr<PacketObserver> mPacketObserver; /* 1 obsv per content window */
   RefPtr<mozilla::berytus::MaskManagerChild> mMaskManager;
 public:
   // This should return something that eventually allows finding a
