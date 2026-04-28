@@ -5,7 +5,7 @@ with the Berytus Web API for secure user authentication. It
 streamlines end-to-end encrypted authentication flows, guaranteeing
 protection against credential theft via TLS-proxy-in-the-middle (TPitM) and JavaScript code injection attacks.
 
-### Setup Instructions
+## Setup Instructions
 
 First, run `npm install` to gather the dependencies. Node.js 25+
 is recommended, however, we have a polyfill if needed for
@@ -35,7 +35,7 @@ To achieve this, either run `npm run dev` which will use
 Alternatively, set `LISTEN_PORT` to 443, and execute
 `npm run start` as root.
 
-### Generating a Signing Key
+## Generating a Signing Key
 
 This project comes with a pre-generated Signing Key
 for secure credential mapping and key exchange authentication.
