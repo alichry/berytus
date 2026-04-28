@@ -14,6 +14,12 @@ export const getAccountHandlersList = () => {
         if (! /^[0-9]+$/.test(aV) || ! /^[0-9]+$/.test(bV)) {
             return 0;
         }
+        if (a.name.match(/E2EE/) && !b.name.match(/E2EE/)) {
+            return 1;
+        }
+        if (!a.name.match(/E2EE/) && b.name.match(/E2EE/)) {
+            return -1;
+        }
         return Number(aV) - Number(bV);
     })
     return array;

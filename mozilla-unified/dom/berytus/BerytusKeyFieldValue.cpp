@@ -50,4 +50,16 @@ void BerytusKeyFieldValue::ToJSON(JSContext* aCx, JS::MutableHandle<JS::Value> a
   mBuffer->ToJSON(aCx, aRetVal, aRv);
 }
 
+void BerytusKeyFieldValue::Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv) {
+  RefPtr<BerytusEncryptedPacket> np = nullptr;
+  Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>> publicKey(np);
+  mBuffer->ToVariant(publicKey);
+  if (publicKey.is<RefPtr<BerytusEncryptedPacket>>()) {
+    auto packet = publicKey.as<RefPtr<BerytusEncryptedPacket>>();
+    MOZ_ASSERT(packet);
+    packet->Attach(aChannel, aRv);
+    NS_ENSURE_TRUE_VOID(!aRv.Failed());
+  }
+}
+
 } // namespace mozilla::dom

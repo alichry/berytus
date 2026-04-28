@@ -1,0 +1,14 @@
+--- toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs.orig	2025-11-02 21:58:19
++++ toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs	2025-11-02 21:58:28
+@@ -532,6 +532,11 @@
+     }
+ 
+     try {
++      channel.QueryInterface(Ci.nsIHttpChannel).getRequestHeader("X-Berytus-Channel-Id");
++      return { error: "Upload streams with Berytus Encrypted Packet(s) are unsupported" };
++    } catch (e) { }
++
++    try {
+       let stream = channel.uploadStream;
+ 
+       let formData = createFormData(stream, channel);

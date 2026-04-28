@@ -6,6 +6,7 @@ if (process.env.NODE_ENV !== "development") {
 
 const cleanDb = async () => {
     const tables = [
+        'berytus_account_constant',
         'berytus_account_auth_challenge_message',
         'berytus_account_auth_challenge',
         'berytus_account_def_auth_challenge',
@@ -17,7 +18,9 @@ const cleanDb = async () => {
         'berytus_account_def_category_version',
         'berytus_account_def_category',
         'berytus_account_def',
-        'berytus_account'
+        'berytus_account',
+        'berytus_channel',
+        'berytus_channel_request',
     ] as const;
 
     return useConnection(async conn => {

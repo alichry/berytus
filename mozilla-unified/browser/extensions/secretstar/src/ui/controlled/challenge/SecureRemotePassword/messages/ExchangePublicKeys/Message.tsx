@@ -1,7 +1,6 @@
 import { isSrpChallenge } from "@root/db";
 import { BaseMessageProps } from "../../../common/types";
 import { useEffect, useState } from "react";
-import JsrpClient from "@root/JsrpClient";
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
 import { SRP, SrpClient } from "fast-srp-hap";
@@ -11,22 +10,22 @@ import ConcatErrorMessages from "@root/ui/components/ConcatErrorMessages";
 
 export interface MessageProps extends BaseMessageProps {
     onSubmit(
-        serverPublicKeyHexB: string,
-        clientPublicKeyHexA: string,
-        clientPrivateKeyHexa: string
+        serverPublicKeyB: string,
+        clientPublicKeyA: string,
+        clientPrivateKeya: string
     ): void;
 }
 
 const payloadSchema = string()
-    .label("ServerPublicKeyHexA")
+    .label("ServerPublicKeyA")
     .required();
 
 export default function Message({ challenge, message, onSubmit }: MessageProps) {
     const [error, setError] = useState<Error>();
     const [processed, setProcessed] = useState<boolean>();
-    const { value: serverPublicKeyHexB, error: validationError, loading: validationLoading  } = useYupValidation(payloadSchema, message.payload);
+    const { value: serverPublicKeyB, error: validationError, loading: validationLoading  } = useYupValidation(payloadSchema, message.payload);
     useEffect(() => {
-        if (! serverPublicKeyHexB || processed) {
+        if (! serverPublicKeyB || processed) {
             return;
         }
         const run = async () => {
@@ -45,19 +44,13 @@ export default function Message({ challenge, message, onSubmit }: MessageProps) 
                     clientPrivateKey,
                     false
                 );
-                const clientPublicKeyHexA = client.computeA()
-                    .toString('hex');
-                // const client = new JsrpClient();
-
-                // await client.init({
-                //     username: challenge.srpState.fields.username,
-                //     password: challenge.srpState.fields.password
-                // });
+                const clientPublicKeyA = client.computeA()
+                    .toString('base64');
 
                 onSubmit(
-                    serverPublicKeyHexB,
-                    clientPublicKeyHexA,
-                    clientPrivateKey.toString('hex')
+                    serverPublicKeyB,
+                    clientPublicKeyA,
+                    clientPrivateKey.toString('base64')
                 );
             } catch (e) {
                 setError(e as Error);
@@ -66,7 +59,7 @@ export default function Message({ challenge, message, onSubmit }: MessageProps) 
             }
         }
         run();
-    }, [serverPublicKeyHexB]);
+    }, [serverPublicKeyB]);
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
             { error || validationError ? (

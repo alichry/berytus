@@ -1,21 +1,27 @@
+// TODO(berytus): Ensure the side effects by CreateField and
+// PutField are idempotnt; i.e., if multiple retries occur
+// to add a field record to local storage, it should not result
+// in duplicates.
 import { useCallback, useEffect, useState } from 'react';
 import { Field, FieldValueRejection, Session, db } from "@root/db/db";
-import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity } from "@root/hooks";
+import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
 import CreateFieldView from "../components/CreateFieldView";
-import JsrpClient from '../../JsrpClient';
-import { ab2base64, ab2str, base64ToArrayBuffer, formatBase64AsPem, pemToBuf, privateKeyBufToPublicKeyBuf, str2ab } from "@root/key-utils";
+import { SRP } from "fast-srp-hap";
+import { ab2base64, ab2str, formatBase64AsPem, nodeBufferToArrayBuffer, pemToBuf, privateKeyBufToPublicKeyBuf, str2ab } from "@root/key-utils";
 import { randomFieldValue } from '@root/utils';
-import type { FieldInfo } from '@berytus/types';
+import type { AddFieldResult, FieldInfo } from '@berytus/types';
 import { BerytusFieldValueUnion, BerytusForeignIdentityFieldOptions, BerytusSecurePasswordFieldOptions } from "@berytus/types-extd";
 import { EBerytusFieldType, ERejectionCode } from "@berytus/enums";
+import { InternalError } from '@root/errors/InternalError';
 
 const isSecurePasswordOptions = (
+    type: EBerytusFieldType,
     opts: FieldInfo['options']
 ): opts is BerytusSecurePasswordFieldOptions => {
-    return "salt" in opts;
+    return type === EBerytusFieldType.SecurePassword;
 }
 
 export interface CreateFieldProps {
@@ -45,7 +51,8 @@ export default function CreateField({ rejected }: CreateFieldProps) {
     const settings = useSettings();
     const identity = useIdentity();
     const { sessionId, fieldId } = useParams<string>();
-    const session = useLiveQuery(
+    const [error, setError] = useState<Error | undefined>();
+    const query = useLiveQuery(
         async () => {
             if (! sessionId || ! fieldId) {
                 return;
@@ -57,20 +64,44 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             if (! record.createFieldOptions.find(f => f.id === fieldId)) {
                 return;
             }
-            return record;
+            const channel = await db.channel.get(record.channel.id);
+            if (! channel) {
+                setError(new Error('Channel not found!'));
+                return;
+            }
+            return {
+                session: record,
+                channel
+            };
         }
     );
+    const { session, channel } = query || {};
     const tabId = session?.context.document.id;
     const navigate = useNavigateWithPageContextRoute();
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [value, setValue] = useState<Uint8Array>(new Uint8Array());
-    const [error, setError] = useState<Error | undefined>();
     const onProcessed = useCallback(() => {
         navigate('/loading');
     }, [navigate]);
+    const { cipherbox, loading: cipherboxLoading } = useCipherbox(channel);
+    const preResolveCb = useCallback(async (value: NonNullable<AddFieldResult>) => {
+        if (cipherboxLoading) {
+            throw new InternalError("Cipherbox not loaded in CreateField preResolve()");
+        }
+        if (! cipherbox) {
+            return value; // e2e not enabled
+        }
+        if (typeof value === "string") {
+            return cipherbox.encrypt(value);
+        }
+        return await cipherbox.encryptDictionary(value);
+    }, [cipherbox, cipherboxLoading]);
     const { maybeResolve, maybeReject } = useRequest<"AccountCreation_AddField">(
         session?.requests[session?.requests.length - 1],
-        { onProcessed }
+        {
+            onProcessed,
+            preResolve: preResolveCb
+        }
     );
     useAbortRequestOnWindowClose({ maybeReject, tabId });
     const field = session?.createFieldOptions?.find(f => f.id === fieldId);
@@ -78,7 +109,6 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         session?.rejectedFieldValues?.find(f => f.fieldId === fieldId);
     const [generateValue, setGenerateValue] = useState<null | (() => Promise<Uint8Array>)>();
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
-
     useEffect(() => {
         if (! field || (rejected && ! rejection)) {
             return;
@@ -99,8 +129,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         };
         setGenerateValue(() => fn);
     }, [field, rejected, rejection]);
-
-    const loaded = session && (!rejected || rejection) && settings && maybeReject && maybeResolve && identity && field && (generateValue !== undefined);
+    const loaded = session && !cipherboxLoading && (!rejected || rejection) && settings && maybeReject && maybeResolve && identity && field && (generateValue !== undefined);
 
     useEffect(() => {
         if (! rejection?.webAppDictatedValue) {
@@ -127,8 +156,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
             resolveWith = {
                 publicKey: publicKeyBuf
             };
-        } else if (isSecurePasswordOptions(field.options)) {
-            const client = new JsrpClient();
+        } else if (isSecurePasswordOptions(field.type, field.options)) {
             const { identityFieldId } = field.options;
             const identityField =
                 (session.fields || [])
@@ -153,16 +181,26 @@ export default function CreateField({ rejected }: CreateFieldProps) {
                 maybeReject(ERejectionCode.GeneralError);
                 return false;
             }
-            const v = ab2str(value.buffer);
-            await client.init({ username: identityField.value, password: v });
-            const { salt, verifier } = await client.createVerifier();
+            // NOTE(berytus): if `new Uint8Array(32)` is used,
+            // the underlying ArrayBuffer can potentially
+            // allocate more than 32 bytes, e.g. 128 bytes.
+            // using `new Uint8Array(new ArrayBuffer(32))`
+            // does the trick.
+            const salt = new Uint8Array(new ArrayBuffer(32));
+            crypto.getRandomValues(salt);
+            const verifier = nodeBufferToArrayBuffer(SRP.computeVerifier(
+                SRP.params[4096],
+                Buffer.from(salt),
+                Buffer.from(identityField.value, 'ascii'),
+                Buffer.from(value.buffer)
+            ));
             newField = {
                 ...field,
-                value: v
+                value: ab2str(value.buffer)
             };
             resolveWith = {
-                salt: base64ToArrayBuffer(salt),
-                verifier: base64ToArrayBuffer(verifier)
+                salt: salt.buffer,
+                verifier
             };
         } else {
             const v = ab2str(value.buffer);

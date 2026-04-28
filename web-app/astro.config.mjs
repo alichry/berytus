@@ -19,6 +19,12 @@ export default defineConfig({
     build: {
       minify: false,
     },
+    server: {
+      https: process.env.SERVER_CERT_PATH ? {
+        key: fs.readFileSync(process.env.SERVER_KEY_PATH),
+        cert: fs.readFileSync(process.env.SERVER_CERT_PATH),
+      } : undefined,
+    }
   },
   output: "server",
 

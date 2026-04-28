@@ -15,17 +15,20 @@ class BerytusOffChannelOtpChallenge final : public BerytusChallenge {
 public:
   NS_DECL_ISUPPORTS_INHERITED
   BerytusOffChannelOtpChallenge(nsIGlobalObject* aGlobal,
-                   const nsAString& aID);
+                                const nsAString& aID,
+                                BerytusOffChannelOtpChallengeParameters&& aParameters);
 protected:
   ~BerytusOffChannelOtpChallenge();
+  BerytusOffChannelOtpChallengeParameters mParameters;
   void CacheParameters(JSContext* aCx, ErrorResult& aRv) override;
 
 public:
+  BerytusOffChannelOtpChallengeParameters const& Parameters() const;
+  
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> GetOtp(JSContext* aCx,
-                                              const nsAString& aForeignIdentityFieldIds,
-                                              ErrorResult& aRv);
+                                   ErrorResult& aRv);
   already_AddRefed<Promise> AbortWithIncorrectOtpError(
       JSContext* aCx,
       ErrorResult& aRv
@@ -34,6 +37,7 @@ public:
   static already_AddRefed<BerytusOffChannelOtpChallenge> Constructor(
     const GlobalObject& aGlobal,
     const nsAString& aId,
+    const BerytusOffChannelOtpChallengeParameters& aParameters,
     ErrorResult& aRv
   );
 };

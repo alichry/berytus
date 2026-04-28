@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValue, BerytusFieldValueUnion, BerytusKeyDerivationParams, BerytusKeyExchangeAuthentication, BerytusKeyExchangeParams, BerytusKeyExchangeSession, BerytusKeyGenParams, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.d.ts";
+import type { BerytusChallengeAbortionCode, BerytusChallengeInfoUnion, BerytusFieldOptionsUnion, BerytusFieldUnion, BerytusFieldValue, BerytusFieldValueUnion, BerytusKeyDerivationParams, BerytusKeyExchangeAuthentication, BerytusKeyExchangeParams, BerytusKeyExchangeSession, BerytusKeyGenParams, BerytusReceiveMessageUnion, BerytusSendMessageUnion, BerytusUserAttributeDefinition, EBerytusChallengeType, EBerytusFieldType } from "./generated/berytus.web.js";
 
 export interface ChannelConstraints {
     secretManagerPublicKey?: string[];
@@ -28,6 +28,7 @@ export interface ChannelMetadata {
     constraints: ChannelConstraints;
     webAppActor: WebAppActor;
     scmActor: CryptoActor; /* retrieved from getSigningKey() */
+    e2eeEnabled: boolean;
 }
 
 export interface UriParams {
@@ -167,6 +168,8 @@ enum EChallengeType {
     DigitalSignature = "DigitalSignature",
     Password = "Password",
     SecureRemotePassword = "SecureRemotePassword",
+    // TODO(berytus): Test this, I think we have mooved
+    // to OffChannelOtp
     ForeignIdentityOtp = "ForeignIdentityOtp"
 }
 

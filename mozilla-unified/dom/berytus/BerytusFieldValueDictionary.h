@@ -15,6 +15,8 @@
 
 namespace mozilla::dom {
 
+class BerytusChannel;
+
 class BerytusFieldValueDictionary : public nsISupports /* or NonRefcountedDOMObject if this is a non-refcounted object */,
                                     public nsWrapperCache /* Change wrapperCache in the binding configuration if you don't want this */
 {
@@ -31,7 +33,7 @@ public:
   virtual void ToJSON(JSContext* aCx,
                       JS::MutableHandle<JS::Value> aRetVal,
                       ErrorResult& aRv) = 0;
-
+  virtual void Attach(RefPtr<BerytusChannel>& aChannel, ErrorResult& aRv);
 protected:
   virtual ~BerytusFieldValueDictionary();
   nsCOMPtr<nsIGlobalObject> mGlobal;

@@ -21,6 +21,8 @@ namespace mozilla {
 
 namespace dom {
 
+class OwningArrayBufferOrBerytusEncryptedPacket;
+
 class BerytusBuffer final : public nsISupports /* or NonRefcountedDOMObject if this is a
                             non-refcounted object */
 {
@@ -54,6 +56,8 @@ protected:
     nsresult& aRv
   );
 
+  void ToVariant(Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>>& aRetVal);
+
   void Get(JSContext* aCx,
            OwningArrayBufferOrBerytusEncryptedPacket& aRetVal,
            ErrorResult& aRv);
@@ -61,10 +65,6 @@ protected:
   void ToJSON(JSContext* aCx,
               JS::MutableHandle<JS::Value> aRetVal,
               ErrorResult& aRv);
-
-
-  already_AddRefed<BerytusBuffer> Clone(nsresult* aRv) const;
-  
 public:
 
   struct CreateMatcher {

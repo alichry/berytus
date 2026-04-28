@@ -1,0 +1,29 @@
+--- dom/base/FormData.h.orig	2025-09-20 16:11:07
++++ dom/base/FormData.h	2026-04-12 10:43:03
+@@ -25,6 +25,8 @@
+ class HTMLFormElement;
+ class GlobalObject;
+ 
++class BerytusEncryptedPacket;
++
+ class FormData final : public nsISupports,
+                        public HTMLFormSubmission,
+                        public nsWrapperCache {
+@@ -47,6 +49,8 @@
+ 
+   void SetNameFilePair(FormDataTuple* aData, const nsAString& aName,
+                        File* aFile);
++  void SetNameBlobPair(FormDataTuple* aData, const nsAString& aName,
++                   Blob* aBlob);
+ 
+   void SetNameDirectoryPair(FormDataTuple* aData, const nsAString& aName,
+                             Directory* aDirectory);
+@@ -163,6 +167,8 @@
+   RefPtr<Element> mSubmitter;
+ 
+   nsTArray<FormDataTuple> mFormData;
++
++  friend class BerytusEncryptedPacket;
+ };
+ 
+ }  // namespace dom

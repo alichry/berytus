@@ -66,7 +66,7 @@ INSERT INTO berytus_account_def_field
 
     (2000, 'partyId', 'Identity', '{ "private": false,  "humanReadable": false, "maxLength": 24 }'),
     (2000, 'username', 'Identity', '{ "private": false,  "humanReadable": true, "maxLength": 24 }'),
-    (2000, 'securePassword', 'SecurePassword',  '{ "identityFieldId": "partyId" }'),
+    (2000, 'securePassword', 'SecurePassword',  '{ "identityFieldId": "username" }'),
 
     (3000, 'firstName', 'Identity', '{ "private": true,  "humanReadable": true, "maxLength": 256 }'),
     (3000, 'fatherName', 'Identity', '{ "private": true,  "humanReadable": true, "maxLength": 256 }'),
@@ -104,8 +104,9 @@ INSERT INTO berytus_account_def_key_field_id
 INSERT INTO berytus_account_def_auth_challenge
 (AccountVersion, ChallengeID, ChallengeType, ChallengeParameters)
 VALUES
-(1, 'password', 'Password', '{ "passwordFieldIds": ["password"] }'),
-(3, 'digital-signature', 'DigitalSignature', '{ "keyFieldId": "key" }');
+(1, 'password', 'Password', '{ "fields": ["password"] }'),
+(3, 'digital-signature', 'DigitalSignature', '{ "field": "key" }'),
+(2000, 'secure-remote-password', 'SecureRemotePassword', '{ "field": "securePassword" }');
 
 /*
 INSERT INTO berytus_account_field
@@ -139,3 +140,9 @@ INSERT INTO berytus_account_field
 (24, 2000, "username", '"matty"'),
 (24, 2000, "securePassword", '"securePassMatty"');
 */
+
+INSERT INTO berytus_account_constant
+(AccountVersion, ConstantName, Value)
+VALUES
+(2000, 'partyId.ClassA', '0001')
+;

@@ -56,8 +56,7 @@ export default function ApproveChallengeView({ challenge, onApprove, onReject }:
                     ) : null}
                     <ChallengeParameters
                         className="mb-5"
-                        //parameters={{ "alg": "RSA-OEP", "bb": "OO" }}
-                        parameters={(challenge.parameters || {}) as Record<string, unknown>}
+                        parameters={(challenge.parameters || {})}
                     />
                     <ApproveOrReject
                         approveText={

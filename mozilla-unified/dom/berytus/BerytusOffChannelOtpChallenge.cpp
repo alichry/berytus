@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/BerytusOffChannelOtpChallenge.h"
 #include "mozilla/dom/ToJSValue.h"
+#include "mozilla/berytus/AgentProxyUtils.h"
 
 namespace mozilla::dom {
 
@@ -16,14 +17,27 @@ NS_INTERFACE_MAP_END_INHERITING(BerytusChallenge)
 
 BerytusOffChannelOtpChallenge::BerytusOffChannelOtpChallenge(
     nsIGlobalObject* aGlobal,
-    const nsAString& aID) : BerytusChallenge(aGlobal,
+    const nsAString& aID,
+    BerytusOffChannelOtpChallengeParameters&& aParameters) : BerytusChallenge(aGlobal,
                                              BerytusChallengeType::OffChannelOtp,
-                                             aID) {}
+                                             aID), mParameters(std::move(aParameters)) {}
 
 BerytusOffChannelOtpChallenge::~BerytusOffChannelOtpChallenge() {}
 
 void BerytusOffChannelOtpChallenge::CacheParameters(JSContext* aCx, ErrorResult& aRv) {
-  mCachedParameters = nullptr;
+  if (mCachedParameters) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mParameters.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedParameters = options.toObjectOrNull();
+}
+
+BerytusOffChannelOtpChallengeParameters const& BerytusOffChannelOtpChallenge::Parameters() const {
+  return mParameters;
 }
 
 JSObject*
@@ -33,13 +47,9 @@ BerytusOffChannelOtpChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject*> 
 
 already_AddRefed<Promise> BerytusOffChannelOtpChallenge::GetOtp(
     JSContext* aCx,
-    const nsAString& aForeignIdentityField,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aForeignIdentityField, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
+  payload.setNull();
   return SendMessageRaw(aCx, u"GetOtp"_ns, JS::HandleValue(payload), aRv);
 }
 
@@ -53,6 +63,7 @@ already_AddRefed<Promise> BerytusOffChannelOtpChallenge::AbortWithIncorrectOtpEr
 already_AddRefed<BerytusOffChannelOtpChallenge> BerytusOffChannelOtpChallenge::Constructor(
   const GlobalObject& aGlobal,
   const nsAString& aId,
+  const BerytusOffChannelOtpChallengeParameters& aParameters,
   ErrorResult& aRv
 ) {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
@@ -60,9 +71,14 @@ already_AddRefed<BerytusOffChannelOtpChallenge> BerytusOffChannelOtpChallenge::C
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
+  BerytusOffChannelOtpChallengeParameters copiedParams;
+  if (NS_WARN_IF(!copiedParams.mField.Assign(aParameters.mField, fallible))) {
+    aRv.ThrowTypeError("Out of memory");
+    return nullptr;
+  }
   return do_AddRef(
     new BerytusOffChannelOtpChallenge(
-      global, aId));
+      global, aId, std::move(copiedParams)));
 }
 
 } // namespace mozilla::dom

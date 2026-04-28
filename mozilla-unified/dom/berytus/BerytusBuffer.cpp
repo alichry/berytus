@@ -5,12 +5,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusBuffer.h"
-
-#include "BerytusEncryptedPacket.h"
 #include "mozilla/AlreadyAddRefed.h"
-#include "mozilla/dom/BerytusEncryptedPacketBinding.h" // BerytusEncryptedPacketJSON
+#include "mozilla/dom/BerytusEncryptedPacket.h"
+#include "mozilla/dom/CryptoBuffer.h"
+#include "mozilla/dom/UnionTypes.h" // OwningArrayBufferOrBerytusEncryptedPacket
 #include "mozilla/Base64.h"
-#include "mozilla/dom/TypedArray.h"
+#include "mozilla/dom/ToJSValue.h"
 
 namespace mozilla::dom {
 
@@ -88,12 +88,15 @@ void BerytusBuffer::ToJSON(JSContext* aCx,
                            JS::MutableHandle<JS::Value> aRetVal,
                            ErrorResult& aRv) {
   if (mAsPacket) {
-    BerytusEncryptedPacketJSON packetJson;
-    mAsPacket->ToJSON(packetJson, aRv);
+    nsCString exposedStr;
+    mAsPacket->SerializeExposedToString(exposedStr, aRv);
     if (NS_WARN_IF(aRv.Failed())) {
       return;
     }
-    packetJson.ToObjectInternal(aCx, aRetVal);
+    if (NS_WARN_IF(!ToJSValue(aCx, exposedStr, aRetVal))) {
+      aRv.Throw(NS_ERROR_FAILURE);
+      return;
+    }
     return;
   }
   nsAutoCString base64Url;
@@ -113,6 +116,14 @@ void BerytusBuffer::ToJSON(JSContext* aCx,
   aRetVal.setString(str);
 }
 
+void BerytusBuffer::ToVariant(Variant<const CryptoBuffer*, RefPtr<BerytusEncryptedPacket>>& aRetVal) {
+  if (mAsPacket) {
+    aRetVal.emplace<RefPtr<BerytusEncryptedPacket>>(mAsPacket);
+    return;
+  }
+  aRetVal.emplace<const CryptoBuffer*>(&mAsBuffer);
+}
+
 template <typename... T>
 already_AddRefed<BerytusBuffer> BerytusBuffer::FromVariant(
   nsIGlobalObject* aGlobal,
@@ -127,26 +138,6 @@ already_AddRefed<BerytusBuffer> BerytusBuffer::FromVariant(
   }
   aRv = NS_OK;
   return buffer;
-}
-
-already_AddRefed<BerytusBuffer> BerytusBuffer::Clone(nsresult* aRv) const {
-  RefPtr<BerytusBuffer> newBuffer;
-  if (mAsPacket) {
-    RefPtr<BerytusEncryptedPacket> newPacket = mAsPacket->Clone(aRv);
-    if (NS_WARN_IF(NS_FAILED(*aRv))) {
-      return nullptr;
-    }
-    newBuffer = new BerytusBuffer(newPacket);
-  } else {
-    CryptoBuffer newCryptoBuffer;
-    if (NS_WARN_IF(!newCryptoBuffer.Assign(mAsBuffer))) {
-      *aRv = NS_ERROR_OUT_OF_MEMORY;
-      return nullptr;
-    }
-    newBuffer = new BerytusBuffer(std::move(newCryptoBuffer));
-  }
-  *aRv = NS_OK;
-  return newBuffer.forget();
 }
 
 } // namespace mozilla::dom

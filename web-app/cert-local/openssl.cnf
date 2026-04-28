@@ -1,0 +1,28 @@
+[req]
+req_extensions = v3_exts
+
+[v3_exts]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+1.2.3.4.22.11.23=ASN1:SEQUENCE:berytus_extension
+
+[alt_names]
+DNS.0 = localhost
+DNS.1 = 127.0.0.1
+
+[berytus_extension]
+Entry.0=SEQUENCE:berytus_allowlist_entry_0
+Entry.1=SEQUENCE:berytus_allowlist_entry_1
+
+
+[berytus_allowlist_entry_0]
+key=UTF8STRING:MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE=
+sksig=UTF8STRING:mCbyJQtcEAoYZNASpLZBgK/d14TjWERM8shzt79m6ubhyC559GeaQMTb7KTiwBmNlnpfrCcaMjy7JSVnj0xnDQ==
+url=UTF8STRING:https://localhost/*
+
+[berytus_allowlist_entry_1]
+key=UTF8STRING:MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE=
+sksig=UTF8STRING:mCbyJQtcEAoYZNASpLZBgK/d14TjWERM8shzt79m6ubhyC559GeaQMTb7KTiwBmNlnpfrCcaMjy7JSVnj0xnDQ==
+url=UTF8STRING:https://127.0.0.1/*
+

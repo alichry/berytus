@@ -27,6 +27,15 @@ export interface ActionInput {
     messages: ReadonlyArray<MessageInput<AuthChallengeMessageName>>;
 };
 
+// TODO(berytus): Consider adding a MessageSequence column
+// to the berytus_account_auth_challenge_message table.
+// Ordering by created_at is not sufficient to guarantee
+// correct ordering of messages during retrival; when
+// multiple messages are inserted in the same query,
+// they will have the same created_at timestamp. In
+// turn AuthChallengeMessage::getAllMessages() might
+// return messages in an order different from the one they
+// were inserted in.
 export class UpsertChallengeAndMessages {
     readonly input: ActionInput;
 

@@ -11,20 +11,25 @@
 
 namespace mozilla::dom {
 
+class OwningStringOrBerytusEncryptedPacket;
+
 class BerytusPasswordChallenge final : public BerytusChallenge {
 public:
   NS_DECL_ISUPPORTS_INHERITED
   BerytusPasswordChallenge(nsIGlobalObject* aGlobal,
-                   const nsAString& aID);
+                           const nsAString& aID,
+                           BerytusPasswordChallengeParameters&& aParameters);
 protected:
   ~BerytusPasswordChallenge();
+  BerytusPasswordChallengeParameters mParameters;
   void CacheParameters(JSContext* aCx, ErrorResult& aRv) override;
 
 public:
+  BerytusPasswordChallengeParameters const& Parameters() const;
+
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> GetPasswordFields(JSContext* aCx,
-                                              const Sequence<nsString>& aPasswordFieldIds,
                                               ErrorResult& aRv);
   already_AddRefed<Promise> AbortWithIncorrectPasswordError(
       JSContext* aCx,
@@ -34,6 +39,7 @@ public:
   static already_AddRefed<BerytusPasswordChallenge> Constructor(
     const GlobalObject& aGlobal,
     const nsAString& aId,
+    const BerytusPasswordChallengeParameters& aParameters,
     ErrorResult& aRv
   );
 };

@@ -50,6 +50,11 @@ export default function UserIntent() {
     return <UserIntentView
         accounts={accounts}
         uri={session.context.document.uri}
+        webAppKey={
+            "ed25519Key" in session.channel.webAppActor
+            ? session.channel.webAppActor.ed25519Key
+            : undefined
+        }
         checkpointCapability={session.operation.intent}
         onIntent={async (intent, account) => {
             if (intent === ELoginUserIntent.Authenticate) {

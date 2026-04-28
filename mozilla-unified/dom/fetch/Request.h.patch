@@ -1,0 +1,79 @@
+--- dom/fetch/Request.h.orig	2025-10-13 22:00:01
++++ dom/fetch/Request.h	2025-10-25 17:33:20
+@@ -19,6 +19,8 @@
+ 
+ namespace mozilla::dom {
+ 
++#define NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC "fetch-request-constructor"
++
+ class Headers;
+ class InternalHeaders;
+ class RequestOrUTF8String;
+@@ -115,7 +117,7 @@
+ 
+   SafeRefPtr<Request> Clone(ErrorResult& aRv);
+ 
+-  SafeRefPtr<InternalRequest> GetInternalRequest();
++  SafeRefPtr<InternalRequest> GetInternalRequest() const;
+ 
+   const UniquePtr<mozilla::ipc::PrincipalInfo>& GetPrincipalInfo() const {
+     return mRequest->GetPrincipalInfo();
+@@ -127,6 +129,46 @@
+   AbortSignalImpl* GetSignalImpl() const override;
+   AbortSignalImpl* GetSignalImplToConsumeBody() const final;
+ 
++  class ConstructorNotification final : public nsISupports {
++    public:
++      NS_DECL_ISUPPORTS
++
++      ConstructorNotification(RequestOrUTF8String const* aInput,
++                              RequestInit const* aInit,
++                              Request const* aRequest)
++        : mIsSafe(true), mInput(aInput), mInit(aInit), mRequest(aRequest) {}
++
++      nsresult GetInput(RequestOrUTF8String const** aInput) const {
++        if (NS_WARN_IF(!mIsSafe)) {
++          return NS_ERROR_DOM_INVALID_STATE_ERR;
++        }
++        *aInput = mInput;
++        return NS_OK;
++      }
++      nsresult GetInit(RequestInit const** aInit) const {
++        if (NS_WARN_IF(!mIsSafe)) {
++          return NS_ERROR_DOM_INVALID_STATE_ERR;
++        }
++        *aInit = mInit;
++        return NS_OK;
++      }
++      nsresult GetResult(Request const** aRequest) const {
++        if (NS_WARN_IF(!mIsSafe)) {
++          return NS_ERROR_DOM_INVALID_STATE_ERR;
++        }
++        MOZ_ASSERT(mRequest);
++        *aRequest = mRequest;
++        return NS_OK;
++      }
++      void MarkAsUnsafe() { mIsSafe = false; }
++    private:
++      ~ConstructorNotification() = default;
++
++      bool mIsSafe;
++      RequestOrUTF8String const* mInput;
++      RequestInit const* mInit;
++      Request const* mRequest;
++  };
+  private:
+   ~Request();
+ 
+@@ -135,6 +177,11 @@
+   // Lazily created.
+   RefPtr<Headers> mHeaders;
+   RefPtr<AbortSignal> mSignal;
++
++  static nsresult NotifyConstructorObservers(
++    const RequestOrUTF8String& aInput,
++    const RequestInit& aInit,
++    SafeRefPtr<Request>& aRequest);
+ };
+ 
+ }  // namespace mozilla::dom

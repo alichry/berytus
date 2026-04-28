@@ -6,8 +6,11 @@
 
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "ErrorList.h"
+#include "js/PropertyAndElement.h"
 #include "js/Value.h"
 #include "mozilla/AlreadyAddRefed.h"
+#include "mozilla/Assertions.h"
+#include "mozilla/ErrorResult.h"
 #include "mozilla/berytus/AgentProxy.h"
 #include "mozilla/dom/BerytusBuffer.h"
 #include "mozilla/dom/BerytusChallengeBinding.h"
@@ -15,10 +18,13 @@
 #include "mozilla/dom/BerytusChannelBinding.h"
 #include "mozilla/dom/BerytusCryptoWebAppActor.h"
 #include "mozilla/dom/BerytusAnonymousWebAppActor.h"
+#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
+#include "mozilla/dom/BerytusJWEPacket.h"
 #include "mozilla/dom/BerytusFieldBinding.h"
 #include "mozilla/dom/RootedDictionary.h"
 #include "nsError.h"
 #include "nsIGlobalObject.h"
+#include "nsString.h"
 #include "nsStringFwd.h"
 #include "mozilla/dom/BerytusFieldMap.h"
 #include "mozilla/dom/BerytusAccount.h"
@@ -38,7 +44,11 @@
 #include "mozilla/dom/BerytusSharedKeyField.h"
 #include "mozilla/dom/BerytusChannel.h"
 #include "mozilla/dom/BerytusChallenge.h"
+#include "mozilla/dom/BerytusIdentificationChallenge.h"
+#include "mozilla/dom/BerytusPasswordChallenge.h"
+#include "mozilla/dom/BerytusDigitalSignatureChallenge.h"
 #include "mozilla/dom/BerytusSecureRemotePasswordChallenge.h"
+#include "mozilla/dom/BerytusOffChannelOtpChallenge.h"
 #include "mozilla/dom/Document.h"
 
 namespace mozilla::berytus {
@@ -66,6 +76,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal, const RefPtr<const dom:
                                aChannel->Constraints(),
                                aChannel->GetWebAppActor(),
                                aChannel->GetSecretManagerActor(),
+                               aChannel->E2EEEnabled(),
                                aRetVal);
 }
 
@@ -74,6 +85,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
                                const dom::BerytusChannelConstraints& aCts,
                                const RefPtr<const dom::BerytusWebAppActor>& aWebAppActor,
                                const RefPtr<const dom::BerytusSecretManagerActor>& aScmActor,
+                               const bool aE2EEEnabled,
                                berytus::ChannelMetadata& aRetVal) {
   aRetVal.mId.Assign(aChannelId);
   if (aCts.mAccount.WasPassed()) {
@@ -111,6 +123,7 @@ nsresult Utils_ChannelMetadata(nsIGlobalObject* aGlobal,
   }
   MOZ_ASSERT(aRetVal.mWebAppActor.Inited());
   aScmActor->GetEd25519Key(aRetVal.mScmActor.mEd25519Key);
+  aRetVal.mE2eeEnabled = aE2EEEnabled;
   return NS_OK;
 }
 
@@ -294,73 +307,26 @@ bool Utils_ArrayBufferViewToSafeVariant(const ArrayBufferView& aBuf,
 
 namespace utils {
 
-dom::BerytusAesGcmParams_Impl* FromProxy::BerytusAesGcmParams_Impl(
-      const AesGcmParams_ImplProxy& aProxy, nsresult& aRv) {
-  // TODO: perhaps impl a utility function that converts a
-  // Variant<ArrayBuffer, ArrayBufferView> to CryptoBuffer?
-  MOZ_ASSERT(aProxy.mIv.Inited());
-  dom::CryptoBuffer iv, addData;
-  if (aProxy.mIv.InternalValue()->is<dom::ArrayBuffer>()) {
-    if (NS_WARN_IF(!iv.Assign(aProxy.mIv.InternalValue()->as<ArrayBuffer>()))) {
-      aRv = NS_ERROR_OUT_OF_MEMORY;
-      return nullptr;
-    }
-  } else if (aProxy.mIv.InternalValue()->is<ArrayBufferView>()) {
-    if (NS_WARN_IF(!iv.Assign(aProxy.mIv.InternalValue()->as<ArrayBufferView>()))) {
-      aRv = NS_ERROR_OUT_OF_MEMORY;
-      return nullptr;
-    }
-  } else {
-    MOZ_ASSERT(false, "IV should either be an ArrayBuffer or ArrayBufferView");
-    aRv = NS_ERROR_INVALID_ARG;
-    return nullptr;
-  }
-  if (aProxy.mAdditionalData.Inited()) {
-    if (aProxy.mAdditionalData.InternalValue()->is<ArrayBuffer>()) {
-      if (NS_WARN_IF(!addData.Assign(aProxy.mAdditionalData.InternalValue()->as<ArrayBuffer>()))) {
-        aRv = NS_ERROR_OUT_OF_MEMORY;
-        return nullptr;
-      }
-    } else if (aProxy.mAdditionalData.InternalValue()->is<ArrayBufferView>()) {
-      if (NS_WARN_IF(!addData.Assign(aProxy.mAdditionalData.InternalValue()->as<ArrayBufferView>()))) {
-        aRv = NS_ERROR_OUT_OF_MEMORY;
-        return nullptr;
-      }
-    } else {
-      MOZ_ASSERT(false, "AdditionalData should either be an ArrayBuffer or ArrayBufferView");
-      aRv = NS_ERROR_INVALID_ARG;
-      return nullptr;
-    }
-  }
-  // TODO(berytus): Why is tagLength optional?
-  return new dom::BerytusAesGcmParams_Impl(std::move(iv),
-                                      std::move(addData),
-                                      aProxy.mTagLength.isNothing()
-                                      ? 0 : static_cast<uint8_t>(aProxy.mTagLength.value()));
-}
-dom::BerytusEncryptionParams_Impl* FromProxy::BerytusEncryptionParams_Impl(
-    const EncryptedPacketParametersProxy& aProxy, nsresult& aRv) {
-  return FromProxy::BerytusAesGcmParams_Impl(aProxy, aRv);
-}
 already_AddRefed<dom::BerytusEncryptedPacket> FromProxy::BerytusEncryptedPacket(
     nsIGlobalObject* aGlobal, const EncryptedPacketProxy& aProxy,
     nsresult& aRv) {
-  dom::BerytusEncryptionParams_Impl* params = FromProxy::BerytusEncryptionParams_Impl(aProxy.mParameters, aRv);
-  if (NS_WARN_IF(NS_FAILED(aRv))) {
-    return nullptr;
+  if (aProxy.mType.GetString().Equals(u"JWE"_ns)) {
+    ErrorResult rv;
+    RefPtr<dom::BerytusEncryptedPacket> packet = dom::BerytusJWEPacket::Create(
+        aGlobal,
+        aProxy.mValue,
+        true,
+        rv);
+    if (NS_WARN_IF(rv.Failed())) {
+      aRv = rv.StealNSResult();
+      return nullptr;
+    }
+    aRv = NS_OK;
+    return packet.forget();
   }
-  dom::CryptoBuffer ciphertext;
-  if (NS_WARN_IF(!ciphertext.Assign(aProxy.mCiphertext))) {
-    aRv = NS_ERROR_OUT_OF_MEMORY;
-    return nullptr;
-  }
-  aRv = NS_OK;
-  RefPtr<dom::BerytusEncryptedPacket> packet = new dom::BerytusEncryptedPacket(
-    aGlobal,
-    params,
-    std::move(ciphertext)
-  );
-  return packet.forget();
+  MOZ_ASSERT_UNREACHABLE("Unrecognised encrypted packet type");
+  aRv = NS_ERROR_FAILURE;
+  return nullptr;
 }
 
 template <typename... T>
@@ -907,16 +873,33 @@ void FromProxy::SetFieldValueMatcher::operator()(
 bool ToProxy::BerytusField(JSContext* aCx,
                            const RefPtr<dom::BerytusField>& aField,
                            FieldProxy& aRetVal) {
-  JS::Rooted<JS::Value> jsField(aCx);
-  // TODO(berytus): Investigate whether using DOMReflectors
-  // is a security risk -- could a mal web app override properties
-  // in the reflector?
-  if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, aField, &jsField))) {
+  JS::Rooted<JSObject*> jsFieldOptionsObj(aCx);
+  ErrorResult rv;
+  aField->GetOptions(aCx, &jsFieldOptionsObj, rv);
+  if (NS_WARN_IF(rv.Failed())) {
+    rv.StealNSResult(); // NOTE(berytus): Bad. at least log it.
     return false;
+  }
+  JS::Rooted<JS::Value> jsFieldOptions(aCx, JS::ObjectOrNullValue(jsFieldOptionsObj));
+  JS::Rooted<JS::Value> jsFieldValue(aCx);
+  OptionalFieldValueUnionProxy valueUnionProxy;
+  if (NS_WARN_IF(!berytus::utils::ToProxy::BerytusOptionalFieldValueUnion(
+          aCx, aField->GetValue(), valueUnionProxy))) {
+    return false;
+  }
+  if (NS_WARN_IF(!berytus::ToJSVal(aCx, valueUnionProxy, &jsFieldValue))) {
+    return false;
+  }
+  if (jsFieldValue.isUndefined()) {
+    jsFieldValue.setNull();
   }
   if (aField->Type() == dom::BerytusFieldType::Identity) {
     berytus::BerytusIdentityField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(VariantType<berytus::BerytusIdentityField>{}, std::move(proxyField));
@@ -924,7 +907,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::ForeignIdentity) {
     berytus::BerytusForeignIdentityField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -932,7 +919,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Password) {
     berytus::BerytusPasswordField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -940,7 +931,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::SecurePassword) {
     berytus::BerytusSecurePasswordField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -948,7 +943,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::Key) {
     berytus::BerytusKeyField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -956,7 +955,11 @@ bool ToProxy::BerytusField(JSContext* aCx,
   }
   if (aField->Type() == dom::BerytusFieldType::SharedKey) {
     berytus::BerytusSharedKeyField proxyField;
-    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsField, proxyField))) {
+    aField->GetId(proxyField.mId);
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldOptions, proxyField.mOptions))) {
+      return false;
+    }
+    if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsFieldValue, proxyField.mValue))) {
       return false;
     }
     aRetVal.Init(std::move(proxyField));
@@ -969,13 +972,15 @@ bool ToProxy::BerytusField(JSContext* aCx,
 bool ToProxy::BerytusEncryptedPacket(JSContext* aCx,
                                      const RefPtr<dom::BerytusEncryptedPacket>& aPacket,
                                      EncryptedPacketProxy& aRetVal) {
-  JS::Rooted<JS::Value> jsPacket(aCx);
-  if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, aPacket, &jsPacket))) {
+  nsCString jwe;
+  // NOTE(berytus): currently, packets coming from the web app are never
+  // masked; hence, the exposed buffer is always the JWE (or
+  // whatever provided during construction).
+  auto bytes = aPacket->Exposed();
+  if (NS_WARN_IF(!jwe.Assign((const char*)bytes.Elements(), bytes.Length(), fallible))) {
     return false;
   }
-  if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsPacket, aRetVal))) {
-    return false;
-  }
+  aRetVal.mValue.Assign(NS_ConvertASCIItoUTF16(jwe));
   return true;
 }
 
@@ -990,10 +995,14 @@ bool ToProxy::BerytusOptionalFieldValueUnion(JSContext* aCx,
   if (value.IsBerytusFieldValueDictionary()) {
     const auto& dict = value.GetAsBerytusFieldValueDictionary();
     JS::Rooted<JS::Value> jsDict(aCx);
+    // NOTE(berytus): Using DOMReflector might be a security risk
     if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, dict, &jsDict))) {
       return false;
     }
     switch (dict->Type()) {
+      // NOTE(berytus): Below will fail if packets are sent since the
+      // DOMReflector value prop is not consistenct with the WebExt type.
+      // TODO(berytus): Fix this, eliminating the use of DOMReflector.
       case dom::BerytusFieldType::SecurePassword: {
         BerytusSecurePasswordFieldValue fvProxy;
         if (NS_WARN_IF(!berytus::FromJSVal(aCx, jsDict, fvProxy))) {
@@ -1226,18 +1235,27 @@ void ToProxy::BerytusChallengeInfoUnion(
     case dom::BerytusChallengeType::Identification: {
       berytus::BerytusIdentificationChallengeInfo info;
       aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusIdentificationChallenge> ch =
+        static_cast<dom::BerytusIdentificationChallenge*>(aChallenge.get());
+      info.mParameters.mFields.Assign(ch->Parameters().mFields);
       aRetVal.Init(std::move(info));
       return;
     }
     case dom::BerytusChallengeType::DigitalSignature: {
       berytus::BerytusDigitalSignatureChallengeInfo info;
       aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusDigitalSignatureChallenge> ch =
+        static_cast<dom::BerytusDigitalSignatureChallenge*>(aChallenge.get());
+      info.mParameters.mField.Assign(ch->Parameters().mField);
       aRetVal.Init(std::move(info));
       return;
     }
     case dom::BerytusChallengeType::Password: {
       berytus::BerytusPasswordChallengeInfo info;
       aChallenge->GetId(info.mId);
+      RefPtr<dom::BerytusPasswordChallenge> ch =
+        static_cast<dom::BerytusPasswordChallenge*>(aChallenge.get());
+      info.mParameters.mFields.Assign(ch->Parameters().mFields);
       aRetVal.Init(std::move(info));
       return;
     }
@@ -1247,33 +1265,16 @@ void ToProxy::BerytusChallengeInfoUnion(
       RefPtr<dom::BerytusSecureRemotePasswordChallenge> ch =
         static_cast<dom::BerytusSecureRemotePasswordChallenge*>(aChallenge.get());
       const auto& params = ch->Parameters();
-      if (!params.mEncoding.WasPassed()) {
-        info.mParameters.mEncoding.Init(Nothing());
-      } else {
-        using S1 = berytus::StaticString_None;
-        using S2 = berytus::StaticString_Hex;
-        static_assert(std::u16string_view(S1::mLiteral.get()) == u"None"_ns);
-        static_assert(std::u16string_view(S2::mLiteral.get()) == u"Hex"_ns);
-        switch (params.mEncoding.Value()) {
-          case dom::BerytusSecureRemotePasswordChallengeEncodingType::None: {
-            info.mParameters.mEncoding.Init(S1());
-            break;
-          }
-          case dom::BerytusSecureRemotePasswordChallengeEncodingType::Hex: {
-            info.mParameters.mEncoding.Init(S2());
-            break;
-          }
-          default:
-            MOZ_RELEASE_ASSERT(false, "Unrecognisedd Encoding Type");
-            return;
-        }
-      }
+      info.mParameters.mField.Assign(params.mField);
       aRetVal.Init(std::move(info));
       return;
     }
     case dom::BerytusChallengeType::OffChannelOtp: {
       berytus::BerytusOffChannelOtpChallengeInfo info;
       aChallenge->GetId(info.mId);
+            RefPtr<dom::BerytusOffChannelOtpChallenge> ch =
+        static_cast<dom::BerytusOffChannelOtpChallenge*>(aChallenge.get());
+      info.mParameters.mField.Assign(ch->Parameters().mField);
       aRetVal.Init(std::move(info));
       return;
     }

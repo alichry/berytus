@@ -35,6 +35,7 @@
 #include "mozilla/dom/BerytusChannel.h"
 #include "mozilla/dom/Document.h"
 #include "nsIX509Cert.h"
+#include "nsTArray.h"
 #include "nsTDependentSubstring.h"
 #include "secoidt.h"
 
@@ -102,6 +103,8 @@ void Hash(const CryptoBuffer& aData, CryptoBuffer& aResult, ErrorResult& aRv) {
 template <typename T>
 void ToCanonicalJSON(const T& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
+void ToCanonicalJSON(const nsAString& aValue, nsString& aJson, ErrorResult& aRv);
+template<>
 void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
 void ToCanonicalJSON(const nsLiteralString& aValue, nsString& aJson, ErrorResult& aRv);
@@ -125,9 +128,11 @@ template<>
 void ToCanonicalJSON(const uint64_t& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
 void ToCanonicalJSON(const CryptoBuffer& aValue, nsString& aJson, ErrorResult& aRv);
+template<typename U>
+void ToCanonicalJSON(const Span<U>& aValue, nsString&  aJson, ErrorResult& aRv);
 
 template<>
-void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const nsAString& aValue, nsString& aJson, ErrorResult& aRv) {
   if (NS_WARN_IF(!aJson.Append(u"\""_ns, fallible))) {
     aRv.ThrowTypeError("Out of memory");
     return;
@@ -138,11 +143,6 @@ void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) 
     switch (ch) {
       case u'"': {
         char16_t token[] = u"\\\"";
-        toAppend.Rebind(token, (sizeof(token) - sizeof(char16_t)) / sizeof(char16_t));
-        break;
-      }
-      case u'/': {
-        char16_t token[] = u"\\/";
         toAppend.Rebind(token, (sizeof(token) - sizeof(char16_t)) / sizeof(char16_t));
         break;
       }
@@ -198,6 +198,10 @@ void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) 
   }
 }
 template<>
+void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv) {
+  return ToCanonicalJSON(static_cast<const nsAString&>(aValue), aJson, aRv);
+}
+template<>
 void ToCanonicalJSON(const nsLiteralString& aValue, nsString& aJson, ErrorResult& aRv) {
   return ToCanonicalJSON(static_cast<const nsString&>(aValue), aJson, aRv);
 }
@@ -250,10 +254,24 @@ void ToCanonicalJSON(const uint64_t& aValue, nsString& aJson, ErrorResult& aRv) 
 
 template<>
 void ToCanonicalJSON(const CryptoBuffer& aValue, nsString& aJson, ErrorResult& aRv) {
+  nsAutoCString b64;
+  nsresult rv = Base64Encode(reinterpret_cast<const char*>(aValue.Elements()),
+                             aValue.Length(), b64);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    aRv.ThrowTypeError("Base64 encoding failed in ToCanonicalJSON.");
+    return;
+  }
+  NS_ConvertUTF8toUTF16 b64UTF16(b64);
+  ToCanonicalJSON(static_cast<const nsAString&>(b64UTF16), aJson, aRv);
+  NS_ENSURE_TRUE(!aRv.Failed(), );
+}
+
+template<typename U>
+void ToCanonicalJSON(const Span<U>& aValue, nsString&  aJson, ErrorResult& aRv) {
   JSONArrayWriter writer(aJson, aRv);
   NS_ENSURE_TRUE_VOID(writer.Begin());
-  for (size_t i = 0; i < aValue.Length(); i++) {
-    NS_ENSURE_TRUE_VOID(writer.Value(aValue.ElementAt(i)));
+  for (const auto& element : aValue) {
+    NS_ENSURE_TRUE_VOID(writer.Value(element));
   }
   NS_ENSURE_TRUE_VOID(writer.End());
 }
@@ -384,6 +402,9 @@ BerytusKeyAgreementParameters::WrapObject(JSContext* aCx, JS::Handle<JSObject*> 
 
 already_AddRefed<BerytusKeyAgreementParameters> BerytusKeyAgreementParameters::Create(
   const RefPtr<BerytusChannel>& aChannel,
+  const nsAString& aExchangeWebApp,
+  const nsAString& aExchangeScm,
+  nsTArray<nsString>&& aUnmaskAllowlist,
   ErrorResult& aRv) {
   MOZ_ASSERT(aChannel);
   nsIGlobalObject* global = aChannel->GetParentObject();
@@ -400,7 +421,7 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusKeyAgreementParameters::C
     aChannel->GetSecretManagerActor();
 
   NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
-  RefPtr<Session> session = Session::Create(aChannel, aRv);
+  RefPtr<Session> session = Session::Create(aChannel, std::move(aUnmaskAllowlist), aRv);
   NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
   nsString appPubEd25519, scmPubEd25519;
   appCryptoActor->GetEd25519Key(appPubEd25519);
@@ -408,7 +429,7 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusKeyAgreementParameters::C
   RefPtr<Authentication> authentication = new Authentication(global,
                                                    appPubEd25519,
                                                    scmPubEd25519);
-  RefPtr<Exchange> exchange = new Exchange(global);
+  RefPtr<Exchange> exchange = new Exchange(global, aExchangeWebApp, aExchangeScm);
   RefPtr<Derivation> derivation = Derivation::Create(global, aRv);
   NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
   RefPtr<Generation> generation = new Generation(global);
@@ -423,33 +444,43 @@ already_AddRefed<BerytusKeyAgreementParameters> BerytusKeyAgreementParameters::C
 }
 
 RefPtr<const Session> BerytusKeyAgreementParameters::GetSession() const {
+  MOZ_ASSERT(mSession);
   return mSession;
 }
 const RefPtr<Session>& BerytusKeyAgreementParameters::GetSession() {
+  MOZ_ASSERT(mSession);
   return mSession;
 }
 RefPtr<const Authentication> BerytusKeyAgreementParameters::GetAuthentication() const {
+  MOZ_ASSERT(mAuthentication);
   return mAuthentication;
 }
 const RefPtr<Authentication>& BerytusKeyAgreementParameters::GetAuthentication() {
+  MOZ_ASSERT(mAuthentication);
   return mAuthentication;
 }
 RefPtr<const Exchange> BerytusKeyAgreementParameters::GetExchange() const {
+  MOZ_ASSERT(mExchange);
   return mExchange;
 }
 const RefPtr<Exchange>& BerytusKeyAgreementParameters::GetExchange() {
+  MOZ_ASSERT(mExchange);
   return mExchange;
 }
 RefPtr<const Derivation> BerytusKeyAgreementParameters::GetDerivation() const {
+  MOZ_ASSERT(mDerivation);
   return mDerivation;
 }
 const RefPtr<Derivation>& BerytusKeyAgreementParameters::GetDerivation() {
+  MOZ_ASSERT(mDerivation);
   return mDerivation;
 }
 RefPtr<const Generation> BerytusKeyAgreementParameters::GetGeneration() const {
+  MOZ_ASSERT(mGeneration);
   return mGeneration;
 }
 const RefPtr<Generation>& BerytusKeyAgreementParameters::GetGeneration() {
+  MOZ_ASSERT(mGeneration);
   return mGeneration;
 }
 
@@ -652,7 +683,7 @@ already_AddRefed<Fingerprint> Fingerprint::Create(
   }
   // id:
   nsString channelId;
-  aChannel->GetID(channelId);
+  aChannel->GetId(channelId);
   auto utf8Id = NS_ConvertUTF16toUTF8(channelId);
   if (NS_WARN_IF(!toDigest.AppendElements(utf8Id.BeginReading(), utf8Id.Length(), fallible))) {
     aRv.ThrowTypeError("Out of memory");
@@ -740,7 +771,6 @@ void ToCanonicalJSON(const RefPtr<Fingerprint>& aValue, nsString& aJson, ErrorRe
 }
 
 NS_IMPL_CYCLE_COLLECTION_INHERITED(Session, SupportsToDictionary, mFingerprint)
-//NS_IMPL_CYCLE_COLLECTION_INHERITED_WITH_JS_MEMBERS(Session, SupportsToDictionary, (mFingerprint), ())
 NS_IMPL_ADDREF_INHERITED(Session, SupportsToDictionary)
 NS_IMPL_RELEASE_INHERITED(Session, SupportsToDictionary)
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(Session)
@@ -748,12 +778,14 @@ NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 Session::Session(
     nsIGlobalObject* aGlobal,
-    const nsString& aId,
+    const nsAString& aId,
     const std::time_t& aTimestamp,
-    const RefPtr<Fingerprint>& aFingerprint) : SupportsToDictionary(aGlobal, HoldDropJSObjectsCaller::Explicit),
-                                               mId(aId),
-                                               mTimestamp(aTimestamp),
-                                               mFingerprint(aFingerprint) {
+    const RefPtr<Fingerprint>& aFingerprint,
+    nsTArray<nsString>&& aUnmaskAllowlist) : SupportsToDictionary(aGlobal, HoldDropJSObjectsCaller::Explicit),
+                                             mId(aId),
+                                             mTimestamp(aTimestamp),
+                                             mFingerprint(aFingerprint),
+                                             mUnmaskAllowlist(std::move(aUnmaskAllowlist)) {
   mozilla::HoldJSObjects(this);
 }
 
@@ -763,10 +795,11 @@ Session::~Session() {
 
 already_AddRefed<Session> Session::Create(
     const RefPtr<const BerytusChannel>& aChannel,
+    nsTArray<nsString>&& aUnmaskAllowlist,
     ErrorResult& aRv) {
   MOZ_ASSERT(aChannel);
   nsString sessionId;
-  aChannel->GetID(sessionId);
+  aChannel->GetId(sessionId);
   std::time_t timestamp = std::time(nullptr);
   nsIGlobalObject* global = aChannel->GetParentObject();
   MOZ_ASSERT(global);
@@ -774,9 +807,10 @@ already_AddRefed<Session> Session::Create(
                                                         timestamp,
                                                         aRv);
   return do_AddRef(new Session(global,
-                                     sessionId,
-                                     timestamp,
-                                     fingerprint));
+                               sessionId,
+                               timestamp,
+                               fingerprint,
+                               std::move(aUnmaskAllowlist)));
 }
 
 const nsString& Session::GetID() const {
@@ -785,12 +819,13 @@ const nsString& Session::GetID() const {
 const std::time_t& Session::GetTimestamp() const {
   return mTimestamp;
 }
-RefPtr<const Fingerprint> Session::GetFingerprint() const {
-  return RefPtr<const Fingerprint>(mFingerprint);
-}
-RefPtr<Fingerprint>& Session::GetFingerprint() {
+const RefPtr<Fingerprint>& Session::GetFingerprint() const {
   return mFingerprint;
 }
+Span<const nsString> Session::GetUnmaskAllowlist() const {
+  return Span<const nsString>(mUnmaskAllowlist);
+}
+
 void Session::CacheDictionary(JSContext* aCx,
                      ErrorResult& aRv) {
   JSAutoRealm ar(aCx, mGlobal->GetGlobalJSObject());
@@ -798,6 +833,12 @@ void Session::CacheDictionary(JSContext* aCx,
   RootedDictionary<BerytusKeyExchangeSession> dict(aCx);
   dict.mId.Assign(mId);
   dict.mTimestamp = mTimestamp;
+  auto& list = dict.mUnmaskAllowlist.Construct();
+  if (NS_WARN_IF(!list.AppendElements(mUnmaskAllowlist, fallible))) {
+    aRv.ThrowTypeError("Out of memory");
+    return;
+  }
+
   JS::Rooted<JS::Value> fingerprint(aCx);
   mFingerprint->ToDictionary(aCx, &fingerprint, aRv);
   NS_ENSURE_TRUE_VOID(!aRv.Failed());
@@ -835,6 +876,11 @@ void ToCanonicalJSON(const RefPtr<Session>& aValue, nsString& aJson, ErrorResult
   NS_ENSURE_TRUE_VOID(\
     writer.Value(aValue->GetTimestamp()));
 
+  NS_ENSURE_TRUE_VOID(\
+    writer.Key(u"unmaskAllowlist"_ns));
+  NS_ENSURE_TRUE_VOID(\
+    writer.Value(aValue->GetUnmaskAllowlist()));
+
   NS_ENSURE_TRUE_VOID(writer.End());
 }
 
@@ -845,8 +891,8 @@ NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
 Authentication::Authentication(
     nsIGlobalObject* aGlobal,
-    const nsString& aWebApp,
-    const nsString& aScm) : SupportsToDictionary(aGlobal),
+    const nsAString& aWebApp,
+    const nsAString& aScm) : SupportsToDictionary(aGlobal),
                             mWebApp(aWebApp),
                             mScm(aScm) {}
 Authentication::~Authentication() {}
@@ -915,12 +961,11 @@ NS_IMPL_RELEASE_INHERITED(Exchange, SupportsToDictionary)
 NS_INTERFACE_MAP_BEGIN(Exchange)
 NS_INTERFACE_MAP_END_INHERITING(SupportsToDictionary)
 
-Exchange::Exchange(nsIGlobalObject* aGlobal) : SupportsToDictionary(aGlobal) {}
 Exchange::Exchange(nsIGlobalObject* aGlobal,
-                   const nsString& aWebApp,
-                   const nsString& aScm) : SupportsToDictionary(aGlobal),
-                                           mWebApp(aWebApp),
-                                           mScm(aScm) {}
+                   const nsAString& aWebApp,
+                   const nsAString& aScm) : SupportsToDictionary(aGlobal),
+                                            mWebApp(aWebApp),
+                                            mScm(aScm) {}
 
 Exchange::~Exchange() {}
 const nsLiteralString& Exchange::GetName() const {
@@ -931,14 +976,6 @@ const nsString& Exchange::GetWebApp() const {
 }
 const nsString& Exchange::GetScm() const {
   return mScm;
-}
-void Exchange::SetWebApp(const nsAString& aWebApp) {
-  ClearCachedDictionary();
-  mWebApp.Assign(aWebApp);
-}
-void Exchange::SetScm(const nsAString& aScm) {
-  ClearCachedDictionary();
-  mScm.Assign(aScm);
 }
 void Exchange::CacheDictionary(JSContext* aCx,
                                ErrorResult& aRv) {

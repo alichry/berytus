@@ -10,8 +10,9 @@ import { Channel, isChannelE2EReady } from "@root/db/Channel";
 import { ERejectionCode, EOperationType, EMetadataStatus, RequestType } from "@berytus/enums";
 import type { KeyAgreementParameters, PreliminaryRequestContext } from "@berytus/types";
 import { userAttributesLabels } from "@root/ui/utils/userAttributesLabels";
-import { stringifyArrayBufferOrEncryptedPacket, stringifyEncryptedPacket } from "./field-utils";
+import { isNonEmptyArrayOfPackets, toClearFieldValue, toClearMessageRequestPayload } from "./e2ee-utils";
 import { openPageActionPopupIfNecessary } from "./pageAction-popup-fix";
+import JWEPacketCipherBox from "@root/crypto/JWEPacketBox";
 
 console.debug("secretstar(bg): loaded");
 
@@ -166,13 +167,25 @@ browser.berytus.registerRequestHandler({
             const parameters: KeyAgreementParameters = (() => {
                 const obj = JSON.parse(args.canonicalJson);
                 obj.session.fingerprint.salt =
-                    new Uint8Array(obj.session.fingerprint.salt).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.session.fingerprint.salt)
+                        .buffer;
                 obj.session.fingerprint.value =
-                    new Uint8Array(obj.session.fingerprint.value).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.session.fingerprint.value)
+                        .buffer;
                 obj.derivation.salt =
-                    new Uint8Array(obj.derivation.salt).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.derivation.salt)
+                        .buffer;
                 obj.derivation.info =
-                    new Uint8Array(obj.derivation.info).buffer;
+                    Uint8Array
+                        // @ts-ignore: Supported in modern browsers
+                        .fromBase64(obj.derivation.info)
+                        .buffer;
                 return obj;
             })();
             if (parameters.authentication.public.scm !== channel.scmEd25519.public) {
@@ -313,10 +326,7 @@ browser.berytus.registerRequestHandler({
             );
             const change: Pick<Channel, 'e2eeActvie' | 'e2eeKey'> = {
                 e2eeActvie: true,
-                e2eeKey: await window.crypto.subtle.exportKey(
-                    "raw",
-                    encryptionKey
-                )
+                e2eeKey: encryptionKey
             };
             await db.channel.update(channel.id, change);
             context.response.resolve();
@@ -473,6 +483,7 @@ browser.berytus.registerRequestHandler({
             printSessionForSimiluationPrep('AccountCreation_GetUserAttributes', sessionId);
         },
         updateUserAttributes(context, args): void {
+            // TODO(berytus): Implement this
             throw new Error("Function not implemented.");
         },
         async addField(context, args): Promise<void> {
@@ -517,17 +528,19 @@ browser.berytus.registerRequestHandler({
                 browser.berytus.rejectRequest(context.request.id, ERejectionCode.GeneralError);
                 return;
             }
+            const clearValue = await toClearFieldValue(
+                context.channel.id,
+                args.field.value
+            );
             const change: Pick<Session, 'requests' | 'putFields' | 'version'> = {
                 requests: sessionRecord.requests.concat(context.request),
                 putFields: (sessionRecord.putFields || []).concat({
                     id: args.field.id,
                     type: args.field.type,
                     options: args.field.options,
-                    value: args.field.type === "SharedKey"
-                        ? stringifyArrayBufferOrEncryptedPacket(args.field.value.privateKey)
-                        : typeof args.field.value === "string"
-                            ? args.field.value
-                            : stringifyEncryptedPacket(args.field.value)
+                    value: typeof clearValue === "string"
+                        ? clearValue
+                        : ab2base64(clearValue.privateKey)
                 }),
                 version: sessionRecord.version + 1
             };
@@ -561,14 +574,6 @@ browser.berytus.registerRequestHandler({
                 browser.berytus.rejectRequest(context.request.id, ERejectionCode.GeneralError);
                 return;
             }
-            if (
-                typeof args.optionalNewValue === "object" &&
-                args.optionalNewValue !== null &&
-                "ciphertext" in args.optionalNewValue) {
-                console.warn("TODO(berytus): handle encrypted values");
-                browser.berytus.rejectRequest(context.request.id, ERejectionCode.GeneralError);
-                return;
-            }
             let change: Pick<Session, 'requests' | 'rejectedFieldValues' | 'version'>;
             let sameValue = false;
             let value = undefined;
@@ -576,17 +581,20 @@ browser.berytus.registerRequestHandler({
                 if (! args.optionalNewValue) {
                     break;
                 }
-                if (typeof args.optionalNewValue === "string") {
-                    sameValue = args.optionalNewValue === field.value;
-                    value = args.optionalNewValue;
-                    break;
-                }
-                if (args.optionalNewValue.privateKey instanceof ArrayBuffer) {
-                    value =  ab2base64(args.optionalNewValue.privateKey);
+                const newValue = await toClearFieldValue(
+                    context.channel.id,
+                    args.optionalNewValue
+                );
+                if (typeof newValue === "string") {
+                    value = newValue;
                     sameValue = value === field.value;
                     break;
                 }
-                console.warn("TODO(berytus): handle encrypted values");
+                if (newValue.privateKey instanceof ArrayBuffer) {
+                    value = ab2base64(newValue.privateKey);
+                    sameValue = value === field.value;
+                    break;
+                }
             } while (false);
             if (sameValue) {
                 // BRTTODO: A web app can reject a field value while dictating its new
@@ -691,15 +699,30 @@ browser.berytus.registerRequestHandler({
             await showUi(context, sessionId, relativePath, sessionRecordPromise);
             const sessionRecord = await sessionRecordPromise;
             let payload;
-            if (typeof args.payload === "string") {
+            if (
+                JWEPacketCipherBox.isCiphertextType(args.payload) ||
+                isNonEmptyArrayOfPackets(args.payload)
+            ) {
+                payload = await toClearMessageRequestPayload(
+                    sessionRecord,
+                    context.channel.id,
+                    challengeId,
+                    messageId,
+                    args.payload
+                );
+            } else {
                 payload = args.payload;
-            } else if (args.payload instanceof ArrayBuffer) {
-                payload = ab2base64(args.payload);
-            } else if (ArrayBuffer.isView(args.payload)) {
+            }
+            // TODO(berytus): Refactor the below.
+            if (typeof payload === "string" || payload === null) {
+                payload = payload;
+            } else if (payload instanceof ArrayBuffer) {
+                payload = ab2base64(payload);
+            } else if (ArrayBuffer.isView(payload)) {
                 console.warn("TODO(berytus): Remove ArrayBufferView support");
                 context.response.reject(ERejectionCode.GeneralError);
                 return;
-            } else if (Array.isArray(args.payload)) {
+            } else if (Array.isArray(payload)) {
                 payload = args.payload;
             } else {
                 console.warn("TODO(berytus): Support Encrypted Packet");

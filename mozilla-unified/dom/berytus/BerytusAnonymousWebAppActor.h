@@ -47,8 +47,6 @@ public:
   static already_AddRefed<BerytusAnonymousWebAppActor> Constructor(
     const GlobalObject& aGlobal
   );
-
-  already_AddRefed<BerytusWebAppActor> Clone() const override;
 };
 
 } // namespace mozilla::dom

@@ -2,7 +2,7 @@ import * as chai  from 'chai';
 import { createAccountDefs } from "@test/seed/account-defs.js";
 import chaiAsPromised from 'chai-as-promised';
 import { createAccounts } from '@test/seed/account.js';
-import { createAccountChallengeDefs, getAccountChallengeDefs, type ChallengeDefs } from '@test/seed/account-challenge-defs.js';
+import { createAccountChallengeDefs, getAccountChallengeDefs } from '@test/seed/account-challenge-defs.js';
 import { createAuthSessions, getAuthSessions } from '@test/seed/auth-session.js';
 import { createAuthChallenges, getAuthChallenges } from '@test/seed/auth-challenge.js';
 import { createAuthChallengeMessages } from '@test/seed/auth-challenge-message.js';
@@ -12,7 +12,7 @@ import { strict as assert } from 'node:assert';
 import { setupChallenge } from '@root/backend/logic/challenge-handler/index.js';
 import { AuthChallengeMessage, type ChallengeMessageStatus } from '@root/backend/db/models/AuthChallengeMessage.js';
 import { AccountField } from '@root/backend/db/models/AccountField.js';
-import { PublicKeyFieldValue } from '@root/backend/logic/field-handler/DigitalSignatureHandler.js';
+import { ArmoredPublicKeyFieldValue } from '@root/backend/logic/field-handler/DigitalSignatureHandler.js';
 const { expect } = chai;
 chai.use(chaiAsPromised);
 import { ArmoredKeyUtils } from "@root/backend/utils/key-utils.js";
@@ -42,7 +42,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
         assert(session.outcome === EAuthOutcome.Pending);
         assert(challengeDef.challengeType === EChallengeType.DigitalSignature);
         const keyFieldId =
-            challengeDef.challengeParameters["keyFieldId"];
+            challengeDef.challengeParameters["field"];
         expect(keyFieldId).to.be.a('string');
         const keyField = await AccountField.getField(
             session.accountVersion,
@@ -66,7 +66,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                         request: keyFieldId,
                         expected: {
                             id: keyFieldId,
-                            value: await PublicKeyFieldValue.parseAsync(keyField.fieldValue)
+                            value: await ArmoredPublicKeyFieldValue.parseAsync(keyField.fieldValue)
                         },
                         response,
                         statusMsg
@@ -98,26 +98,30 @@ describe("Berytus Digital Signature Challenge Handler", () => {
             true,
             ["sign", "verify"]
         );
-        const privKeyBuf = Buffer.from(await subtle.exportKey(
+        const privKeyBuf = await subtle.exportKey(
             "pkcs8", genKey.privateKey
-        ));
-        const pubKeyBuf = Buffer.from(await subtle.exportKey(
+        );
+        const pubKeyBuf = await subtle.exportKey(
             "spki",
             genKey.publicKey
-        ));
+        );
         return {
             cryptoKey: genKey,
             public: {
                 raw: pubKeyBuf,
                 armored: ArmoredKeyUtils.armorBase64(
-                    pubKeyBuf.toString('base64'),
+                    new Uint8Array(pubKeyBuf)
+                        // @ts-ignore: Node 25+
+                        .toBase64(),
                     "public"
                 )
             },
             private: {
                 raw: privKeyBuf,
                 armored: ArmoredKeyUtils.armorBase64(
-                    pubKeyBuf.toString('base64'),
+                    new Uint8Array(privKeyBuf)
+                        // @ts-ignore: Node 25+
+                        .toBase64(),
                     "private"
                 )
             }
@@ -139,11 +143,11 @@ describe("Berytus Digital Signature Challenge Handler", () => {
             if (! challengeDef) {
                 continue;
             }
-            const hasPasswordCh = challenges.find(
+            const hasDsCh = challenges.find(
                 c => c.challengeId === challengeDef.challengeId
                     && c.sessionId === session.sessionId
             );
-            if (hasPasswordCh) {
+            if (hasDsCh) {
                 continue;
             }
             return { session, challengeDef };
@@ -158,7 +162,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                 challengeDef
             } = await getSessionAndChallengeDef();
             const keyFieldId =
-            challengeDef.challengeParameters["keyFieldId"];
+                challengeDef.challengeParameters["field"];
             expect(keyFieldId).to.be.a('string');
             const keyField = await AccountField.getField(
                 session.accountVersion,
@@ -171,22 +175,34 @@ describe("Berytus Digital Signature Challenge Handler", () => {
             });
             const nonceData = [0x1, 0x2, 0x3];
             // @ts-ignore
-            const randomBytesStub: typeof randomBytes = (size: number, cb: unknown) => {
+            const randomBytesStub: typeof randomBytes = (_size: number, cb: unknown) => {
                 const buf = Buffer.from(nonceData);
                 if (typeof cb !== "undefined") {
                     throw new Error("callback not supprted");
                 }
                 return buf;
             };
-            const signedNonce = Buffer.from(await subtle.sign(
+            const signedNonceBuf = await subtle.sign(
                 "RSASSA-PKCS1-v1_5",
                 testKey.cryptoKey.privateKey,
                 new Uint8Array(nonceData)
-            )).toString('base64');
+            );
+            const signedNonce: string = new Uint8Array(signedNonceBuf)
+                // @ts-ignore: Node 25+
+                .toBase64();
             return {
                 session,
                 challengeDef,
                 randomBytesStub,
+                payloadInputs: {
+                    SelectKey: {
+                        id: keyFieldId,
+                        value: {
+                            publicKey: new Blob([testKey.public.raw], { type: "application/octet-stream" })
+                        }
+                    },
+                    SignNonce: new Blob([signedNonceBuf], { type: "application/octet-stream" })
+                },
                 messages: await composeMessages(session, challengeDef, nonceData, {
                     SelectKey: {
                         response: {
@@ -211,6 +227,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
             session,
             challengeDef,
             messages,
+            payloadInputs,
             randomBytesStub
         } = await testCases.successful();
         const ch = await setupChallenge(
@@ -230,7 +247,7 @@ describe("Berytus Digital Signature Challenge Handler", () => {
                 response: null,
                 statusMsg: null,
             });
-            await ch.processPendingMessageResponse(message.response);
+            await ch.processPendingMessageResponse(payloadInputs[message.messageName]);
             previousMessages[message.messageName] = message;
             expect((await ch.getMessages()).processedMessages)
                 .to.deep.equal(previousMessages);

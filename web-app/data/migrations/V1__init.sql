@@ -1,3 +1,31 @@
+CREATE TYPE EChannelType AS ENUM('NonE2EE', 'E2EE');
+
+CREATE TYPE EChannelStatus AS ENUM('Active', 'Closed');
+
+CREATE TABLE berytus_channel_request(
+    RequestID BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL,
+    WebAppActor JSONB NOT NULL, -- ed25519 public key or origin
+    WebAppX25519 JSONB DEFAULT NULL, -- { "public": "..", "private": ".." }
+    UnmaskAllowlist JSONB DEFAULT NULL,
+    CreatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (RequestID)
+);
+
+CREATE TABLE berytus_channel(
+    ChannelID VARCHAR(256) NOT NULL,
+    ChannelType EChannelType DEFAULT 'NonE2EE' NOT NULL,
+    ChannelRequestID BIGINT NOT NULL,
+    ScmActor JSONB NOT NULL,
+    ChannelStatus EChannelStatus DEFAULT 'Active' NOT NULL,
+    KeyAgreementParameters JSONB DEFAULT NULL,
+    KeyAgreementSignatures JSONB DEFAULT NULL,
+    SessionKey JSONB DEFAULT NULL,
+    CreatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (ChannelID),
+    CONSTRAINT fk_bc_ChannelRequestID
+        FOREIGN KEY (ChannelRequestID) REFERENCES berytus_channel_request(RequestID)
+);
+
 CREATE TABLE berytus_account(
     AccountID BIGINT GENERATED ALWAYS AS IDENTITY,
     CreatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -173,6 +201,15 @@ CREATE TABLE berytus_account_auth_challenge_message(
     PRIMARY KEY (SessionID, ChallengeID, MessageName),
     CONSTRAINT fk_baacm_SessionID
         FOREIGN KEY (SessionID) REFERENCES berytus_account_auth_session(SessionID)
+);
+
+CREATE TABLE berytus_account_constant (
+    AccountVersion INT NOT NULL,
+    ConstantName VARCHAR(256) NOT NULL,
+    Value VARCHAR(256) NOT NULL,
+    PRIMARY KEY (AccountVersion, ConstantName),
+    CONSTRAINT fk_bac_AccountVersion
+        FOREIGN KEY (AccountVersion) REFERENCES berytus_account_def(AccountVersion)
 );
 
 /*

@@ -20,7 +20,7 @@ interface PGetChallengeDef {
 
 /* Password Parameters, ideally this should be placed somewhere else */
 export const PasswordChallengeParameters = z.object({
-    passwordFieldIds: z.array(z.string())
+    fields: z.array(z.string())
 });
 export type PasswordChallengeParameters = z.infer<typeof PasswordChallengeParameters>;
 /* */

@@ -1,0 +1,59 @@
+--- dom/base/FormData.cpp.orig	2026-04-12 10:33:51
++++ dom/base/FormData.cpp	2026-04-12 12:17:26
+@@ -5,6 +5,7 @@
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ #include "FormData.h"
++#include "mozilla/dom/BerytusEncryptedPacket.h"
+ #include "nsIInputStream.h"
+ #include "mozilla/dom/CustomElementTypes.h"
+ #include "mozilla/dom/File.h"
+@@ -120,6 +121,16 @@
+ 
+ void FormData::Append(const nsAString& aName, Blob& aBlob,
+                       const Optional<nsAString>& aFilename, ErrorResult& aRv) {
++  RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(&aBlob);
++  if (packet) {
++    nsAutoString usvName(aName);
++    if (NS_WARN_IF(!NormalizeUSVString(usvName))) {
++      return;
++    }
++    FormDataTuple* data = mFormData.AppendElement();
++    SetNameBlobPair(data, usvName, packet);
++    return;
++  }
+   RefPtr<File> file = GetBlobForFormDataStorage(aBlob, aFilename, aRv);
+   if (NS_WARN_IF(aRv.Failed())) {
+     return;
+@@ -235,6 +246,15 @@
+                    const Optional<nsAString>& aFilename, ErrorResult& aRv) {
+   FormDataTuple* tuple = RemoveAllOthersAndGetFirstFormDataTuple(aName);
+   if (tuple) {
++    RefPtr<BerytusEncryptedPacket> packet = TryDowncastBlob<BerytusEncryptedPacket>(&aBlob);
++    if (packet) {
++      nsAutoString usvName(aName);
++      if (NS_WARN_IF(!NormalizeUSVString(usvName))) {
++        return;
++      }
++      SetNameBlobPair(tuple, usvName, packet);
++      return;
++    }
+     RefPtr<File> file = GetBlobForFormDataStorage(aBlob, aFilename, aRv);
+     if (NS_WARN_IF(aRv.Failed())) {
+       return;
+@@ -285,6 +305,15 @@
+   aData->value.SetAsBlob() = aFile;
+ }
+ 
++void FormData::SetNameBlobPair(FormDataTuple* aData, const nsAString& aName,
++                               Blob* aBlob) {
++  MOZ_ASSERT(aData);
++  MOZ_ASSERT(aBlob);
++
++  aData->name = aName;
++  aData->value.SetAsBlob() = aBlob;
++}
++
+ void FormData::SetNameDirectoryPair(FormDataTuple* aData,
+                                     const nsAString& aName,
+                                     Directory* aDirectory) {

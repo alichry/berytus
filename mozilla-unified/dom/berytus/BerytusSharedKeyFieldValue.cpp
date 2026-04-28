@@ -21,14 +21,9 @@ BerytusSharedKeyFieldValue::BerytusSharedKeyFieldValue(
   nsIGlobalObject* aGlobal,
   RefPtr<BerytusBuffer>& aBuffer
 ) : BerytusFieldValueDictionary(aGlobal),
-    mBuffer(aBuffer) {
-}
+    mBuffer(aBuffer) {}
 
-
-BerytusSharedKeyFieldValue::~BerytusSharedKeyFieldValue()
-{
-    mozilla::DropJSObjects(this);
-}
+BerytusSharedKeyFieldValue::~BerytusSharedKeyFieldValue() {}
 
 nsIGlobalObject* BerytusSharedKeyFieldValue::GetParentObject() const { return mGlobal; }
 
@@ -90,18 +85,6 @@ already_AddRefed<BerytusSharedKeyFieldValue> BerytusSharedKeyFieldValue::Constru
     buffer
   );
   return value.forget();
-}
-
-already_AddRefed<BerytusSharedKeyFieldValue> BerytusSharedKeyFieldValue::Clone(nsresult* aRv) {
-  RefPtr<BerytusBuffer> newBuffer = mBuffer->Clone(aRv);
-  if (NS_WARN_IF(NS_FAILED(*aRv))) {
-    return nullptr;
-  }
-  RefPtr<BerytusSharedKeyFieldValue> newFieldValue = new BerytusSharedKeyFieldValue(
-    mGlobal,
-    newBuffer
-  );
-  return newFieldValue.forget();
 }
 
 } // namespace mozilla::dom

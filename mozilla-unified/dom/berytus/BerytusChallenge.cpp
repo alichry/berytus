@@ -5,6 +5,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/BerytusChallenge.h"
+#include "js/Array.h"
+#include "js/ArrayBuffer.h"
+#include "js/PropertyAndElement.h"
+#include "mozilla/dom/BerytusJWEPacket.h"
 #include "ErrorList.h"
 #include "js/RootingAPI.h"
 #include "js/TypeDecls.h"
@@ -16,10 +20,12 @@
 #include "mozilla/berytus/AgentProxyUtils.h"
 #include "mozilla/dom/BerytusChallengeBinding.h"
 #include "mozilla/dom/BerytusChannel.h"
+#include "mozilla/dom/BerytusEncryptedPacketBinding.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/Promise-inl.h"
 #include "mozilla/dom/ToJSValue.h"
+#include "nsDebug.h"
 
 namespace mozilla::dom {
 
@@ -60,11 +66,42 @@ bool BerytusChallenge::Connected() const {
   return mChannel && mOperation;
 }
 
-void BerytusChallenge::Connect(const RefPtr<BerytusChannel>& aChannel,
-                               const RefPtr<BerytusLoginOperation>& aOperation) {
-  mChannel = aChannel;
-  mOperation = aOperation;
-  mActive = true;
+RefPtr<BerytusChallenge::ConnectResult> BerytusChallenge::Connect(
+    const RefPtr<BerytusChannel>& aChannel,
+    const RefPtr<BerytusLoginOperation>& aOperation) {
+  MOZ_ASSERT(mGlobal);
+  MOZ_ASSERT(!mChannel);
+  MOZ_ASSERT(!mOperation);
+  MOZ_ASSERT(aChannel);
+  MOZ_ASSERT(aOperation);
+  MOZ_ASSERT(aOperation->Active());
+  MOZ_ASSERT(aChannel->Active());
+  berytus::AgentProxy& agent = aChannel->Agent();
+  MOZ_ASSERT(!agent.IsDisabled());
+  berytus::RequestContextWithOperation reqCtx;
+  nsresult rv = berytus::Utils_RequestContextWithOperationMetadata(
+      mGlobal, aChannel, aOperation, reqCtx);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return ConnectResult::CreateAndReject(berytus::Failure(rv), __func__);
+  }
+  berytus::ApproveChallengeRequestArgs reqArgs;
+  berytus::utils::ToProxy::BerytusChallengeInfoUnion(
+      this, reqArgs.mChallenge);
+  RefPtr<berytus::AccountAuthenticationApproveChallengeRequestResult> prom =
+    agent.AccountAuthentication_ApproveChallengeRequest(reqCtx, reqArgs);
+  MOZ_ASSERT(prom);
+  return prom->Then(
+    GetCurrentSerialEventTarget(), __func__,
+    [this, channel = RefPtr{aChannel}, operation = RefPtr{aOperation}](void*) {
+      mChannel = channel;
+      mOperation = operation;
+      mActive = true;
+      return BerytusChallenge::ConnectResult::CreateAndResolve(nullptr, __func__);
+    },
+    [](berytus::Failure&& aFr) {
+      return BerytusChallenge::ConnectResult::CreateAndReject(std::move(aFr), __func__);
+    }
+  );
 }
 
 BerytusChannel* BerytusChallenge::Channel() {
@@ -97,10 +134,33 @@ void BerytusChallenge::GetParameters(JSContext* aCx,
   aRetVal.set(mCachedParameters); // Object or null
 }
 
+template <typename P>
+already_AddRefed<Promise> BerytusChallenge::SendMessageRaw(
+    JSContext* aCx,
+    const nsString& aMessageName,
+    P& aMessagePayload,
+    ErrorResult& aRv) {
+  JS::Rooted<JS::Value> payloadJs(aCx);
+  if (NS_WARN_IF(!berytus::ToJSVal(aCx, aMessagePayload, payloadJs))) {
+    aRv.Throw(NS_ERROR_INVALID_ARG);
+    return nullptr;
+  }
+  return SendMessageRaw(aCx, aMessageName, JS::HandleValue(payloadJs), aRv);
+}
+
 already_AddRefed<Promise> BerytusChallenge::SendMessageRaw(
     JSContext* aCx,
     const nsString& aMessageName,
     JS::Handle<JS::Value> aMessagePayload,
+    ErrorResult& aRv) {
+  return SendMessageRaw(aCx, aMessageName, aMessagePayload, true, aRv);
+}
+
+already_AddRefed<Promise> BerytusChallenge::SendMessageRaw(
+    JSContext* aCx,
+    const nsString& aMessageName,
+    JS::Handle<JS::Value> aMessagePayload,
+    const bool& aConstructPackets,
     ErrorResult& aRv) {
   if (!Connected()) {
     aRv.ThrowInvalidStateError("Challenge is not connected to a secret manager.");
@@ -123,26 +183,31 @@ already_AddRefed<Promise> BerytusChallenge::SendMessageRaw(
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
-  RefPtr<Promise> prom= agent.CallSendQuery(aCx, u"accountAuthentication"_ns,
+  RefPtr<Promise> prom = agent.CallSendQuery(aCx, u"accountAuthentication"_ns,
                              u"respondToChallengeMessage"_ns, reqCtx, msg, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
-  return MaybeCatchBerytusFailure(prom, aRv);
-}
-
-template <typename P>
-already_AddRefed<Promise> BerytusChallenge::SendMessageRaw(
-    JSContext* aCx,
-    const nsString& aMessageName,
-    P& aMessagePayload,
-    ErrorResult& aRv) {
-  JS::Rooted<JS::Value> payloadJs(aCx);
-  if (NS_WARN_IF(!berytus::ToJSVal(aCx, aMessagePayload, payloadJs))) {
-    aRv.Throw(NS_ERROR_INVALID_ARG);
-    return nullptr;
-  }
-  return SendMessageRaw(aCx, aMessageName, JS::HandleValue(payloadJs), aRv);
+  auto onResolve = [this, constructPackets = bool(aConstructPackets)](JSContext* aCx,
+                                JS::Handle<JS::Value> aValue,
+                                ErrorResult& aRv,
+                                const nsCOMPtr<nsIGlobalObject>& aGlobal) -> already_AddRefed<Promise> {
+    RefPtr<Promise> newPromise = Promise::Create(aGlobal, aRv);
+    if (NS_WARN_IF(aRv.Failed())) {
+      return nullptr;
+    }
+    // AutoRealm needed?
+    if (!constructPackets) {
+      newPromise->MaybeResolve(aValue);
+    } else {
+      JS::Rooted<JS::Value> transformedValue(aCx);
+      SetupPacketsInResponse(aCx, aValue, &transformedValue, aRv);
+      NS_ENSURE_TRUE(!aRv.Failed(), nullptr);
+      newPromise->MaybeResolve(transformedValue);
+    }
+    return newPromise.forget();
+  };
+  return MaybeCatchBerytusFailure(prom, aRv, std::move(onResolve));
 }
 
 template <typename T>
@@ -152,7 +217,7 @@ RefPtr<BerytusChallenge::SendMessageResult<T>> BerytusChallenge::SendMessage(
     JS::Handle<JS::Value> aMessagePayload,
     ErrorResult& aRv) {
   RefPtr<typename SendMessageResult<T>::Private> outPromise = new typename SendMessageResult<T>::Private(__func__);
-  RefPtr<Promise> prom = SendMessageRaw(aCx, aMessageName, aMessagePayload, aRv);
+  RefPtr<Promise> prom = SendMessageRaw(aCx, aMessageName, aMessagePayload, false, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     return nullptr;
   }
@@ -434,6 +499,199 @@ already_AddRefed<Promise> BerytusChallenge::MaybeCatchBerytusFailure(
     return newPromise.forget();
   };
   return MaybeCatchBerytusFailure(aPromise, aRv, std::move(onResolve));
+}
+
+void MatchesJWEPacketProxy(JSContext* aCx,
+                           JS::Rooted<JSObject*>& aObj,
+                           bool& aRetMatches,
+                           ErrorResult& aRv) {
+  JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
+  if (NS_WARN_IF(!JS_Enumerate(aCx, aObj, &ids))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  if (ids.length() != 2) {
+    aRetMatches = false;
+    return;
+  }
+
+  // --- Check "type" === "JWE" ---
+  JS::Rooted<JS::Value> typeVal(aCx);
+  bool hasType = false;
+  if (NS_WARN_IF(!JS_HasProperty(aCx, aObj, "type", &hasType))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  if (!hasType) {
+    aRetMatches = false;
+    return;
+  }
+
+  if (NS_WARN_IF(!JS_GetProperty(aCx, aObj, "type", &typeVal))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  if (!typeVal.isString()) {
+    aRetMatches = false;
+    return;
+  }
+  bool typeMatch = false;
+  if (NS_WARN_IF(!JS_StringEqualsLiteral(aCx, typeVal.toString(), "JWE", &typeMatch))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  if (!typeMatch) {
+    aRetMatches = false;
+    return;
+  }
+
+  // --- Check "value" is a string ---
+  JS::Rooted<JS::Value> valueVal(aCx);
+  bool hasValue = false;
+  if (NS_WARN_IF(!JS_HasProperty(aCx, aObj, "value", &hasValue))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  if (!hasValue) {
+    aRetMatches = false;
+    return;
+  }
+  if (NS_WARN_IF(!JS_GetProperty(aCx, aObj, "value", &valueVal))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  aRetMatches = valueVal.isString();
+}
+
+void BerytusChallenge::CreateJWEPacketReflector(JSContext* aCx,
+    JS::Handle<JSObject*> aValue,
+    JS::MutableHandle<JS::Value> aRetVal,
+    ErrorResult& aRv) {
+  JS::Rooted<JS::Value> jweCompactValue(aCx);
+  if (NS_WARN_IF(!JS_GetProperty(aCx, aValue, "value", &jweCompactValue))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+  nsAutoJSString jweCompact;
+  if (NS_WARN_IF(!jweCompact.init(aCx, jweCompactValue))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+  RefPtr<BerytusJWEPacket> packet = BerytusJWEPacket::Create(
+      mGlobal, jweCompact, true, aRv);
+  NS_ENSURE_TRUE_VOID(!aRv.Failed());
+  MOZ_ASSERT(mChannel);
+  packet->Attach(mChannel, aRv);
+  NS_ENSURE_TRUE_VOID(!aRv.Failed());
+
+  JS::Rooted<JS::Value> jsPacket(aCx, JS::NullValue());
+  if (NS_WARN_IF(!GetOrCreateDOMReflector(aCx, packet, &jsPacket))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+  if (NS_WARN_IF(!jsPacket.isObject())) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  aRetVal.set(jsPacket);
+}
+
+// NOTE(berytus): This does not handle circular references.
+void BerytusChallenge::SetupPacketsInResponse(JSContext* aCx,
+                            JS::Handle<JS::Value> aValue,
+                            JS::MutableHandle<JS::Value> aRetVal,
+                            ErrorResult& aRv) {
+  // (Base case 0) If not an object, return early
+  if (!aValue.isObject()) {
+    aRetVal.set(aValue);
+    return;
+  }
+
+  JS::Rooted<JSObject*> obj(aCx, &aValue.toObject());
+
+  // (Base case 1) If object is an ArrayBuffer, return it as is.
+  if (JS::IsArrayBufferObject(obj)) {
+    aRetVal.set(aValue);
+    return;
+  }
+
+  // (Base case 2) If object is a JWE packet proxy, transform it
+  // and stop.
+  bool matchesJwe = false;
+  MatchesJWEPacketProxy(aCx, obj, matchesJwe, aRv);
+  NS_ENSURE_TRUE_VOID(!aRv.Failed());
+
+  if (matchesJwe) {
+    CreateJWEPacketReflector(aCx, obj, aRetVal, aRv);
+    NS_ENSURE_TRUE_VOID(!aRv.Failed());
+    return;
+  }
+
+  // --- Object didn't match JWE Packet Proxy,
+  //     recursively process all properties ---
+
+  bool isArray = false;
+  if (NS_WARN_IF(!JS::IsArrayObject(aCx, obj, &isArray))) {
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  JS::Rooted<JSObject*> cloned(aCx);
+  if (isArray) {
+    // Create an array of the same length
+    uint32_t length = 0;
+    if (NS_WARN_IF(!JS::GetArrayLength(aCx, obj, &length))) {
+      aRv.MightThrowJSException();
+      aRv.StealExceptionFromJSContext(aCx);
+      return;
+    }
+    cloned = JS::NewArrayObject(aCx, length);
+    if (NS_WARN_IF(!cloned)) {
+      aRv.MightThrowJSException();
+      aRv.StealExceptionFromJSContext(aCx);
+      return;
+    }
+  } else {
+    // Create a plain object
+    cloned = JS_NewPlainObject(aCx);
+    if (NS_WARN_IF(!cloned)) {
+      aRv.MightThrowJSException();
+      aRv.StealExceptionFromJSContext(aCx);
+      return;
+    }
+  }
+
+  JS::Rooted<JS::IdVector> ids(aCx, JS::IdVector(aCx));
+  if (NS_WARN_IF(!JS_Enumerate(aCx, obj, &ids))) {
+    aRv.MightThrowJSException();
+    aRv.StealExceptionFromJSContext(aCx);
+    return;
+  }
+
+  for (size_t i = 0; i < ids.length(); i++) {
+    JS::Rooted<JS::Value> propVal(aCx);
+    if (NS_WARN_IF(!JS_GetPropertyById(aCx, obj, ids[i], &propVal))) {
+      aRv.MightThrowJSException();
+      aRv.StealExceptionFromJSContext(aCx);
+      return;
+    }
+
+    JS::Rooted<JS::Value> newValue(aCx);
+    SetupPacketsInResponse(aCx, propVal, &newValue, aRv);
+    NS_ENSURE_TRUE_VOID(!aRv.Failed());
+    if (NS_WARN_IF(!JS_SetPropertyById(aCx, cloned, ids[i], newValue))) {
+      aRv.MightThrowJSException();
+      aRv.StealExceptionFromJSContext(aCx);
+      return;
+    }
+  }
+  aRetVal.setObject(*cloned);
 }
 
 } // namespace mozilla::dom

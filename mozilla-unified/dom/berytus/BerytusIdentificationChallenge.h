@@ -15,16 +15,19 @@ class BerytusIdentificationChallenge final : public BerytusChallenge {
 public:
   NS_DECL_ISUPPORTS_INHERITED
   BerytusIdentificationChallenge(nsIGlobalObject* aGlobal,
-                   const nsAString& aID);
+                                 const nsAString& aID,
+                                 BerytusIdentificationChallengeParameters&& aParameters);
 protected:
   ~BerytusIdentificationChallenge();
+  BerytusIdentificationChallengeParameters mParameters;
   void CacheParameters(JSContext* aCx, ErrorResult& aRv) override;
 
 public:
+  BerytusIdentificationChallengeParameters const& Parameters() const;
+
   JSObject* WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGivenProto) override;
 
   already_AddRefed<Promise> GetIdentityFields(JSContext* aCx,
-                                              const Sequence<nsString>& aIdentityFieldIds,
                                               ErrorResult& aRv);
   already_AddRefed<Promise> AbortWithIdentityDoesNotExistsError(
       JSContext* aCx,
@@ -34,6 +37,7 @@ public:
   static already_AddRefed<BerytusIdentificationChallenge> Constructor(
     const GlobalObject& aGlobal,
     const nsAString& aId,
+    const BerytusIdentificationChallengeParameters& aParameters,
     ErrorResult& aRv
   );
 };

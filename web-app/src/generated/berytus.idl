@@ -350,9 +350,24 @@ dictionary BerytusOnboardingOptions {
     record<DOMString, boolean> requiredUserAttributes;
 };
 
+dictionary BerytusKeyAgreementInput {
+    /**
+     * Base64 string of the DER-structured X25519 SPKI
+     * This is the web app X25519 public key
+     */
+    required DOMString public;
+    /**
+     * A list of URLs for which ciphertext would be transmitted to.
+     * If empty, all masked ciphertext would be unmasked in any
+     * fetch request.
+     */
+    sequence<DOMString> unmaskAllowlist;
+};
 
 [SecureContext, Exposed=(Window)]
 interface BerytusChannel {
+    readonly attribute DOMString id;
+
     readonly attribute boolean active;
 
     readonly attribute BerytusWebAppActor webApp;
@@ -396,17 +411,14 @@ interface BerytusChannel {
 
     [Throws]
     Promise<BerytusKeyAgreementParameters> prepareKeyAgreementParameters(
-        DOMString webAppX25519PublicKey
+        BerytusKeyAgreementInput input
     );
-
-    /**
-     * @param keyAgreementSignature the signature data of the string
-     *  created by BerytusKeyAgreementParameters.toJSON()
-     */
-    // [Throws]
-    // Promise<DOMString> enableEndToEndEncryption(
-    //     ArrayBuffer keyAgreementSignature
-    // );
+    [Throws]
+    Promise<ArrayBuffer> exchangeKeyAgreementSignatures(
+        ArrayBuffer webAppSignature
+    );
+    [Throws]
+    Promise<undefined> enableEndToEndEncryption();
 };[SecureContext, Exposed=(Window)]
 interface BerytusCryptoWebAppActor : BerytusWebAppActor {
     /**
@@ -438,48 +450,13 @@ typedef (BerytusPlaintextSource or BerytusCiphertextSource) BerytusDataSource;
 
 typedef (DOMString or ArrayBuffer or BerytusEncryptedPacket) BerytusDataType;
 
-/**
- * See childs of Algorithm in SubtleCrypto.webidl; see
- * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt#supported_algorithms
- */
-typedef AesGcmParams BerytusEncryptionParams;
-
-[GenerateConversionToJS]
-dictionary AesGcmParamsJSON : Algorithm {
-  required Base64URLString iv;
-  Base64URLString additionalData;
-  [EnforceRange] octet tagLength;
-};
-
-typedef AesGcmParamsJSON BerytusEncryptionParamsJSON;
-
-[GenerateConversionToJS]
-dictionary BerytusEncryptedPacketJSON {
-    required BerytusEncryptionParamsJSON parameters;
-    required Base64URLString ciphertext;
-};
+[SecureContext, Exposed=(Window)]
+interface BerytusEncryptedPacket : Blob {};
 
 [SecureContext, Exposed=(Window)]
-interface BerytusEncryptedPacket {
-    /**
-     * @type {BerytusEncryptionParams}
-     */
-    [Throws]
-    readonly attribute object parameters;
-
-    [SameObject, Throws]
-    readonly attribute ArrayBuffer ciphertext;
-
-    [Throws]
-    constructor(BerytusEncryptionParams algorithm, BufferSource ciphertext);
-
-    /**
-     * Return a serialisable JavaScript object that can be
-     * sent over HTTP. Mirrors `this` interface; however,
-     * ArrayBuffers are transformed into Base64 strings.
-     */
-    [Throws]
-    BerytusEncryptedPacketJSON toJSON();
+interface BerytusJWEPacket : BerytusEncryptedPacket {
+  [Throws]
+  constructor(DOMString jweCompact);
 };enum BerytusFieldType {
   "Identity",
   "ForeignIdentity",
@@ -668,6 +645,11 @@ dictionary BerytusKeyFieldOptions : BerytusBaseFieldOptions {
      * Otherwise, it SHOULD be rejected. It is an array of
      * COSEAlgorithmIdentifier to allow the specification of
      * a signing algorithm, and an encryption algorithm.
+     *
+     * TODO(berytus): 29/01/2025 - Switch to SubtleCrypto's
+     * AlgorithmIdentifier format. This would facilitate generation
+     * of specific key types that can be used for different algorithms,
+     * e.g. an RSA key for both RSA-OAEP and RSASSA-PKCS1-v1_5
      */
     //required sequence<COSEAlgorithmIdentifier>     alg;
     required COSEAlgorithmIdentifier     alg;
@@ -742,41 +724,105 @@ interface BerytusIdentityField : BerytusField {
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
- 
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyExchangePartyPublicKeys {
+    required DOMString scm;
+    required DOMString webApp;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyExchangeAuthentication {
+    required DOMString name; // -> Ed25519
+    required BerytusKeyExchangePartyPublicKeys public;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyExchangeParams {
+  required DOMString name; // -> X25519
+  required BerytusKeyExchangePartyPublicKeys public;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyDerivationParams /*: HkdfParams */ {
+    required DOMString name; // -> HKDF
+    required DOMString hash; // -> SHA-256
+    required BufferSource salt;
+    required BufferSource info;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyGenParams /*: AesKeyGenParams */ {
+    required DOMString name; // -> AES-GCM
+    required [EnforceRange] unsigned short length; // -> 256
+};
+
+/**
+ * The session fingerprint is produced by
+ * Hashing(Salt . UTF8(ID) . Timestamp (as unsigned long) . Origin . DER(certificate))
+ */
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyExchangeSessionFingerprint {
+    required DOMString hash; // -> SHA-256
+    required DOMString version;
+    /**
+     * This a work in progress; make no evaluation.
+     *
+     * Alternatively, we can streamline a flow where the browser
+     * sends the salt to a signed URL, therefore concealing the salt
+     * from the client-side.
+     */
+    required BufferSource salt;
+    required BufferSource value;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusKeyExchangeSession {
+    /** Session id, same as channel id */
+    required DOMString id;
+    required unsigned long timestamp;
+    required BerytusKeyExchangeSessionFingerprint fingerprint;
+    /**
+     * A list of URLs for which ciphertext would be transmitted to.
+     * TODO(berytus): Come up with a better name
+     */
+    sequence<DOMString> unmaskAllowlist;
+};
+
 [SecureContext, Exposed=(Window)]
 interface BerytusKeyAgreementParameters {
     /**
-     * Channel/session ID provided by Berytus
-     */
-    readonly attribute DOMString sessionId;
-    readonly attribute DOMString webAppX25519Key;
-    readonly attribute DOMString scmX25519Key;
-    readonly attribute DOMString hkdfHash;
-    readonly attribute ArrayBuffer hkdfSalt;
-    readonly attribute ArrayBuffer hkdfInfo;
-    /**
-     * (in bits)
-     */
-    readonly attribute unsigned short aesKeyLength;
-
-    /**
-     * Convert this object to an ordered-JSON string.
-     * This is designed for key agreement parameter signing.
-     * toJSON is deterministic. hkdfSalt and hkdfInfo are encoded
-     * as base64.
-     * The order is as follows:
-     * - sessionId
-     * - webAppX25519Key
-     * - scmX25519Key
-     * - hkdfHash;
-     * - hkdfSalt
-     * - hkdfInfo
-     * - aesKeyLength
-     *
-     * Two space characters are used as indentation.
+     * @type {BerytusKeyExchangeSession}
      */
     [Throws]
-    DOMString toJSON();
+    readonly attribute any session;
+    /**
+     * @type {BerytusKeyExchangeAuthentication}
+     */
+    [Throws]
+    readonly attribute any authentication;
+    /**
+     * @type {BerytusKeyExchangeParams}
+     */
+    [Throws]
+    readonly attribute any exchange;
+    /**
+     * @type {BerytusKeyDerivationParams}
+     */
+    [Throws]
+    readonly attribute any derivation;
+    /**
+     * @type {BerytusKeyGenParams}
+     */
+    [Throws]
+    readonly attribute any generation;
+
+    /**
+     * Convert this object to a canonical JSON value; see RFC 8785
+     * @url {https://www.rfc-editor.org/rfc/rfc8785}
+     */
+    [Throws]
+    DOMString toCanonicalJSON();
 };[SecureContext, Exposed=(Window)]
 interface BerytusKeyFieldValue : BerytusFieldValueDictionary {
     [Throws]
@@ -916,7 +962,7 @@ dictionary BerytusUserAttributeJSON {
     DOMString info;
     DOMString mimeType;
     required BerytusUserAttributeValueEncodingType encoding;
-    required (DOMString /*or Base64URLString*/ or BerytusEncryptedPacketJSON) value;
+    required DOMString value;
 };
 
 [SecureContext, Exposed=(Window)]
@@ -969,6 +1015,8 @@ enum BerytusChallengeAbortionCode {
 
 typedef DOMString BerytusChallengeId;
 
+typedef (DOMString or BerytusEncryptedPacket) StringOrPacketUnion;
+
 [SecureContext, Exposed=(Window)]
 interface BerytusChallenge {
   readonly attribute BerytusChallengeId id;
@@ -993,24 +1041,30 @@ interface BerytusChallenge {
   Promise<undefined> abortWithGenericWebAppFailureError();
 };
 
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusIdentificationChallengeParameters {
+  /**
+   * List of identity field ids, used to guide retrieval.
+   */
+  required sequence<DOMString> fields;
+};
+
 [GenerateInit]
 dictionary BerytusChallengeGetIdentityFieldsMessageResponse {
   /**
    * Implementation should ensure it is of type:
    *   (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>)
    */
-  required record<DOMString, (DOMString or BerytusEncryptedPacket)> response;
+  required record<DOMString, StringOrPacketUnion> response;
 };
 
 [SecureContext, Exposed=(Window)]
 interface BerytusIdentificationChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusIdentificationChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeGetIdentityFieldsMessageResponse> getIdentityFields(
-    sequence<DOMString> identityFieldIds
-  );
+  Promise<BerytusChallengeGetIdentityFieldsMessageResponse> getIdentityFields();
   [Throws]
   Promise<undefined> abortWithIdentityDoesNotExistsError();
 };
@@ -1020,18 +1074,24 @@ dictionary BerytusChallengeGetPasswordFieldsMessageResponse {
    * Implementation should ensure it is of type:
    *   (record<DOMString, DOMString> or record<DOMString, BerytusEncryptedPacket>)
    */
-  required record<DOMString, (DOMString or BerytusEncryptedPacket)> response;
+  required record<DOMString, StringOrPacketUnion> response;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusPasswordChallengeParameters {
+  /**
+   * List of password field ids, used to guide retrieval.
+   */
+  required sequence<DOMString> fields;
 };
 
 [SecureContext, Exposed=(Window)]
 interface BerytusPasswordChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusPasswordChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeGetPasswordFieldsMessageResponse> getPasswordFields(
-    sequence<DOMString> passwordFieldIds
-  );
+  Promise<BerytusChallengeGetPasswordFieldsMessageResponse> getPasswordFields();
   [Throws]
   Promise<undefined> abortWithIncorrectPasswordError();
 };
@@ -1043,18 +1103,24 @@ dictionary BerytusChallengeSelectKeyMessageResponse {
 
 [GenerateInit]
 dictionary BerytusChallengeSignNonceMessageResponse {
-  required ArrayBuffer response;
+  required (ArrayBuffer or BerytusEncryptedPacket) response;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusDigitalSignatureChallengeParameters {
+  /**
+   * The key field id to assume, used to guide key selection.
+   */
+  required DOMString field;
 };
 
 [SecureContext, Exposed=(Window)]
 interface BerytusDigitalSignatureChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusDigitalSignatureChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeSelectKeyMessageResponse> selectKey(
-    DOMString keyFieldId
-  );
+  Promise<BerytusChallengeSelectKeyMessageResponse> selectKey();
   [Throws]
   Promise<BerytusChallengeSignNonceMessageResponse> signNonce(
     (ArrayBuffer or ArrayBufferView or BerytusEncryptedPacket) nonce
@@ -1075,7 +1141,7 @@ dictionary BerytusChallengeSelectSecurePasswordMessageResponse {
     * value could be wrapped in a BerytusEncryptedPacket, depending
     * whether app-level E2EE is enabled.
     */
-  required (DOMString or BerytusEncryptedPacket) response;
+  required StringOrPacketUnion response;
 };
 
 [GenerateInit]
@@ -1092,11 +1158,16 @@ dictionary BerytusChallengeExchangePublicKeysMessageResponse {
 
 enum BerytusSecureRemotePasswordChallengeEncodingType {
   "None",
-  "Hex"
+  "Hex" // TODO(berytus): Looks like implementation could
+        // reject 'Hex' encoding if e2ee is enabled.
 };
 
 [GenerateInit, GenerateConversionToJS]
 dictionary BerytusSecureRemotePasswordChallengeParameters {
+  /**
+   * The secure password field id, used to guide field selection.
+   */
+  required DOMString field;
   /**
    * Defaults to "None"
    */
@@ -1126,9 +1197,7 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
   constructor(DOMString id, optional BerytusSecureRemotePasswordChallengeParameters parameters = {});
 
   [Throws]
-  Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword(
-    DOMString securePasswordFieldId
-  );
+  Promise<BerytusChallengeSelectSecurePasswordMessageResponse> selectSecurePassword();
 
   /**
    * SRP:B - As a hex string or as an ArrayBuffer(View). By default,
@@ -1168,31 +1237,29 @@ interface BerytusSecureRemotePasswordChallenge : BerytusChallenge {
 
 [GenerateInit]
 dictionary BerytusChallengeGetOtpMessageResponse {
-  required (DOMString or BerytusEncryptedPacket) response;
+  required StringOrPacketUnion response;
+};
+
+[GenerateInit, GenerateConversionToJS]
+dictionary BerytusOffChannelOtpChallengeParameters {
+  /**
+   * The foreign identity field id
+   */
+  required DOMString field;
 };
 
 [SecureContext, Exposed=(Window)]
 interface BerytusOffChannelOtpChallenge : BerytusChallenge {
   [Throws]
-  constructor(DOMString id);
+  constructor(DOMString id, BerytusOffChannelOtpChallengeParameters parameters);
 
   [Throws]
-  Promise<BerytusChallengeGetOtpMessageResponse> getOtp(
-    DOMString foreignIdentityFieldId
-  );
+  Promise<BerytusChallengeGetOtpMessageResponse> getOtp();
   [Throws]
   Promise<undefined> abortWithIncorrectOtpError();
 };
 
-// TODO(berytus): field Ids specifiied in
-// getOtp, getPasswordFields, getIdentityFields
-// should be defined in the parameters of the challenge.
-
-/**
- * Work In Progress: Enums for challenge messages.
- * These will be moved to separate files once we introduce interfaces
- * for each challenge type.
- */
+// NOTE(berytus): Web App Poc depends on the below.
 
 enum BerytusIdentificationChallengeMessageName {
     "GetIdentityFields"

@@ -164,7 +164,7 @@ RefPtr<MozPromise<void*, berytus::Failure, true>> BerytusAccountMetadata::Popula
             if (NS_WARN_IF(aMetadata.mVersion != std::floor(aMetadata.mVersion))) {
               return MozPromiseType::CreateAndReject(berytus::Failure(NS_ERROR_INVALID_ARG), __func__);
             }
-            mVersion = static_cast<uint8_t>(aMetadata.mVersion);
+            mVersion = static_cast<uint64_t>(aMetadata.mVersion);
             mChangePassUrl.Assign(aMetadata.mChangePassUrl);
             void* d = nullptr;
             return MozPromiseType::CreateAndResolve(d, __func__);

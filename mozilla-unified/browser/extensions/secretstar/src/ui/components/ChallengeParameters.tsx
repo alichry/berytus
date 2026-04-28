@@ -16,7 +16,7 @@ const RowWithHint = ({ value, hint }: { value: string, hint: string }) => {
 
 
 export interface ChallengeParametersWithProps extends ClassNameProp {
-    parameters?: Record<string, unknown>;
+    parameters?: object;
 }
 
 export default function ChallengeParameters({ parameters, className }: ChallengeParametersWithProps) {
@@ -39,7 +39,7 @@ export default function ChallengeParameters({ parameters, className }: Challenge
                 rows={
                     Object.keys(parameters).map((key) => (
                         RowWithHint({
-                            value: String(parameters[key]),
+                            value: String((parameters as Record<string, unknown>)[key]),
                             hint: key
                         })
                     ))

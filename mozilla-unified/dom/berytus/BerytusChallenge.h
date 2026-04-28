@@ -39,6 +39,7 @@ public:
 
   template <typename T>
   using SendMessageResult = MozPromise<T, berytus::Failure, true>;
+  using ConnectResult = MozPromise<void*, berytus::Failure, true>;
 
 public:
   BerytusChallenge(nsIGlobalObject* aGlobal,
@@ -53,8 +54,6 @@ private:
    * using method-getters instead */
   RefPtr<BerytusChannel> mChannel;
   RefPtr<BerytusLoginOperation> mOperation;
-  void Connect(const RefPtr<BerytusChannel>& aChannel,
-               const RefPtr<BerytusLoginOperation>& aOperation);
   friend already_AddRefed<Promise> BerytusAccountAuthenticationOperation::Challenge(
     JSContext* aCx,
     const OwningNonNull<BerytusChallenge>& aChallenge,
@@ -67,6 +66,10 @@ protected:
 
   BerytusChannel* Channel();
   BerytusLoginOperation* Operation();
+
+  RefPtr<ConnectResult> Connect(
+      const RefPtr<BerytusChannel>& aChannel,
+      const RefPtr<BerytusLoginOperation>& aOperation);
 
 public:
   bool Connected() const;
@@ -127,6 +130,11 @@ public:
       JSContext* aCx,
       ErrorResult& aRv);
 protected:
+  already_AddRefed<Promise> SendMessageRaw(JSContext* aCx,
+                                           const nsString& aMessageName,
+                                           JS::Handle<JS::Value> aMessagePayload,
+                                           const bool& aConstructPackets,
+                                           ErrorResult& aRv);
   virtual void CacheParameters(JSContext* aCx, ErrorResult& aRv) = 0;
 
   void BuildChallengeInfo(JSContext* aCx, JS::MutableHandle<JS::Value> aRetVal, ErrorResult& aRv);
@@ -146,6 +154,15 @@ protected:
       const RefPtr<Promise>& aPromise,
       ErrorResult& aRv,
       ResolveCallback&& aOnResolve);
+
+  void CreateJWEPacketReflector(JSContext* aCx,
+                                JS::Handle<JSObject*> aValue,
+                                JS::MutableHandle<JS::Value> aRetVal,
+                                ErrorResult& aRv);
+  void SetupPacketsInResponse(JSContext* aCx,
+                              JS::Handle<JS::Value> aValue,
+                              JS::MutableHandle<JS::Value> aRetVal,
+                              ErrorResult& aRv);
 };
 
 } // namespace mozilla::dom

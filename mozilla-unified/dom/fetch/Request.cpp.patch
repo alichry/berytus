@@ -1,0 +1,70 @@
+--- dom/fetch/Request.cpp.orig	2025-09-20 16:11:07
++++ dom/fetch/Request.cpp	2025-11-05 23:15:51
+@@ -7,10 +7,14 @@
+ #include "Request.h"
+ 
+ #include "js/Value.h"
++#include "mozilla/dom/BerytusEncryptedPacket.h"
++#include "nsDebug.h"
++#include "nsIObserver.h"
++#include "nsISupports.h"
+ #include "nsIURI.h"
+ #include "nsNetUtil.h"
+ #include "nsPIDOMWindow.h"
+-
++#include "nsIOService.h"
+ #include "mozilla/ErrorResult.h"
+ #include "mozilla/StaticPrefs_network.h"
+ #include "mozilla/dom/Headers.h"
+@@ -28,6 +32,8 @@
+ 
+ namespace mozilla::dom {
+ 
++NS_IMPL_ISUPPORTS(Request::ConstructorNotification, nsISupports)
++
+ NS_IMPL_ADDREF_INHERITED(Request, FetchBody<Request>)
+ NS_IMPL_RELEASE_INHERITED(Request, FetchBody<Request>)
+ 
+@@ -69,7 +75,7 @@
+ 
+ Request::~Request() = default;
+ 
+-SafeRefPtr<InternalRequest> Request::GetInternalRequest() {
++SafeRefPtr<InternalRequest> Request::GetInternalRequest() const {
+   return mRequest.clonePtr();
+ }
+ 
+@@ -470,7 +476,33 @@
+       }
+     }
+   }
++  NotifyConstructorObservers(aInput, aInit, domRequest);
+   return domRequest;
++}
++
++nsresult Request::NotifyConstructorObservers(
++    const RequestOrUTF8String& aInput,
++    const RequestInit& aInit,
++    SafeRefPtr<Request>& aRequest) {
++  NS_ENSURE_TRUE(NS_IsMainThread(), NS_ERROR_NOT_SAME_THREAD);
++  nsresult rv;
++  RefPtr<Request::ConstructorNotification> notif =
++    new Request::ConstructorNotification(
++      &aInput, &aInit, aRequest.unsafeGetRawPtr());
++  nsCOMPtr<nsIObserverService> obs = services::GetObserverService();
++  if (NS_WARN_IF(!obs)) {
++    return NS_ERROR_FAILURE;
++  }
++  nsCOMPtr<nsISupports> asSupports = do_QueryInterface(notif);
++  if (NS_WARN_IF(!asSupports)) {
++    return NS_ERROR_FAILURE;
++  }
++  rv = obs->NotifyObservers(asSupports,
++                            NS_FETCH_REQUEST_CONSTRUCTOR_TOPIC,
++                            nullptr);
++  NS_ENSURE_SUCCESS(rv, rv);
++  notif->MarkAsUnsafe();
++  return NS_OK;
+ }
+ 
+ SafeRefPtr<Request> Request::Clone(ErrorResult& aRv) {

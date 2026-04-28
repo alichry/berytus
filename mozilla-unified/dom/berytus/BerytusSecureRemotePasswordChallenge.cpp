@@ -52,41 +52,15 @@ BerytusSecureRemotePasswordChallenge::WrapObject(JSContext* aCx, JS::Handle<JSOb
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::SelectSecurePassword(
     JSContext* aCx,
-    const nsAString& aSecurePasswordFieldId,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aSecurePasswordFieldId, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
+  payload.setNull();
   return SendMessageRaw(aCx, u"SelectSecurePassword"_ns, JS::HandleValue(payload), aRv);
-}
-
-nsresult BerytusSecureRemotePasswordChallenge::IsCorrectPayloadType(
-    const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aSrc
-) const {
-  if (!mParameters.mEncoding.WasPassed() ||
-      mParameters.mEncoding.Value() ==
-          BerytusSecureRemotePasswordChallengeEncodingType::None) {
-    if (aSrc.IsArrayBuffer() ||
-        aSrc.IsArrayBufferView() ||
-        aSrc.IsBerytusEncryptedPacket()) {
-      return NS_OK;
-    }
-    return NS_ERROR_INVALID_ARG;
-  }
-  if (!aSrc.IsString()) {
-    return NS_ERROR_INVALID_ARG;
-  }
-  // Should be Base64URL, let's consume the string to validate it.
-  // Can be optimised by implementing a "blackhole" FallibleTArray
-  FallibleTArray<uint8_t> data;
-  return Base64URLDecode(NS_ConvertUTF16toUTF8(aSrc.GetAsString()), Base64URLDecodePaddingPolicy::Ignore, data);
 }
 
 bool BerytusSecureRemotePasswordChallenge::PayloadToJSValue(
     JSContext* aCx,
-    const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aSrc,
+    const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aSrc,
     JS::MutableHandle<JS::Value> aRetVal
 ) {
   if (aSrc.IsArrayBuffer()) {
@@ -100,74 +74,42 @@ bool BerytusSecureRemotePasswordChallenge::PayloadToJSValue(
     aRetVal.setObject(*val.Obj());
     return true;
   }
-  if (aSrc.IsString()) {
-    const auto& val = aSrc.GetAsString();
-    return ToJSValue(aCx, val, aRetVal);
-  }
   MOZ_ASSERT(aSrc.IsBerytusEncryptedPacket());
   const auto& val = OwningNonNull(aSrc.GetAsBerytusEncryptedPacket());
   berytus::BerytusEncryptedPacket packetProxy;
-  berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy);
-  return berytus::ToJSVal(aCx, packetProxy, aRetVal);
+  NS_ENSURE_TRUE(berytus::utils::ToProxy::BerytusEncryptedPacket(aCx, val, packetProxy), false);
+  NS_ENSURE_TRUE(berytus::ToJSVal(aCx, packetProxy, aRetVal), false);
+  return true;
 }
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::ExchangePublicKeys(
     JSContext* aCx,
-    const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aWebAppServerPublicKeyB,
+    const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aWebAppServerPublicKeyB,
     ErrorResult& aRv) {
-  nsresult rv = IsCorrectPayloadType(aWebAppServerPublicKeyB);
-  if (rv == NS_ERROR_INVALID_ARG) {
-    aRv.ThrowTypeError("Incorrect JavaScript type for arg 0");
-    return nullptr;
-  }
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    aRv.Throw(rv);
-    return nullptr;
-  }
   JS::Rooted<JS::Value> payload(aCx);
   if (NS_WARN_IF(!PayloadToJSValue(aCx, aWebAppServerPublicKeyB, &payload))) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-  // TODO(berytus): Ensure chrome code validates resolve type per the encoding type in ch parameters.
   return SendMessageRaw(aCx, u"ExchangePublicKeys"_ns, JS::HandleValue(payload), aRv);
 }
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::ComputeClientProof(
     JSContext* aCx,
-    const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aSalt,
+    const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aSalt,
     ErrorResult& aRv) {
-  nsresult rv = IsCorrectPayloadType(aSalt);
-  if (rv == NS_ERROR_INVALID_ARG) {
-    aRv.ThrowTypeError("Incorrect JavaScript type for arg 0");
-    return nullptr;
-  }
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    aRv.Throw(rv);
-    return nullptr;
-  }
   JS::Rooted<JS::Value> payload(aCx);
   if (NS_WARN_IF(!PayloadToJSValue(aCx, aSalt, &payload))) {
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
-  // TODO(berytus): Ensure chrome code validates resolve type per the encoding type in ch parameters.
   return SendMessageRaw(aCx, u"ComputeClientProof"_ns, JS::HandleValue(payload), aRv);
 }
 
 already_AddRefed<Promise> BerytusSecureRemotePasswordChallenge::VerifyServerProof(
     JSContext* aCx,
-    const ArrayBufferOrArrayBufferViewOrStringOrBerytusEncryptedPacket& aServerProofM2,
+    const ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket& aServerProofM2,
     ErrorResult& aRv) {
-  nsresult rv = IsCorrectPayloadType(aServerProofM2);
-  if (rv == NS_ERROR_INVALID_ARG) {
-    aRv.ThrowTypeError("Incorrect JavaScript type for arg 0");
-    return nullptr;
-  }
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    aRv.Throw(rv);
-    return nullptr;
-  }
   JS::Rooted<JS::Value> payload(aCx);
   if (NS_WARN_IF(!PayloadToJSValue(aCx, aServerProofM2, &payload))) {
     aRv.Throw(NS_ERROR_FAILURE);
@@ -195,8 +137,9 @@ already_AddRefed<BerytusSecureRemotePasswordChallenge> BerytusSecureRemotePasswo
     return nullptr;
   }
   BerytusSecureRemotePasswordChallengeParameters copiedParams;
-  if (aParameters.mEncoding.WasPassed()) {
-    copiedParams.mEncoding.Construct(aParameters.mEncoding.Value());
+  if (NS_WARN_IF(!copiedParams.mField.Assign(aParameters.mField, fallible))) {
+    aRv.ThrowInvalidStateError("Out of memory");
+    return nullptr;
   }
   return do_AddRef(
     new BerytusSecureRemotePasswordChallenge(

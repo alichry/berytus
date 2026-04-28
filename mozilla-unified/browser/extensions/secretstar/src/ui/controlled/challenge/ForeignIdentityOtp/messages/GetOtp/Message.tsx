@@ -1,5 +1,5 @@
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
-import { string } from "yup";
+import { object, string } from "yup";
 import { BaseMessageProps } from "../../../common/types";
 import Form from './Form';
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
@@ -10,9 +10,9 @@ export interface MessageProps extends BaseMessageProps {
     onSubmit(otp: string): void;
 }
 
-const payloadSchema = string()
-    .label("ForeignIdentityFieldId")
-    .required();
+const parametersSchema = object({
+    field: string().required()
+});
 
 export default function Message({
     session,
@@ -23,8 +23,8 @@ export default function Message({
     const {
         loading: validationLoading,
         error: validationError,
-        value: foreignIdentityFieldId
-    } = useYupValidation(payloadSchema, message.payload);
+        value: parameters
+    } = useYupValidation(parametersSchema, challenge.parameters);
 
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
@@ -34,7 +34,7 @@ export default function Message({
                 <MdCenteredSpinner />
             ) : <Form
                     accountId={session.selectedAccountId}
-                    foreignIdentityFieldId={foreignIdentityFieldId}
+                    foreignIdentityFieldId={parameters.field}
                     onSubmit={(v) => onSubmit(v)}
                 />
             }

@@ -1,9 +1,16 @@
-import type { FieldInput } from "@root/backend/db/types";
 import { FetchError } from "@root/backend/errors/FetchError";
-import { Result as NewResult } from "@root/pages/login/[category]/[version]/id/schema";
-import { Result as PendingResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/pending-message/schema";
-import { Result as ProcessMessageResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
-import { Result as FinishResult } from "@root/pages/login/[category]/[version]/auth/[sessionId]/finish/schema";
+import { Result as NewSessionResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/id/schema";
+import { Result as NewChallengeResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/new/schema";
+import { Result as PendingResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/pending-message/schema";
+import { Result as ProcessMessageResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/challenge/[challengeId]/respond-message/schema";
+import { Result as FinishResult } from "@root/pages/channel/[channelId]/login/[category]/[version]/auth/[sessionId]/finish/schema";
+import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
+import type { JSONValueWithBlob } from "@root/shared-types";
+
+type ClientFieldInput = {
+    id: string;
+    value: JSONValueWithBlob;
+}
 
 // TODO: Check if we still have to change prototype.name
 export class AuthError extends Error {}
@@ -14,35 +21,40 @@ export class AuthIncorrectResponseError extends AuthError {}
 AuthIncorrectResponseError.prototype.name = "AuthIncorrectResponseError";
 
 export class AuthSessionHandler {
+    readonly channelId: string;
     readonly accountVersion: number;
     readonly accountCategory: string;
     readonly sessionId: BigInt;
     currentChallengeId?: string;
+    currentChallengeParameters?: object;
     lastChallengeOutcome?: ProcessMessageResult['outcome'];
 
     protected constructor(
+        channelId: string,
         accountVersion: number,
         accountCategory: string,
         sessionId: BigInt
     ) {
+        this.channelId = channelId;
         this.accountVersion = accountVersion;
         this.accountCategory = accountCategory;
         this.sessionId = sessionId;
     }
 
     static async create(
+        channelId: string,
         accountVersion: number,
         accountCategory: string,
-        accountIdentity: FieldInput[]
+        accountIdentity: ClientFieldInput[],
+        targetContentType: TargetContentType = "multipart"
     ) {
         const resp = await fetch(
-            `/login/${accountCategory}/${accountVersion}/id`,
+            `/channel/${channelId}/login/${accountCategory}/${accountVersion}/id`,
             {
                 method: "POST",
-                body: JSON.stringify({
-                    accountVersion,
+                ...buildRequestBodyAndHeaders({
                     fields: accountIdentity
-                })
+                }, targetContentType)
             }
         )
         if (! resp.ok) {
@@ -58,15 +70,16 @@ export class AuthSessionHandler {
             }
             throw base;
         }
-        let data: NewResult;
+        let data: NewSessionResult;
         try {
-            data = NewResult.parse(await resp.json());
+            data = NewSessionResult.parse(await resp.json());
         } catch (e) {
             throw new Error(
                 'Unable to create AuthSessionHandler. Malformed HTTTP response.'
             );
         }
         return new AuthSessionHandler(
+            channelId,
             accountVersion,
             accountCategory,
             BigInt(data.sessionId),
@@ -82,7 +95,7 @@ export class AuthSessionHandler {
             );
         }
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${challengeId}/new`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${challengeId}/new`,
             {
                 method: "POST"
             }
@@ -93,8 +106,13 @@ export class AuthSessionHandler {
                 'Unable to start a new challenge, received failing HTTP status code.'
             );
         }
+        const result = await NewChallengeResult.parseAsync(
+            await resp.json()
+        );
         this.currentChallengeId = challengeId;
+        this.currentChallengeParameters = result.parameters;
         this.lastChallengeOutcome = "Pending";
+        return result.parameters;
     }
 
     async pendingMessage() {
@@ -104,7 +122,7 @@ export class AuthSessionHandler {
             );
         }
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/pending-message`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/pending-message`,
             {
                 method: "GET"
             }
@@ -127,18 +145,20 @@ export class AuthSessionHandler {
     }
 
     async sendResponse(
-        response: unknown
+        response: unknown,
+        targetContentType: TargetContentType = "multipart"
     ) {
         if (! this.currentChallengeId) {
             throw new Error(
                 "Cannot send response, challenge is not active"
             );
         }
+
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/challenge/${this.currentChallengeId}/respond-message`,
             {
                 method: "POST",
-                body: JSON.stringify(response)
+                ...buildRequestBodyAndHeaders(response, targetContentType)
             }
         )
         if (! resp.ok) {
@@ -159,6 +179,7 @@ export class AuthSessionHandler {
         this.lastChallengeOutcome = data.outcome;
         if (data.outcome !== "Pending") {
             this.currentChallengeId = undefined;
+            this.currentChallengeParameters = undefined;
         }
         if (data.statusMsg !== 'Ok') {
             throw new AuthIncorrectResponseError(data.statusMsg);
@@ -167,7 +188,7 @@ export class AuthSessionHandler {
 
     async finish(): Promise<FinishResult> {
         const resp = await fetch(
-            `/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/finish`,
+            `/channel/${this.channelId}/login/${this.accountCategory}/${this.accountVersion}/auth/${this.sessionId}/finish`,
             {
                 method: "POST"
             }

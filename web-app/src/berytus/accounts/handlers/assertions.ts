@@ -5,7 +5,7 @@ export function assertIsString(val: unknown): asserts val is string {
     throw new Error("Assertion failed." + JSON.stringify(val) + " is not a string.");
 }
 
-export function assert(cond: boolean): asserts cond {
+export function assert(cond: unknown): asserts cond {
     if (cond) {
         return;
     }

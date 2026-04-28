@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/BerytusPasswordChallenge.h"
 #include "mozilla/dom/ToJSValue.h"
+#include "mozilla/fallible.h"
 
 namespace mozilla::dom {
 
@@ -16,14 +17,28 @@ NS_INTERFACE_MAP_END_INHERITING(BerytusChallenge)
 
 BerytusPasswordChallenge::BerytusPasswordChallenge(
     nsIGlobalObject* aGlobal,
-    const nsAString& aID) : BerytusChallenge(aGlobal,
+    const nsAString& aID,
+    BerytusPasswordChallengeParameters&& aParameters) : BerytusChallenge(aGlobal,
                                              BerytusChallengeType::Password,
-                                             aID) {}
+                                             aID),
+                                             mParameters(std::move(aParameters)) {}
 
 BerytusPasswordChallenge::~BerytusPasswordChallenge() {}
 
 void BerytusPasswordChallenge::CacheParameters(JSContext* aCx, ErrorResult& aRv) {
-  mCachedParameters = nullptr;
+  if (mCachedParameters) {
+    return;
+  }
+  JS::Rooted<JS::Value> options(aCx);
+  if (NS_WARN_IF(!mParameters.ToObjectInternal(aCx, &options))) {
+    aRv.Throw(NS_ERROR_FAILURE);
+    return;
+  }
+  mCachedParameters = options.toObjectOrNull();
+}
+
+BerytusPasswordChallengeParameters const& BerytusPasswordChallenge::Parameters() const {
+  return mParameters;
 }
 
 JSObject*
@@ -33,13 +48,9 @@ BerytusPasswordChallenge::WrapObject(JSContext* aCx, JS::Handle<JSObject*> aGive
 
 already_AddRefed<Promise> BerytusPasswordChallenge::GetPasswordFields(
     JSContext* aCx,
-    const Sequence<nsString>& aPasswordFieldIds,
     ErrorResult& aRv) {
   JS::Rooted<JS::Value> payload(aCx);
-  if (NS_WARN_IF(!ToJSValue(aCx, aPasswordFieldIds, &payload))) {
-    aRv.Throw(NS_ERROR_FAILURE);
-    return nullptr;
-  }
+  payload.setNull();
   return SendMessageRaw(aCx, u"GetPasswordFields"_ns, JS::HandleValue(payload), aRv);
 }
 
@@ -53,6 +64,7 @@ already_AddRefed<Promise> BerytusPasswordChallenge::AbortWithIncorrectPasswordEr
 already_AddRefed<BerytusPasswordChallenge> BerytusPasswordChallenge::Constructor(
   const GlobalObject& aGlobal,
   const nsAString& aId,
+  const BerytusPasswordChallengeParameters& aParameters,
   ErrorResult& aRv
 ) {
   nsCOMPtr<nsIGlobalObject> global = do_QueryInterface(aGlobal.GetAsSupports());
@@ -60,9 +72,14 @@ already_AddRefed<BerytusPasswordChallenge> BerytusPasswordChallenge::Constructor
     aRv.Throw(NS_ERROR_FAILURE);
     return nullptr;
   }
+  BerytusPasswordChallengeParameters copiedParams;
+  if (NS_WARN_IF(!copiedParams.mFields.Assign(aParameters.mFields))) {
+    aRv.ThrowInvalidStateError("Out of memory");
+    return nullptr;
+  }
   return do_AddRef(
     new BerytusPasswordChallenge(
-      global, aId));
+      global, aId, std::move(copiedParams)));
 }
 
 } // namespace mozilla::dom

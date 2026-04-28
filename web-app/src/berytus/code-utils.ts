@@ -115,29 +115,7 @@ export const exportHandlerCode = async (
                 });
             promises.push(promise);
         });
-
-        // const { prototype }  = handler;
-        // prototype.steps.forEach(step => {
-        //     const func = prototype[step as keyof typeof prototype];
-        //     if (typeof func !== "function") {
-        //         throw new Error(
-        //             `Bad Stage Handler ${prototype.type}.${prototype.label}: Invalid step ${step}`
-        //         );
-        //     }
-        //     const promise = exportSampleCode(func)
-        //         .then((code) => {
-        //             result[`${prototype.type}.${prototype.label}->${step}`] = {
-        //                 handler: {
-        //                     label: prototype.label,
-        //                     type: prototype.type,
-        //                     description: prototype.description
-        //                 },
-        //                 step,
-        //                 code
-        //             };
-        //         });
-        //         promises.push(promise);
-        // });
     });
-    return Promise.all(promises).then(() => result);
+    await Promise.all(promises);
+    return result;
 }

@@ -5,40 +5,46 @@ import {
 import type {
     AuthChallengeMessageName,
     MessagePayload
-} from "../../db/models/AuthChallengeMessage";
+} from "../../db/models/AuthChallengeMessage.js";
 import {
     AbstractChallengeHandler,
     type MessageDraft,
     type MessageDictionary,
     type Message,
-    type CCHDependencies
+    type CCHDependencies,
+    type InputMessagePayload
 } from "@root/backend/logic/challenge-handler/AbstractChallengeHandler.js";
 import { AccountField } from "@root/backend/db/models/AccountField.js";
 import { z } from "zod";
-import type { AuthSession } from "@root/backend/db/models/AuthSession";
-import {
-    PublicKeyFieldInput,
-    PublicKeyFieldValue
-} from "../field-handler/DigitalSignatureHandler.js";
+import type { AuthSession } from "@root/backend/db/models/AuthSession.js";
 import { randomBytes } from "crypto";
-import { KeyUtils, SignUtils } from "../../utils/key-utils.js";
+import { ArmoredKeyUtils, KeyUtils, SignUtils } from "../../utils/key-utils.js";
 import type { PoolConnection } from "@root/backend/db/pool";
+import { PublicKeyFieldInput, ArmoredPublicKeyFieldValue } from "../field-handler/DigitalSignatureHandler.js";
+
 type MessageName = BerytusDigitalSignatureChallengeMessageName;
 
 const messageNames: ReadonlyArray<MessageName> = [
     "SelectKey", "SignNonce"
 ];
 
-const SelectKeyExpected = PublicKeyFieldInput;
+const SelectKeyExpected = z.object({
+    id: z.string(),
+    value: ArmoredPublicKeyFieldValue
+}).required();
 
 type SelectKeyExpected = z.infer<typeof SelectKeyExpected>;
 
-const SelectKeyResponse = SelectKeyExpected;
+const SelectKeyResponse = PublicKeyFieldInput;
 
-const SignNonceResponse = z.string(); // base64
+type SelectKeyResponse = z.infer<typeof SelectKeyResponse>;
+
+const SignNonceResponse = z.instanceof(Blob);
+
+type SignNonceResponse = z.infer<typeof SignNonceResponse>;
 
 export const DigitalSignatureChallengeParameters = z.object({
-    keyFieldId: z.string()
+    field: z.string()
 });
 export type DigitalSignatureChallengeParameters = z.infer<typeof DigitalSignatureChallengeParameters>;
 
@@ -84,16 +90,16 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
         const field = await AccountField.getField(
             this.challengeDef.accountVersion,
             this.session.accountId,
-            this.challengeParameters.keyFieldId,
+            this.challengeParameters.field,
             this.conn
         );
         const expected: SelectKeyExpected = {
-            id: this.challengeParameters.keyFieldId,
-            value: await PublicKeyFieldValue.parseAsync(field.fieldValue)
+            id: this.challengeParameters.field,
+            value: await ArmoredPublicKeyFieldValue.parseAsync(field.fieldValue)
         }
         const initialMessageDraft = {
             messageName: "SelectKey" as const,
-            request: this.challengeParameters.keyFieldId,
+            request: this.challengeParameters.field,
             expected,
         };
         return initialMessageDraft;
@@ -102,7 +108,7 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
     protected async validateMessageResponse(
         processedMessages: MessageDictionary<MessageName>,
         pendingMessage: Message<MessageName>,
-        response: MessagePayload
+        response: InputMessagePayload
     ) {
         switch (pendingMessage.messageName) {
             case "SelectKey": {
@@ -114,27 +120,70 @@ export class DigitalSignatureChallengeHandler extends AbstractChallengeHandler<M
                 if (expected.id !== fieldId) {
                     throw new Error('Malformed message response.');
                 }
-                // TODO(berytus): A better way is to compare the stripped
-                // base64 data which does not include newlines.
-                if (expected.value.publicKey !== passedValue.publicKey) {
+                const passedPublicKeyAsBase64: string = (await
+                    passedValue.publicKey.bytes()
+                )
+                    // @ts-ignore: Node 25+
+                    .toBase64();
+                const expectedPublicKeyAsBase64 = ArmoredKeyUtils.extractBase64(
+                    expected.value.publicKey, "public"
+                );
+                if (expectedPublicKeyAsBase64 !== passedPublicKeyAsBase64) {
                     return `Error:PublicKeyMismatch` as const;
                 }
                 return `Ok` as const;
             }
             case "SignNonce": {
-                const sigBase64 = await SignNonceResponse.parseAsync(response);
+                const sig =
+                    await SignNonceResponse.parseAsync(response);
                 const nonce = Buffer.from(pendingMessage.request as string, 'base64');
-                const sig = Buffer.from(sigBase64, 'base64');
                 const key = await KeyUtils.importArmoredKeyForVerification(
                     (processedMessages.SelectKey!.expected as SelectKeyExpected).value.publicKey,
                 );
-                const res = await SignUtils.verify(key, sig, nonce);
+                const res = await SignUtils.verify(key, await sig.bytes(), nonce);
                 return res
                     ? `Ok` as const
                     : `Error:InvalidSignature` as const;
             }
             default:
                 throw new Error("Invalid message response; message name not recognised");
+        }
+    }
+
+    protected async transformResponseForStorage(
+        pendingMessage: Message<MessageName>,
+        response: InputMessagePayload
+    ): Promise<MessagePayload> {
+        switch (pendingMessage.messageName) {
+            case "SelectKey": {
+                const {
+                    id,
+                    value
+                } = response as SelectKeyResponse;
+                return {
+                    id,
+                    value: {
+                        publicKey: ArmoredKeyUtils.armorBase64(
+                            (await value.publicKey.bytes())
+                                // @ts-ignore: Node 25+
+                                .toBase64(),
+                            "public"
+                        )
+                    }
+                }
+            }
+            case "SignNonce": {
+                const sig = response as SignNonceResponse;
+                const sigBase64: string =
+                    (await sig.bytes())
+                        // @ts-ignore: Node 25+
+                        .toBase64();
+                return sigBase64;
+            }
+            default:
+                throw new Error(
+                    "Invalid message response; message name not recognised"
+                );
         }
     }
 }

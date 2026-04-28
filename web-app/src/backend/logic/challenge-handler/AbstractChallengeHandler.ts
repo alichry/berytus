@@ -20,6 +20,21 @@ import { debugAssert } from "@root/backend/utils/assert.js";
 import { UpsertChallengeAndMessages } from "@root/backend/db/actions/UpsertChallengeAndMessages.js";
 import { EntityNotFoundError } from "@root/backend/db/errors/EntityNotFoundError.js";
 import { InvalidArgError } from "@root/backend/errors/InvalidArgError.js";
+import type { ISrpStore } from "@root/backend/crypto/SrpServer";
+import { ZodError } from "zod";
+import type { JSONValueWithBlob } from "@root/shared-types";
+
+/**
+ * The payload type sent by the client before storage in the database.
+ * This is different from MessagePayload because sometimes the client may send
+ * data in a format that is different from how we want to store it in the database.
+ * For example, signed nonces are sent as raw bytes from the client, but we
+ * want to store them as base64-encoded strings in the database.
+ * In such cases, the handler will implement transformResponseForStorage() to
+ * transform the client-sent payload (InputMessagePayload) into the
+ * format we want to store in the database (MessagePayload).
+ */
+export type InputMessagePayload = JSONValueWithBlob;
 
 export interface MessageDraft<MN extends AuthChallengeMessageName> {
     messageName: MN;
@@ -29,6 +44,7 @@ export interface MessageDraft<MN extends AuthChallengeMessageName> {
 
 export interface CCHDependencies {
     randomBytes?: typeof import("node:crypto").randomBytes;
+    srpStore?: ISrpStore;
 }
 
 export interface CommonChallengeHandlerConstructor<MN extends AuthChallengeMessageName> {
@@ -109,8 +125,24 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     protected abstract validateMessageResponse(
         processedMessages: MessageDictionary<MN>,
         pendingMessage: Message<MN>,
-        response: MessagePayload
+        response: InputMessagePayload
     ): Promise<NonNullable<ChallengeMessageStatus>>;
+
+    /**
+     * If the response is valid, i.e. validateMessageResponse()
+     * returns `Ok`, transform the response into the format we
+     * want to store in the database. This is useful when the
+     * format of the response sent by the client is different
+     * from the format we want to store in the database.
+     * For example, signed nonces are sent as raw bytes from
+     * the client, but we want to store them as base64-encoded
+     * strings. Handlers should implement this method to transform
+     * the response if necessary for the given message.
+     */
+    protected abstract transformResponseForStorage(
+        pendingMessage: Message<MN>,
+        response: InputMessagePayload
+    ): Promise<MessagePayload>;
 
     static async setupChallenge<MN extends AuthChallengeMessageName>(
         sessionId: BigInt,
@@ -195,7 +227,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
         return this.#challenge;
     }
 
-    async ensurePendingMessage(): Promise<ChallengePendingMessage<MN> | null> {
+    protected async ensurePendingMessage(): Promise<ChallengePendingMessage<MN> | null> {
         const { processedMessages, pendingMessage } = await this.getMessages();
         if (pendingMessage) {
             return pendingMessage;
@@ -234,7 +266,7 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
     }
 
     async processPendingMessageResponse(
-        response: MessagePayload
+        response: InputMessagePayload
     ): Promise<NonNullable<ChallengeMessageStatus>> {
         const { processedMessages, pendingMessage } = await this.getMessages();
         if (! pendingMessage) {
@@ -243,15 +275,28 @@ export abstract class AbstractChallengeHandler<MN extends AuthChallengeMessageNa
                 "ensurePendingMessage() before processPendingMessageResponse()?"
             );
         }
-        const statusMsg = await this.validateMessageResponse(
-            processedMessages,
-            pendingMessage,
-            response
-        );
-        pendingMessage.response = response;
+        let statusMsg;
+        try {
+            statusMsg = await this.validateMessageResponse(
+                processedMessages,
+                pendingMessage,
+                response
+            );
+        } catch (e) {
+            if (!(e instanceof ZodError)) {
+                throw e;
+            }
+            statusMsg = `Error:MalformedResponse` as const;
+        }
         pendingMessage.statusMsg = statusMsg;
-        // append next prospective, pending message.
-        await this.ensurePendingMessage();
+        if (statusMsg == 'Ok') {
+            pendingMessage.response = await this.transformResponseForStorage(
+                pendingMessage,
+                response
+            );
+            // append next prospective, pending message.
+            await this.ensurePendingMessage();
+        }
         return statusMsg;
     }
 

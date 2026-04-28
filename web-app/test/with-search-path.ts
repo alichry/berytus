@@ -1,4 +1,4 @@
-import { type PoolConnection, useConnection, useReservedConnection } from "@root/backend/db/pool.js";
+import { type PoolConnection, useReservedConnection } from "@root/backend/db/pool.js";
 import { databaseSchema } from "@root/backend/env/db.js"
 ;
 export const withSearchPath = async <T extends unknown>(

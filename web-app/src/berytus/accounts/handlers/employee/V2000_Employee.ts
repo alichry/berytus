@@ -1,13 +1,41 @@
-import { AbstractAccountStageHandler } from "../AbstractAccountHandler";
+import { NonE2EEHandler } from "@root/berytus/channel/handlers/NonE2EEHandler.js";
+import { AbstractAccountStageHandler } from "../AbstractAccountHandler.js";
+import { AuthAccountNotFoundError, AuthIncorrectResponseError, AuthSessionHandler } from "../AuthSessionHandler.js";
 import type { TypedStageHandler } from "@root/berytus/types";
+import { assert } from "../assertions.js";
+import { FetchError } from "@root/backend/errors/FetchError.js";
 
 const version = 2000 as const;
 const category = "Employee" as const;
-const description = "Username Identification and Password Authentication" as const;
-const steps = ["createChannel", "login", "addFields", "save"] as const;
+const description = "Composite Username Identification and Secure Password Authentication" as const;
+const steps = [
+    "createChannel",
+    "login",
+    "addFields",
+    "validateFields",
+    "metadata",
+    "save",
+    "transitionToAuth",
+    "createIdentificationChallenge",
+    "identification",
+    "createSrpChallenge",
+    "selectSecurePassword",
+    "exchangePublicKeys",
+    "computeClientProof",
+    "verifyServerProof",
+    "finishLogin",
+    "closeChannel"
+] as const;
 
 export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof steps[number]>
     implements TypedStageHandler<EmployeeHandlerV2000> {
+    protected authHandler?: AuthSessionHandler;
+
+    public constructor() {
+        super(new NonE2EEHandler());
+    }
+
+    get isE2EE() { return false; }
 
     get version(): number {
         return version;
@@ -26,6 +54,9 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
     }
 
     async createChannel() {
+        //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.prepare();
+        //! EXPORT_FN_IGNORE_END
         /*! Domain-based credential mapping actor */
         const actor = new BerytusAnonymousWebAppActor();
         //!
@@ -41,6 +72,7 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         //!
         //! EXPORT_FN_IGNORE_START
         this.channel = channel;
+        await this.channelHandler.init(this.channel);
         return { nextStep: "login" as const };
         //! EXPORT_FN_IGNORE_END
     }
@@ -64,12 +96,13 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         if (operation.intent === 'Register') {
             /*! Handle registration operation */
             //! EXPORT_FN_IGNORE_START
+            await this.cacheRegistrationFields();
             return { nextStep: "addFields" as const };
             //! EXPORT_FN_IGNORE_END
         } else {
             /*! Handle authentication operation */
             //! EXPORT_FN_IGNORE_START
-            return { nextStep: "addFields" as const };
+            return { nextStep: "createIdentificationChallenge" as const };
             //! EXPORT_FN_IGNORE_END
         }
     }
@@ -80,8 +113,31 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
         const actor = channel!.webApp;
         const operation = this.operation!;
         AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        const getPartyId = async () => {
+            const resp = await fetch(
+                `/channel/${this.channel!.id}/login/${this.category}/${this.version}/constants`,
+                {
+                    method: "POST",
+                    body: JSON.stringify(["partyId.ClassA"])
+                }
+            );
+            if (! resp.ok) {
+                throw new FetchError(resp, 'failed to retrieve encrypted partyId');
+            }
+            const body = await resp.json();
+            if (!("partyId.ClassA" in body)) {
+                throw new Error(
+                    "Expected partyId.ClassA to exist in constants dictionary, got otherwise."
+                );
+            }
+            const partyId = body["partyId.ClassA"];
+            return partyId;
+        }
         //! EXPORT_FN_IGNORE_END
-        const partyId = "1234-5678"
+        const partyId = await getPartyId();
+        //! assume we are registering accounts
+        //! under party 0001.
+        console.assert(partyId === "0001");
         const fields = await operation.addFields(
             new BerytusIdentityField(
                 'partyId',
@@ -102,15 +158,585 @@ export class EmployeeHandlerV2000 extends AbstractAccountStageHandler<typeof ste
             ),
             new BerytusSecurePasswordField(
                 'securePassword',
-                { identityFieldId: "partyId" }
+                { identityFieldId: "username" }
             )
         );
+        //! EXPORT_FN_IGNORE_START
+        await this.cacheRegistrationFields();
+        return { nextStep: "validateFields" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async validateFields() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        const accountExists = (partyId: BerytusField, username: BerytusField) =>
+            this.accountExists([partyId, username]);
+        //! EXPORT_FN_IGNORE_END
+        const partyIdField = operation.fields.get('partyId');
+        //! EXPORT_FN_IGNORE_START
+        if (! partyIdField) {
+            throw new Error("Expecting partyId field to be set in validateFields!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        const usernameField = operation.fields.get('username');
+        //! EXPORT_FN_IGNORE_START
+        if (! usernameField) {
+            throw new Error("Expecting username field to be set in validateFields!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        /*!
+         * We use a web app-specific routine, `usernameExists`,
+         * to check whether the username exists or not.
+         * @var usernameExists
+         * @type {(field: BerytusIdentityField): Promise<boolean>}
+         */
+        while (await accountExists(partyIdField, usernameField)) {
+            /*!
+             * The provided username is registered under the party,
+             * reject it and request a new revision. Once
+             * rejectAndReviseFields() resolves,
+             * `usernameField.value` reflects the new field value.
+             */
+            await operation.rejectAndReviseFields({
+                field: usernameField,
+                reason: "Identity:IdentityAlreadyExists",
+                /*!
+                 * The web app can propose a revised value by
+                 * specifying a `newValue` property here. E.g.,
+                 * `newValue: "usernameThatDoesNotExists"`.
+                 * Otherwise, the secret manager will produce one
+                 * as it is the case here.
+                 */
+            });
+        }
+        //! EXPORT_FN_IGNORE_START
+        await this.cacheRegistrationFields();
+        return { nextStep: "metadata" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async metadata() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        await operation.setCategory("Employee");
+        await operation.setVersion(2000);
         //! EXPORT_FN_IGNORE_START
         return { nextStep: "save" as const };
         //! EXPORT_FN_IGNORE_END
     }
 
     async save() {
+        //! EXPORT_FN_IGNORE_START
+        let operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        const registerAccountInBackEnd = (
+            partyId: string,
+            username: string,
+            securePassword: BerytusSecurePasswordFieldValue,
+            attrsMap: BerytusUserAttributeMap
+        ) => {
+            const fields = [
+                {
+                    id: "partyId",
+                    value: partyId
+                },
+                {
+                    id: "username",
+                    value: username
+                },
+                {
+                    id: "securePassword",
+                    value: {
+                        salt: securePassword.salt instanceof ArrayBuffer
+                            ? new Blob([securePassword.salt], { type: "application/octet-stream" })
+                            : securePassword.salt,
+                        verifier: securePassword.verifier instanceof ArrayBuffer
+                            ? new Blob([securePassword.verifier], { type: "application/octet-stream" })
+                            : securePassword.verifier,
+                    }
+                }
+            ];
+            const attrs: Record<string, string | Blob> = {};
+            for (const [key, obj] of attrsMap) {
+                attrs[key] = typeof obj.value === "string"
+                    ? obj.value
+                    : obj.value instanceof ArrayBuffer
+                    ? new Blob([obj.value], { type: obj.mimeType || undefined })
+                    : obj.value;
+            }
+            return this.createAccount(fields, attrs);
+        }
+        //! EXPORT_FN_IGNORE_END
+        const partyIdField = operation.fields.get('partyId');
+        //! EXPORT_FN_IGNORE_START
+        if (! partyIdField) {
+            throw new Error("Expecting partyId field to be set in save()!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        const usernameField = operation.fields.get('username');
+        //! EXPORT_FN_IGNORE_START
+        if (! usernameField) {
+            throw new Error("Expecting username field to be set in save()!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        const securePasswordField = operation.fields.get('securePassword');
+        //! EXPORT_FN_IGNORE_START
+        if (! securePasswordField) {
+            throw new Error("Expecting securePassword field to be set in save()!");
+        }
+        //! EXPORT_FN_IGNORE_END
+        /*!
+         * We use a web app-specific routine, `registerAccountInBackEnd`,
+         * to register the account in the backend. This dispatches an HTTP
+         * request containing the account username and password fields.
+         * @var registerAccountInBackEnd
+         * @type {(partyId: string, username: string, securePassword: BerytusSecurePasswordFieldValue, userAttrs: BerytusUserAttributeMap): Promise<void>}
+         */
+        await registerAccountInBackEnd(
+            partyIdField.value as string,
+            usernameField.value as string,
+            securePasswordField.value as BerytusSecurePasswordFieldValue,
+            operation.userAttributes
+        );
+        await operation.setStatus("Created");
+        await operation.save();
+        //! EXPORT_FN_IGNORE_START
+        return { "nextStep": "transitionToAuth" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async transitionToAuth() {
+        //! EXPORT_FN_IGNORE_START
+        let operation = this.operation;
+        AbstractAccountStageHandler.assertIsCreationOperation(operation);
+        this.loginState.userAttributes = {};
+        this.loginState.credentialFields = [];
+        this.loginState.identityFields = [];
+        //! EXPORT_FN_IGNORE_END
+        /*!
+            * Here, after saving the account, the web application
+            * can turn the account creation operation into an
+            * account authentication operation for the saved account.
+            */
+        operation = await operation.transitionToAuthOperation();
+        //! EXPORT_FN_IGNORE_START
+        this.operation = operation;
+        return { "nextStep": "createIdentificationChallenge" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async createIdentificationChallenge() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        const idCh = new BerytusIdentificationChallenge(
+            "id", /*! challenge id */
+            { fields: ['partyId', 'username'] } /*! idt fields to retrieve */
+        );
+        await operation.challenge(idCh);
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "identification" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async identification() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const idCh = operation.challenges.get('id') as BerytusIdentificationChallenge;
+        if (! idCh) {
+            throw new Error("ID challenge not set.");
+        }
+        const accountExists = async (
+            partyId: string,
+            username: string
+        ): Promise<boolean> => {
+            try {
+                this.authHandler = await AuthSessionHandler.create(
+                    this.channel!.id,
+                    this.version,
+                    this.category,
+                    [
+                        { id: "partyId", value: partyId },
+                        { id: "username", value: username }
+                    ]
+                );
+                return true;
+            } catch (e) {
+                if (e instanceof AuthAccountNotFoundError) {
+                    return false;
+                }
+                throw e;
+            }
+        }
+        //! EXPORT_FN_IGNORE_END
+        const { response: { partyId, username } } = await idCh.getIdentityFields();
+        //! EXPORT_FN_IGNORE_START
+        assert(typeof partyId === "string");
+        assert(typeof username === "string");
+        //! EXPORT_FN_IGNORE_END
+        /*!
+            * We use a web app-specific routine, `accountExists`,
+            * to check whether the account exists or not given its username.
+            * @var accountExists
+            * @type {(username: string): Promise<boolean>}
+            */
+        if (! await accountExists(partyId, username)) {
+            await idCh.abortWithIdentityDoesNotExistsError();
+            throw new Error("User failed to pass identification challenge");
+        }
+        await idCh.seal();
+        //! EXPORT_FN_IGNORE_START
+        this.loginState.identityFields.push({
+            id: 'partyId',
+            value: await this.stringifyBerytusValue(partyId)
+        });
+        this.loginState.identityFields.push({
+            id: 'username',
+            value: await this.stringifyBerytusValue(username)
+        });
+        return { nextStep: "createSrpChallenge" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async createSrpChallenge() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        const srpCh = new BerytusSecureRemotePasswordChallenge(
+            "srp", /*! challenge id */
+            { field: "securePassword" } /*! sp field to assume */
+        );
+        await operation.challenge(srpCh);
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "selectSecurePassword" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async selectSecurePassword() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const validateSrpIdentity = async (identity: string) => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            try {
+                const chParams = await this.authHandler.newChallenge(
+                    "secure-remote-password"
+                );
+                if (!("field" in chParams) || chParams.field !== "securePassword") {
+                    throw new Error(
+                        "Inconsistency between client and server challenge parameters"
+                    );
+                }
+                await this.authHandler.sendResponse(identity,
+                    'text'
+                );
+                return true;
+            } catch (e) {
+                if (e instanceof AuthIncorrectResponseError) {
+                    return false;
+                }
+                throw e;
+            }
+        }
+        //! EXPORT_FN_IGNORE_END
+        const { response: identity } = await srpCh.selectSecurePassword();
+        //! EXPORT_FN_IGNORE_START
+        assert(typeof identity === "string");
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `validateSrpIdentity`, to
+         * check whether the secret manager-suppied identity value
+         * of the associated secure password field matches the one
+         * stored in the backend.
+         * @var validateSrpIdentity
+         * @type {(identity: string): Promise<boolean>}
+         */
+        if (! await validateSrpIdentity(identity)) {
+            // TODO(berytus): We should have abortWithInvalidIdentity
+            await srpCh.abortWithGenericWebAppFailureError();
+            throw new Error(
+                "User failed to pass the secure remote passwod challenge; " +
+                "reason: Identity Mismatch."
+            );
+        }
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "exchangePublicKeys" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async exchangePublicKeys() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const getServerPublicKey = async (): Promise<ArrayBuffer> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName, request } = pendingMessage.nextMessage;
+            if (messageName !== "ExchangePublicKeys") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ExchangePublicKeys, got " + messageName
+                );
+            }
+            if (typeof request !== "string") {
+                throw new Error(
+                    "Expected base64-encoded SRP:B in message draft's request"
+                );
+            }
+            return Uint8Array
+                // @ts-ignore: Available in modern browsers
+                .fromBase64(request)
+                .buffer;
+        }
+        const sendClientPublicKey = async (valueA: ArrayBuffer) => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName } = pendingMessage.nextMessage;
+            if (messageName !== "ExchangePublicKeys") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ExchangePublicKeys, got " + messageName
+                );
+            }
+            await this.authHandler.sendResponse(
+                new Blob([valueA], { type: "application/octet-stream" } ),
+                "blob"
+            );
+        }
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `getServerPublicKey`, to
+         * retrieve SRP:B (informally as the server's ephemeral public key).
+         * @var getServerPublicKey
+         * @type {(): Promise<ArrayBuffer>}
+         */
+        const serverPublicKey = await getServerPublicKey();
+        console.assert(serverPublicKey instanceof ArrayBuffer);
+        /*!
+         * We send the SRP:B to the secret manager and retrieve SRP:A
+         * (the client's ephemeral public key).
+         */
+        const { response: clientPublicKey } = await
+            srpCh.exchangePublicKeys(serverPublicKey);
+        //! EXPORT_FN_IGNORE_START
+        assert(clientPublicKey instanceof ArrayBuffer);
+        //! EXPORT_FN_IGNORE_END
+        console.assert(clientPublicKey instanceof ArrayBuffer);
+        /**!
+         * We use a web app-specific routine, `sendClientPublicKey`, to
+         * send SRP:A to the backend. Henceforth, both parties (the scm
+         * and web app) can compute a shared secret.
+         * @var sendClientPublicKey
+         * @type {(valueA: ArrayBuffer): Promise<void>}
+         */
+        await sendClientPublicKey(clientPublicKey);
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "computeClientProof" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async computeClientProof() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const getSaltFromServer = async (): Promise<ArrayBuffer> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName, request } = pendingMessage.nextMessage;
+            if (messageName !== "ComputeClientProof") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ComputeClientProof, got " + messageName
+                );
+            }
+            if (typeof request !== "string") {
+                throw new Error(
+                    "Expected base64-encoded salt in message draft's request"
+                );
+            }
+            return Uint8Array
+                // @ts-ignore: Available in modern browsers
+                .fromBase64(request)
+                .buffer;
+        }
+        const verifyClientProof = async (
+            valueM1: ArrayBuffer
+        ): Promise<boolean> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName } = pendingMessage.nextMessage;
+            if (messageName !== "ComputeClientProof") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be ComputeClientProof, got " + messageName
+                );
+            }
+            try {
+                await this.authHandler.sendResponse(
+                    new Blob([valueM1], { type: "application/octet-stream" }),
+                    "blob"
+                );
+                return true;
+            } catch (e) {
+                if (e instanceof AuthIncorrectResponseError) {
+                    return false;
+                }
+                throw e;
+            }
+        }
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `getSaltFromServer`, to
+         * retrieve the salt used during account creation.
+         * @var getSaltFromServer
+         * @type {(): Promise<ArrayBuffer>}
+         */
+        const salt = await getSaltFromServer();
+        console.assert(salt instanceof ArrayBuffer);
+        //! EXPORT_FN_IGNORE_START
+        assert(salt instanceof ArrayBuffer);
+        //! EXPORT_FN_IGNORE_END
+        const { response: clientProof } = await
+            srpCh.computeClientProof(salt);
+        console.assert(clientProof instanceof ArrayBuffer);
+        //! EXPORT_FN_IGNORE_START
+        assert(clientProof instanceof ArrayBuffer);
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `verifyClientProof`, to
+         * send the computed proof by the secret manager to the backend
+         * and verify its authenticity. If false is returned, the proof
+         * is invalid.
+         * @var verifyClientProof
+         * @type {(valueM1: ArrayBuffer): Promise<boolean>}
+         */
+        if (false === await verifyClientProof(clientProof)) {
+            await srpCh.abortWithInvalidProofError();
+            throw new Error("Web app-rejected client proof computed by SCM");
+        }
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "verifyServerProof" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async verifyServerProof() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        const srpCh = operation.challenges.get('srp') as BerytusSecureRemotePasswordChallenge;
+        if (! srpCh) {
+            throw new Error("SRP challenge not set.");
+        }
+        const getServerProof = async (): Promise<ArrayBuffer> => {
+            if (!this.authHandler) {
+                throw new Error("Expecting authHandler to be set.");
+            }
+            const pendingMessage = await this.authHandler.pendingMessage();
+            const { messageName, request } = pendingMessage.nextMessage;
+            if (messageName !== "VerifyServerProof") {
+                throw new Error(
+                    "Expected current message draft's message name to " +
+                    "be VerifyServerProof, got " + messageName
+                );
+            }
+            if (typeof request !== "string") {
+                throw new Error(
+                    "Expected base64-encoded valueM2 in message draft's request"
+                );
+            }
+            return Uint8Array
+                // @ts-ignore: Available in Modern Firefox
+                .fromBase64(request)
+                .buffer;
+        }
+        //! EXPORT_FN_IGNORE_END
+        /**!
+         * We use a web app-specific routine, `getServerProof`, to
+         * retrieve the server proof (SRP:M2). Using M2, the scm can
+         * verify the authenticity of the web app backend.
+         * @var getServerProof
+         * @type {(): Promise<ArrayBuffer>}
+         */
+        const serverProof = await getServerProof();
+        console.assert(serverProof instanceof ArrayBuffer);
+        try {
+            await srpCh.verifyServerProof(serverProof);
+        } catch (e) {
+            //! EXPORT_FN_IGNORE_START
+            await this.authHandler!.sendResponse(false, 'json');
+            //! EXPORT_FN_IGNORE_END
+            // TODO(berytus): Berytus should close the challenge
+            // following a rejection
+            /*! if the SCM deems the server proof as invalid,
+             *  an exception is thrown.
+             */
+            throw new Error("SCM rejected Server Proof (M2)", { cause: e });;
+        }
+        await srpCh.seal();
+        //! EXPORT_FN_IGNORE_START
+        await this.authHandler!.sendResponse(true, 'json');
+        const res = await this.authHandler!.finish();
+        await Promise.all(res.userAttributes.map(async u => {
+            this.loginState.userAttributes[u.id] =
+                await this.stringifyBerytusValue(u.value);
+        }));
+        //! EXPORT_FN_IGNORE_END
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "finishLogin" as const };
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async finishLogin() {
+        //! EXPORT_FN_IGNORE_START
+        const operation = this.operation;
+        AbstractAccountStageHandler.assertIsAuthenticationOperation(operation);
+        //! EXPORT_FN_IGNORE_END
+        await operation.finish();
+        //! EXPORT_FN_IGNORE_START
+        return { nextStep: "closeChannel" as const }
+        //! EXPORT_FN_IGNORE_END
+    }
+
+    async closeChannel() {
+        //! EXPORT_FN_IGNORE_START
+        const channel = this.channel;
+        if (! channel) {
+            throw new Error("Expecting channel to be set during closeChannel");
+        }
+        //! EXPORT_FN_IGNORE_END
+        await channel.close();
+        //! EXPORT_FN_IGNORE_START
+        await this.channelHandler.close();
         return { finished: true as const }
+        //! EXPORT_FN_IGNORE_END
     }
 }

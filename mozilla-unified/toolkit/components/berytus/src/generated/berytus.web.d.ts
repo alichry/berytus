@@ -120,20 +120,11 @@ type BerytusPlaintextSource = BerytusPlaintextStringSource | BerytusPlaintextBuf
 type BerytusCiphertextSource = BerytusEncryptedPacket;
 type BerytusDataSource = BerytusPlaintextSource | BerytusCiphertextSource;
 type BerytusDataType = string | ArrayBuffer | BerytusEncryptedPacket;
-type BerytusEncryptionParams = AesGcmParams;
-export interface AesGcmParamsJSON extends Algorithm {
-    iv: Base64URLString;
-    additionalData?: Base64URLString;
-    tagLength?: number;
-}
-type BerytusEncryptionParamsJSON = AesGcmParamsJSON;
-export interface BerytusEncryptedPacketJSON {
-    parameters: BerytusEncryptionParamsJSON;
-    ciphertext: Base64URLString;
-}
 export interface BerytusEncryptedPacket {
-    readonly parameters: AesGcmParams;
-    readonly ciphertext: ArrayBuffer;
+    type: "JWE";
+    value: string;
+}
+export interface BerytusJWEPacket extends BerytusEncryptedPacket {
 }
 type BerytusFieldType = "Identity" | "ForeignIdentity" | "Password" | "SecurePassword" | "ConsumablePassword" | "Key" | "SharedKey" | "Custom";
 type BerytusFieldRejectionReasonCode = string;
@@ -226,6 +217,7 @@ export interface BerytusKeyExchangeSession {
     id: string;
     timestamp: number;
     fingerprint: BerytusKeyExchangeSessionFingerprint;
+    unmaskAllowlist?: Array<string>;
 }
 export interface BerytusKeyAgreementParameters {
     readonly session: any;
@@ -277,7 +269,7 @@ export interface BerytusUserAttributeJSON {
     info?: string;
     mimeType?: string;
     encoding: BerytusUserAttributeValueEncodingType;
-    value: string | BerytusEncryptedPacketJSON;
+    value: string;
 }
 export interface BerytusUserAttribute {
     readonly id: BerytusUserAttributeKey;
@@ -300,19 +292,26 @@ export interface BerytusChallengeMessage {
 type BerytusChallengeType = "Identification" | "DigitalSignature" | "Password" | "SecureRemotePassword" | "OffChannelOtp";
 type BerytusChallengeAbortionCode = "GenericWebAppFailure" | "UserInterrupt" | "IdentityDoesNotExists" | "IncorrectPassword" | "InvalidProof" | "PublicKeyMismatch" | "InvalidSignature" | "IncorrectOtp";
 type BerytusChallengeId = string;
+type StringOrPacketUnion = string | BerytusEncryptedPacket;
 export interface BerytusChallenge {
     readonly id: BerytusChallengeId;
     readonly type: BerytusChallengeType;
     readonly parameters: any | null;
     readonly active: boolean;
 }
+export interface BerytusIdentificationChallengeParameters {
+    fields: Array<string>;
+}
 export interface BerytusChallengeGetIdentityFieldsMessageResponse {
-    response: Record<string, stringOrBerytusEncryptedPacket>;
+    response: Record<string, StringOrPacketUnion>;
 }
 export interface BerytusIdentificationChallenge extends BerytusChallenge {
 }
 export interface BerytusChallengeGetPasswordFieldsMessageResponse {
-    response: Record<string, stringOrBerytusEncryptedPacket>;
+    response: Record<string, StringOrPacketUnion>;
+}
+export interface BerytusPasswordChallengeParameters {
+    fields: Array<string>;
 }
 export interface BerytusPasswordChallenge extends BerytusChallenge {
 }
@@ -320,29 +319,34 @@ export interface BerytusChallengeSelectKeyMessageResponse {
     response: BerytusKeyFieldValue;
 }
 export interface BerytusChallengeSignNonceMessageResponse {
-    response: ArrayBuffer;
+    response: ArrayBufferOrBerytusEncryptedPacket;
+}
+export interface BerytusDigitalSignatureChallengeParameters {
+    field: string;
 }
 export interface BerytusDigitalSignatureChallenge extends BerytusChallenge {
 }
 export interface BerytusChallengeSelectSecurePasswordMessageResponse {
-    response: stringOrBerytusEncryptedPacket;
+    response: StringOrPacketUnion;
 }
 export interface BerytusChallengeExchangePublicKeysMessageResponse {
-    response: stringOrArrayBufferOrBerytusEncryptedPacket;
+    response: ArrayBufferOrBerytusEncryptedPacket;
 }
-type BerytusSecureRemotePasswordChallengeEncodingType = "None" | "Hex";
 export interface BerytusSecureRemotePasswordChallengeParameters {
-    encoding?: BerytusSecureRemotePasswordChallengeEncodingType;
+    field: string;
 }
 export interface BerytusChallengeComputeClientProofMessageResponse {
-    response: stringOrArrayBufferOrBerytusEncryptedPacket;
+    response: ArrayBufferOrBerytusEncryptedPacket;
 }
 export interface BerytusChallengeVerifyServerProofMessageResponse {
 }
 export interface BerytusSecureRemotePasswordChallenge extends BerytusChallenge {
 }
 export interface BerytusChallengeGetOtpMessageResponse {
-    response: stringOrBerytusEncryptedPacket;
+    response: StringOrPacketUnion;
+}
+export interface BerytusOffChannelOtpChallengeParameters {
+    field: string;
 }
 export interface BerytusOffChannelOtpChallenge extends BerytusChallenge {
 }
@@ -397,10 +401,10 @@ export enum EBerytusChallengeType {
 export interface BerytusIdentificationChallengeInfo {
     id: string;
     type: EBerytusChallengeType.Identification;
-    parameters: null;
+    parameters: BerytusIdentificationChallengeParameters;
 }
 export interface BerytusChallengeGetIdentityFieldsMessageRequest {
-    payload: string[]
+    payload: null
 }
 export interface BerytusSendGetIdentityFieldsMessage extends BerytusChallengeGetIdentityFieldsMessageRequest {
     challenge: BerytusIdentificationChallengeInfo;
@@ -413,10 +417,10 @@ export enum EBerytusIdentificationChallengeMessageName {
 export interface BerytusPasswordChallengeInfo {
     id: string;
     type: EBerytusChallengeType.Password;
-    parameters: null;
+    parameters: BerytusPasswordChallengeParameters;
 }
 export interface BerytusChallengeGetPasswordFieldsMessageRequest {
-    payload: string[]
+    payload: null
 }
 export interface BerytusSendGetPasswordFieldsMessage extends BerytusChallengeGetPasswordFieldsMessageRequest {
     challenge: BerytusPasswordChallengeInfo;
@@ -429,10 +433,10 @@ export enum EBerytusPasswordChallengeMessageName {
 export interface BerytusDigitalSignatureChallengeInfo {
     id: string;
     type: EBerytusChallengeType.DigitalSignature;
-    parameters: null;
+    parameters: BerytusDigitalSignatureChallengeParameters;
 }
 export interface BerytusChallengeSelectKeyMessageRequest {
-    payload: string
+    payload: null
 }
 export interface BerytusSendSelectKeyMessage extends BerytusChallengeSelectKeyMessageRequest {
     challenge: BerytusDigitalSignatureChallengeInfo;
@@ -457,7 +461,7 @@ export interface BerytusSecureRemotePasswordChallengeInfo {
     parameters: BerytusSecureRemotePasswordChallengeParameters;
 }
 export interface BerytusChallengeSelectSecurePasswordMessageRequest {
-    payload: string
+    payload: null
 }
 export interface BerytusSendSelectSecurePasswordMessage extends BerytusChallengeSelectSecurePasswordMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
@@ -465,7 +469,7 @@ export interface BerytusSendSelectSecurePasswordMessage extends BerytusChallenge
 }
 
 export interface BerytusChallengeExchangePublicKeysMessageRequest {
-    payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
+    payload: ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
 export interface BerytusSendExchangePublicKeysMessage extends BerytusChallengeExchangePublicKeysMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
@@ -473,7 +477,7 @@ export interface BerytusSendExchangePublicKeysMessage extends BerytusChallengeEx
 }
 
 export interface BerytusChallengeComputeClientProofMessageRequest {
-    payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
+    payload: ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
 export interface BerytusSendComputeClientProofMessage extends BerytusChallengeComputeClientProofMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
@@ -481,7 +485,7 @@ export interface BerytusSendComputeClientProofMessage extends BerytusChallengeCo
 }
 
 export interface BerytusChallengeVerifyServerProofMessageRequest {
-    payload: stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
+    payload: ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket
 }
 export interface BerytusSendVerifyServerProofMessage extends BerytusChallengeVerifyServerProofMessageRequest {
     challenge: BerytusSecureRemotePasswordChallengeInfo;
@@ -497,10 +501,10 @@ export enum EBerytusSecureRemotePasswordChallengeMessageName {
 export interface BerytusOffChannelOtpChallengeInfo {
     id: string;
     type: EBerytusChallengeType.OffChannelOtp;
-    parameters: null;
+    parameters: BerytusOffChannelOtpChallengeParameters;
 }
 export interface BerytusChallengeGetOtpMessageRequest {
-    payload: string
+    payload: null
 }
 export interface BerytusSendGetOtpMessage extends BerytusChallengeGetOtpMessageRequest {
     challenge: BerytusOffChannelOtpChallengeInfo;
@@ -547,18 +551,6 @@ export type BerytusFieldValueUnion = string | BerytusEncryptedPacket
 	| BerytusKeyFieldValue
 	| BerytusSecurePasswordFieldValue
 	| BerytusSharedKeyFieldValue;
-export type stringOrBerytusEncryptedPacket = string |
-	BerytusEncryptedPacket;
-
-export type stringOrArrayBufferOrBerytusEncryptedPacket = string |
-	ArrayBuffer |
-	BerytusEncryptedPacket;
-
 export type ArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket = ArrayBuffer |
-	ArrayBufferView |
-	BerytusEncryptedPacket;
-
-export type stringOrArrayBufferOrArrayBufferViewOrBerytusEncryptedPacket = string |
-	ArrayBuffer |
 	ArrayBufferView |
 	BerytusEncryptedPacket;

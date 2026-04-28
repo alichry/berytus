@@ -1,0 +1,14 @@
+--- dom/webidl/Navigator.webidl.orig	2025-10-04 10:01:54
++++ dom/webidl/Navigator.webidl	2025-10-04 10:16:19
+@@ -287,6 +287,11 @@
+ };
+ 
+ partial interface Navigator {
++  [SameObject]
++  readonly attribute BerytusChannelContainer berytusChannel;
++};
++
++partial interface Navigator {
+   [Throws, Pref="beacon.enabled"]
+   boolean sendBeacon(DOMString url,
+                      optional BodyInit? data = null);

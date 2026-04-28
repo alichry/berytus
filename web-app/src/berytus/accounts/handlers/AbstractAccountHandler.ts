@@ -1,8 +1,21 @@
 import { EStageHandlerType, type IAccountStageHandler, type IAccountStageState, type StepResult } from "@root/berytus/types";
 import { FetchError } from "@root/backend/errors/FetchError";
-import type { Body as CreateBody } from "@root/pages/login/[category]/[version]/create/schema";
+import type { Body as CreateBody } from "@root/pages/channel/[channelId]/login/[category]/[version]/create/schema";
+import type { AbstractChannelHandler } from "@root/berytus/channel/AbstractChannelHandler.js";
+import { buildRequestBodyAndHeaders, type TargetContentType } from "@root/berytus/fetch-utils.js";
+
+export type ClientCreateBody = Omit<CreateBody, 'fields'> & {
+    fields: ReadonlyArray<CreateBody['fields'][0] | {
+        id: string;
+        value: BerytusEncryptedPacket;
+        // Allow client to send an encrypted packet, e2ee middleware
+        // should convert it to its cleartext format
+        // before attempting to CreateBody.parseAsync()
+    }>
+}
 
 export abstract class AbstractAccountStageHandler<Step extends string> implements IAccountStageHandler {
+    protected channelHandler: AbstractChannelHandler;
     protected channel?: BerytusChannel;
     protected operation?: BerytusAccountCreationOperation | BerytusAccountAuthenticationOperation;
     public readonly type!: EStageHandlerType.Account;
@@ -12,8 +25,14 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         credentialFields: []
     };
 
+    constructor(channelHandler: AbstractChannelHandler) {
+        this.channelHandler = channelHandler;
+    }
+
+    abstract get isE2EE(): boolean;
+
     get label(): string {
-        return `${this.category}.V${this.version}`;
+        return `${this.isE2EE ? 'E2EE.' : ''}${this.category}.V${this.version}`;
     }
 
     abstract get version(): number;
@@ -42,53 +61,91 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         //! EXPORT_FN_IGNORE_END
     }
 
-    getState() {
+
+    protected async stringifyBerytusValue(
+        value: string
+                | ArrayBuffer
+                | BerytusEncryptedPacket
+                | null
+                | BerytusFieldValue
+                | BerytusKeyFieldValue
+                | BerytusSharedKeyFieldValue
+                | BerytusSecurePasswordFieldValue
+    ): Promise<string> {
+        if (typeof value === "string") {
+            return value;
+        }
+        if (value === null) {
+            return 'null';
+        }
+        if (value instanceof ArrayBuffer) {
+            return new Uint8Array(value)
+                // @ts-ignore: Modern browsers
+                .toBase64();
+        }
+        if ("salt" in value) {
+            return JSON.stringify({
+                salt: await this.stringifyBerytusValue(value.salt),
+                verifier: await this.stringifyBerytusValue(value.verifier),
+            }, null, 2);
+        }
+        if ("publicKey" in value) {
+            return JSON.stringify({
+                publicKey: await this.stringifyBerytusValue(value.publicKey),
+            }, null, 2);
+        }
+        if ("privateKey" in value) {
+            return JSON.stringify({
+                privateKey: await this.stringifyBerytusValue(value.privateKey),
+            }, null, 2);
+        }
+        if (value instanceof Blob) { // JWE
+            return await value.text();
+        }
+        return JSON.stringify(value, null, 2);
+    }
+
+    /**
+     * Call this after any change to user attribute/account fields.
+     * This would cache their representation in the state for
+     * synchronous retrieval. The operation is async as it
+     * potentially need to read blobs.
+     */
+    async cacheRegistrationFields() {
         if (! this.operation) {
             return;
-            // return {
-            //     channel: this.channel,
-            //     userAttributes: {},
-            //     identityFields: [],
-            //     credentialFields: [],
-            //     category: "",
-            //     version: 0,
-            //     status: "Pending" as const
-            // };
+        }
+        if (this.operation.intent !== "Register") {
+            return;
         }
         let userAttrs: Record<string, string> = {};
         let identityFields: { id: string; value: string}[] = [];
         let credentialFields: { id: string; value: string}[] = [];
-        if (this.operation.intent === "Register") {
-            for (const [_k, { id, value }] of this.operation.userAttributes) {
-                userAttrs[id] = typeof value === "string"
-                    ? value
-                    : JSON.stringify(value);
-            }
-            for (const [id, field] of this.operation.fields) {
-                const value = field.value;
-                if (field.type === "Identity" || field.type === "ForeignIdentity") {
-                    identityFields.push({
-                        id,
-                        value: typeof value === "string"
-                            ? value : JSON.stringify(value),
-                    });
-                    continue;
-                }
-                credentialFields.push({
+        for (const [_k, { id, value }] of this.operation.userAttributes) {
+            userAttrs[id] = await this.stringifyBerytusValue(value);
+        }
+        for (const [id, field] of this.operation.fields) {
+            const value = field.value;
+            if (field.type === "Identity" || field.type === "ForeignIdentity") {
+                identityFields.push({
                     id,
-                    value: typeof value === "string"
-                        ? value : JSON.stringify(value),
+                    value: await this.stringifyBerytusValue(value),
                 });
+                continue;
             }
-            return {
-                channel: this.channel,
-                userAttributes: userAttrs,
-                identityFields,
-                credentialFields,
-                category: this.operation.category,
-                version: this.operation.version,
-                status: this.operation.status,
-            };
+            credentialFields.push({
+                id,
+                value: await this.stringifyBerytusValue(value),
+            });
+        }
+        this.loginState.userAttributes = userAttrs;
+        this.loginState.identityFields = identityFields;
+        this.loginState.credentialFields = credentialFields;
+    }
+
+    getState() {
+        if (! this.operation) {
+            return;
         }
         return {
             channel: this.channel,
@@ -99,22 +156,20 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         }
     }
 
-    async accountExists(field: BerytusField): Promise<boolean> {
-        if (field.type !== "ForeignIdentity" && field.type !== "Identity") {
-            throw new Error('Bad field passed.');
+    async accountExists(
+        fields: BerytusField[],
+        targetContentType: TargetContentType = "multipart"
+    ): Promise<boolean> {
+        if (fields.some(field => field.type !== "ForeignIdentity" && field.type !== "Identity")) {
+            throw new Error('Bad field passed. Only Identity and ForeignIdentity fields are allowed.');
         }
         const res = await fetch(
-            `/login/${this.category}/${this.version}/exists`,
+            `/channel/${this.channel!.id}/login/${this.category}/${this.version}/exists`,
             {
                 method: "POST",
-                headers: {
-                    "content-type": "application/json"
-                },
-                body: JSON.stringify({
-                    fields: [
-                        { id: field.id, value: field.value }
-                    ]
-                })
+                ...buildRequestBodyAndHeaders({
+                    fields: fields.map(field => ({ id: field.id, value: field.value }))
+                }, targetContentType)
             }
         );
         if (! res.ok) {
@@ -127,25 +182,20 @@ export abstract class AbstractAccountStageHandler<Step extends string> implement
         return body.exists;
     }
 
-    async createAccount(fields: CreateBody["fields"], userAttributes: Record<string, string>): Promise<void> {
-        // for (const field of this.operation!.fields.values()) {
-        //     fields.push({
-        //         id: field.id,
-        //         value: field.value
-        //     })
-        // }
-        const body: CreateBody = {
+    async createAccount(
+        fields: ClientCreateBody["fields"],
+        userAttributes: Record<string, string | Blob>,
+        targetContentType: TargetContentType = "multipart"
+    ): Promise<void> {
+        const body: ClientCreateBody = {
             fields,
             userAttributes
         };
         const resp = await fetch(
-            `/login/${this.category}/${this.version}/create`,
+            `/channel/${this.channel!.id}/login/${this.category}/${this.version}/create`,
             {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body)
+               ...buildRequestBodyAndHeaders(body, targetContentType)
             }
         )
         if (! resp.ok) {

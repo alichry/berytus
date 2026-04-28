@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { Account, db, Field, Identity, Picture } from "@root/db";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavigateFunction, NavigateOptions, To, useNavigate, useParams } from "react-router-dom";
 import { MODE, MODE_PAGE_ACTION } from './env';
 import { url } from "./workers/paths";
@@ -8,6 +8,8 @@ import { PAGECONTEXT_POPUP } from "./pagecontext";
 import { Schema } from "yup";
 import type { WebAppActor, Request, RequestType, RequestHandlerFunctionReturnType } from "@berytus/types";
 import { ERejectionCode } from "@berytus/enums";
+import { Channel } from "./db/Channel";
+import JWEPacketCipherBox from "./crypto/JWEPacketBox";
 
 interface MaybeResult {
     sent: boolean;
@@ -21,24 +23,26 @@ type MaybeResolve<ER extends RequestType> =
 
 type MaybeReject = (reason: ERejectionCode) => MaybeResult;
 
-const resolveIf = (hasBeenProcessed: boolean, requestId: string, value: unknown): MaybeResult => {
+const resolveIf = (hasBeenProcessed: boolean, requestId: string, value: unknown | Promise<unknown>): MaybeResult => {
     if (hasBeenProcessed) {
         return {
             sent: false,
             promise: Promise.resolve()
         };
     }
-    const prom = browser.runtime.sendMessage({
-        type: "resolveRequest",
-        data: {
-            requestId,
-            value
-        }
-    }).catch(e => {
-        console.error("An error has occurre during browser.runtime.sendMessage('resolveRequest'):", e.message);
-        console.error(e);
-        throw e;
-    });
+    const prom = Promise.resolve(value)
+        .then(value => browser.runtime.sendMessage({
+            type: "resolveRequest",
+            data: {
+                requestId,
+                value
+            }
+        }))
+        .catch(e => {
+            console.error("An error has occurre during browser.runtime.sendMessage('resolveRequest'):", e.message);
+            console.error(e);
+            throw e;
+        });
     return {
         sent: true,
         promise: prom
@@ -50,6 +54,12 @@ const rejectIf = (hasBeenProcessed: boolean, requestId: string, value: unknown):
             sent: false,
             promise: Promise.resolve()
         };
+    }
+    if (value instanceof Promise) {
+        return {
+            sent: false,
+            promise: Promise.reject(new Error("rejectIf() does not accept Promise-wrapped values."))
+        }
     }
     const prom = browser.runtime.sendMessage({
         type: "rejectRequest",
@@ -108,40 +118,72 @@ interface UseRequestHook<ER extends RequestType> {
     error?: unknown;
 }
 
-interface UseRequestCallbacks {
+interface UseRequestOptions<ER extends RequestType> {
     onProcessed?(): void;
     onIgnored?(): void;
+    /**
+     * preResolve value transformation hook.
+     * Will not be called if the resolved value is undefinend or null.
+     * Should return a valid value for resolution.
+     */
+    preResolve?(value: NonNullable<RequestHandlerFunctionReturnType<ER>>): Promise<RequestHandlerFunctionReturnType<ER>>;
 }
 
 /**
- * @note Make sure callbacks are memoised using useCallback;
- * otherwise, they will get invoked on each render if the
+ * Note(berytus):
+ * @note Make sure callbacks {onProcessed,onIgnored,preResolve}
+ * are memoised; otherwise, they will get invoked on each rerender if the
  * request has been processed or ignored.
  */
 export function useRequest<ER extends RequestType>(
     req: Request | undefined,
-    { onProcessed, onIgnored }: UseRequestCallbacks = {}
+    {
+        onProcessed,
+        onIgnored,
+        preResolve
+    }: UseRequestOptions<ER> = {}
 ): UseRequestHook<ER> {
     const [processing, setProcessing] = useState<boolean>(false);
     const [processed, setProcessed] = useState<boolean>(false);
     const [ignored, setIgnored] = useState<boolean>(false);
-    const [maybeResolve, setMaybeResolve] = useState<MaybeResolve<ER>>();
-    const [maybeReject, setMaybeReject] = useState<MaybeReject>();
     const [error, setError] = useState<unknown>();
 
-    useEffect(() => {
+    const maybeResolve = useMemo<MaybeResolve<ER> | undefined>(() => {
         if (! req) {
-            setMaybeResolve(undefined);
-            setMaybeReject(undefined);
-            return;
+            return undefined;
         }
-        setMaybeResolve(
-            () => createMaybeFunction("resolve", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
+        const maybe = createMaybeFunction(
+            "resolve",
+            processed,
+            setProcessed,
+            setIgnored,
+            setProcessing,
+            setError,
+            req.id
         );
-        setMaybeReject(
-            () => createMaybeFunction("reject", processed, setProcessed, setIgnored, setProcessing, setError, req.id)
+        return (value?: RequestHandlerFunctionReturnType<ER>) => {
+            if (preResolve && value !== undefined && value !== null) {
+                return maybe(preResolve(value));
+            }
+            return maybe(value);
+        }
+    }, [req, processed, preResolve]);
+
+    const maybeReject = useMemo<MaybeReject | undefined>(() => {
+        if (! req) {
+            return undefined;
+        }
+        return createMaybeFunction(
+            "reject",
+            processed,
+            setProcessed,
+            setIgnored,
+            setProcessing,
+            setError,
+            req.id
         );
-    }, [processed, req]);
+    }, [req, processed, preResolve]);
+
     useEffect(() => {
         if (ignored) {
             if (! onIgnored) {
@@ -499,4 +541,34 @@ export function useTryOnce(enable: boolean | undefined, cb: () => Promise<boolea
         run();
     }, [enable, running, ...dependencies]);
     return { tried, error };
+}
+
+export function useCipherbox(channel?: Channel) {
+    const [box, setBox] = useState<JWEPacketCipherBox | undefined>(undefined);
+    const [loading, setLoading] = useState<boolean>(true);
+    useEffect(() => {
+        if (!channel) {
+            if (box !== undefined) {
+                setBox(undefined);
+            }
+            if (loading === false) {
+                setLoading(true);
+            }
+            return;
+        }
+        if (! channel.e2eeKey) {
+            setBox(undefined);
+            setLoading(false);
+            return;
+        }
+        setBox(new JWEPacketCipherBox({
+            key: channel.e2eeKey,
+            avoidReEncryption: true
+        }));
+        setLoading(false);
+    }, [channel]);
+    return {
+        loading,
+        cipherbox: box
+    };
 }

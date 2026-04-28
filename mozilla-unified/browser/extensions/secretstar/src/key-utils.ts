@@ -12,12 +12,12 @@ export function formatBase64AsPem(str: string, publicKey: boolean = true) {
     return res;
 }
 export function formatSignatureBufToString(signedMessage: ArrayBuffer): string {
-    let hex = ab2base64(signedMessage);
+    let b64 = ab2base64(signedMessage);
     let res = "-----BEGIN CUSTOM SIGNATURE FORMAT -----\n";
 
-    while(hex.length > 0) {
-        res += hex.substring(0, 64) + '\n';
-        hex = hex.substring(64);
+    while(b64.length > 0) {
+        res += b64.substring(0, 64) + '\n';
+        b64 = b64.substring(64);
     }
 
     res += "----END CUSTOM SIGNATURE FORMAT -----";
@@ -113,4 +113,24 @@ export function base64ToArrayBuffer(base64: string): ArrayBuffer {
         bytes[i] = binaryString.charCodeAt(i);
     }
     return bytes.buffer;
+}
+
+/**
+ * (We polyfill NodeJS Buffer)
+ *
+ * Given a NodeJS Buffer, it's .buffer (ArrayBuffer) member
+ * may hold additional bytes that are not part of the buffer's
+ * content. This method safely converts a NodeJS Buffer
+ * into an ArrayBuffer, stricly including the buffer's content
+ * instead of including all of its allocated memory.
+ */
+export const nodeBufferToArrayBuffer = (buf: Buffer): ArrayBuffer => {
+    const res = buf.buffer.slice(
+        buf.byteOffset,
+        buf.byteOffset + buf.byteLength
+    );
+    if (!(res instanceof ArrayBuffer)) {
+        throw new Error("Expected non-shared array buffer to be returned");
+    }
+    return res;
 }

@@ -1,6 +1,6 @@
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import FieldListForm from "./FieldListForm";
-import { array, string } from "yup";
+import { array, object, string } from "yup";
 import Notice from "@root/ui/components/Notice";
 import Spinner from "@root/ui/components/Spinner";
 import { BaseMessageProps } from "./types";
@@ -10,11 +10,12 @@ export interface FieldListMessageProps extends BaseMessageProps {
     onSubmit(fieldValues: Record<string, string>): void;
 }
 
-const payloadSchema = array()
-    .label("FieldIds")
-    .of(string().required())
-    .min(1)
-    .required();
+const parametersSchema = object({
+    fields: array()
+        .of(string().required())
+        .min(1)
+        .required()
+});
 
 export default function FieldListMessage({
     session,
@@ -26,8 +27,8 @@ export default function FieldListMessage({
     const {
         loading: validationLoading,
         error: validationError,
-        value: fieldIds
-    } = useYupValidation(payloadSchema, message.payload);
+        value: parameters
+    } = useYupValidation(parametersSchema, challenge.parameters);
 
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
@@ -38,7 +39,7 @@ export default function FieldListMessage({
             ) : <FieldListForm
                     seamless={settings.seamless.login}
                     defaultAccountId={session.selectedAccountId}
-                    fieldIds={fieldIds}
+                    fieldIds={parameters.fields}
                     onSubmit={(v) => onSubmit(v)}
                 />
             }
