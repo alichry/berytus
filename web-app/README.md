@@ -64,7 +64,7 @@ openssl x509 -noout \
     -in ./cert-custom/subj.cert.pem
 ```
 
-Relevant bit is under X509v3 extensions section. For example:
+Relevant bit is under the X509v3 extensions section. For example:
 
 ```
         X509v3 extensions:
