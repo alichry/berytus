@@ -28,7 +28,7 @@ Last, run `npm run start` to spin the web application server.
 The server will listen for HTTP connections on the port
 set by the environment variable `LISTEN_PORT`.
 
-Note, For the pre-configured signing key setup to function by default, the web application should be served on port 443.
+Note, for the pre-configured signing key setup to function by default, the web application should be served on port 443.
 To achieve this, either run `npm run dev` which will use
 `sudo` along with `socat` to proxy requests on port 443
 (set by `PROXY_PORT`) to port 2443 (set by `LISTEN_PORT`).
