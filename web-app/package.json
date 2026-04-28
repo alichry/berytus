@@ -18,7 +18,14 @@
     "dev:flyway": "./src/bin/flyway.ts",
     "dev:flyway:migrate": "./src/bin/migrate-db.ts",
     "test": "NODE_ENV=development mocha test/prepare-env.ts test/prepare-db.ts test/suite/**/*.test.ts",
-    "netlify": "netlify"
+    "netlify": "netlify",
+    "netlify:check": "test -f .env.netlify && echo '.env.netlify file exists' || (echo '.env.netlify file is missing. Please create it with the necessary environment variables.' && exit 1)",
+    "netlify:link-base": "netlify unlink && netlify link --name berytus",
+    "netlify:link-e2ee": "netlify unlink && netlify link --name berytus-e2ee",
+    "netlify:deploy-base": "npm run netlify:link-base && netlify env:import .env.netlify && netlify deploy --skip-functions-cache",
+    "netlify:deploy-e2ee": "npm run netlify:link-e2ee && netlify env:import .env.netlify && netlify deploy --skip-functions-cache",
+    "netlify:deploy-base:prd": "npm run netlify:deploy-base -- --prod",
+    "netlify:deploy-e2ee:prd": "npm run netlify:deploy-e2ee -- --prod"
   },
   "dependencies": {
     "@astrojs/alpinejs": "^0.4.9",
