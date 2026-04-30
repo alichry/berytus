@@ -50,6 +50,12 @@ jobs:
           cd ~/mozilla-unified
           hg update -r ${{ steps.changeset.outputs.rev }}
 
+      - name: Reset mozilla-unified to clean state
+        working-directory: ~/mozilla-unified
+        run: |
+          hg update -C -r ${{ steps.changeset.outputs.rev }}
+          hg purge --all #--exclude 'obj-*'
+
       - name: Export Berytus to mozilla-unified
         run: |
           ./port export ~/mozilla-unified
