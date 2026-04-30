@@ -110,7 +110,7 @@ jobs:
       - name: Build Firefox
         working-directory: ${{ env.MOZ_DIR }}
         run: |
-          ./mach build --disable-bootstrap
+          ./mach build
 
       - name: Package Firefox
         working-directory: ${{ env.MOZ_DIR }}
