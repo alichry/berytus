@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  MOZ_DIR: ${{ github.workspace }}/../mozilla-unified
+  MOZBUILD_STATE_PATH: ${{ github.workspace }}/../.mozbuild
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,13 +36,13 @@ jobs:
         id: cache-moz
         uses: actions/cache@v4
         with:
-          path: ~/mozilla-unified
+          path: ${{ env.MOZ_DIR }}
           key: mozilla-unified-${{ steps.changeset.outputs.rev }}
 
       - name: Cache mozbuild state (toolchains)
         uses: actions/cache@v4
         with:
-          path: ~/.mozbuild
+          path: ${{ env.MOZBUILD_STATE_PATH }}
           key: mozbuild-${{ runner.os }}-${{ steps.changeset.outputs.rev }}
           restore-keys: |
             mozbuild-${{ runner.os }}-
@@ -46,30 +50,28 @@ jobs:
       - name: Clone mozilla-unified
         if: steps.cache-moz.outputs.cache-hit != 'true'
         run: |
-          hg clone --stream https://hg.mozilla.org/mozilla-unified ~/mozilla-unified
-          cd ~/mozilla-unified
+          hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
+          cd "$MOZ_DIR"
           hg update -r ${{ steps.changeset.outputs.rev }}
 
       - name: Reset mozilla-unified to clean state
-        working-directory: ~/mozilla-unified
+        working-directory: ${{ env.MOZ_DIR }}
         run: |
           hg update -C -r ${{ steps.changeset.outputs.rev }}
-          hg purge --all #--exclude 'obj-*'
+          hg purge --all
 
       - name: Export Berytus to mozilla-unified
         run: |
-          ./port export ~/mozilla-unified
+          ./port export "$MOZ_DIR"
 
       - name: Bootstrap build environment
-        working-directory: ~/mozilla-unified
-        env:
-          MOZBUILD_STATE_PATH: ~/.mozbuild
+        working-directory: ${{ env.MOZ_DIR }}
         run: |
           ./mach --no-interactive bootstrap --application-choice=browser
 
       - name: Create mozconfig
         run: |
-          cat > ~/mozilla-unified/mozconfig << 'EOF'
+          cat > "$MOZ_DIR/mozconfig" << 'EOF'
           ac_add_options --enable-application=browser
           ac_add_options --enable-optimize
           ac_add_options --disable-debug
@@ -77,16 +79,12 @@ jobs:
           EOF
 
       - name: Build Firefox
-        working-directory: ~/mozilla-unified
-        env:
-          MOZBUILD_STATE_PATH: ~/.mozbuild
+        working-directory: ${{ env.MOZ_DIR }}
         run: |
           ./mach build
 
       - name: Package Firefox
-        working-directory: ~/mozilla-unified
-        env:
-          MOZBUILD_STATE_PATH: ~/.mozbuild
+        working-directory: ${{ env.MOZ_DIR }}
         run: |
           ./mach package
 
@@ -94,5 +92,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firefox-berytus-linux-x86_64
-          path: ~/mozilla-unified/obj-x86_64-pc-linux-gnu/dist/*.tar.bz2
+          path: ${{ env.MOZ_DIR }}/obj-x86_64-pc-linux-gnu/dist/*.tar.bz2
           if-no-files-found: error
