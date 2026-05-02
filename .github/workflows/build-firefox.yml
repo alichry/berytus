@@ -103,7 +103,7 @@ jobs:
           ac_add_options --disable-debug
           ac_add_options --with-clang-path=/usr/bin/clang-18
           ac_add_options --with-libclang-path=/usr/lib/llvm-18/lib
-          mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-x86_64-pc-linux-gnu
+          #mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-x86_64-pc-linux-gnu
           EOF
 
       - name: Build Firefox
