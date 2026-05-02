@@ -34,13 +34,13 @@ cat ../../../dom/webidl/SubtleCrypto.webidl \
 npm exec webidl-dts-gen -- \
     -i "$file" \
     -o "$dtsFile"
-sed -i '' "1s/^/type Base64URLString = string;\n/" "$dtsFile"
-sed -i '' "1s/^/type BufferSource = ArrayBuffer | ArrayBufferView;\n/" "$dtsFile"
+sed -i='' "1s/^/type Base64URLString = string;\n/" "$dtsFile"
+sed -i='' "1s/^/type BufferSource = ArrayBuffer | ArrayBufferView;\n/" "$dtsFile"
 echo "" >> "$dtsFile"
 
 "${SCRIPT_DIR}/gen-webidl-ts.ts"
 
-sed -i '' -E 's/^(interface .*)$/export \1/g' "$dtsFile"
+sed -i='' -E 's/^(interface .*)$/export \1/g' "$dtsFile"
 # sed -i '' -E 's/^(type .*)$/export \1/g' "$dtsFile"
 # sed -i '' -E 's/^(enum .*)$/export \1/g' "$dtsFile"
 
