@@ -89,8 +89,9 @@ jobs:
         run: |
           hg update -C -r ${{ steps.changeset.outputs.rev }}
           hg purge --all
-      - name: Setup machrc
+      - name: Setup MOZBUILD_STATE_PATH
         run: |
+          mkdir -p "$MOZBUILD_STATE_PATH"
           cat > "$MOZBUILD_STATE_PATH/machrc" << 'EOF'
           [mach_telemetry]
           is_enabled = false
