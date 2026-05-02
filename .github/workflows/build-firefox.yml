@@ -97,14 +97,13 @@ jobs:
       - name: Create mozconfig
         run: |
           cat > "$MOZ_DIR/mozconfig" << 'EOF'
+          ac_add_options --disable-bootstrap
           ac_add_options --enable-application=browser
           ac_add_options --enable-optimize
           ac_add_options --disable-debug
           ac_add_options --with-clang-path=/usr/bin/clang-18
           ac_add_options --with-libclang-path=/usr/lib/llvm-18/lib
           mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-x86_64-pc-linux-gnu
-          CC=clang-18
-          CXX=clang++-18
           EOF
 
       - name: Build Firefox
