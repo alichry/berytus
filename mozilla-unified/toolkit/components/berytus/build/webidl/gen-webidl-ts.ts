@@ -1,4 +1,4 @@
-#!/usr/bin/env node --loader ts-node/esm
+#!/usr/bin/env -Snode --loader ts-node/esm
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -23,7 +23,7 @@ const listFields = (
 ) => {
     const baseFieldName = "BerytusField";
     return typesFile.getInterfaces().map(intf => {
-        if (! intf.getExtends().some(f => f.getText() === baseFieldName)) {
+        if (!intf.getExtends().some(f => f.getText() === baseFieldName)) {
             return null;
         }
         return intf;
@@ -91,7 +91,7 @@ const interfaceEnsureUnionsAreAliasd = (
             });
             return;
         }
-        if (! propType.isUnion()) {
+        if (!propType.isUnion()) {
             return;
         }
         propType.getUnionTypes().forEach(ut => {
@@ -169,8 +169,8 @@ const ensureUnionsAreAliases = async (
         const alias = aliasesAndDefs.map(a => a.optAlias).join("Or");
         const def = `export type ${alias} = ` + aliasesAndDefs.map(d => d.optDef).join(" |\n\t") + ";\n";
         if (
-            ! newUnionAliases.some(uA => uA.alias === alias)
-            && ! existingUnionAliases.some(uA => uA.alias === alias)
+            !newUnionAliases.some(uA => uA.alias === alias)
+            && !existingUnionAliases.some(uA => uA.alias === alias)
         ) {
             newUnionAliases.push({
                 alias,
@@ -202,7 +202,7 @@ const ensureUnionsAreAliases = async (
             unionAliasGenerator,
             int,
             (oldText, newText) => {
-                dts =  dts.replace(oldText, newText);
+                dts = dts.replace(oldText, newText);
             }
         );
     });
@@ -219,7 +219,7 @@ const generateEnumFromLiteralUnion = async (typeName: string) => {
         dtsFile
     );
     const unionType = typesFile.getTypeAlias(typeName);
-    if (! unionType) {
+    if (!unionType) {
         throw new Error(`Missing ${typeName} enum in WebIDL`);
     }
     const parsedUnionType = parseType(unionType.getType());
@@ -229,11 +229,11 @@ const generateEnumFromLiteralUnion = async (typeName: string) => {
     const enumName = 'E' + typeName;
     const typeEnum: string = `export enum ${enumName} {
 ${parsedUnionType.options.map(o => {
-    if (!("value" in o)) {
-        throw new Error("Option should be a literal value");
-    }
-    return `\t${o.value} = ${JSON.stringify(o.value)}`
-}).join(",\n")}
+        if (!("value" in o)) {
+            throw new Error("Option should be a literal value");
+        }
+        return `\t${o.value} = ${JSON.stringify(o.value)}`
+    }).join(",\n")}
 }\n`;
     const dts: string = await readFile(dtsFile, { encoding: "utf8" });
     await writeFile(dtsFile, dts + typeEnum);
@@ -283,13 +283,13 @@ const generateFieldProperties = async () => {
         const optionsTypeText: string = options!.getType().getText();
         let valueTypeText: string;
 
-        if (! value) {
+        if (!value) {
             // SecurePassword does not define a value argument,
             // but we infer its vallue type.
             valueTypeText = `${fieldName}Value`;
         } else {
             const valueType = value.getType();
-            if (! valueType.isUnion()) {
+            if (!valueType.isUnion()) {
                 valueTypeText = value.getType().getText();
             } else {
                 valueTypeText = valueType.getUnionTypes().map(t => {
@@ -429,7 +429,7 @@ interface Berytus${chName}ChallengeInfo {
                     throw new Error(`Message method ${m.getName()} defined in ${chName} must have a return type of a 'Promise' type. Got ${returnTypeName}`);
                 }
                 const [_, innerReturnTypeName] = returnType.getText().match(/^Promise<(.*)>$/)!;
-                if ( innerReturnTypeName !== `BerytusChallenge${messageName}MessageResponse`) {
+                if (innerReturnTypeName !== `BerytusChallenge${messageName}MessageResponse`) {
                     throw new Error(`Message method ${m.getName()} defined in ${chName} must have a return type of a Promise-resolve type of a dictionary whose name must be equal to  BerytusChallenge${messageName}MessageResponse. Got ${innerReturnTypeName}`);
                 }
                 const arg = m.getParameters()[0];
