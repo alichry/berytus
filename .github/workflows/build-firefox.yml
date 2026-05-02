@@ -89,6 +89,13 @@ jobs:
         run: |
           hg update -C -r ${{ steps.changeset.outputs.rev }}
           hg purge --all
+      - name: Setup machrc
+        run: |
+          cat > "$MOZBUILD_STATE_PATH/machrc" << 'EOF'
+          [mach_telemetry]
+          is_enabled = false
+          is_set_up = true
+          EOF
 
       - name: Export Berytus to mozilla-unified
         run: |
@@ -109,6 +116,10 @@ jobs:
       - name: Build Firefox
         working-directory: ${{ env.MOZ_DIR }}
         run: |
+          pwd
+          ls -alh
+          ls -alh obj-x86_64-pc-linux-gnu || true
+          mkdir -p obj-x86_64-pc-linux-gnu/.mozbuild
           ./mach build
 
       - name: Package Firefox
