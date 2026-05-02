@@ -8,8 +8,13 @@ on:
   workflow_dispatch:
 
 env:
-  MOZ_DIR: ${{ github.workspace }}/../mozilla-unified
-  MOZBUILD_STATE_PATH: ${{ github.workspace }}/../.mozbuild
+  WORKING_DIR: ${{ github.workspace }}/..
+  MOZ_DIR: ${{ env.WORKING_DIR }}/mozilla-unified
+  MOZBUILD_STATE_PATH: ${{ env.WORKING_DIR }}/mozbuild
+  SCCACHE_DIR: ${{ env.WORKING_DIR }}/sccache
+  SCCACHE_CACHE_SIZE: 10G
+  BERYTUS_TOOLKIT_DIR: ${{ env.WORKING_DIR }}/mozilla-unified/toolkit/components/berytus
+  SECRETSTAR_DIR: ${{ env.WORKING_DIR }}/mozilla-unified/browser/extensions/secretstar
 
 jobs:
   build:
@@ -38,13 +43,14 @@ jobs:
             libxcb-shm0-dev libxcb-render0-dev \
             zip unzip
 
-      - name: Install Rust
+      - name: Install Rust and cargo-binstall
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
-      - name: Install cbindgen
-        run: cargo install cbindgen
+      - name: Install cbindgen and sccache
+        run: cargo binstall cbindgen sccache
 
       - name: Read changeset
         id: changeset
@@ -56,26 +62,43 @@ jobs:
       - name: Cache mozilla-unified source
         id: cache-moz
         uses: actions/cache@v4
+        env:
+          cache-name: cache-mozilla-unified
         with:
           path: ${{ env.MOZ_DIR }}
-          key: mozilla-unified-${{ steps.changeset.outputs.rev }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
 
       - name: Cache mozbuild state (toolchains)
         uses: actions/cache@v4
+        env:
+          cache-name: cache-mozbuild
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: mozbuild-${{ runner.os }}-${{ steps.changeset.outputs.rev }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
           restore-keys: |
-            mozbuild-${{ runner.os }}-
+            ${{ runner.os }}-build-${{ env.cache-name }}-
 
-      - name: Cache cargo registry
+      - name: Cache sccache
         uses: actions/cache@v4
+        env:
+          cache-name: cache-sccache
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          path: ${{ env.SCCACHE_DIR }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
 
       - name: Clone mozilla-unified
         if: steps.cache-moz.outputs.cache-hit != 'true'
@@ -104,20 +127,33 @@ jobs:
 
       - name: Create mozconfig
         run: |
-          ls -alh obj-x86_64-pc-linux-gnu || true
           cat > "$MOZ_DIR/mozconfig" << 'EOF'
           ac_add_options --disable-bootstrap
           ac_add_options --enable-application=browser
           ac_add_options --enable-optimize
           ac_add_options --disable-debug
           ac_add_options --without-wasm-sandboxed-libraries
+          ac_add_options --with-ccache=sccache
           #mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-x86_64-pc-linux-gnu
           EOF
+
+      - name: Install Berytus Toolkit Dependencies
+        working-directory: ${{ env.BERYTUS_TOOLKIT_DIR }}
+        run: npm install
+      - name: Install Secret* Dependencies
+        working-directory: ${{ env.SECRETSTAR_DIR }}
+        run: npm install
 
       - name: Build Firefox
         working-directory: ${{ env.MOZ_DIR }}
         run: |
+          cd ${{ env.BERYTUS_TOOLKIT_DIR }}
+          npm run build
+          cd ${{ env.SECRETSTAR_DIR }}
+          npm run build
+          cd ${{ env.MOZ_DIR }}
           ./mach build
+          sccache --show-stats
 
       - name: Package Firefox
         working-directory: ${{ env.MOZ_DIR }}
