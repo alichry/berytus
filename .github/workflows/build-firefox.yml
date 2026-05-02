@@ -149,7 +149,7 @@ jobs:
           cd ${{ env.BERYTUS_TOOLKIT_DIR }}
           npm run build
           cd ${{ env.SECRETSTAR_DIR }}
-          npm run build
+          CI=false npm run build
           cd ${{ env.MOZ_DIR }}
           ./mach build
           sccache --show-stats
