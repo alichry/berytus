@@ -58,9 +58,9 @@ jobs:
           echo "rev=$REV" >> "$GITHUB_OUTPUT"
           echo "Using mozilla-unified changeset: $REV"
 
-      - name: Cache mozilla-unified source
+      - name: Restore mozilla-unified source
         id: cache-moz
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         env:
           cache-name: cache-mozilla-unified
         with:
@@ -73,7 +73,9 @@ jobs:
           cache-name: cache-mozbuild
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
 
       - name: Cache sccache
         uses: actions/cache@v4
@@ -81,7 +83,9 @@ jobs:
           cache-name: cache-sccache
         with:
           path: ${{ env.SCCACHE_DIR }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
 
       - name: Cache node modules
         uses: actions/cache@v4
@@ -99,6 +103,15 @@ jobs:
           hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
           cd "$MOZ_DIR"
           hg update -r ${{ steps.changeset.outputs.rev }}
+
+      - name: Save mozilla-unified source cache
+        if: steps.cache-moz.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        env:
+          cache-name: cache-mozilla-unified
+        with:
+          path: ${{ env.MOZ_DIR }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
 
       - name: Reset mozilla-unified to clean state
         working-directory: ${{ env.MOZ_DIR }}
@@ -150,6 +163,14 @@ jobs:
           ./mach build
           sccache --show-stats
 
+      - name: Save mozilla-unified source+build
+        uses: actions/cache/save@v4
+        env:
+          cache-name: cache-mozilla-unified-build
+        with:
+          path: ${{ env.MOZ_DIR }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.run_id }}
+
   test:
     runs-on: ubuntu-24.04
     needs: build
@@ -172,13 +193,13 @@ jobs:
           REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
           echo "rev=$REV" >> "$GITHUB_OUTPUT"
 
-      - name: Restore mozilla-unified source
+      - name: Restore mozilla-unified source+build
         uses: actions/cache/restore@v4
         env:
-          cache-name: cache-mozilla-unified
+          cache-name: cache-mozilla-unified-build
         with:
           path: ${{ env.MOZ_DIR }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.run_id }}
           fail-on-cache-miss: true
 
       - name: Restore mozbuild state
@@ -187,7 +208,7 @@ jobs:
           cache-name: cache-mozbuild
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
           fail-on-cache-miss: true
 
       - name: Run Web Platform Tests (Berytus)
