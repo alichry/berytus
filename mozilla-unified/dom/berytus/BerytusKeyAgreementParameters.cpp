@@ -109,23 +109,25 @@ void ToCanonicalJSON(const nsString& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
 void ToCanonicalJSON(const nsLiteralString& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const uint8_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const unsigned char& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const int8_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const signed char& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const uint16_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const unsigned short& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const int16_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const signed short& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const uint32_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const unsigned int& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const int32_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const signed int& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const std::time_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const unsigned long& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const int64_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const signed long& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
-void ToCanonicalJSON(const uint64_t& aValue, nsString& aJson, ErrorResult& aRv);
+void ToCanonicalJSON(const signed long long& aValue, nsString& aJson, ErrorResult& aRv);
+template<>
+void ToCanonicalJSON(const unsigned long long& aValue, nsString& aJson, ErrorResult& aRv);
 template<>
 void ToCanonicalJSON(const CryptoBuffer& aValue, nsString& aJson, ErrorResult& aRv);
 template<typename U>
@@ -207,47 +209,52 @@ void ToCanonicalJSON(const nsLiteralString& aValue, nsString& aJson, ErrorResult
 }
 
 template<>
-void ToCanonicalJSON(const uint8_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const unsigned char& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%hhu", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const int8_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const signed char& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%hhd", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const uint16_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const unsigned short& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%hu", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const int16_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const signed short& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%hd", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const uint32_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const unsigned int& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%u", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const int32_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const signed int& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%d", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const std::time_t& aValue, nsString& aJson, ErrorResult& aRv) {
-  aJson.AppendPrintf("%lld", static_cast<long long>(aValue));
+void ToCanonicalJSON(const unsigned long& aValue, nsString& aJson, ErrorResult& aRv) {
+  aJson.AppendPrintf("%lu", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const int64_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const signed long& aValue, nsString& aJson, ErrorResult& aRv) {
+  aJson.AppendPrintf("%ld", aValue);
+  // TODO(berytus): Adopt a fallible approach for the above
+}
+template<>
+void ToCanonicalJSON(const signed long long& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%lld", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }
 template<>
-void ToCanonicalJSON(const uint64_t& aValue, nsString& aJson, ErrorResult& aRv) {
+void ToCanonicalJSON(const unsigned long long& aValue, nsString& aJson, ErrorResult& aRv) {
   aJson.AppendPrintf("%llu", aValue);
   // TODO(berytus): Adopt a fallible approach for the above
 }

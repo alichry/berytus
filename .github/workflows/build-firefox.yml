@@ -151,6 +151,7 @@ jobs:
           cd ${{ env.SECRETSTAR_DIR }}
           CI=false npm run build
           cd ${{ env.MOZ_DIR }}
+          sccache --show-stats
           ./mach build
           sccache --show-stats
 
