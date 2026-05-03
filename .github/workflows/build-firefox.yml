@@ -217,6 +217,16 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
           fail-on-cache-miss: true
 
+      - name: Fix typing_extensions for WPT
+        run: |
+          # The current, bundled typing_extensions at
+          # testing/web-platform/tests/tools/third_party/
+          # is too old (missing `deprecated`, added in 4.5.0),
+          # causing mach wpt to fail. By removing the bundled
+          # version (4.1.1), mach wpt will install a newer version
+          # via pip.
+          rm -rf "$MOZ_DIR/testing/web-platform/tests/tools/third_party/typing_extensions"
+
       - name: Run Web Platform Tests (Berytus)
         working-directory: ${{ env.MOZ_DIR }}
         run: |
@@ -286,7 +296,7 @@ jobs:
 
   cleanup:
     runs-on: ubuntu-24.04
-    needs: [test, package]
+    needs: [build, test, package]
     if: always()
     timeout-minutes: 20
 
