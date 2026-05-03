@@ -1,4 +1,4 @@
-name: Build Firefox with Berytus
+name: Firefox with Berytus
 
 on:
   push:
@@ -11,7 +11,7 @@ env:
   MOZ_DIR: ${{ github.workspace }}/../mozilla-unified
   MOZBUILD_STATE_PATH: ${{ github.workspace }}/../mozbuild
   SCCACHE_DIR: ${{ github.workspace }}/../sccache
-  SCCACHE_CACHE_SIZE: 10G
+  SCCACHE_CACHE_SIZE: 20G
   BERYTUS_TOOLKIT_DIR: ${{ github.workspace }}/../mozilla-unified/toolkit/components/berytus
   SECRETSTAR_DIR: ${{ github.workspace }}/../mozilla-unified/browser/extensions/secretstar
 
@@ -74,8 +74,6 @@ jobs:
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
 
       - name: Cache sccache
         uses: actions/cache@v4
@@ -83,11 +81,7 @@ jobs:
           cache-name: cache-sccache
         with:
           path: ${{ env.SCCACHE_DIR }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
 
       - name: Cache node modules
         uses: actions/cache@v4
@@ -111,6 +105,7 @@ jobs:
         run: |
           hg update -C -r ${{ steps.changeset.outputs.rev }}
           hg purge --all
+
       - name: Setup MOZBUILD_STATE_PATH
         run: |
           mkdir -p "$MOZBUILD_STATE_PATH"
@@ -133,12 +128,12 @@ jobs:
           ac_add_options --disable-debug
           ac_add_options --without-wasm-sandboxed-libraries
           ac_add_options --with-ccache=sccache
-          #mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-x86_64-pc-linux-gnu
           EOF
 
       - name: Install Berytus Toolkit Dependencies
         working-directory: ${{ env.BERYTUS_TOOLKIT_DIR }}
         run: npm install
+
       - name: Install Secret* Dependencies
         working-directory: ${{ env.SECRETSTAR_DIR }}
         run: npm install
@@ -154,6 +149,101 @@ jobs:
           sccache --show-stats
           ./mach build
           sccache --show-stats
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: build
+    timeout-minutes: 120
+
+    steps:
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 python3-pip python3-dev \
+            zip unzip
+
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Read changeset
+        id: changeset
+        run: |
+          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
+          echo "rev=$REV" >> "$GITHUB_OUTPUT"
+
+      - name: Restore mozilla-unified source
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-mozilla-unified
+        with:
+          path: ${{ env.MOZ_DIR }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          fail-on-cache-miss: true
+
+      - name: Restore mozbuild state
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-mozbuild
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          fail-on-cache-miss: true
+
+      - name: Run Web Platform Tests (Berytus)
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          ./mach wpt --headless testing/web-platform/tests/berytus
+
+      - name: Run xpcshell tests (Berytus)
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          ./mach xpcshell-test --verbose-if-fails --tag berytus
+
+      - name: Run xpcshell tests (Berytus WebExts)
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
+
+  package:
+    runs-on: ubuntu-24.04
+    needs: test
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 python3-pip python3-dev \
+            zip unzip
+
+            - name: Read changeset
+        id: changeset
+        run: |
+          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
+          echo "rev=$REV" >> "$GITHUB_OUTPUT"
+
+      - name: Restore mozilla-unified source
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-mozilla-unified
+        with:
+          path: ${{ env.MOZ_DIR }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          fail-on-cache-miss: true
+
+      - name: Restore mozbuild state
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-mozbuild
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+          fail-on-cache-miss: true
 
       - name: Package Firefox
         working-directory: ${{ env.MOZ_DIR }}
