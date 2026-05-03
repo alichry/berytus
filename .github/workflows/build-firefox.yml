@@ -221,7 +221,7 @@ jobs:
             python3 python3-pip python3-dev \
             zip unzip
 
-            - name: Read changeset
+      - name: Read changeset
         id: changeset
         run: |
           REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
