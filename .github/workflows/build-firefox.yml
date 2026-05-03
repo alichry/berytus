@@ -8,12 +8,12 @@ on:
   workflow_dispatch:
 
 env:
-  MOZ_DIR: ${{ github.workspace }}/../mozilla-unified
-  MOZBUILD_STATE_PATH: ${{ github.workspace }}/../mozbuild
-  SCCACHE_DIR: ${{ github.workspace }}/../sccache
+  MOZ_DIR: /home/runner/work/berytus/mozilla-unified
+  MOZBUILD_STATE_PATH: /home/runner/work/berytus/mozbuild
+  SCCACHE_DIR: /home/runner/work/berytus/sccache
   SCCACHE_CACHE_SIZE: 20G
-  BERYTUS_TOOLKIT_DIR: ${{ github.workspace }}/../mozilla-unified/toolkit/components/berytus
-  SECRETSTAR_DIR: ${{ github.workspace }}/../mozilla-unified/browser/extensions/secretstar
+  BERYTUS_TOOLKIT_DIR: /home/runner/work/berytus/mozilla-unified/toolkit/components/berytus
+  SECRETSTAR_DIR: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar
 
 jobs:
   build:
