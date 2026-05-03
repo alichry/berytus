@@ -116,8 +116,8 @@ jobs:
       - name: Reset mozilla-unified to clean state
         working-directory: ${{ env.MOZ_DIR }}
         run: |
-          HGPLAIN=1 hg update -C -r ${{ steps.changeset.outputs.rev }}
-          HGPLAIN=1 hg purge --all --config extensions.purge=
+          hg update -y -C -r ${{ steps.changeset.outputs.rev }}
+          hg purge -y --all
 
       - name: Setup MOZBUILD_STATE_PATH
         run: |
