@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  actions: write
+  contents: read
+
 env:
   MOZ_DIR: /home/runner/work/berytus/mozilla-unified
   MOZBUILD_STATE_PATH: /home/runner/work/berytus/mozbuild
@@ -19,6 +23,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
+    outputs:
+      changeset-rev: ${{ steps.changeset.outputs.rev }}
 
     steps:
       - name: Checkout Berytus source
@@ -75,7 +81,7 @@ jobs:
           path: ${{ env.MOZBUILD_STATE_PATH }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
 
       - name: Cache sccache
         uses: actions/cache@v4
@@ -85,7 +91,7 @@ jobs:
           path: ${{ env.SCCACHE_DIR }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
 
       - name: Cache node modules
         uses: actions/cache@v4
@@ -199,7 +205,7 @@ jobs:
           cache-name: cache-mozilla-unified-build
         with:
           path: ${{ env.MOZ_DIR }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.run_id }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.run_id }}
           fail-on-cache-miss: true
 
       - name: Restore mozbuild state
@@ -208,7 +214,7 @@ jobs:
           cache-name: cache-mozbuild
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
           fail-on-cache-miss: true
 
       - name: Run Web Platform Tests (Berytus)
@@ -277,3 +283,18 @@ jobs:
           name: firefox-berytus-linux-x86_64
           path: ${{ env.MOZ_DIR }}/obj-x86_64-pc-linux-gnu/dist/*.tar.bz2
           if-no-files-found: error
+
+  cleanup:
+    runs-on: ubuntu-24.04
+    needs: [test, package]
+    if: always()
+    timeout-minutes: 20
+
+    steps:
+      - name: Delete build output cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+          cache-name: cache-mozilla-unified-build
+        run: |
+          gh cache delete "${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.run_id }}" \
+            --repo "${{ github.repository }}" || true
