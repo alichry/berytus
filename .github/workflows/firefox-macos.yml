@@ -1,4 +1,4 @@
-name: Firefox with Berytus (Linux)
+name: Firefox with Berytus (MacOS)
 
 on:
   push:
@@ -15,22 +15,22 @@ concurrency:
   group: ${{ github.workflow }}
 
 env:
-  MOZ_DIR: /home/runner/work/berytus/mozilla-unified
+  MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
   MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
-  MOZ_OBJ_DIR: /home/runner/work/berytus/mozilla-unified/obj-x86_64-pc-linux-gnu
-  MOZBUILD_STATE_PATH: /home/runner/work/berytus/mozbuild
-  SCCACHE_DIR: /home/runner/work/berytus/sccache
+  MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin23.6.0
+  MOZBUILD_STATE_PATH: /Users/runner/work/berytus/mozbuild
+  SCCACHE_DIR: /Users/runner/work/berytus/sccache
   SCCACHE_CACHE_SIZE: 5G
-  BERYTUS_TOOLKIT_DIR: /home/runner/work/berytus/mozilla-unified/toolkit/components/berytus
-  BERYTUS_TOOLKIT_MODULES_DIR: /home/runner/work/berytus/mozilla-unified/toolkit/components/berytus/modules
-  SECRETSTAR_DIR: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar
-  SECRETSTAR_BUILD_DIR1: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build
-  SECRETSTAR_BUILD_DIR2: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build.worker
-  SECRETSTAR_BUILD_DIR3: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
+  BERYTUS_TOOLKIT_DIR: /Users/runner/work/berytus/mozilla-unified/toolkit/components/berytus
+  BERYTUS_TOOLKIT_MODULES_DIR: /Users/runner/work/berytus/mozilla-unified/toolkit/components/berytus/modules
+  SECRETSTAR_DIR: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar
+  SECRETSTAR_BUILD_DIR1: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build
+  SECRETSTAR_BUILD_DIR2: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build.worker
+  SECRETSTAR_BUILD_DIR3: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14 # Kernel Version: Darwin 23.6.0
     timeout-minutes: 360
     outputs:
       changeset-rev: ${{ steps.changeset.outputs.rev }}
@@ -41,21 +41,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            mercurial rsync patch curl \
-            build-essential m4 autoconf2.13 \
-            clang-18 clang++-18 lld-18 llvm-18 libclang-18-dev \
-            nasm yasm \
-            nodejs \
-            python3 python3-pip python3-dev \
-            libgtk-3-dev libdbus-glib-1-dev libpulse-dev libasound2-dev \
-            libxt-dev libx11-dev libx11-xcb-dev libxcb1-dev \
-            libxext-dev libxrandr-dev libxcomposite-dev \
-            libxcursor-dev libxdamage-dev libxfixes-dev \
-            libxi-dev libxrender-dev libxtst-dev \
-            libxcb-shm0-dev libxcb-render0-dev \
-            zip unzip
+          brew install mercurial autoconf nasm yasm node
 
       - name: Install Rust and cargo-binstall
         run: |
@@ -169,7 +155,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
 
   check-cache:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     needs: build
     timeout-minutes: 10
 
@@ -188,7 +174,7 @@ jobs:
           fi
 
   test:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     needs: build
     timeout-minutes: 120
 
@@ -198,11 +184,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            mercurial rsync patch curl \
-            python3 python3-pip python3-dev \
-            zip unzip
+          brew install mercurial openssl bc jq
 
       - name: Clone mozilla-unified
         run: |
@@ -319,7 +301,7 @@ jobs:
           ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
 
   package:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     needs: [build, test]
     timeout-minutes: 30
 
@@ -329,11 +311,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            mercurial rsync patch curl \
-            python3 python3-pip python3-dev \
-            zip unzip
+          brew install mercurial
 
       - name: Clone mozilla-unified
         run: |
@@ -387,12 +365,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firefox-berytus-linux-x86_64
-          path: ${{ env.MOZ_OBJ_DIR }}/dist/*.tar.bz2
+          name: firefox-berytus-macos-x86_64
+          path: ${{ env.MOZ_OBJ_DIR }}/dist/*.dmg
           if-no-files-found: error
 
   cleanup:
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
     needs: [build, test, package]
     if: always()
     timeout-minutes: 20
