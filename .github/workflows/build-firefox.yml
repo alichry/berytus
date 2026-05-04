@@ -232,7 +232,7 @@ jobs:
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}
           fail-on-cache-miss: true
 
       - name: Restore mozbuild state
@@ -317,7 +317,7 @@ jobs:
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}
           fail-on-cache-miss: true
 
       - name: Restore mozbuild state
@@ -353,5 +353,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           cache-name: cache-build-outputs
         run: |
-          gh cache delete "${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}" \
+          gh cache delete "${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}" \
             --repo "${{ github.repository }}" || true
