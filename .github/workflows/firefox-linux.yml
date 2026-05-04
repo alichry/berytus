@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: build
 
 env:
   MOZ_DIR: /home/runner/work/berytus/mozilla-unified
