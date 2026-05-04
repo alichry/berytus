@@ -16,6 +16,7 @@ concurrency:
 
 env:
   MOZ_DIR: /home/runner/work/berytus/mozilla-unified
+  MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
   MOZ_OBJ_DIR: /home/runner/work/berytus/mozilla-unified/obj-x86_64-pc-linux-gnu
   MOZBUILD_STATE_PATH: /home/runner/work/berytus/mozbuild
   SCCACHE_DIR: /home/runner/work/berytus/sccache
@@ -160,6 +161,7 @@ jobs:
         with:
           path: |
             ${{ env.MOZ_OBJ_DIR }}
+            ${{ env.MOZ_DIR_CLOBBER }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
@@ -229,6 +231,7 @@ jobs:
         with:
           path: |
             ${{ env.MOZ_OBJ_DIR }}
+            ${{ env.MOZ_DIR_CLOBBER }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
@@ -359,6 +362,7 @@ jobs:
         with:
           path: |
             ${{ env.MOZ_OBJ_DIR }}
+            ${{ env.MOZ_DIR_CLOBBER }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
