@@ -39,6 +39,11 @@ jobs:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
 
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
       - name: Install system dependencies
         run: |
           brew install mercurial autoconf nasm yasm node
@@ -182,6 +187,11 @@ jobs:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
 
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.8'
+
       - name: Install system dependencies
         run: |
           brew install mercurial openssl bc jq
@@ -312,6 +322,11 @@ jobs:
       - name: Install system dependencies
         run: |
           brew install mercurial
+
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.8'
 
       - name: Clone mozilla-unified
         run: |
