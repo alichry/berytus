@@ -244,6 +244,48 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
           fail-on-cache-miss: true
 
+      - name: Regenerate WPT certificates
+        working-directory: ${{ env.MOZ_DIR }}/testing/web-platform/tests
+        run: |
+          echo "Current CA cert expiry:"
+          openssl x509 -in tools/certs/cacert.pem -noout -dates
+          echo "Current Server cert expiry:"
+          openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
+          echo "Extracting Subject Alt Names from existing CA cert..."
+          CA_SAN=$(openssl x509 -in tools/certs/cacert.pem -noout -ext subjectAltName \
+            | tail -1 | sed 's/^[[:space:]]*//')
+          echo "Extracting Name Constraints from existing CA cert..."
+          CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
+            | tail +3 | sed 's/^[[:space:]]*//' \
+            | awk '{printf "permitted;%s\n", $0}')
+          echo "Regenerating CA and server certs..."
+          openssl req -x509 -newkey rsa:2048 \
+            -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
+            -days 365 -nodes -subj "/CN=web-platform-tests" \
+            -addext "basicConstraints = critical, CA:TRUE" \
+            -addext "keyUsage = keyCertSign" \
+            -addext "extendedKeyUsage = serverAuth" \
+            -addext "authorityKeyIdentifier = keyid:always, issuer:always" \
+            -addext "subjectAltName = $CA_SAN" \
+            -addext "nameConstraints = $(echo "$CA_NC" | paste -sd',' -)"
+          openssl req -newkey rsa:2048 \
+            -keyout tools/certs/web-platform.test.key \
+            -out /tmp/wpt.csr \
+            -nodes -subj "/CN=web-platform.test" \
+            -addext "basicConstraints=CA:FALSE" \
+            -addext "keyUsage=digitalSignature,nonRepudiation,keyEncipherment" \
+            -addext "extendedKeyUsage=serverAuth" \
+            -addext "subjectAltName=$CA_SAN"
+          openssl x509 -req -in /tmp/wpt.csr \
+            -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
+            -CAcreateserial -out tools/certs/web-platform.test.pem -days 365 \
+            -copy_extensions copy
+          rm -f /tmp/wpt.csr
+          echo "New CA cert expiry:"
+          openssl x509 -in tools/certs/cacert.pem -noout -dates
+          echo "New Server cert expiry:"
+          openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
+
       - name: Fix typing_extensions for WPT
         run: |
           # The current, bundled typing_extensions at
@@ -251,7 +293,8 @@ jobs:
           # is too old (missing `deprecated`, added in 4.5.0),
           # causing mach wpt to fail. By removing the bundled
           # version (4.1.1), mach wpt will install a newer version
-          # via pip.
+          # via pip. This probably needs to be removed once we
+          # use a newer (and stable) mozilla-unified changeset
           rm -rf "$MOZ_DIR/testing/web-platform/tests/tools/third_party/typing_extensions"
 
       - name: Run Web Platform Tests (Berytus)
