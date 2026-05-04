@@ -75,7 +75,7 @@ jobs:
       - name: Cache mozbuild state
         uses: actions/cache@v4
         env:
-          cache-name: cache-mozbuild
+          cache-name: cache-mozbuild-state
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
@@ -238,7 +238,7 @@ jobs:
       - name: Restore mozbuild state
         uses: actions/cache/restore@v4
         env:
-          cache-name: cache-mozbuild
+          cache-name: cache-mozbuild-state
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
@@ -323,7 +323,7 @@ jobs:
       - name: Restore mozbuild state
         uses: actions/cache/restore@v4
         env:
-          cache-name: cache-mozbuild
+          cache-name: cache-mozbuild-state
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
