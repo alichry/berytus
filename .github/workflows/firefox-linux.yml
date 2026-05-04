@@ -73,6 +73,16 @@ jobs:
           echo "rev=$REV" >> "$GITHUB_OUTPUT"
           echo "Using mozilla-unified changeset: $REV"
 
+      - name: Cache node modules
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+
       - name: Cache mozbuild state
         uses: actions/cache@v4
         env:
@@ -93,15 +103,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
 
       - name: Clone mozilla-unified
         run: |
