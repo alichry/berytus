@@ -162,6 +162,19 @@ jobs:
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
 
+      - name: Check cache usage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          USAGE_JSON=$(gh api repos/${{ github.repository }}/actions/cache/usage)
+          USAGE_BYTES=$(echo "$USAGE_JSON" | jq '.active_caches_size_in_bytes')
+          USAGE_GB=$(echo "scale=2; $USAGE_BYTES / 2^30" | bc)
+          echo "Current cache usage: ${USAGE_GB}GiB"
+          THRESHOLD=8.5
+          if [ "$(echo "$USAGE_GB >= $THRESHOLD" | bc)" -eq 1 ]; then
+            echo "::warning::GitHub Actions cache usage is ${USAGE_GB}GiB (threshold: ${THRESHOLD}GiB / 10GiB limit)"
+          fi
+
   test:
     runs-on: ubuntu-24.04
     needs: build
