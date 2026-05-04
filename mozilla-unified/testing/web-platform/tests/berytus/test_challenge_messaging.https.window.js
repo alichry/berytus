@@ -25,12 +25,14 @@ const operationCtx = async () => {
 
 promise_test(async () => {
     const { operation, channel } = await operationCtx();
-    const challenge = new BerytusIdentificationChallenge('identification');
+    const challenge = new BerytusIdentificationChallenge('identification', {
+        fields: ["username"]
+    });
     assert_equals(challenge.active, false);
     await operation.challenge(challenge);
     assert_equals(challenge.active, true);
     assert_equals(operation.challenges.get('identification'), challenge);
-    const { response } = await challenge.getIdentityFields(["username"]);
+    const { response } = await challenge.getIdentityFields();
     assert_equals(typeof response, 'object');
     assert_not_equals(response, null);
     assert_equals(typeof response.username, "string");
@@ -41,12 +43,14 @@ promise_test(async () => {
 
 promise_test(async () => {
     const { operation, channel } = await operationCtx();
-    const challenge = new BerytusOffChannelOtpChallenge('otp');
+    const challenge = new BerytusOffChannelOtpChallenge('otp', {
+        field: "email"
+    });
     assert_equals(challenge.active, false);
     await operation.challenge(challenge);
     assert_equals(challenge.active, true);
     assert_equals(operation.challenges.get('otp'), challenge);
-    const { response } = await challenge.getOtp("email");
+    const { response } = await challenge.getOtp();
     assert_equals(typeof response, 'string');
     await challenge.seal();
     assert_equals(challenge.active, false);
@@ -55,12 +59,14 @@ promise_test(async () => {
 
 promise_test(async () => {
     const { operation, channel } = await operationCtx();
-    const challenge = new BerytusPasswordChallenge('password');
+    const challenge = new BerytusPasswordChallenge('password', {
+        fields: ["password"]
+    });
     assert_equals(challenge.active, false);
     await operation.challenge(challenge);
     assert_equals(challenge.active, true);
     assert_equals(operation.challenges.get('password'), challenge);
-    const { response } = await challenge.getPasswordFields(["password"]);
+    const { response } = await challenge.getPasswordFields();
     assert_equals(typeof response, 'object');
     assert_not_equals(response, null);
     assert_equals(typeof response.password, "string");
@@ -71,13 +77,15 @@ promise_test(async () => {
 
 promise_test(async () => {
     const { operation, channel } = await operationCtx();
-    const challenge = new BerytusDigitalSignatureChallenge('signature');
+    const challenge = new BerytusDigitalSignatureChallenge('signature', {
+        field: "key"
+    });
     assert_equals(challenge.active, false);
     await operation.challenge(challenge);
     assert_equals(operation.challenges.get('signature'), challenge);
     assert_equals(challenge.active, true);
 
-    var { response } = await challenge.selectKey("key");
+    var { response } = await challenge.selectKey();
     assert_equals(typeof response, 'object');
     assert_not_equals(response, null);
     assert_equals(typeof response.publicKey, "object");
@@ -97,13 +105,15 @@ promise_test(async () => {
 
 promise_test(async () => {
     const { operation, channel } = await operationCtx();
-    const challenge = new BerytusSecureRemotePasswordChallenge('srp');
+    const challenge = new BerytusSecureRemotePasswordChallenge('srp', {
+        field: "securePassword"
+    });
     assert_equals(challenge.active, false);
     await operation.challenge(challenge);
     assert_equals(operation.challenges.get('srp'), challenge);
     assert_equals(challenge.active, true);
 
-    var { response } = await challenge.selectSecurePassword("securePassword");
+    var { response } = await challenge.selectSecurePassword();
     assert_equals(typeof response, 'string');
 
     var { response } = await challenge.exchangePublicKeys(new Uint8Array([55, 56, 57]).buffer);
@@ -124,86 +134,6 @@ promise_test(async () => {
     await channel.close();
 }, "BerytusSecureRemotePasswordChallenge messaging");
 
-promise_test(async () => {
-    const { operation, channel } = await operationCtx();
-    const challenge = new BerytusSecureRemotePasswordChallenge('srp');
-    await operation.challenge(challenge);
-
-    var { response } = await challenge.selectSecurePassword("securePassword");
-    assert_equals(typeof response, 'string');
-
-    var { response } = await challenge.exchangePublicKeys(new Uint8Array([55, 56, 57]).buffer);
-    assert_equals(typeof response, 'object');
-    assert_not_equals(response, null);
-    assert_true(response instanceof ArrayBuffer);
-
-    var { response } = await challenge.computeClientProof(new Uint8Array([65, 66, 67]).buffer);
-    assert_equals(typeof response, 'object');
-    assert_not_equals(response, null);
-    assert_true(response instanceof ArrayBuffer);
-
-    var { response } = await challenge.verifyServerProof(new Uint8Array([75, 76, 77]).buffer);
-    assert_equals(typeof response, 'undefined');
-
-    await challenge.seal();
-    await channel.close();
-}, "BerytusSecureRemotePasswordChallenge (Unspecified encodig) messaging");
-
-promise_test(async () => {
-    const { operation, channel } = await operationCtx();
-    const challenge = new BerytusSecureRemotePasswordChallenge('srp', {
-        encoding: "None"
-    });
-    await operation.challenge(challenge);
-
-    var { response } = await challenge.selectSecurePassword("securePassword");
-    assert_equals(typeof response, 'string');
-
-    var { response } = await challenge.exchangePublicKeys(new Uint8Array([55, 56, 57]).buffer);
-    assert_equals(typeof response, 'object');
-    assert_not_equals(response, null);
-    assert_true(response instanceof ArrayBuffer);
-
-    var { response } = await challenge.computeClientProof(new Uint8Array([65, 66, 67]).buffer);
-    assert_equals(typeof response, 'object');
-    assert_not_equals(response, null);
-    assert_true(response instanceof ArrayBuffer);
-
-    var { response } = await challenge.verifyServerProof(new Uint8Array([75, 76, 77]).buffer);
-    assert_equals(typeof response, 'undefined');
-
-    await challenge.seal();
-    await channel.close();
-}, "BerytusSecureRemotePasswordChallenge (None encodig) messaging");
-
-
-promise_test(async () => {
-    const assert_is_hex = (val) => {
-        assert_true(/^([0-9A-F]{2})+$/i.test(val));
-    };
-    const { operation, channel } = await operationCtx();
-    const challenge = new BerytusSecureRemotePasswordChallenge('srp', {
-        encoding: "Hex"
-    });
-    await operation.challenge(challenge);
-
-    var { response } = await challenge.selectSecurePassword("securePassword");
-    assert_equals(typeof response, 'string');
-
-    var { response } = await challenge.exchangePublicKeys("0A0B0C05");
-    assert_equals(typeof response, 'string');
-    assert_is_hex(response);
-
-    var { response } = await challenge.computeClientProof("0A0B0C05");
-    assert_equals(typeof response, 'string');
-    assert_is_hex(response)
-
-    var { response } = await challenge.verifyServerProof("0A0B0C05");
-    assert_equals(typeof response, 'undefined');
-
-    await challenge.seal();
-    await channel.close();
-}, "BerytusSecureRemotePasswordChallenge (Hex encodig) messaging");
 
 // TODO(berytus): Test sending ArrayBufferViews instead
 // of ArrayBuffer
