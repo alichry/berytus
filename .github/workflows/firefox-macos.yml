@@ -383,3 +383,35 @@ jobs:
         run: |
           gh cache delete "${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}" \
             --repo "${{ github.repository }}" || true
+
+      - name: Prune old sccache entries
+        # The sccache cache key incorporates a content hash of mozilla-unified,
+        # so every distinct source state creates a new cache entry. Keep the
+        # one with the most recent activity (max of createdAt and
+        # lastAccessedAt) and delete the rest. Sorting by lastAccessedAt alone
+        # would risk evicting a freshly created entry that hasn't been read
+        # yet; sorting by createdAt alone would risk evicting an old entry
+        # that's still being actively used.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREFIX="${{ runner.os }}-build-cache-sccache-"
+          OLD_KEYS=$(gh cache list \
+            --repo "${{ github.repository }}" \
+            --key "$PREFIX" \
+            --limit 100 \
+            --json key,createdAt,lastAccessedAt \
+            --jq '
+              map(. + {recency: (if .createdAt > .lastAccessedAt then .createdAt else .lastAccessedAt end)})
+              | sort_by(.recency) | reverse | .[1:] | .[].key
+            ')
+          if [ -z "$OLD_KEYS" ]; then
+            echo "No stale sccache entries to delete"
+            exit 0
+          fi
+          echo "Deleting stale sccache entries:"
+          echo "$OLD_KEYS"
+          while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            gh cache delete "$key" --repo "${{ github.repository }}" || true
+          done <<< "$OLD_KEYS"
