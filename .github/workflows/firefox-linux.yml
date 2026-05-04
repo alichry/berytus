@@ -1,4 +1,4 @@
-name: Firefox with Berytus
+name: Firefox with Berytus (Linux)
 
 on:
   push:
