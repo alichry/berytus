@@ -11,6 +11,9 @@ permissions:
   actions: write
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}
+
 env:
   MOZ_DIR: /home/runner/work/berytus/mozilla-unified
   MOZ_OBJ_DIR: /home/runner/work/berytus/mozilla-unified/obj-x86_64-pc-linux-gnu
