@@ -88,7 +88,7 @@ jobs:
           cache-name: cache-sccache
         with:
           path: ${{ env.SCCACHE_DIR }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ hashFiles('mozilla-unified/**/*') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
 
