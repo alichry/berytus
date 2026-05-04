@@ -165,6 +165,12 @@ jobs:
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
 
+  check-cache:
+    runs-on: ubuntu-24.04
+    needs: build
+    timeout-minutes: 10
+
+    steps:
       - name: Check cache usage
         env:
           GH_TOKEN: ${{ github.token }}
