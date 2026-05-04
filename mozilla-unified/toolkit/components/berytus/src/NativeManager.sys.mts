@@ -88,14 +88,14 @@ class AccountCreationRequestHandler implements AccountCreationRequests {
                     args.field.value !== null
                         ? null
                         : "testUsername"
-                    );
+                );
                 break;
             case "ForeignIdentity":
                 context.response.resolve(
                     args.field.value !== null
                         ? null
                         : "test@example.tld"
-                    );
+                );
                 break;
             case "Password":
                 context.response.resolve(args.field.value !== null
@@ -108,8 +108,8 @@ class AccountCreationRequestHandler implements AccountCreationRequests {
                     args.field.value !== null
                         ? null
                         : {
-                            salt: new Uint8Array([1,2,3]).buffer,
-                            verifier: new Uint8Array([4,5,6]).buffer
+                            salt: new Uint8Array([1, 2, 3]).buffer,
+                            verifier: new Uint8Array([4, 5, 6]).buffer
                         }
                 );
                 break;
@@ -118,7 +118,7 @@ class AccountCreationRequestHandler implements AccountCreationRequests {
                     args.field.value !== null
                         ? null
                         : {
-                            publicKey: new Uint8Array([1,2,3]).buffer
+                            publicKey: new Uint8Array([1, 2, 3]).buffer
                         }
                 );
                 break;
@@ -127,7 +127,7 @@ class AccountCreationRequestHandler implements AccountCreationRequests {
                     args.field.value !== null
                         ? null
                         : {
-                            privateKey: new Uint8Array([1,2,3]).buffer
+                            privateKey: new Uint8Array([1, 2, 3]).buffer
                         }
                 );
                 break;
@@ -174,16 +174,16 @@ class AccountCreationRequestHandler implements AccountCreationRequests {
                     args.optionalNewValue !== undefined
                         ? null
                         : {
-                            publicKey: new Uint8Array([10,20,30]).buffer
+                            publicKey: new Uint8Array([10, 20, 30]).buffer
                         }
-                    );
+                );
                 break;
             case "SharedKey":
                 context.response.resolve(
                     args.optionalNewValue !== undefined
                         ? null
                         : {
-                                privateKey: new Uint8Array([10,20,30]).buffer
+                            privateKey: new Uint8Array([10, 20, 30]).buffer
                         }
                 );
                 break;
@@ -231,13 +231,13 @@ class AccountAuthenticationRequestHandler implements AccountAuthenticationReques
                 if (args.name === "SelectKey") {
                     context.response.resolve({
                         response: {
-                            publicKey: new Uint8Array([1,2,3]).buffer
+                            publicKey: new Uint8Array([1, 2, 3]).buffer
                         }
                     });
                     return;
                 }
                 context.response.resolve({
-                    response: new Uint8Array([1,2,3]).buffer
+                    response: new Uint8Array([1, 2, 3]).buffer
                 });
                 return;
             }
@@ -278,9 +278,13 @@ class AccountAuthenticationRequestHandler implements AccountAuthenticationReques
                         context.response.resolve({});
                         return;
                     }
+                    default:
+                        throw new Error("Unrecognised SRP challenge name " + args.name);
                 }
-
             }
+            default:
+                // @ts-ignore
+                throw new Error("Unrecognised challenge type " + args.challenge.type);
         }
     }
 }

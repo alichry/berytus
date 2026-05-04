@@ -16,7 +16,7 @@ XPCOMUtils.defineLazyPreferenceGetter(
     false
 );
 
-export interface ManangerSelectionEntry extends CollectCredentialsMetadataEntry  {}
+export interface ManangerSelectionEntry extends CollectCredentialsMetadataEntry { }
 
 export class PromptService {
 
@@ -60,13 +60,15 @@ class Prompter {
                 "Cannot prompt for secret manager selection."
             );
         }
-        // @ts-ignore: TS does not captures assertion here
+        // @ts-ignore: TS does not capture assertion here
         if (lazy.TEST_AUTO_SELECT_BUILTIN) {
             const builtIn = managerEntries.find(m => m.manager.type === ESecretManagerType.Native);
-            if (! builtIn) {
+            if (!builtIn) {
                 throw new Error('Built-in manager was not found!');
             }
-            await builtIn.credentialsMetadata;
+            // wait for all managers to finish before autoselecting
+            // the native manager
+            await Promise.all(managerEntries.map(m => m.credentialsMetadata));
             return builtIn.manager.id;
         }
         return new Promise((resolve, reject) => {
@@ -85,8 +87,8 @@ class Prompter {
             let atLeastOneManagerCanBeSelected = false;
             const updateSelectButton = () => {
                 const primaryButton = ownerDocument.getElementById('berytus-notification')!
-                        .getElementsByClassName('popup-notification-primary-button')![0];
-                if (! primaryButton) {
+                    .getElementsByClassName('popup-notification-primary-button')![0];
+                if (!primaryButton) {
                     return; // popup is not shown yet.
                 }
                 if (atLeastOneManagerCanBeSelected) {
@@ -209,8 +211,8 @@ class Prompter {
             ownerDocument.getElementById(
                 "berytus-header-text"
             )!.textContent = browsingContext.currentURI.host +
-                " would like to communicate with your secret manager to create a new " +
-                "account or login with an existing one. Please select your preferred " +
+            " would like to communicate with your secret manager to create a new " +
+            "account or login with an existing one. Please select your preferred " +
                 "manager to proceed.";
             ownerDocument.getElementById(
                 "berytus-header"
