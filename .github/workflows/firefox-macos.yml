@@ -57,6 +57,9 @@ jobs:
       - name: Install cbindgen and sccache
         run: cargo binstall cbindgen sccache
 
+      - name: Install Rust target x86_64-apple-darwin
+        run: rustup target add x86_64-apple-darwin
+
       - name: Read changeset
         id: changeset
         run: |
