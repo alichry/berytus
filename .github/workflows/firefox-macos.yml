@@ -122,6 +122,7 @@ jobs:
           ac_add_options --disable-debug
           ac_add_options --without-wasm-sandboxed-libraries
           ac_add_options --with-ccache=sccache
+          ac_add_options --target=x86_64-apple-darwin
           EOF
 
       - name: Install Berytus Toolkit Dependencies
@@ -214,6 +215,7 @@ jobs:
           ac_add_options --enable-optimize
           ac_add_options --disable-debug
           ac_add_options --without-wasm-sandboxed-libraries
+          ac_add_options --target=x86_64-apple-darwin
           EOF
 
       - name: Restore build outputs
@@ -346,6 +348,7 @@ jobs:
           ac_add_options --enable-optimize
           ac_add_options --disable-debug
           ac_add_options --without-wasm-sandboxed-libraries
+          ac_add_options --target=x86_64-apple-darwin
           EOF
 
       - name: Restore build outputs
