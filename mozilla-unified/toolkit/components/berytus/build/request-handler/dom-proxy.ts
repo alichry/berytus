@@ -2913,22 +2913,13 @@ protected:
 };
 
 template <typename T>
-bool JSValIs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  static_assert(sizeof(T) == 0, "No JSValIs specialisation was found!");
-  return false;
-}
+bool JSValIs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) = delete;
 
 template <typename T>
-bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, T& aRv) {
-  static_assert(sizeof(T) == 0, "No FromJSVal specialisation was found!");
-  return false;
-}
+bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, T& aRv) = delete;
 
 template <typename T>
-bool ToJSVal(JSContext* aCx, const T& aValue, JS::MutableHandle<JS::Value> aRv) {
-  static_assert(sizeof(T) == 0, "No ToJSVal specialisation was found!");
-  return false;
-}
+bool ToJSVal(JSContext* aCx, const T& aValue, JS::MutableHandle<JS::Value> aRv) = delete;
 
 ${this.defs.filter(d => !(d instanceof MethodDef)).map(def => def.definition).join("\n")}
 
