@@ -17,7 +17,7 @@ concurrency:
 env:
   MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
   MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
-  MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin23.6.0
+  MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin24.6.0
   MOZBUILD_STATE_PATH: /Users/runner/work/berytus/mozbuild
   SCCACHE_DIR: /Users/runner/work/berytus/sccache
   SCCACHE_CACHE_SIZE: 5G
@@ -30,7 +30,7 @@ env:
 
 jobs:
   build:
-    runs-on: macos-14 # Kernel Version: Darwin 23.6.0
+    runs-on: macos-15-intel # Kernel Version: Darwin 24.6.0
     timeout-minutes: 360
     outputs:
       changeset-rev: ${{ steps.changeset.outputs.rev }}
