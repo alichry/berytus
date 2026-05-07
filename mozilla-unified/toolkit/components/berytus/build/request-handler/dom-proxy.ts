@@ -951,7 +951,7 @@ class MaybeType extends TypeSymbol implements IType {
     movableThroughAssignment = true;
 
     static wrapIf(subType: IType, cond: boolean | undefined): IType {
-        if (! cond) {
+        if (!cond) {
             return subType;
         }
         return new MaybeType(subType);
@@ -1202,8 +1202,8 @@ public:
     return mVariant->match(
         ${this.subTypes.map((st, i) => `[](${st.atArgument()} aStr) -> nsString {
           ${st instanceof StaticStringType
-            ? `return aStr.GetString();`
-            : `return aStr;`}
+                ? `return aStr.GetString();`
+                : `return aStr;`}
         }`).join(",\n    ")}
     );
   }` : ``}
@@ -1275,13 +1275,13 @@ bool ${functionName}(JSContext* aCx, JS::Handle<JS::Value> aValue, ${this.atArgu
     }
     if (isValid) {
       ${st instanceof ArrayBufferType ?
-      `aRv.Init(VariantIndex<${i}>(), ArrayBuffer());
+                    `aRv.Init(VariantIndex<${i}>(), ArrayBuffer());
       if (NS_WARN_IF(!(${st.importFromJsValFunction().functionName}(aCx, aValue, (aRv.InternalValue())->as<ArrayBuffer>())))) {
         return false;
       }
       return true;
       ` :
-      `${st.atDefinition()} nv;
+                    `${st.atDefinition()} nv;
       if (NS_WARN_IF(!(${st.importFromJsValFunction().functionName}(aCx, aValue, nv)))) {
         return false;
       }
@@ -1700,7 +1700,7 @@ class StructType extends TypeSymbol implements IType {
 
     get movableThroughAssignment() {
         for (let i = 0; i < this.members.length; i++) {
-            if (! this.members[i].type.movableThroughAssignment) {
+            if (!this.members[i].type.movableThroughAssignment) {
                 return false;
             }
         }
@@ -1719,7 +1719,7 @@ class StructType extends TypeSymbol implements IType {
 ${this.symbol}(${this.members.map(({ member, type }) => `${type.atStruct()}&& ${member.atArgument()}`).join(", ")}) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(${member.atArgument()}))`).join(", ")} {}
   ${this.symbol}(${this.symbol}&& aOther) : ${this.members.map(({ member }) => `${member.atStruct()}(std::move(aOther.${member.atStruct()}))`).join(", ")}  {}
   ${this.movableThroughAssignment
-      ? `\
+                    ? `\
 ${this.symbol}& operator=(${this.symbol}&& aOther) {
     ${this.members.map(({ member }) => `${member.atStruct()} = std::move(aOther.${member.atStruct()});`).join("\n  ")}
     return *this;
@@ -1999,7 +1999,7 @@ ${this.keyType instanceof StringType ? `\
     if (NS_WARN_IF(!JS_SetProperty(aCx, obj, propName.BeginReading(), val))) {
       return false;
     }`
-    : `\
+                    : `\
     JS::Rooted<JS::PropertyKey> prop(aCx, JS::PropertyKey::Int(entry.mKey));
     if (NS_WARN_IF(!JS_SetPropertyById(aCx, obj, prop, val))) {
       return false;
@@ -2219,7 +2219,7 @@ class RequestHandlerMethod extends MethodDef implements IDef {
 
     get implementation() {
         const { group, method, parameters, returnType, name, className } = this;
-        if (! parameters || parameters.length === 0 ) {
+        if (!parameters || parameters.length === 0) {
             return ``;
         }
         return `${returnType.atReturn()} ${className}::${name}(${parameters.map(p => p.toString()).join(', ')}) {
@@ -2914,19 +2914,19 @@ protected:
 
 template <typename T>
 bool JSValIs(JSContext *aCx, const JS::Handle<JS::Value> aValue, bool& aRv) {
-  static_assert(false, "No JSValIs specialisation was found!");
+  static_assert(sizeof(T) == 0, "No JSValIs specialisation was found!");
   return false;
 }
 
 template <typename T>
 bool FromJSVal(JSContext* aCx, JS::Handle<JS::Value> aValue, T& aRv) {
-  static_assert(false, "No FromJSVal specialisation was found!");
+  static_assert(sizeof(T) == 0, "No FromJSVal specialisation was found!");
   return false;
 }
 
 template <typename T>
 bool ToJSVal(JSContext* aCx, const T& aValue, JS::MutableHandle<JS::Value> aRv) {
-  static_assert(false, "No ToJSVal specialisation was found!");
+  static_assert(sizeof(T) == 0, "No ToJSVal specialisation was found!");
   return false;
 }
 
@@ -3013,7 +3013,7 @@ export const generateDomProxy = async () => {
     const typeIterator = h.typeIterator();
     let item = typeIterator.next();
     let parameters: Array<ArgumentMember> = [];
-    while (! item.done) {
+    while (!item.done) {
         const {
             parsedType,
             source,
