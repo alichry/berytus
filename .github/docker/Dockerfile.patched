@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1.7
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+WORKDIR /berytus
+COPY port /berytus/
+COPY mozilla-unified /berytus/
+
+RUN /berytus/port export "$MOZ_DIR"
+
+RUN cd "$MOZ_DIR/toolkit/components/berytus" && npm install && \
+    cd "$MOZ_DIR/browser/extensions/secretstar" && npm install
+
+RUN cd "$MOZ_DIR/toolkit/components/berytus" && npm run build && \
+    cd "$MOZ_DIR/browser/extensions/secretstar" && CI=false npm run build && \
+    cd "$MOZ_DIR/browser/extensions/secretstar" && ./moz.build.sh && \
+    cd "$MOZ_DIR" && ./mach build && sccache --show-stats
+
+WORKDIR /build

@@ -29,8 +29,107 @@ env:
   SECRETSTAR_BUILD_DIR3: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
 
 jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      changeset-rev: ${{ steps.changeset.outputs.rev }}
+      base-image: ${{ steps.tags.outputs.base }}
+      patched-image: ${{ steps.tags.outputs.patched }}
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Read changeset
+        id: changeset
+        run: |
+          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
+          echo "rev=$REV" >> "$GITHUB_OUTPUT"
+          echo "Using mozilla-unified changeset: $REV"
+
+      - name: Compute image tags
+        id: tags
+        env:
+          REV: ${{ steps.changeset.outputs.rev }}
+          SRC_HASH: ${{ hashFiles('mozilla-unified/**/*') }}
+        run: |
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base"
+          PATCHED_REPO="ghcr.io/${REPO_LC}/firefox-patched"
+          echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
+          echo "patched=${PATCHED_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if base image exists
+        id: check-base
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.base }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Base image ${{ steps.tags.outputs.base }} already exists; skipping build"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check if patched image exists
+        id: check-patched
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.patched }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Patched image ${{ steps.tags.outputs.patched }} already exists; skipping build"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.check-base.outputs.exists == 'false' || steps.check-patched.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push base image
+        if: steps.check-base.outputs.exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .github/docker
+          file: .github/docker/Dockerfile.base
+          push: true
+          tags: ${{ steps.tags.outputs.base }}
+          build-args: |
+            MOZ_REV=${{ steps.changeset.outputs.rev }}
+
+      - name: Stage patched build context
+        if: steps.check-patched.outputs.exists == 'false'
+        run: |
+          STAGE=/tmp/patched-context
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp port "$STAGE/"
+          cp -r mozilla-unified "$STAGE/"
+          find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
+          find "$STAGE" -name .DS_Store -delete
+
+      - name: Build and push patched image
+        if: steps.check-patched.outputs.exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: /tmp/patched-context
+          file: .github/docker/Dockerfile.patched
+          push: true
+          tags: ${{ steps.tags.outputs.patched }}
+          build-args: |
+            BASE_IMAGE=${{ steps.tags.outputs.base }}
+
   build:
     runs-on: ubuntu-24.04
+    needs: prepare
     timeout-minutes: 360
     outputs:
       changeset-rev: ${{ steps.changeset.outputs.rev }}
