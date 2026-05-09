@@ -116,6 +116,24 @@ jobs:
           find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
           find "$STAGE" -name .DS_Store -delete
 
+
+      - name: Write Base Image URI
+        id: write-base-image-uri
+        run: |
+          OUT=/tmp/image-uris
+          mkdir -p "$OUT"
+          BASE_IMAGE_URI_FILE="firefox-base-linux-x86_64-image.txt"
+          printf '%s\n' "${{ steps.tags.outputs.base }}" > "$OUT/$BASE_IMAGE_URI_FILE"
+          echo "base-image-uri-file=$OUT/$BASE_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "base-image-uri-artifact=firefox-base-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload base image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-base-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-base-image-uri.outputs.file }}
+          if-no-files-found: error
+
       - name: Build and push patched image
         if: steps.check-patched.outputs.exists == 'false'
         uses: docker/build-push-action@v5
@@ -127,6 +145,22 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ steps.tags.outputs.base }}
 
+      - name: Write Patched Image URI
+        id: write-patched-image-uri
+        run: |
+          OUT=/tmp/image-uris
+          mkdir -p "$OUT"
+          PATCHED_IMAGE_URI_FILE="firefox-berytus-linux-x86_64-image.txt"
+          printf '%s\n' "${{ steps.tags.outputs.patched }}" > "$OUT/$PATCHED_IMAGE_URI_FILE"
+          echo "patched-image-uri-file=$OUT/$PATCHED_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "patched-image-uri-artifact=firefox-berytus-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload patched image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-patched-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-patched-image-uri.outputs.file }}
+          if-no-files-found: error
 
   build:
     runs-on: ubuntu-24.04
