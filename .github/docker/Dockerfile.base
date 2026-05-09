@@ -7,13 +7,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MOZ_DIR=/build/mozilla-unified \
     MOZBUILD_STATE_PATH=/build/mozbuild \
     SCCACHE_DIR=/build/sccache \
-    SCCACHE_CACHE_SIZE=5G \
+    SCCACHE_CACHE_SIZE=10G \
     CARGO_HOME=/root/.cargo \
     RUSTUP_HOME=/root/.rustup \
     PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Note: These dependencies are not necessarily required as
-# mach bootstrap installs a subset of them into the mozbuild state dir.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates mercurial rsync patch curl \
         build-essential m4 autoconf2.13 \
@@ -38,10 +36,13 @@ RUN cargo binstall -y cbindgen sccache
 RUN mkdir -p "$MOZBUILD_STATE_PATH" "$SCCACHE_DIR" && \
     printf '[mach_telemetry]\nis_enabled = false\nis_set_up = true\n' > "$MOZBUILD_STATE_PATH/machrc"
 
-RUN hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR" && \
+RUN mkdir -p "$MOZ_DIR" && \
+    hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR" && \
     hg --cwd "$MOZ_DIR" update -r "$MOZ_REV"
 
-RUN cd "$MOZ_DIR" && ./mach --no-interactive bootstrap --application-choice=browser
+# TODO(berytus): Once we assume a recent revision, we can use
+# mach bootstrap to prepare dependecies.
+#RUN cd "$MOZ_DIR" && ./mach --no-interactive bootstrap --application-choice=browser
 
 RUN printf '%s\n' \
         'ac_add_options --disable-bootstrap' \

@@ -58,8 +58,8 @@ jobs:
           SRC_HASH: ${{ hashFiles('mozilla-unified/**/*') }}
         run: |
           REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base"
-          PATCHED_REPO="ghcr.io/${REPO_LC}/firefox-patched"
+          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base-x86_64-pc-linux-gnu"
+          PATCHED_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-linux-gnu"
           echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
           echo "patched=${PATCHED_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
