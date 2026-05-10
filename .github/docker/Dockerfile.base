@@ -27,14 +27,14 @@ RUN apt update && apt install -y \
         zip unzip git
 
 RUN mkdir -p /etc/environment.d && \
-    printf '%s\n' \
-        'PATH="$PATH:/root/.cargo/bin"' \
-        > /etc/environment.d/10-build.conf
+    echo "PATH=\"\$PATH:$CARGO_HOME/bin\"" \
+        > /etc/environment.d/10-cargo.conf
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && \
     curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
-RUN cargo binstall -y cbindgen sccache
+RUN set -a && for f in /etc/environment.d/*.conf; do [ -r "$f" ] && . "$f"; done && set +a && \
+    cargo binstall -y cbindgen sccache
 
 RUN mkdir -p "$MOZBUILD_STATE_PATH" "$SCCACHE_DIR" && \
     printf '[mach_telemetry]\nis_enabled = false\nis_set_up = true\n' > "$MOZBUILD_STATE_PATH/machrc"
