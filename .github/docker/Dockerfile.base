@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt update && apt install -y \
         ca-certificates mercurial rsync patch curl \
         build-essential m4 autoconf2.13 \
-        clang clang++ lld llvm libclang-dev \
+        clang lld llvm libclang-dev \
         nasm yasm \
         nodejs npm \
         python3 python3-pip python3-dev \

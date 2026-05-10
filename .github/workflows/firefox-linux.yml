@@ -11,8 +11,8 @@ permissions:
   actions: write
   contents: read
 
-concurrency:
-  group: build
+# concurrency:
+#   group: build
 
 env:
   MOZ_DIR: /home/runner/work/berytus/mozilla-unified
@@ -115,7 +115,6 @@ jobs:
           cp -r mozilla-unified "$STAGE/"
           find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
           find "$STAGE" -name .DS_Store -delete
-
 
       - name: Write Base Image URI
         id: write-base-image-uri
