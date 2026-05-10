@@ -9,13 +9,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SCCACHE_DIR=/build/sccache \
     SCCACHE_CACHE_SIZE=10G \
     CARGO_HOME=/root/.cargo \
-    RUSTUP_HOME=/root/.rustup \
-    PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    RUSTUP_HOME=/root/.rustup
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt update && apt install -y \
         ca-certificates mercurial rsync patch curl \
         build-essential m4 autoconf2.13 \
-        clang-18 clang++-18 lld-18 llvm-18 libclang-18-dev \
+        clang clang++ lld llvm libclang-dev \
         nasm yasm \
         nodejs npm \
         python3 python3-pip python3-dev \
@@ -25,8 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxcursor-dev libxdamage-dev libxfixes-dev \
         libxi-dev libxrender-dev libxtst-dev \
         libxcb-shm0-dev libxcb-render0-dev \
-        zip unzip git \
-    && rm -rf /var/lib/apt/lists/*
+        zip unzip git
 
 RUN mkdir -p /etc/environment.d && \
     printf '%s\n' \
