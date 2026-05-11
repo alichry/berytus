@@ -1,4 +1,4 @@
-name: Firefox with Berytus (Linux)
+name: Firefox with Berytus (Windows)
 
 on:
   push:
@@ -11,9 +11,16 @@ permissions:
   actions: write
   contents: read
 
+defaults:
+  run:
+    # Use Git Bash for `run:` steps so the same POSIX recipes (heredocs,
+    # path translation) work on Windows runners. Steps that need cmd or
+    # PowerShell set `shell:` explicitly.
+    shell: bash
+
 jobs:
   prepare:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     timeout-minutes: 360
     permissions:
       contents: read
@@ -42,8 +49,8 @@ jobs:
           SRC_HASH: ${{ hashFiles('mozilla-unified/**/*') }}
         run: |
           REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base-x86_64-pc-linux-gnu"
-          BUILD_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-linux-gnu"
+          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base-x86_64-pc-mingw32"
+          BUILD_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-mingw32"
           echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
           echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
@@ -64,30 +71,26 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set up Docker Buildx
-        if: steps.check-base.outputs.exists == 'false'
-        uses: docker/setup-buildx-action@v3
-
       - name: Build and push base image
         if: steps.check-base.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .github/docker
-          file: .github/docker/Dockerfile.linux.base
-          push: true
-          tags: ${{ steps.tags.outputs.base }}
-          build-args: |
-            MOZ_REV=${{ steps.changeset.outputs.rev }}
+        shell: cmd
+        run: |
+          docker build ^
+            --file .github\docker\Dockerfile.windows.base ^
+            --tag ${{ steps.tags.outputs.base }} ^
+            --build-arg MOZ_REV=${{ steps.changeset.outputs.rev }} ^
+            .github\docker
+          docker push ${{ steps.tags.outputs.base }}
 
       - name: Write Base Image URI
         id: write-base-image-uri
         run: |
-          OUT=/tmp/image-uris
+          OUT="$RUNNER_TEMP/image-uris"
           mkdir -p "$OUT"
-          BASE_IMAGE_URI_FILE="firefox-base-linux-x86_64-image.txt"
+          BASE_IMAGE_URI_FILE="firefox-base-windows-x86_64-image.txt"
           printf '%s\n' "${{ steps.tags.outputs.base }}" > "$OUT/$BASE_IMAGE_URI_FILE"
           echo "file=$OUT/$BASE_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
-          echo "artifact-name=firefox-base-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-base-windows-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload base image URI artifact
         uses: actions/upload-artifact@v4
@@ -107,14 +110,14 @@ jobs:
           fi
 
   build:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     needs: prepare
     timeout-minutes: 360
     permissions:
       contents: read
       packages: write
     outputs:
-      changeset-rev: ${{ steps.changeset.outputs.rev }}
+      changeset-rev: ${{ needs.prepare.outputs.changeset-rev }}
       build-image: ${{ needs.prepare.outputs.build-image }}
 
     steps:
@@ -129,41 +132,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        if: needs.prepare.outputs.build-image-exists == 'false'
-        uses: docker/setup-buildx-action@v3
-
       - name: Stage build context
         if: needs.prepare.outputs.build-image-exists == 'false'
         run: |
-          STAGE=/tmp/build-context
+          STAGE="$RUNNER_TEMP/build-context"
           rm -rf "$STAGE"
           mkdir -p "$STAGE"
           cp port "$STAGE/"
           cp -r mozilla-unified "$STAGE/"
           find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
           find "$STAGE" -name .DS_Store -delete
+          # Pass the staged path back to later steps via env so we don't
+          # have to repeat the $RUNNER_TEMP -> Windows path dance.
+          echo "BUILD_CONTEXT=$STAGE" >> "$GITHUB_ENV"
 
       - name: Build and push image
         if: needs.prepare.outputs.build-image-exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: /tmp/build-context
-          file: .github/docker/Dockerfile.linux.build
-          push: true
-          tags: ${{ needs.prepare.outputs.build-image }}
-          build-args: |
-            BASE_IMAGE=${{ needs.prepare.outputs.base-image }}
+        shell: cmd
+        run: |
+          docker build ^
+            --file .github\docker\Dockerfile.windows.build ^
+            --tag ${{ needs.prepare.outputs.build-image }} ^
+            --build-arg BASE_IMAGE=${{ needs.prepare.outputs.base-image }} ^
+            "%BUILD_CONTEXT%"
+          docker push ${{ needs.prepare.outputs.build-image }}
 
       - name: Write Build Image URI
         id: write-build-image-uri
         run: |
-          OUT=/tmp/image-uris
+          OUT="$RUNNER_TEMP/image-uris"
           mkdir -p "$OUT"
-          BUILD_IMAGE_URI_FILE="firefox-berytus-linux-x86_64-image.txt"
+          BUILD_IMAGE_URI_FILE="firefox-berytus-windows-x86_64-image.txt"
           printf '%s\n' "${{ needs.prepare.outputs.build-image }}" > "$OUT/$BUILD_IMAGE_URI_FILE"
           echo "file=$OUT/$BUILD_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
-          echo "artifact-name=firefox-berytus-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-berytus-windows-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload build image URI artifact
         uses: actions/upload-artifact@v4
@@ -173,75 +175,95 @@ jobs:
           if-no-files-found: error
 
   test:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     needs: build
     timeout-minutes: 120
 
     steps:
-      - name: Checkout Berytus source
-        uses: actions/checkout@v4
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull build image
+        shell: cmd
+        run: docker pull ${{ needs.build.outputs.build-image }}
 
       - name: Run Web Platform Tests (Berytus)
-        uses: addnab/docker-run-action@v3
-        with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          image: ${{ needs.build.outputs.build-image }}
-          shell: bash
-          run: |
-            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
-            ./mach wpt --headless testing/web-platform/tests/berytus
+        shell: cmd
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          docker run --rm ^
+            -e MOZ_LOG ^
+            ${{ needs.build.outputs.build-image }} ^
+            wpt --headless testing/web-platform/tests/berytus
 
       - name: Run xpcshell tests (Berytus)
-        uses: addnab/docker-run-action@v3
-        with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          image: ${{ needs.build.outputs.build-image }}
-          shell: bash
-          run: |
-            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
-            ./mach xpcshell-test --verbose-if-fails --tag berytus
+        shell: cmd
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          docker run --rm ^
+            -e MOZ_LOG ^
+            ${{ needs.build.outputs.build-image }} ^
+            xpcshell-test --verbose-if-fails --tag berytus
 
       - name: Run xpcshell tests (Berytus WebExts)
-        uses: addnab/docker-run-action@v3
-        with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          image: ${{ needs.build.outputs.build-image }}
-          shell: bash
-          run: |
-            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
-            ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
+        shell: cmd
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          docker run --rm ^
+            -e MOZ_LOG ^
+            ${{ needs.build.outputs.build-image }} ^
+            xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
 
   package:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     needs: [build, test]
     timeout-minutes: 30
 
     steps:
-      - name: Checkout Berytus source
-        uses: actions/checkout@v4
-
-      - name: Package Firefox
-        uses: addnab/docker-run-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          image: ${{ needs.build.outputs.build-image }}
-          shell: bash
-          options: -v ${{ runner.temp }}/out:/dist
-          run: |
-            ./mach package
-            cp obj-*/dist/*.tar.bz2 /dist/
 
-      - name: Upload artifact
+      - name: Pull build image
+        shell: cmd
+        run: docker pull ${{ needs.build.outputs.build-image }}
+
+      - name: Prepare output dir
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          # Forward-slash form is fine for bash; convert for cmd in the
+          # next step.
+          echo "OUT_DIR_WIN=$(cygpath -w "$RUNNER_TEMP/out")" >> "$GITHUB_ENV"
+
+      - name: Package Firefox
+        shell: cmd
+        run: |
+          docker run --rm ^
+            -v "%OUT_DIR_WIN%:C:\dist" ^
+            --entrypoint cmd ^
+            ${{ needs.build.outputs.build-image }} ^
+            /S /C "call \"%VS_BUILDTOOLS%\VC\Auxiliary\Build\vcvars64.bat\" && cd /d \"%MOZ_DIR%\" && mach package && xcopy /Y /S \"%MOZ_OBJ_DIR%\dist\*.win64.zip\" C:\dist\ && (if exist \"%MOZ_OBJ_DIR%\dist\install\sea\" xcopy /Y /S \"%MOZ_OBJ_DIR%\dist\install\sea\*.installer.exe\" C:\dist\ ) "
+
+      - name: Upload artifact (zip)
         uses: actions/upload-artifact@v4
         with:
-          name: firefox-berytus-linux-x86_64
-          path: ${{ runner.temp }}/out/*.tar.bz2
+          name: firefox-berytus-windows-x86_64-zip
+          path: ${{ runner.temp }}/out/*.win64.zip
           if-no-files-found: error
+
+      - name: Upload artifact (installer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-berytus-windows-x86_64-installer
+          path: ${{ runner.temp }}/out/*.installer.exe
+          if-no-files-found: warn
