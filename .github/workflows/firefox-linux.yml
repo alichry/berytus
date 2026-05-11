@@ -11,23 +11,6 @@ permissions:
   actions: write
   contents: read
 
-# concurrency:
-#   group: build
-
-env:
-  MOZ_DIR: /home/runner/work/berytus/mozilla-unified
-  MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
-  MOZ_OBJ_DIR: /home/runner/work/berytus/mozilla-unified/obj-x86_64-pc-linux-gnu
-  MOZBUILD_STATE_PATH: /home/runner/work/berytus/mozbuild
-  SCCACHE_DIR: /home/runner/work/berytus/sccache
-  SCCACHE_CACHE_SIZE: 5G
-  BERYTUS_TOOLKIT_DIR: /home/runner/work/berytus/mozilla-unified/toolkit/components/berytus
-  BERYTUS_TOOLKIT_MODULES_DIR: /home/runner/work/berytus/mozilla-unified/toolkit/components/berytus/modules
-  SECRETSTAR_DIR: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar
-  SECRETSTAR_BUILD_DIR1: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build
-  SECRETSTAR_BUILD_DIR2: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build.worker
-  SECRETSTAR_BUILD_DIR3: /home/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
-
 jobs:
   prepare:
     runs-on: ubuntu-24.04
@@ -38,7 +21,8 @@ jobs:
     outputs:
       changeset-rev: ${{ steps.changeset.outputs.rev }}
       base-image: ${{ steps.tags.outputs.base }}
-      patched-image: ${{ steps.tags.outputs.patched }}
+      build-image: ${{ steps.tags.outputs.build }}
+      build-image-exists: ${{ steps.check-build.outputs.exists }}
 
     steps:
       - name: Checkout Berytus source
@@ -59,9 +43,9 @@ jobs:
         run: |
           REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           BASE_REPO="ghcr.io/${REPO_LC}/firefox-base-x86_64-pc-linux-gnu"
-          PATCHED_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-linux-gnu"
+          BUILD_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-linux-gnu"
           echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
-          echo "patched=${PATCHED_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -80,18 +64,8 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check if patched image exists
-        id: check-patched
-        run: |
-          if docker manifest inspect "${{ steps.tags.outputs.patched }}" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Patched image ${{ steps.tags.outputs.patched }} already exists; skipping build"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Docker Buildx
-        if: steps.check-base.outputs.exists == 'false' || steps.check-patched.outputs.exists == 'false'
+        if: steps.check-base.outputs.exists == 'false'
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push base image
@@ -105,17 +79,6 @@ jobs:
           build-args: |
             MOZ_REV=${{ steps.changeset.outputs.rev }}
 
-      - name: Stage patched build context
-        if: steps.check-patched.outputs.exists == 'false'
-        run: |
-          STAGE=/tmp/patched-context
-          rm -rf "$STAGE"
-          mkdir -p "$STAGE"
-          cp port "$STAGE/"
-          cp -r mozilla-unified "$STAGE/"
-          find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
-          find "$STAGE" -name .DS_Store -delete
-
       - name: Write Base Image URI
         id: write-base-image-uri
         run: |
@@ -123,8 +86,8 @@ jobs:
           mkdir -p "$OUT"
           BASE_IMAGE_URI_FILE="firefox-base-linux-x86_64-image.txt"
           printf '%s\n' "${{ steps.tags.outputs.base }}" > "$OUT/$BASE_IMAGE_URI_FILE"
-          echo "base-image-uri-file=$OUT/$BASE_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
-          echo "base-image-uri-artifact=firefox-base-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+          echo "file=$OUT/$BASE_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-base-linux-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload base image URI artifact
         uses: actions/upload-artifact@v4
@@ -133,192 +96,81 @@ jobs:
           path: ${{ steps.write-base-image-uri.outputs.file }}
           if-no-files-found: error
 
-      - name: Build and push patched image
-        if: steps.check-patched.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: /tmp/patched-context
-          file: .github/docker/Dockerfile.patched
-          push: true
-          tags: ${{ steps.tags.outputs.patched }}
-          build-args: |
-            BASE_IMAGE=${{ steps.tags.outputs.base }}
-
-      - name: Write Patched Image URI
-        id: write-patched-image-uri
+      - name: Check if build image exists
+        id: check-build
         run: |
-          OUT=/tmp/image-uris
-          mkdir -p "$OUT"
-          PATCHED_IMAGE_URI_FILE="firefox-berytus-linux-x86_64-image.txt"
-          printf '%s\n' "${{ steps.tags.outputs.patched }}" > "$OUT/$PATCHED_IMAGE_URI_FILE"
-          echo "patched-image-uri-file=$OUT/$PATCHED_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
-          echo "patched-image-uri-artifact=firefox-berytus-linux-x86_64-image" >> "$GITHUB_OUTPUT"
-
-      - name: Upload patched image URI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.write-patched-image-uri.outputs.artifact-name }}
-          path: ${{ steps.write-patched-image-uri.outputs.file }}
-          if-no-files-found: error
+          if docker manifest inspect "${{ steps.tags.outputs.build }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Build image ${{ steps.tags.outputs.build }} already exists; skipping build"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     runs-on: ubuntu-24.04
     needs: prepare
     timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: write
     outputs:
       changeset-rev: ${{ steps.changeset.outputs.rev }}
+      build-image: ${{ needs.prepare.outputs.build-image }}
 
     steps:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            mercurial rsync patch curl \
-            build-essential m4 autoconf2.13 \
-            clang-18 clang++-18 lld-18 llvm-18 libclang-18-dev \
-            nasm yasm \
-            nodejs \
-            python3 python3-pip python3-dev \
-            libgtk-3-dev libdbus-glib-1-dev libpulse-dev libasound2-dev \
-            libxt-dev libx11-dev libx11-xcb-dev libxcb1-dev \
-            libxext-dev libxrandr-dev libxcomposite-dev \
-            libxcursor-dev libxdamage-dev libxfixes-dev \
-            libxi-dev libxrender-dev libxtst-dev \
-            libxcb-shm0-dev libxcb-render0-dev \
-            zip unzip
-
-      - name: Install Rust and cargo-binstall
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
-      - name: Install cbindgen and sccache
-        run: cargo binstall cbindgen sccache
-
-      - name: Read changeset
-        id: changeset
-        run: |
-          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
-          echo "rev=$REV" >> "$GITHUB_OUTPUT"
-          echo "Using mozilla-unified changeset: $REV"
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-node-modules
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare.outputs.build-image-exists == 'false'
+        uses: docker/login-action@v3
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache mozbuild state
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-mozbuild-state
+      - name: Set up Docker Buildx
+        if: needs.prepare.outputs.build-image-exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Stage build context
+        if: needs.prepare.outputs.build-image-exists == 'false'
+        run: |
+          STAGE=/tmp/build-context
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp port "$STAGE/"
+          cp -r mozilla-unified "$STAGE/"
+          find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
+          find "$STAGE" -name .DS_Store -delete
+
+      - name: Build and push image
+        if: needs.prepare.outputs.build-image-exists == 'false'
+        uses: docker/build-push-action@v5
         with:
-          path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
+          context: /tmp/build-context
+          file: .github/docker/Dockerfile.build
+          push: true
+          tags: ${{ needs.prepare.outputs.build-image }}
+          build-args: |
+            BASE_IMAGE=${{ needs.prepare.outputs.base-image }}
 
-      - name: Cache sccache
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-sccache
+      - name: Write Build Image URI
+        id: write-build-image-uri
+        run: |
+          OUT=/tmp/image-uris
+          mkdir -p "$OUT"
+          BUILD_IMAGE_URI_FILE="firefox-berytus-linux-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare.outputs.build-image }}" > "$OUT/$BUILD_IMAGE_URI_FILE"
+          echo "file=$OUT/$BUILD_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-berytus-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build image URI artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: ${{ env.SCCACHE_DIR }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ hashFiles('mozilla-unified/**/*') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
-
-      - name: Clone mozilla-unified
-        run: |
-          hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
-          cd "$MOZ_DIR"
-          hg update -r ${{ steps.changeset.outputs.rev }}
-
-      - name: Setup MOZBUILD_STATE_PATH
-        run: |
-          mkdir -p "$MOZBUILD_STATE_PATH"
-          cat > "$MOZBUILD_STATE_PATH/machrc" << 'EOF'
-          [mach_telemetry]
-          is_enabled = false
-          is_set_up = true
-          EOF
-
-      - name: Export Berytus to mozilla-unified
-        run: |
-          ./port export "$MOZ_DIR"
-
-      - name: Create mozconfig
-        run: |
-          cat > "$MOZ_DIR/mozconfig" << 'EOF'
-          ac_add_options --disable-bootstrap
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-optimize
-          ac_add_options --disable-debug
-          ac_add_options --without-wasm-sandboxed-libraries
-          ac_add_options --with-ccache=sccache
-          EOF
-
-      - name: Install Berytus Toolkit Dependencies
-        working-directory: ${{ env.BERYTUS_TOOLKIT_DIR }}
-        run: npm install
-
-      - name: Install Secret* Dependencies
-        working-directory: ${{ env.SECRETSTAR_DIR }}
-        run: npm install
-
-      - name: Build Firefox
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          cd ${{ env.BERYTUS_TOOLKIT_DIR }}
-          npm run build
-          cd ${{ env.SECRETSTAR_DIR }}
-          CI=false npm run build
-          ./moz.build.sh
-          cd ${{ env.MOZ_DIR }}
-          sccache --show-stats
-          ./mach build
-          sccache --show-stats
-
-      - name: Save build outputs
-        uses: actions/cache/save@v4
-        env:
-          cache-name: cache-build-outputs
-        with:
-          path: |
-            ${{ env.MOZ_OBJ_DIR }}
-            ${{ env.MOZ_DIR_CLOBBER }}
-            ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
-            ${{ env.SECRETSTAR_BUILD_DIR1 }}
-            ${{ env.SECRETSTAR_BUILD_DIR2 }}
-            ${{ env.SECRETSTAR_BUILD_DIR3 }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
-
-  check-cache:
-    runs-on: ubuntu-24.04
-    needs: build
-    timeout-minutes: 10
-
-    steps:
-      - name: Check cache usage
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          USAGE_JSON=$(gh api repos/${{ github.repository }}/actions/cache/usage)
-          USAGE_BYTES=$(echo "$USAGE_JSON" | jq '.active_caches_size_in_bytes')
-          USAGE_GB=$(echo "scale=2; $USAGE_BYTES / 2^30" | bc)
-          echo "Current cache usage: ${USAGE_GB}GiB"
-          THRESHOLD=8.5
-          if [ "$(echo "$USAGE_GB >= $THRESHOLD" | bc)" -eq 1 ]; then
-            echo "::warning::GitHub Actions cache usage is ${USAGE_GB}GiB (threshold: ${THRESHOLD}GiB / 10GiB limit)"
-          fi
+          name: ${{ steps.write-build-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-build-image-uri.outputs.file }}
+          if-no-files-found: error
 
   test:
     runs-on: ubuntu-24.04
@@ -329,127 +181,41 @@ jobs:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            mercurial rsync patch curl \
-            python3 python3-pip python3-dev \
-            zip unzip
-
-      - name: Clone mozilla-unified
-        run: |
-          hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
-          cd "$MOZ_DIR"
-          hg update -r ${{ needs.build.outputs.changeset-rev }}
-
-      - name: Export Berytus to mozilla-unified
-        run: |
-          ./port export "$MOZ_DIR"
-
-      - name: Create mozconfig
-        run: |
-          cat > "$MOZ_DIR/mozconfig" << 'EOF'
-          ac_add_options --disable-bootstrap
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-optimize
-          ac_add_options --disable-debug
-          ac_add_options --without-wasm-sandboxed-libraries
-          EOF
-
-      - name: Restore build outputs
-        uses: actions/cache/restore@v4
-        env:
-          cache-name: cache-build-outputs
-        with:
-          path: |
-            ${{ env.MOZ_OBJ_DIR }}
-            ${{ env.MOZ_DIR_CLOBBER }}
-            ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
-            ${{ env.SECRETSTAR_BUILD_DIR1 }}
-            ${{ env.SECRETSTAR_BUILD_DIR2 }}
-            ${{ env.SECRETSTAR_BUILD_DIR3 }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}
-          fail-on-cache-miss: true
-
-      - name: Restore mozbuild state
-        uses: actions/cache/restore@v4
-        env:
-          cache-name: cache-mozbuild-state
-        with:
-          path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
-          fail-on-cache-miss: true
-
-      - name: Regenerate WPT certificates
-        working-directory: ${{ env.MOZ_DIR }}/testing/web-platform/tests
-        run: |
-          echo "Current CA cert validity:"
-          openssl x509 -in tools/certs/cacert.pem -noout -dates
-          echo "Current Server cert validity:"
-          openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
-          echo "Extracting Subject Alt Names from existing CA cert..."
-          CA_SAN=$(openssl x509 -in tools/certs/cacert.pem -noout -ext subjectAltName \
-            | tail -1 | sed 's/^[[:space:]]*//')
-          echo "Extracting Name Constraints from existing CA cert..."
-          CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
-            | tail +3 | sed 's/^[[:space:]]*//' \
-            | awk '{printf "permitted;%s\n", $0}')
-          echo "Regenerating CA and server certs..."
-          openssl req -x509 -newkey rsa:2048 \
-            -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
-            -days 365 -nodes -subj "/CN=web-platform-tests" \
-            -addext "basicConstraints = critical, CA:TRUE" \
-            -addext "keyUsage = keyCertSign" \
-            -addext "extendedKeyUsage = serverAuth" \
-            -addext "authorityKeyIdentifier = keyid:always, issuer:always" \
-            -addext "subjectAltName = $CA_SAN" \
-            -addext "nameConstraints = $(echo "$CA_NC" | paste -sd',' -)"
-          openssl req -newkey rsa:2048 \
-            -keyout tools/certs/web-platform.test.key \
-            -out /tmp/wpt.csr \
-            -nodes -subj "/CN=web-platform.test" \
-            -addext "basicConstraints=CA:FALSE" \
-            -addext "keyUsage=digitalSignature,nonRepudiation,keyEncipherment" \
-            -addext "extendedKeyUsage=serverAuth" \
-            -addext "subjectAltName=$CA_SAN"
-          openssl x509 -req -in /tmp/wpt.csr \
-            -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
-            -CAcreateserial -out tools/certs/web-platform.test.pem -days 365 \
-            -copy_extensions copy
-          rm -f /tmp/wpt.csr
-          echo "New CA cert validity:"
-          openssl x509 -in tools/certs/cacert.pem -noout -dates
-          echo "New Server cert validity:"
-          openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
-
-      - name: Fix typing_extensions for WPT
-        run: |
-          # The current, bundled typing_extensions at
-          # testing/web-platform/tests/tools/third_party/
-          # is too old (missing `deprecated`, added in 4.5.0),
-          # causing mach wpt to fail. By removing the bundled
-          # version (4.1.1), mach wpt will install a newer version
-          # via pip. This probably needs to be removed once we
-          # use a newer (and stable) mozilla-unified changeset
-          rm -rf "$MOZ_DIR/testing/web-platform/tests/tools/third_party/typing_extensions"
-
       - name: Run Web Platform Tests (Berytus)
-        working-directory: ${{ env.MOZ_DIR }}
-        env:
-          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
-        run: |
-          ./mach wpt --headless testing/web-platform/tests/berytus
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.build.outputs.build-image }}
+          shell: bash
+          run: |
+            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
+            ./mach wpt --headless testing/web-platform/tests/berytus
 
       - name: Run xpcshell tests (Berytus)
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          ./mach xpcshell-test --verbose-if-fails --tag berytus
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.build.outputs.build-image }}
+          shell: bash
+          run: |
+            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
+            ./mach xpcshell-test --verbose-if-fails --tag berytus
 
       - name: Run xpcshell tests (Berytus WebExts)
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.build.outputs.build-image }}
+          shell: bash
+          run: |
+            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
+            ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
 
   package:
     runs-on: ubuntu-24.04
@@ -460,113 +226,22 @@ jobs:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            mercurial rsync patch curl \
-            python3 python3-pip python3-dev \
-            zip unzip
-
-      - name: Clone mozilla-unified
-        run: |
-          hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
-          cd "$MOZ_DIR"
-          hg update -r ${{ needs.build.outputs.changeset-rev }}
-
-      - name: Export Berytus to mozilla-unified
-        run: |
-          ./port export "$MOZ_DIR"
-
-      - name: Create mozconfig
-        run: |
-          cat > "$MOZ_DIR/mozconfig" << 'EOF'
-          ac_add_options --disable-bootstrap
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-optimize
-          ac_add_options --disable-debug
-          ac_add_options --without-wasm-sandboxed-libraries
-          EOF
-
-      - name: Restore build outputs
-        uses: actions/cache/restore@v4
-        env:
-          cache-name: cache-build-outputs
-        with:
-          path: |
-            ${{ env.MOZ_OBJ_DIR }}
-            ${{ env.MOZ_DIR_CLOBBER }}
-            ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
-            ${{ env.SECRETSTAR_BUILD_DIR1 }}
-            ${{ env.SECRETSTAR_BUILD_DIR2 }}
-            ${{ env.SECRETSTAR_BUILD_DIR3 }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}
-          fail-on-cache-miss: true
-
-      - name: Restore mozbuild state
-        uses: actions/cache/restore@v4
-        env:
-          cache-name: cache-mozbuild-state
-        with:
-          path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
-          fail-on-cache-miss: true
-
       - name: Package Firefox
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          ./mach package
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.build.outputs.build-image }}
+          shell: bash
+          options: -v ${{ runner.temp }}/out:/dist
+          run: |
+            ./mach package
+            cp $MOZ_OBJ_DIR/dist/*.tar.bz2 /dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: firefox-berytus-linux-x86_64
-          path: ${{ env.MOZ_OBJ_DIR }}/dist/*.tar.bz2
+          path: ${{ runner.temp }}/out/*.tar.bz2
           if-no-files-found: error
-
-  cleanup:
-    runs-on: ubuntu-24.04
-    needs: [build, test, package]
-    if: always()
-    timeout-minutes: 20
-
-    steps:
-      - name: Delete objdir cache
-        env:
-          GH_TOKEN: ${{ github.token }}
-          cache-name: cache-build-outputs
-        run: |
-          gh cache delete "${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}" \
-            --repo "${{ github.repository }}" || true
-
-      - name: Prune old sccache entries
-        # The sccache cache key incorporates a content hash of mozilla-unified,
-        # so every distinct source state creates a new cache entry. Keep the
-        # one with the most recent activity (max of createdAt and
-        # lastAccessedAt) and delete the rest. Sorting by lastAccessedAt alone
-        # would risk evicting a freshly created entry that hasn't been read
-        # yet; sorting by createdAt alone would risk evicting an old entry
-        # that's still being actively used.
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PREFIX="${{ runner.os }}-build-cache-sccache-"
-          OLD_KEYS=$(gh cache list \
-            --repo "${{ github.repository }}" \
-            --key "$PREFIX" \
-            --limit 100 \
-            --json key,createdAt,lastAccessedAt \
-            --jq '
-              map(. + {recency: (if .createdAt > .lastAccessedAt then .createdAt else .lastAccessedAt end)})
-              | sort_by(.recency) | reverse | .[1:] | .[].key
-            ')
-          if [ -z "$OLD_KEYS" ]; then
-            echo "No stale sccache entries to delete"
-            exit 0
-          fi
-          echo "Deleting stale sccache entries:"
-          echo "$OLD_KEYS"
-          while IFS= read -r key; do
-            [ -z "$key" ] && continue
-            gh cache delete "$key" --repo "${{ github.repository }}" || true
-          done <<< "$OLD_KEYS"

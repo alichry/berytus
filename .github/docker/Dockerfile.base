@@ -5,6 +5,7 @@ ARG MOZ_REV
 
 ENV DEBIAN_FRONTEND=noninteractive \
     MOZ_DIR=/build/mozilla-unified \
+    MOZ_OBJ_DIR=/build/mozilla-unified/obj-x86_64-pc-linux-gnu \
     MOZBUILD_STATE_PATH=/build/mozbuild \
     SCCACHE_DIR=/build/sccache \
     SCCACHE_CACHE_SIZE=10G \
