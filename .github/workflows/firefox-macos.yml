@@ -29,108 +29,6 @@ env:
   SECRETSTAR_BUILD_DIR3: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
 
 jobs:
-  prepare:
-    runs-on: macos-15-intel # Kernel Version: Darwin 24.6.0
-    timeout-minutes: 360
-    env:
-      ARTEFACTS_DIR: /Users/runner/work/berytus/build
-      MOZ_DIR: /Users/runner/work/berytus/build/mozilla-unified
-      MOZ_OBJ_DIR: /Users/runner/work/berytus/build/mozilla-unified/obj-x86_64-apple-darwin24.6.0
-      MOZBUILD_STATE_PATH: /Users/runner/work/berytus/build/mozbuild
-      SCCACHE_DIR: /Users/runner/work/berytus/build/sccache
-      SCCACHE_CACHE_SIZE: 5G
-      CARGO_HOME: /Users/runner/work/berytus/build/cargo
-      RUSTUP_HOME: /Users/runner/work/berytus/build/rustup
-    outputs:
-      changeset-rev: ${{ steps.changeset.outputs.rev }}
-
-    steps:
-      - name: Checkout Berytus source
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.8
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.8'
-
-      - name: Install system dependencies
-        run: |
-          brew install mercurial autoconf nasm yasm node lld
-
-      - name: Read changeset
-        id: changeset
-        run: |
-          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
-          echo "rev=$REV" >> "$GITHUB_OUTPUT"
-          echo "Using mozilla-unified changeset: $REV"
-
-      - name: Create artefacts directory
-        run: |
-          mkdir -p "$ARTEFACTS_DIR"
-
-      - name: Install Rust and cargo-binstall
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --no-modify-path
-          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
-          export PATH="$CARGO_HOME/bin:$PATH"
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
-      - name: Install cbindgen and sccache
-        run: cargo binstall cbindgen sccache
-
-      - name: Install Rust target x86_64-apple-darwin
-        run: rustup target add x86_64-apple-darwin
-
-      - name: Setup MOZBUILD_STATE_PATH and SCCACHE_DIR
-        run: |
-          mkdir -p "$MOZBUILD_STATE_PATH" "$SCCACHE_DIR"
-          cat > "$MOZBUILD_STATE_PATH/machrc" << 'EOF'
-          [mach_telemetry]
-          is_enabled = false
-          is_set_up = true
-          EOF
-
-      - name: Clone mozilla-unified (most recent)
-        run: |
-          hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
-
-      - name: Run mach bootstrap (against most recent revision)
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          # once we assume a recent revision, we run bootstrap under it
-          ./mach --no-interactive bootstrap --application-choice=browser
-
-      - name: Checkout target revision
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          hg update -r ${{ steps.changeset.outputs.rev }}
-
-      - name: Create mozconfig
-        run: |
-          cat > "$MOZ_DIR/mozconfig" << 'EOF'
-          ac_add_options --disable-bootstrap
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-optimize
-          ac_add_options --disable-debug
-          ac_add_options --without-wasm-sandboxed-libraries
-          ac_add_options --with-ccache=sccache
-          ac_add_options --target=x86_64-apple-darwin
-          EOF
-
-      - name: Build Firefox
-        working-directory: ${{ env.MOZ_DIR }}
-        run: |
-          sccache --show-stats
-          ./mach build
-          sccache --show-stats
-
-      - name: Upload artefacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: firefox-base-macos-x86_64-build
-          path: ${{ env.ARTEFACTS_DIR }}
-          if-no-files-found: error
-
   build:
     runs-on: macos-15-intel # Kernel Version: Darwin 24.6.0
     timeout-minutes: 360
@@ -203,6 +101,16 @@ jobs:
       - name: Clone mozilla-unified
         run: |
           hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR"
+
+      - name: Run mach bootstrap
+        run: |
+          cd "$MOZ_DIR"
+          # TODO(berytus): Once we assume a more recent revision,
+          # run bootstrap under that revision, and cache mozilla-unified
+          ./mach bootstrap --no-interactive --application-choice=browser
+
+      - name: Checkout revision
+        run: |
           cd "$MOZ_DIR"
           hg update -r ${{ steps.changeset.outputs.rev }}
 
