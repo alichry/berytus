@@ -15,6 +15,12 @@ ENV MOZ_DIR=C:\\build\\mozilla-unified \
     VS_BUILDTOOLS=C:\\BuildTools \
     PYTHON_DIR=C:\\Python38
 
+# Exclude the build root from Windows Defender real-time scans to avoid
+# significant AV overhead during compile/link. Tolerate environments where
+# Defender is absent (e.g. servercore variants without the AV stack).
+RUN try { Add-MpPreference -Force -ExclusionPath 'C:\\build' -ErrorAction Stop } \
+    catch { Write-Host "Defender exclusion skipped: $($_.Exception.Message)" }
+
 # Install Chocolatey
 RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
@@ -43,12 +49,10 @@ ADD https://win.rustup.rs/x86_64 C:\\TEMP\\rustup-init.exe
 RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
     Remove-Item -Force C:\\TEMP\\rustup-init.exe
 
-RUN refreshenv; \
-    Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
+RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
     cargo-binstall -y cbindgen sccache
 
-RUN refreshenv; \
-    New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
+RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
     Set-Content -Path "$env:MOZBUILD_STATE_PATH\\machrc" -Encoding ascii -Value @( \
         '[mach_telemetry]', \
         'is_enabled = false', \
@@ -56,14 +60,12 @@ RUN refreshenv; \
     )
 
 # Clone mozilla-unified at the pinned changeset.
-RUN refreshenv; \
-    New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
+RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
-RUN refreshenv; \
-    Set-Content -Path "$env:MOZ_DIR\\mozconfig" -Encoding ascii -Value @( \
+RUN Set-Content -Path "$env:MOZ_DIR\\mozconfig" -Encoding ascii -Value @( \
         'ac_add_options --disable-bootstrap', \
         'ac_add_options --enable-application=browser', \
         'ac_add_options --enable-optimize', \
@@ -75,9 +77,7 @@ RUN refreshenv; \
 # Seed mach build under the MSVC environment. We invoke vcvars64.bat from
 # cmd so cl.exe / link.exe / Windows SDK end up on PATH for this RUN.
 SHELL ["cmd", "/S", "/C"]
-RUN for /f "skip=2 tokens=2,*" %A in ('reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment" /v Path') do set "MACHINE_PATH=%B" && \
-    for /f "skip=2 tokens=2,*" %A in ('reg query "HKCU\\Environment" /v Path 2^>nul') do set "USER_PATH=%B" && \
-    set "PATH=%MACHINE_PATH%;%USER_PATH%" && \
+RUN refreshenv && \
     call "%VS_BUILDTOOLS%\\VC\\Auxiliary\\Build\\vcvars64.bat" && \
     cd /d "%MOZ_DIR%" && \
     mach build && \
