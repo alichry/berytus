@@ -241,18 +241,16 @@ jobs:
       - name: Prepare output dir
         run: |
           mkdir -p "$RUNNER_TEMP/out"
-          # Forward-slash form is fine for bash; convert for cmd in the
-          # next step.
+          # docker -v needs a Windows-style host path on Windows runners.
           echo "OUT_DIR_WIN=$(cygpath -w "$RUNNER_TEMP/out")" >> "$GITHUB_ENV"
 
       - name: Package Firefox
-        shell: cmd
         run: |
-          docker run --rm ^
-            -v "%OUT_DIR_WIN%:C:\dist" ^
-            --entrypoint cmd ^
-            ${{ needs.build.outputs.build-image }} ^
-            /S /C "call \"%VS_BUILDTOOLS%\VC\Auxiliary\Build\vcvars64.bat\" && cd /d \"%MOZ_DIR%\" && mach package && xcopy /Y /S \"%MOZ_OBJ_DIR%\dist\*.win64.zip\" C:\dist\ && (if exist \"%MOZ_OBJ_DIR%\dist\install\sea\" xcopy /Y /S \"%MOZ_OBJ_DIR%\dist\install\sea\*.installer.exe\" C:\dist\ ) "
+          docker run --rm \
+            -v "${OUT_DIR_WIN}:C:\dist" \
+            --entrypoint cmd \
+            ${{ needs.build.outputs.build-image }} \
+            /S /C 'call "%VS_BUILDTOOLS%\VC\Auxiliary\Build\vcvars64.bat" && cd /d "%MOZ_DIR%" && mach package && xcopy /Y "%MOZ_OBJ_DIR%\dist\*.win64.zip" C:\dist\ && (if exist "%MOZ_OBJ_DIR%\dist\install\sea" xcopy /Y "%MOZ_OBJ_DIR%\dist\install\sea\*.installer.exe" C:\dist\)'
 
       - name: Upload artifact (zip)
         uses: actions/upload-artifact@v4

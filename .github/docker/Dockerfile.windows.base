@@ -1,99 +1,90 @@
 # syntax=docker/dockerfile:1.7
-# escape=`
 FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
 ARG MOZ_REV
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-ENV MOZ_DIR=C:\build\mozilla-unified `
-    MOZ_OBJ_DIR=C:\build\mozilla-unified\obj-x86_64-pc-mingw32 `
-    MOZBUILD_STATE_PATH=C:\build\mozbuild `
-    SCCACHE_DIR=C:\build\sccache `
-    SCCACHE_CACHE_SIZE=10G `
-    CARGO_HOME=C:\Users\ContainerAdministrator\.cargo `
-    RUSTUP_HOME=C:\Users\ContainerAdministrator\.rustup `
-    VS_BUILDTOOLS=C:\BuildTools `
-    PYTHON_DIR=C:\Python38
+ENV MOZ_DIR=C:\\build\\mozilla-unified \
+    MOZ_OBJ_DIR=C:\\build\\mozilla-unified\\obj-x86_64-pc-mingw32 \
+    MOZBUILD_STATE_PATH=C:\\build\\mozbuild \
+    SCCACHE_DIR=C:\\build\\sccache \
+    SCCACHE_CACHE_SIZE=10G \
+    CARGO_HOME=C:\\Users\\ContainerAdministrator\\.cargo \
+    RUSTUP_HOME=C:\\Users\\ContainerAdministrator\\.rustup \
+    VS_BUILDTOOLS=C:\\BuildTools \
+    PYTHON_DIR=C:\\Python38
 
 # Install Chocolatey
-RUN Set-ExecutionPolicy Bypass -Scope Process -Force; `
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
     iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
 # Core build deps via Chocolatey. Pin Python to 3.8 because mach on this
 # changeset expects it.
-RUN choco install -y --no-progress `
-        mercurial nasm llvm make 7zip git nodejs-lts; `
-    choco install -y --no-progress python --version=3.8.10 --params \"/InstallDir:$env:PYTHON_DIR\"
+RUN choco install -y --no-progress \
+        mercurial nasm llvm make 7zip git nodejs-lts; \
+    choco install -y --no-progress python --version=3.8.10 --params "/InstallDir:$env:PYTHON_DIR"
 
-# Make tools available on PATH for subsequent RUNs and the final container.
-RUN $tools = @( `
-        'C:\Program Files\LLVM\bin', `
-        'C:\Program Files\NASM', `
-        'C:\Program Files\Mercurial', `
-        'C:\Program Files\Git\cmd', `
-        'C:\Program Files\Git\bin', `
-        'C:\Program Files\nodejs', `
-        $env:PYTHON_DIR, `
-        \"$env:PYTHON_DIR\Scripts\", `
-        \"$env:CARGO_HOME\bin\" `
-    ); `
-    $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine'); `
-    foreach ($t in $tools) { if ($machine -notlike \"*$t*\") { $machine = \"$machine;$t\" } }; `
-    [Environment]::SetEnvironmentVariable('Path', $machine, 'Machine')
+RUN echo "$env:PATH" \
+    $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+    echo "$env:PATH"
 
 # Visual Studio 2022 Build Tools with C++ workload + Windows 11 SDK.
-ADD https://aka.ms/vs/17/release/vs_buildtools.exe C:\TEMP\vs_buildtools.exe
-RUN Start-Process -FilePath C:\TEMP\vs_buildtools.exe -Wait -ArgumentList @( `
-        '--quiet', '--wait', '--norestart', '--nocache', `
-        '--installPath', $env:VS_BUILDTOOLS, `
-        '--add', 'Microsoft.VisualStudio.Workload.VCTools', `
-        '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', `
-        '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.22621', `
-        '--includeRecommended' `
-    ); `
-    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { exit $LASTEXITCODE }; `
-    Remove-Item -Force C:\TEMP\vs_buildtools.exe
+ADD https://aka.ms/vs/17/release/vs_buildtools.exe C:\\TEMP\\vs_buildtools.exe
+RUN Start-Process -FilePath C:\\TEMP\\vs_buildtools.exe -Wait -ArgumentList @( \
+        '--quiet', '--wait', '--norestart', '--nocache', \
+        '--installPath', $env:VS_BUILDTOOLS, \
+        '--add', 'Microsoft.VisualStudio.Workload.VCTools', \
+        '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', \
+        '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.22621', \
+        '--includeRecommended' \
+    ); \
+    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { exit $LASTEXITCODE }; \
+    Remove-Item -Force C:\\TEMP\\vs_buildtools.exe
 
-# Rust toolchain
-ADD https://win.rustup.rs/x86_64 C:\TEMP\rustup-init.exe
-RUN & C:\TEMP\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; `
-    Remove-Item -Force C:\TEMP\rustup-init.exe
+ADD https://win.rustup.rs/x86_64 C:\\TEMP\\rustup-init.exe
+RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
+    Remove-Item -Force C:\\TEMP\\rustup-init.exe
 
-# cargo-binstall, cbindgen, sccache
-RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; `
-    & \"$env:CARGO_HOME\bin\cargo-binstall.exe\" -y cbindgen sccache
+RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+    Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
+    cargo-binstall -y cbindgen sccache
 
-# mozbuild state + telemetry opt-out
-RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; `
-    Set-Content -Path \"$env:MOZBUILD_STATE_PATH\machrc\" -Encoding ascii -Value @( `
-        '[mach_telemetry]', `
-        'is_enabled = false', `
-        'is_set_up = true' `
+RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+    New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
+    Set-Content -Path "$env:MOZBUILD_STATE_PATH\\machrc" -Encoding ascii -Value @( \
+        '[mach_telemetry]', \
+        'is_enabled = false', \
+        'is_set_up = true' \
     )
 
 # Clone mozilla-unified at the pinned changeset.
-RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; `
-    hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; `
+RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+    New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
+    hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
-RUN Set-Content -Path \"$env:MOZ_DIR\mozconfig\" -Encoding ascii -Value @( `
-        'ac_add_options --disable-bootstrap', `
-        'ac_add_options --enable-application=browser', `
-        'ac_add_options --enable-optimize', `
-        'ac_add_options --disable-debug', `
-        'ac_add_options --without-wasm-sandboxed-libraries', `
-        'ac_add_options --with-ccache=sccache' `
+RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+    Set-Content -Path "$env:MOZ_DIR\\mozconfig" -Encoding ascii -Value @( \
+        'ac_add_options --disable-bootstrap', \
+        'ac_add_options --enable-application=browser', \
+        'ac_add_options --enable-optimize', \
+        'ac_add_options --disable-debug', \
+        'ac_add_options --without-wasm-sandboxed-libraries', \
+        'ac_add_options --with-ccache=sccache' \
     )
 
 # Seed mach build under the MSVC environment. We invoke vcvars64.bat from
 # cmd so cl.exe / link.exe / Windows SDK end up on PATH for this RUN.
 SHELL ["cmd", "/S", "/C"]
-RUN call "%VS_BUILDTOOLS%\VC\Auxiliary\Build\vcvars64.bat" && `
-    cd /d "%MOZ_DIR%" && `
-    mach build && `
+RUN for /f "skip=2 tokens=2,*" %A in ('reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment" /v Path') do set "MACHINE_PATH=%B" && \
+    for /f "skip=2 tokens=2,*" %A in ('reg query "HKCU\\Environment" /v Path 2^>nul') do set "USER_PATH=%B" && \
+    set "PATH=%MACHINE_PATH%;%USER_PATH%" && \
+    call "%VS_BUILDTOOLS%\\VC\\Auxiliary\\Build\\vcvars64.bat" && \
+    cd /d "%MOZ_DIR%" && \
+    mach build && \
     sccache --show-stats
 
-WORKDIR C:\build
+WORKDIR C:\\build
