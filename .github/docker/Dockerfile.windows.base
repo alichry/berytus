@@ -71,7 +71,7 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
 # changeset for the seed build.
 RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
-    & \"$env:MOZILLABUILD\\msys2\\usr\\bin\\bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser\"; \
+    & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser\"; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
@@ -91,7 +91,7 @@ RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \
 SHELL ["cmd", "/S", "/C"]
 RUN refreshenv && \
     call "%VS_BUILDTOOLS%\\VC\\Auxiliary\\Build\\vcvars64.bat" && \
-    "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "cd /c/build/mozilla-unified && ./mach build && sccache --show-stats"
+    "%MOZILLABUILD%/msys2/usr/bin/bash.exe" -lc "cd /c/build/mozilla-unified && ./mach build && sccache --show-stats"
 
 # cd /d "%MOZ_DIR%" && \
 # mach build && \
