@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: build
+  group: ${{ github.workflow }}
 
 env:
   MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
@@ -59,6 +59,28 @@ jobs:
 
       - name: Install Rust target x86_64-apple-darwin
         run: rustup target add x86_64-apple-darwin
+
+      # NOTE(berytus): The revision we are currently on requires
+      # SDK 14.4, which is included in Xcode 15.4. Newer SDKs
+      # cause build failures, so we need to select Xcode 15.4
+      # (which ships SDK 14.4)
+      - name: Select Xcode 15.4
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Verify Xcode selection
+        run: |
+          # Print some diagnostics
+          uname -m
+          ls /Applications/ | grep -i xcode
+          for x in /Applications/Xcode*.app; do
+            echo "=== $x ==="
+            ls "$x/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/" 2>/dev/null
+          done
+          xcodebuild -version
+          xcrun --show-sdk-version
+          xcrun --show-sdk-path
 
       - name: Read changeset
         id: changeset
@@ -128,7 +150,8 @@ jobs:
 
       - name: Create mozconfig
         run: |
-          cat > "$MOZ_DIR/mozconfig" << 'EOF'
+          MACOS_SDK_PATH="$(xcrun --show-sdk-path)"
+          cat > "$MOZ_DIR/mozconfig" << EOF
           ac_add_options --disable-bootstrap
           ac_add_options --enable-application=browser
           ac_add_options --enable-optimize
@@ -136,6 +159,7 @@ jobs:
           ac_add_options --without-wasm-sandboxed-libraries
           ac_add_options --with-ccache=sccache
           ac_add_options --target=x86_64-apple-darwin
+          ac_add_options --with-macos-sdk=${MACOS_SDK_PATH}
           EOF
 
       - name: Install Berytus Toolkit Dependencies
