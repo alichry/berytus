@@ -46,7 +46,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install mercurial autoconf nasm yasm node lld
+          brew install mercurial autoconf nasm yasm node
 
       - name: Install Rust and cargo-binstall
         run: |
