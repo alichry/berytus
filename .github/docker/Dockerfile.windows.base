@@ -23,12 +23,8 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
 # Core build deps via Chocolatey. Pin Python to 3.8 because mach on this
 # changeset expects it.
 RUN choco install -y --no-progress \
-        mercurial nasm llvm make 7zip git nodejs-lts; \
+        hg nasm llvm make 7zip git nodejs-lts; \
     choco install -y --no-progress python --version=3.8.10 --params "/InstallDir:$env:PYTHON_DIR"
-
-RUN echo "$env:PATH" \
-    $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
-    echo "$env:PATH"
 
 # Visual Studio 2022 Build Tools with C++ workload + Windows 11 SDK.
 ADD https://aka.ms/vs/17/release/vs_buildtools.exe C:\\TEMP\\vs_buildtools.exe
@@ -47,11 +43,11 @@ ADD https://win.rustup.rs/x86_64 C:\\TEMP\\rustup-init.exe
 RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
     Remove-Item -Force C:\\TEMP\\rustup-init.exe
 
-RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+RUN refreshenv; \
     Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
     cargo-binstall -y cbindgen sccache
 
-RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+RUN refreshenv; \
     New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
     Set-Content -Path "$env:MOZBUILD_STATE_PATH\\machrc" -Encoding ascii -Value @( \
         '[mach_telemetry]', \
@@ -60,13 +56,13 @@ RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') 
     )
 
 # Clone mozilla-unified at the pinned changeset.
-RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+RUN refreshenv; \
     New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
-RUN $env:PATH = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User'); \
+RUN refreshenv; \
     Set-Content -Path "$env:MOZ_DIR\\mozconfig" -Encoding ascii -Value @( \
         'ac_add_options --disable-bootstrap', \
         'ac_add_options --enable-application=browser', \
