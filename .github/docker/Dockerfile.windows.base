@@ -13,7 +13,8 @@ ENV MOZ_DIR=C:\\build\\mozilla-unified \
     CARGO_HOME=C:\\Users\\ContainerAdministrator\\.cargo \
     RUSTUP_HOME=C:\\Users\\ContainerAdministrator\\.rustup \
     VS_BUILDTOOLS=C:\\BuildTools \
-    PYTHON_DIR=C:\\Python38
+    PYTHON_DIR=C:\\Python38 \
+    MOZILLABUILD=C:\\build\\mozilla-build
 
 # Exclude the build root from Windows Defender real-time scans to avoid
 # significant AV overhead during compile/link. Tolerate environments where
@@ -49,6 +50,12 @@ ADD https://win.rustup.rs/x86_64 C:\\TEMP\\rustup-init.exe
 RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
     Remove-Item -Force C:\\TEMP\\rustup-init.exe
 
+# MozillaBuild: the canonical Windows shell + tooling layer mach expects.
+ADD https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe C:\\TEMP\\MozillaBuildSetup.exe
+RUN Start-Process -FilePath C:\\TEMP\\MozillaBuildSetup.exe -Wait -ArgumentList @('/S', "/D=$env:MOZILLABUILD"); \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Remove-Item -Force C:\\TEMP\\MozillaBuildSetup.exe
+
 RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
     cargo-binstall -y cbindgen sccache
 
@@ -59,9 +66,12 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
         'is_set_up = true' \
     )
 
-# Clone mozilla-unified at the pinned changeset.
+# Clone mozilla-unified at tip, run mach bootstrap against the latest
+# clone (so bootstrap's own logic is current), then pin to the requested
+# changeset for the seed build.
 RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
+    & "$env:MOZILLABUILD\\msys2\\usr\\bin\\bash.exe" -lc "cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser"; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
@@ -75,12 +85,16 @@ RUN Set-Content -Path "$env:MOZ_DIR\\mozconfig" -Encoding ascii -Value @( \
     )
 
 # Seed mach build under the MSVC environment. We invoke vcvars64.bat from
-# cmd so cl.exe / link.exe / Windows SDK end up on PATH for this RUN.
+# cmd so cl.exe / link.exe / Windows SDK end up on the env, then hand off
+# to MozillaBuild's bash so mach runs through the canonical MozillaBuild
+# shell (its PATH, hg, python, moztools).
 SHELL ["cmd", "/S", "/C"]
 RUN refreshenv && \
     call "%VS_BUILDTOOLS%\\VC\\Auxiliary\\Build\\vcvars64.bat" && \
-    cd /d "%MOZ_DIR%" && \
-    mach build && \
-    sccache --show-stats
+    "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "cd /c/build/mozilla-unified && ./mach build && sccache --show-stats"
+
+# cd /d "%MOZ_DIR%" && \
+# mach build && \
+# sccache --show-stats
 
 WORKDIR C:\\build
