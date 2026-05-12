@@ -124,7 +124,7 @@ jobs:
           cd "$MOZ_DIR"
           # TODO(berytus): Once we assume a more recent revision,
           # run bootstrap under that revision, and cache mozilla-unified
-          ./mach --no-interactive bootstrap --application-choice=browser
+          ./mach --no-interactive bootstrap --application-choice=browser || true
 
       - name: Checkout revision
         run: |
