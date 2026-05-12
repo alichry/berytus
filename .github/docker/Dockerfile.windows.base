@@ -20,7 +20,7 @@ ENV MOZ_DIR=C:\\build\\mozilla-unified \
 # significant AV overhead during compile/link. Tolerate environments where
 # Defender is absent (e.g. servercore variants without the AV stack).
 RUN try { Add-MpPreference -Force -ExclusionPath 'C:\\build' -ErrorAction Stop } \
-    catch { Write-Host "Defender exclusion skipped: $($_.Exception.Message)" }
+    catch { Write-Host \"Defender exclusion skipped: $($_.Exception.Message)\" }
 
 # Install Chocolatey
 RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
@@ -31,7 +31,7 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
 # changeset expects it.
 RUN choco install -y --no-progress \
         hg nasm llvm make 7zip git nodejs-lts; \
-    choco install -y --no-progress python --version=3.8.10 --params "/InstallDir:$env:PYTHON_DIR"
+    choco install -y --no-progress python --version=3.8.10 --params \"/InstallDir:$env:PYTHON_DIR\"
 
 # Visual Studio 2022 Build Tools with C++ workload + Windows 11 SDK.
 ADD https://aka.ms/vs/17/release/vs_buildtools.exe C:\\TEMP\\vs_buildtools.exe
@@ -52,7 +52,7 @@ RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86
 
 # MozillaBuild: the canonical Windows shell + tooling layer mach expects.
 ADD https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe C:\\TEMP\\MozillaBuildSetup.exe
-RUN Start-Process -FilePath C:\\TEMP\\MozillaBuildSetup.exe -Wait -ArgumentList @('/S', "/D=$env:MOZILLABUILD"); \
+RUN Start-Process -FilePath C:\\TEMP\\MozillaBuildSetup.exe -Wait -ArgumentList @('/S', \"/D=$env:MOZILLABUILD\"); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Remove-Item -Force C:\\TEMP\\MozillaBuildSetup.exe
 
@@ -60,7 +60,7 @@ RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-b
     cargo-binstall -y cbindgen sccache
 
 RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
-    Set-Content -Path "$env:MOZBUILD_STATE_PATH\\machrc" -Encoding ascii -Value @( \
+    Set-Content -Path \"$env:MOZBUILD_STATE_PATH\\machrc\" -Encoding ascii -Value @( \
         '[mach_telemetry]', \
         'is_enabled = false', \
         'is_set_up = true' \
@@ -71,11 +71,11 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
 # changeset for the seed build.
 RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
-    & "$env:MOZILLABUILD\\msys2\\usr\\bin\\bash.exe" -lc "cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser"; \
+    & \"$env:MOZILLABUILD\\msys2\\usr\\bin\\bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser\"; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
-RUN Set-Content -Path "$env:MOZ_DIR\\mozconfig" -Encoding ascii -Value @( \
+RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \
         'ac_add_options --disable-bootstrap', \
         'ac_add_options --enable-application=browser', \
         'ac_add_options --enable-optimize', \
