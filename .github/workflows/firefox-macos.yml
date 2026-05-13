@@ -17,6 +17,7 @@ concurrency:
 env:
   MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
   MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
+  MOZ_DIR_CONFIG: /Users/runner/work/berytus/mozilla-unified/mozconfig
   MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin24.6.0
   MOZBUILD_STATE_PATH: /Users/runner/work/berytus/mozbuild
   SCCACHE_DIR: /Users/runner/work/berytus/sccache
@@ -47,7 +48,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install mercurial autoconf nasm yasm node
+          brew install mercurial autoconf nasm yasm node lld
 
       - name: Install Rust and cargo-binstall
         run: |
@@ -269,6 +270,7 @@ jobs:
           path: |
             ${{ env.MOZ_OBJ_DIR }}
             ${{ env.MOZ_DIR_CLOBBER }}
+            ${{ env.MOZ_DIR_CONFIG }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
             ${{ env.SECRETSTAR_MOZBUILD }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
@@ -311,7 +313,12 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install mercurial openssl bc jq lld
+          brew install mercurial openssl bc jq
+
+      - name: Select Xcode 16.0
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
 
       - name: Clone mozilla-unified
         run: |
@@ -323,17 +330,6 @@ jobs:
         run: |
           ./port export "$MOZ_DIR"
 
-      - name: Create mozconfig
-        run: |
-          cat > "$MOZ_DIR/mozconfig" << 'EOF'
-          ac_add_options --disable-bootstrap
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-optimize
-          ac_add_options --disable-debug
-          ac_add_options --without-wasm-sandboxed-libraries
-          ac_add_options --target=x86_64-apple-darwin
-          EOF
-
       - name: Restore build outputs
         uses: actions/cache/restore@v4
         env:
@@ -342,6 +338,7 @@ jobs:
           path: |
             ${{ env.MOZ_OBJ_DIR }}
             ${{ env.MOZ_DIR_CLOBBER }}
+            ${{ env.MOZ_DIR_CONFIG }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
             ${{ env.SECRETSTAR_MOZBUILD }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
@@ -476,6 +473,7 @@ jobs:
           path: |
             ${{ env.MOZ_OBJ_DIR }}
             ${{ env.MOZ_DIR_CLOBBER }}
+            ${{ env.MOZ_DIR_CONFIG }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
             ${{ env.SECRETSTAR_MOZBUILD }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
