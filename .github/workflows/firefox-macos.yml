@@ -24,6 +24,7 @@ env:
   BERYTUS_TOOLKIT_DIR: /Users/runner/work/berytus/mozilla-unified/toolkit/components/berytus
   BERYTUS_TOOLKIT_MODULES_DIR: /Users/runner/work/berytus/mozilla-unified/toolkit/components/berytus/modules
   SECRETSTAR_DIR: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar
+  SECRETSTAR_MOZBUILD: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/moz.build
   SECRETSTAR_BUILD_DIR1: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build
   SECRETSTAR_BUILD_DIR2: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build.worker
   SECRETSTAR_BUILD_DIR3: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
@@ -132,63 +133,78 @@ jobs:
           hg update -r ${{ steps.changeset.outputs.rev }}
 
       # TODO(berytus): Keep this patch until we assume a recent revision
-      - name: Patch toolchain.configure for Xcode 16 Apple linker
+      # $ curl -sL "https://hg.mozilla.org/mozilla-unified/raw-file/tip/config/external/nspr/pr/moz.build" -o /tmp/moz.build.tip; diff ./config/external/nspr/pr/moz.build /tmp/moz.build.tip
+      # 1,2d0
+      # < # -*- Mode: python; indent-tabs-mode: nil; tab-width: 40 -*-
+      # < # vim: set filetype=python:
+      # 58a57,60
+      # >     # os_Darwin.s is a CPP-driven arch dispatcher (#ifdef __x86_64__ /
+      # >     # __i386__ / __ppc__ → #include "os_Darwin_<arch>.s"); without
+      # >     # preprocessing the resulting object would be empty.
+      # >     ASFLAGS += ["-x", "assembler-with-cpp"]
+      # 72c74,76
+      # <         ASFLAGS += ["-x", "assembler-with-cpp", "-D_ASM"]
+      # ---
+      # >         # os_SunOS_sparcv9.s uses #include <sys/asm_linkage.h> and CPP
+      # >         # macros (ENTRY/SET_SIZE); without preprocessing it won't build.
+      # >         ASFLAGS += ["-x", "assembler-with-cpp"]
+      # 245d248
+      # <     "/nsprpub/pr/include/prwin.h",
+      - name: Patch NSPR moz.build to preprocess os_Darwin.s
         working-directory: ${{ env.MOZ_DIR }}
         run: |
-          # The pinned mozilla-unified revision detects Apple's classic
-          # ld64 by setting LD_PRINT_OPTIONS=1 and grepping stderr for the
-          # string "Logging ld64 options" when running
-          # `clang -Wl,--version`. Xcode 15+ ships "ld-prime" instead,
-          # which doesn't emit that marker, so configure exhausts its
-          # lld/gold/default fallbacks and dies with
-          # "Failed to find an adequate linker".
+          # On Darwin, NSPR's moz.build adds
+          # nsprpub/pr/src/md/unix/os_Darwin.s to SOURCES. That file is a
+          # CPP-driven arch dispatcher:
           #
-          # Homebrew lld is not a workable substitute on macOS x86_64
-          # (NSPR's _PR_Darwin_x86_64_AtomicIncrement assembly path is
-          # broken under it). The remaining option is to teach configure
-          # that any non-zero result from clang -Wl,--version on a Darwin
-          # target is still Apple's linker (lld/gold/mold/bfd would have
-          # exited 0 with a recognizable marker in stdout).
+          #   #ifdef __i386__
+          #   #include "os_Darwin_x86.s"
+          #   #elif defined(__x86_64__)
+          #   #include "os_Darwin_x86_64.s"
+          #   ...
+          #
+          # Mozilla's $(AS) is just $(CC) (clang), and clang only runs the
+          # preprocessor on .s inputs when invoked with
+          # -x assembler-with-cpp. The pinned revision does not pass that
+          # flag, so the assembled object is effectively empty and link
+          # fails with undefined __PR_Darwin_x86_64_Atomic{Add,Increment,
+          # Decrement,Set} referenced from PR_Atomic* in
+          # Unified_c_external_nspr_pr1.o.
+          #
+          # Upstream mozilla-unified later fixed this by adding
+          # `ASFLAGS += ["-x", "assembler-with-cpp"]` inside the Darwin
+          # branch of config/external/nspr/pr/moz.build. Backport it here.
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("build/moz.configure/toolchain.configure")
+          p = Path("config/external/nspr/pr/moz.build")
           src = p.read_text()
           needle = (
-              '            if retcode == 1 and "Logging ld64 options" in stderr:\n'
-              '                kind = "ld64"\n'
-              '\n'
-              '            elif retcode != 0:\n'
-              '                return None\n'
+              '    SOURCES += [\n'
+              '        "/nsprpub/pr/src/md/unix/darwin.c",\n'
+              '        "/nsprpub/pr/src/md/unix/os_Darwin.s",\n'
+              '    ]\n'
+              '    DEFINES["HAVE_CRT_EXTERNS_H"] = True\n'
           )
           replacement = (
-              '            if retcode == 1 and "Logging ld64 options" in stderr:\n'
-              '                kind = "ld64"\n'
-              '\n'
-              '            elif (\n'
-              '                target.kernel == "Darwin"\n'
-              '                and retcode != 0\n'
-              '                and linker in (None, "ld64")\n'
-              '            ):\n'
-              '                # Xcode 15+ ships "ld-prime", which does not\n'
-              '                # honour LD_PRINT_OPTIONS the way classic ld64\n'
-              '                # does, so the marker grep above misses it.\n'
-              '                # Only apply this for the default-linker probe\n'
-              '                # or an explicit --enable-linker=ld64; a\n'
-              '                # non-zero result while -fuse-ld=lld/gold was\n'
-              '                # forced really does mean that linker is\n'
-              '                # unusable.\n'
-              '                kind = "ld64"\n'
-              '\n'
-              '            elif retcode != 0:\n'
-              '                return None\n'
+              '    SOURCES += [\n'
+              '        "/nsprpub/pr/src/md/unix/darwin.c",\n'
+              '        "/nsprpub/pr/src/md/unix/os_Darwin.s",\n'
+              '    ]\n'
+              '    # os_Darwin.s is a CPP-driven arch dispatcher\n'
+              '    # (#ifdef __x86_64__ / __i386__ / __ppc__ ->\n'
+              '    # #include "os_Darwin_<arch>.s"); without preprocessing\n'
+              '    # the resulting object would be empty.\n'
+              '    ASFLAGS += ["-x", "assembler-with-cpp"]\n'
+              '    DEFINES["HAVE_CRT_EXTERNS_H"] = True\n'
           )
           if needle not in src:
               raise SystemExit(
-                  "toolchain.configure layout changed; update the Xcode 16 "
-                  "linker-detection patch in firefox-macos.yml"
+                  "config/external/nspr/pr/moz.build layout changed; "
+                  "update the os_Darwin.s ASFLAGS patch in "
+                  "firefox-macos.yml"
               )
           p.write_text(src.replace(needle, replacement))
-          print("Patched build/moz.configure/toolchain.configure")
+          print("Patched config/external/nspr/pr/moz.build")
           PY
 
       - name: Setup MOZBUILD_STATE_PATH
@@ -216,7 +232,6 @@ jobs:
           ac_add_options --with-ccache=sccache
           ac_add_options --target=x86_64-apple-darwin
           ac_add_options --with-macos-sdk=${MACOS_SDK_PATH}
-          ac_add_options --enable-linker=ld64
           EOF
 
       - name: Test macos sandbox header file compilation
@@ -255,6 +270,7 @@ jobs:
             ${{ env.MOZ_OBJ_DIR }}
             ${{ env.MOZ_DIR_CLOBBER }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
+            ${{ env.SECRETSTAR_MOZBUILD }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
@@ -295,7 +311,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install mercurial openssl bc jq
+          brew install mercurial openssl bc jq lld
 
       - name: Clone mozilla-unified
         run: |
@@ -327,6 +343,7 @@ jobs:
             ${{ env.MOZ_OBJ_DIR }}
             ${{ env.MOZ_DIR_CLOBBER }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
+            ${{ env.SECRETSTAR_MOZBUILD }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
@@ -460,6 +477,7 @@ jobs:
             ${{ env.MOZ_OBJ_DIR }}
             ${{ env.MOZ_DIR_CLOBBER }}
             ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
+            ${{ env.SECRETSTAR_MOZBUILD }}
             ${{ env.SECRETSTAR_BUILD_DIR1 }}
             ${{ env.SECRETSTAR_BUILD_DIR2 }}
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
