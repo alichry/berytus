@@ -76,20 +76,22 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
         'is_set_up = true' \
     )
 
-# Clone mozilla-unified at tip, run mach bootstrap against the latest
-# clone (so bootstrap's own logic is current), then pin to the requested
-# changeset for the seed build.
-RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
-    Write-Host '>>> hg clone'; \
+# Clone mozilla-unified at tip.
+RUN Write-Host '>>> hg clone'; \
+    New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> mach bootstrap'; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# run mach bootstrap against the latest clone (so bootstrap's own
+# logic is current).
+RUN Write-Host '>>> mach bootstrap'; \
     & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser </dev/null\"; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> hg update'; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Pin to the requeste changeset for the seed build.
+RUN Write-Host '>>> hg update'; \
     hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> done'
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
 RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \

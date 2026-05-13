@@ -54,6 +54,17 @@ jobs:
           echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
           echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
+      - name: Relocate Docker storage to D drive
+        shell: powershell
+        run: |
+          $configPath = 'C:\ProgramData\docker\config\daemon.json'
+          $dataRoot = 'D:\docker'
+          Stop-Service -Name docker -Force
+          New-Item -ItemType Directory -Force -Path $dataRoot, (Split-Path $configPath) | Out-Null
+          @{ 'data-root' = $dataRoot } | ConvertTo-Json | Set-Content -Path $configPath -Encoding ascii
+          Start-Service -Name docker
+          docker info --format '{{.DockerRootDir}}'
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -123,6 +134,18 @@ jobs:
     steps:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
+
+      - name: Relocate Docker storage to D drive
+        if: needs.prepare.outputs.build-image-exists == 'false'
+        shell: powershell
+        run: |
+          $configPath = 'C:\ProgramData\docker\config\daemon.json'
+          $dataRoot = 'D:\docker'
+          Stop-Service -Name docker -Force
+          New-Item -ItemType Directory -Force -Path $dataRoot, (Split-Path $configPath) | Out-Null
+          @{ 'data-root' = $dataRoot } | ConvertTo-Json | Set-Content -Path $configPath -Encoding ascii
+          Start-Service -Name docker
+          docker info --format '{{.DockerRootDir}}'
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare.outputs.build-image-exists == 'false'
