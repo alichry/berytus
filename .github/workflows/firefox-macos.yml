@@ -131,6 +131,7 @@ jobs:
           cd "$MOZ_DIR"
           hg update -r ${{ steps.changeset.outputs.rev }}
 
+      # TODO(berytus): Keep this patch until we assume a recent revision
       - name: Patch toolchain.configure for Xcode 16 Apple linker
         working-directory: ${{ env.MOZ_DIR }}
         run: |
