@@ -52,8 +52,14 @@ RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86
 
 # MozillaBuild: the canonical Windows shell + tooling layer mach expects.
 ADD https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe C:\\TEMP\\MozillaBuildSetup.exe
-RUN Start-Process -FilePath C:\\TEMP\\MozillaBuildSetup.exe -Wait -ArgumentList @('/S', \"/D=$env:MOZILLABUILD\"); \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+RUN New-Item -ItemType Directory -Force -Path C:\\build | Out-Null; \
+    $p = Start-Process -FilePath C:\\TEMP\\MozillaBuildSetup.exe -Wait -PassThru -ArgumentList \"/S /D=$env:MOZILLABUILD\"; \
+    if ($p.ExitCode -ne 0) { exit $p.ExitCode }; \
+    if (-not (Test-Path \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\")) { \
+        Write-Host \"MozillaBuild install did not land bash.exe at $env:MOZILLABUILD/msys2/usr/bin/bash.exe\"; \
+        Get-ChildItem $env:MOZILLABUILD -ErrorAction SilentlyContinue | Format-Table; \
+        exit 1; \
+    }; \
     Remove-Item -Force C:\\TEMP\\MozillaBuildSetup.exe
 
 RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
