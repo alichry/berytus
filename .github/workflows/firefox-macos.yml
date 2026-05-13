@@ -208,6 +208,72 @@ jobs:
           print("Patched config/external/nspr/pr/moz.build")
           PY
 
+      # TODO(berytus): Keep this patch until we assume a recent revision
+      - name: Patch crashreporter macos UI for newer cocoabind bindings
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          # The crashreporter's macOS UI in
+          # toolkit/crashreporter/client/app/src/ui/macos/mod.rs was
+          # written against an older cocoabind/bindgen output for the
+          # macOS 13/14 SDKs. Building with the macOS 15 SDK (Xcode 16)
+          # produces two breakages:
+          #
+          # 1. `setAlignment_` on NSMutableParagraphStyle is now provided
+          #    by the trait `NSMutableParagraphStyle_` (generated from a
+          #    category) rather than the old instance trait
+          #    `INSMutableParagraphStyle`. The old import becomes unused
+          #    and the call fails with E0599.
+          #
+          # 2. `NSDictionary::dictionaryWithObject_forKey_` now has the
+          #    signature `(object: id, key: *mut u64) -> instancetype`,
+          #    not `(u64, u64)`. The existing call casts both arguments
+          #    `.0 as u64`, which now fails with E0308. Dropping the
+          #    casts is correct: `NSColor.0` is already `id` and
+          #    `NSForegroundColorAttributeName.0` is already `*mut u64`.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("toolkit/crashreporter/client/app/src/ui/macos/mod.rs")
+          src = p.read_text()
+
+          import_needle = (
+              "    INSLayoutConstraint, INSLayoutDimension, INSMenu, "
+              "INSMenuItem, INSMutableParagraphStyle,\n"
+          )
+          import_replacement = (
+              "    INSLayoutConstraint, INSLayoutDimension, INSMenu, "
+              "INSMenuItem, NSMutableParagraphStyle_,\n"
+          )
+
+          dict_needle = (
+              "                        >>::dictionaryWithObject_forKey_(\n"
+              "                            cocoa::NSColor::placeholderTextColor().0 as u64,\n"
+              "                            cocoa::NSForegroundColorAttributeName.0 as u64,\n"
+              "                        ),\n"
+          )
+          dict_replacement = (
+              "                        >>::dictionaryWithObject_forKey_(\n"
+              "                            cocoa::NSColor::placeholderTextColor().0,\n"
+              "                            cocoa::NSForegroundColorAttributeName.0,\n"
+              "                        ),\n"
+          )
+
+          if import_needle not in src:
+              raise SystemExit(
+                  "crashreporter mod.rs import block changed; update the "
+                  "cocoabind patch in firefox-macos.yml"
+              )
+          if dict_needle not in src:
+              raise SystemExit(
+                  "crashreporter mod.rs dictionaryWithObject_forKey_ call "
+                  "changed; update the cocoabind patch in firefox-macos.yml"
+              )
+
+          src = src.replace(import_needle, import_replacement)
+          src = src.replace(dict_needle, dict_replacement)
+          p.write_text(src)
+          print("Patched toolkit/crashreporter/client/app/src/ui/macos/mod.rs")
+          PY
+
       - name: Setup MOZBUILD_STATE_PATH
         run: |
           mkdir -p "$MOZBUILD_STATE_PATH"
