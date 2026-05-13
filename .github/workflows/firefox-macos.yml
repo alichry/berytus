@@ -163,13 +163,19 @@ jobs:
               '            if retcode == 1 and "Logging ld64 options" in stderr:\n'
               '                kind = "ld64"\n'
               '\n'
-              '            elif target.kernel == "Darwin" and retcode != 0:\n'
+              '            elif (\n'
+              '                target.kernel == "Darwin"\n'
+              '                and retcode != 0\n'
+              '                and linker in (None, "ld64")\n'
+              '            ):\n'
               '                # Xcode 15+ ships "ld-prime", which does not\n'
               '                # honour LD_PRINT_OPTIONS the way classic ld64\n'
-              '                # does. lld/gold/mold/bfd would have exited 0\n'
-              '                # with a recognisable stdout marker, so treat\n'
-              '                # any other non-zero outcome on Darwin as the\n'
-              '                # Apple linker.\n'
+              '                # does, so the marker grep above misses it.\n'
+              '                # Only apply this for the default-linker probe\n'
+              '                # or an explicit --enable-linker=ld64; a\n'
+              '                # non-zero result while -fuse-ld=lld/gold was\n'
+              '                # forced really does mean that linker is\n'
+              '                # unusable.\n'
               '                kind = "ld64"\n'
               '\n'
               '            elif retcode != 0:\n'
@@ -209,6 +215,7 @@ jobs:
           ac_add_options --with-ccache=sccache
           ac_add_options --target=x86_64-apple-darwin
           ac_add_options --with-macos-sdk=${MACOS_SDK_PATH}
+          ac_add_options --enable-linker=ld64
           EOF
 
       - name: Test macos sandbox header file compilation
