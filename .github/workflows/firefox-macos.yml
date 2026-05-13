@@ -11,6 +11,9 @@ permissions:
   actions: write
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}
+
 env:
   MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
   MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
@@ -127,6 +130,65 @@ jobs:
         run: |
           cd "$MOZ_DIR"
           hg update -r ${{ steps.changeset.outputs.rev }}
+
+      - name: Patch toolchain.configure for Xcode 16 Apple linker
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          # The pinned mozilla-unified revision detects Apple's classic
+          # ld64 by setting LD_PRINT_OPTIONS=1 and grepping stderr for the
+          # string "Logging ld64 options" when running
+          # `clang -Wl,--version`. Xcode 15+ ships "ld-prime" instead,
+          # which doesn't emit that marker, so configure exhausts its
+          # lld/gold/default fallbacks and dies with
+          # "Failed to find an adequate linker".
+          #
+          # Homebrew lld is not a workable substitute on macOS x86_64
+          # (NSPR's _PR_Darwin_x86_64_AtomicIncrement assembly path is
+          # broken under it). The remaining option is to teach configure
+          # that any non-zero result from clang -Wl,--version on a Darwin
+          # target is still Apple's linker (lld/gold/mold/bfd would have
+          # exited 0 with a recognizable marker in stdout).
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build/moz.configure/toolchain.configure")
+          src = p.read_text()
+          needle = (
+              '            if retcode == 1 and "Logging ld64 options" in stderr:\n'
+              '                kind = "ld64"\n'
+              '\n'
+              '            elif retcode != 0:\n'
+              '                return None\n'
+          )
+          replacement = (
+              '            if retcode == 1 and "Logging ld64 options" in stderr:\n'
+              '                kind = "ld64"\n'
+              '\n'
+              '            elif (\n'
+              '                target.kernel == "Darwin"\n'
+              '                and retcode != 0\n'
+              '                and linker in (None, "ld64")\n'
+              '            ):\n'
+              '                # Xcode 15+ ships "ld-prime", which does not\n'
+              '                # honour LD_PRINT_OPTIONS the way classic ld64\n'
+              '                # does, so the marker grep above misses it.\n'
+              '                # Only apply this for the default-linker probe\n'
+              '                # or an explicit --enable-linker=ld64; a\n'
+              '                # non-zero result while -fuse-ld=lld/gold was\n'
+              '                # forced really does mean that linker is\n'
+              '                # unusable.\n'
+              '                kind = "ld64"\n'
+              '\n'
+              '            elif retcode != 0:\n'
+              '                return None\n'
+          )
+          if needle not in src:
+              raise SystemExit(
+                  "toolchain.configure layout changed; update the Xcode 16 "
+                  "linker-detection patch in firefox-macos.yml"
+              )
+          p.write_text(src.replace(needle, replacement))
+          print("Patched build/moz.configure/toolchain.configure")
+          PY
 
       - name: Setup MOZBUILD_STATE_PATH
         run: |
