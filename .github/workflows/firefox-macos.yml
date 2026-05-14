@@ -227,9 +227,13 @@ jobs:
           # 2. `NSDictionary::dictionaryWithObject_forKey_` now has the
           #    signature `(object: id, key: *mut u64) -> instancetype`,
           #    not `(u64, u64)`. The existing call casts both arguments
-          #    `.0 as u64`, which now fails with E0308. Dropping the
-          #    casts is correct: `NSColor.0` is already `id` and
-          #    `NSForegroundColorAttributeName.0` is already `*mut u64`.
+          #    `.0 as u64`, which now fails with E0308.
+          #    `NSColor::placeholderTextColor().0` is already `id`
+          #    (`*mut Object`), so the cast is dropped there.
+          #    `NSForegroundColorAttributeName.0` is `*mut Object` (the
+          #    NSAttributedStringKey global is typed as `id` by bindgen),
+          #    so it must be reinterpreted as `*mut u64` to match the
+          #    method signature.
           python3 - <<'PY'
           from pathlib import Path
           p = Path("toolkit/crashreporter/client/app/src/ui/macos/mod.rs")
@@ -253,7 +257,7 @@ jobs:
           dict_replacement = (
               "                        >>::dictionaryWithObject_forKey_(\n"
               "                            cocoa::NSColor::placeholderTextColor().0,\n"
-              "                            cocoa::NSForegroundColorAttributeName.0,\n"
+              "                            cocoa::NSForegroundColorAttributeName.0 as *mut u64,\n"
               "                        ),\n"
           )
 
