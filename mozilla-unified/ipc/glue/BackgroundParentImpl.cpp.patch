@@ -1,5 +1,5 @@
---- ipc/glue/BackgroundParentImpl.cpp.orig	2025-10-30 22:41:44
-+++ ipc/glue/BackgroundParentImpl.cpp	2025-10-31 19:54:23
+--- ipc/glue/BackgroundParentImpl.cpp.orig	2026-05-15 20:07:22
++++ ipc/glue/BackgroundParentImpl.cpp	2026-05-15 21:52:15
 @@ -7,6 +7,7 @@
  #include "BackgroundParentImpl.h"
  
@@ -16,7 +16,7 @@
  #include "mozilla/dom/MIDIManagerParent.h"
  #include "mozilla/dom/MIDIPlatformService.h"
  #include "mozilla/dom/MIDIPortParent.h"
-@@ -1388,7 +1390,30 @@
+@@ -1485,7 +1487,30 @@
  already_AddRefed<dom::PFetchParent> BackgroundParentImpl::AllocPFetchParent() {
    return MakeAndAddRef<dom::FetchParent>();
  }

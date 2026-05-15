@@ -129,6 +129,14 @@ class BackgroundParentImpl : public PBackgroundParent {
       Endpoint<PWebTransportParent>&& aParentEndpoint,
       CreateWebTransportParentResolver&& aResolver) override;
 
+  mozilla::ipc::IPCResult RecvCreateNotificationParent(
+      Endpoint<dom::notification::PNotificationParent>&& aParentEndpoint,
+      NotNull<nsIPrincipal*> aPrincipal,
+      NotNull<nsIPrincipal*> aEffectiveStoragePrincipal,
+      const bool& aIsSecureContext, const nsAString& aScope,
+      const IPCNotification& aNotification,
+      CreateNotificationParentResolver&& aResolver) final;
+
   already_AddRefed<PIdleSchedulerParent> AllocPIdleSchedulerParent() override;
 
   PTemporaryIPCBlobParent* AllocPTemporaryIPCBlobParent() override;
@@ -261,11 +269,6 @@ class BackgroundParentImpl : public PBackgroundParent {
   already_AddRefed<PGamepadTestChannelParent> AllocPGamepadTestChannelParent()
       override;
 
-  PWebAuthnTransactionParent* AllocPWebAuthnTransactionParent() override;
-
-  bool DeallocPWebAuthnTransactionParent(
-      PWebAuthnTransactionParent* aActor) override;
-
   already_AddRefed<PHttpBackgroundChannelParent>
   AllocPHttpBackgroundChannelParent(const uint64_t& aChannelId) override;
 
@@ -287,6 +290,10 @@ class BackgroundParentImpl : public PBackgroundParent {
 
   mozilla::ipc::IPCResult RecvHasMIDIDevice(
       HasMIDIDeviceResolver&& aResolver) override;
+
+  mozilla::ipc::IPCResult RecvCreateMLSTransaction(
+      Endpoint<PMLSTransactionParent>&& aEndpoint,
+      NotNull<nsIPrincipal*> aPrincipal) override;
 
   mozilla::ipc::IPCResult RecvStorageActivity(
       const PrincipalInfo& aPrincipalInfo) override;

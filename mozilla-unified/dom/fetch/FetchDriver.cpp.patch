@@ -1,6 +1,6 @@
---- dom/fetch/FetchDriver.cpp.orig	2025-10-15 22:31:30
-+++ dom/fetch/FetchDriver.cpp	2025-11-05 23:16:05
-@@ -932,7 +932,12 @@
+--- dom/fetch/FetchDriver.cpp.orig	2026-05-15 21:51:47
++++ dom/fetch/FetchDriver.cpp	2026-05-15 21:52:14
+@@ -946,7 +946,12 @@
        }
      }
    }
@@ -13,7 +13,7 @@
    // if the preferred alternative data type in InternalRequest is not empty, set
    // the data type on the created channel and also create a
    // AlternativeDataStreamListener to be the stream listener of the channel.
-@@ -973,6 +978,39 @@
+@@ -987,6 +992,39 @@
    // Step 4 onwards of "HTTP Fetch" is handled internally by Necko.
  
    mChannel = chan;

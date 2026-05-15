@@ -1,5 +1,5 @@
---- browser/themes/shared/jar.inc.mn.orig	2025-09-20 16:11:07
-+++ browser/themes/shared/jar.inc.mn	2025-09-20 16:11:07
+--- browser/themes/shared/jar.inc.mn.orig	2026-05-15 21:51:47
++++ browser/themes/shared/jar.inc.mn	2026-05-15 21:52:15
 @@ -20,6 +20,7 @@
    skin/classic/browser/browser-shared.css                      (../shared/browser-shared.css)
    skin/classic/browser/formautofill-notification.css           (../shared/formautofill-notification.css)
@@ -8,8 +8,8 @@
    skin/classic/browser/light-dark-overrides.css                (../shared/light-dark-overrides.css)
    skin/classic/browser/menupanel.css                           (../shared/menupanel.css)
    skin/classic/browser/notification-icons.css                  (../shared/notification-icons.css)
-@@ -178,6 +179,7 @@
-   skin/classic/browser/import-export.svg              (../shared/icons/import-export.svg)
+@@ -184,6 +185,7 @@
+   skin/classic/browser/import.svg                     (../shared/icons/import.svg)
    skin/classic/browser/library.svg                    (../shared/icons/library.svg)
    skin/classic/browser/login.svg                      (../shared/icons/login.svg)
 +  skin/classic/browser/berytus-login.svg              (../shared/icons/berytus-login.svg)

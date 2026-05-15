@@ -1,5 +1,5 @@
---- ipc/glue/PBackground.ipdl.orig	2025-10-30 22:28:22
-+++ ipc/glue/PBackground.ipdl	2025-10-31 20:18:50
+--- ipc/glue/PBackground.ipdl.orig	2026-05-15 20:07:22
++++ ipc/glue/PBackground.ipdl	2026-05-15 21:52:15
 @@ -35,6 +35,7 @@
  include protocol PMessagePort;
  include protocol PCameras;
@@ -7,8 +7,8 @@
 +include protocol PMaskManager;
  include protocol PMIDIManager;
  include protocol PMIDIPort;
- include protocol PQuota;
-@@ -284,6 +285,10 @@
+ include protocol PMLSTransaction;
+@@ -298,6 +299,10 @@
  
    async RequestCameraAccess(bool aAllowPermissionRequest) returns (CamerasAccessStatus rv);
  

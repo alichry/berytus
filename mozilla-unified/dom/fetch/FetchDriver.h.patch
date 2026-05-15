@@ -1,6 +1,6 @@
---- dom/fetch/FetchDriver.h.orig	2025-10-15 22:30:35
-+++ dom/fetch/FetchDriver.h	2025-10-24 21:14:46
-@@ -35,6 +35,8 @@
+--- dom/fetch/FetchDriver.h.orig	2026-05-15 21:51:47
++++ dom/fetch/FetchDriver.h	2026-05-15 21:52:14
+@@ -36,6 +36,8 @@
  
  namespace dom {
  
@@ -9,8 +9,8 @@
  class Document;
  class InternalRequest;
  class InternalResponse;
-@@ -149,6 +151,9 @@
-     mIsThirdPartyWorker = aIsThirdPartyWorker;
+@@ -154,6 +156,9 @@
+     mIsOn3PCBExceptionList = aIsOn3PCBExceptionList;
    }
  
 +  SafeRefPtr<InternalRequest> GetRequest() const;
@@ -19,7 +19,7 @@
   private:
    nsCOMPtr<nsIPrincipal> mPrincipal;
    nsCOMPtr<nsILoadGroup> mLoadGroup;
-@@ -231,6 +236,8 @@
+@@ -242,6 +247,8 @@
                           bool aStripAuthHeader) const;
  
    void FinishOnStopRequest(AlternativeDataStreamListener* aAltDataListener);

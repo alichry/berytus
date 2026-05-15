@@ -6,11 +6,10 @@
 
 DIRS += [
     "formautofill",
-    "screenshots",
     "secretstar",
     "secretstar-loader",
     "webcompat",
-    "report-site-issue",
     "pictureinpicture",
     "search-detection",
+    "newtab",
 ]

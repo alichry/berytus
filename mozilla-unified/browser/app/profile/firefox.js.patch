@@ -1,0 +1,15 @@
+--- browser/app/profile/firefox.js.orig	2026-05-16 11:38:57
++++ browser/app/profile/firefox.js	2026-05-16 11:39:38
+@@ -22,6 +22,12 @@
+ #ifdef XP_MACOSX
+   pref("browser.hiddenWindowChromeURL", "chrome://browser/content/hiddenWindowMac.xhtml");
+ #endif
++
++// NOTE(berytus): Firefox 135 introduced Certificate Transparency, making it
++// troublesome for some self-signed certificates. The below
++// pref allows users to disable Certificate Transparency for
++// berytus-related hosts (including localhost)
++pref("security.pki.certificate_transparency.disable_for_hosts", "localhost,poc-e2ee.berytus.io");
+ 
+ // Set add-ons abuse report related prefs specific to Firefox Desktop.
+ pref("extensions.abuseReport.enabled", true);

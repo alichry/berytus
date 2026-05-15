@@ -1,6 +1,6 @@
---- ipc/glue/BackgroundParentImpl.h.orig	2025-10-31 19:44:55
-+++ ipc/glue/BackgroundParentImpl.h	2025-10-31 19:45:39
-@@ -351,6 +351,9 @@
+--- ipc/glue/BackgroundParentImpl.h.orig	2026-05-15 20:07:22
++++ ipc/glue/BackgroundParentImpl.h	2026-05-15 21:52:15
+@@ -358,6 +358,9 @@
        NotNull<nsIPrincipal*> aPrincipal, const Maybe<nsID>& aClientId) final;
  
    already_AddRefed<PFetchParent> AllocPFetchParent() override;

@@ -1,8 +1,8 @@
---- dom/base/Navigator.cpp.orig	2025-10-04 10:22:48
-+++ dom/base/Navigator.cpp	2025-10-04 14:24:12
-@@ -40,6 +40,7 @@
+--- dom/base/Navigator.cpp.orig	2026-05-15 21:51:47
++++ dom/base/Navigator.cpp	2026-05-15 21:52:14
+@@ -39,6 +39,7 @@
+ #include "mozilla/StaticPrefs_privacy.h"
  #include "mozilla/StorageAccess.h"
- #include "mozilla/Telemetry.h"
  #include "BatteryManager.h"
 +#include "mozilla/dom/BerytusChannelContainer.h"
  #include "mozilla/dom/CredentialsContainer.h"
@@ -16,7 +16,7 @@
    NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMediaCapabilities)
    NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mMediaSession)
    NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mAddonManager)
-@@ -1903,7 +1905,18 @@
+@@ -1906,7 +1908,18 @@
  
    return ServiceWorker();
  }

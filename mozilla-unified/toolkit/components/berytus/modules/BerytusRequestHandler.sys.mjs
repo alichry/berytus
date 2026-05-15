@@ -967,24 +967,34 @@ const inputIs = (requestType, input) => {
     return false;
 };
 /**
- * Implementation copied from Schemas.sys.mjs's Context
+ * Implementation adapted from Schemas.sys.mjs's Context
  */
 class ValidationContext {
     path = [];
     manifestVersion = 2;
     currentChoices = new Set();
     choicePathIndex = 0;
+    suppressedWarnings = null;
+    // from Schemas.sys.mjs
+    // If the message is a function, call it and return the result.
+    // Otherwise, assume it's a string.
+    forceString(msg) {
+        if (typeof msg === "function") {
+            return msg();
+        }
+        return msg;
+    }
     matchManifestVersion() {
         return true;
     }
     checkLoadURL(url) {
-        throw new Error("Method not implemented");
+        throw new Error("Method ValidationContext::checkLoadURL() not implemented");
     }
     hasPermission(perm) {
-        throw new Error("Method not implemented");
+        throw new Error("Method ValidationContext::hasPermission() not implemented");
     }
-    logError(err) {
-        console.error(err);
+    isPermissionRevokable(_permission) {
+        throw new Error("Method ValidationContext::isPermissionRevokable() not implemented");
     }
     withPath(component, callback) {
         this.path.push(component);
@@ -1002,21 +1012,91 @@ class ValidationContext {
     get currentTarget() {
         return this.path.join(".");
     }
+    get ignoreUnrecognizedProperties() {
+        return false;
+    }
+    get cloneScope() {
+        return undefined;
+    }
+    get principal() {
+        return undefined;
+    }
     error(errorMessage, choicesMessage = undefined, warning = false) {
         if (choicesMessage !== null) {
             let { choicePath } = this;
             if (choicePath) {
-                choicesMessage = `.${choicePath} must ${typeof choicesMessage === "function" ? choicesMessage() : choicesMessage}`;
+                choicesMessage = `.${choicePath} must ${choicesMessage}`;
             }
             this.currentChoices.add(choicesMessage);
         }
         if (this.currentTarget) {
             let { currentTarget } = this;
             return {
-                error: () => `${warning ? "Warning" : "Error"} processing ${currentTarget}: ${typeof errorMessage === "function" ? errorMessage() : errorMessage}`,
+                error: () => `${warning ? "Warning" : "Error"} processing ${currentTarget}: ${this.forceString(errorMessage)} `,
             };
         }
         return { error: errorMessage };
+    }
+    makeError(message, { warning = false } = {}) {
+        let error = this.forceString(this.error(message, null, warning).error);
+        if (this.cloneScope) {
+            return new this.cloneScope.Error(error);
+        }
+        return error;
+    }
+    logError(error) {
+        if (this.cloneScope) {
+            Cu.reportError(
+            // Error objects logged using Cu.reportError are not associated
+            // to the related innerWindowID. This results in a leaked docshell
+            // since consoleService cannot release the error object when the
+            // extension global is destroyed.
+            typeof error == "string" ? error : String(error), 
+            // Report the error with the appropriate stack trace when the
+            // is related to an actual extension global (instead of being
+            // related to a manifest validation).
+            this.principal && ChromeUtils.getCallerLocation(this.principal));
+        }
+        else {
+            Cu.reportError(error);
+        }
+    }
+    logWarning(warningMessage) {
+        let error = this.makeError(warningMessage, { warning: true });
+        this._logNormalizedWarning(error);
+    }
+    _logNormalizedWarning(warningObject) {
+        if (this.suppressedWarnings) {
+            this.suppressedWarnings.push(warningObject);
+            return;
+        }
+        this.logError(warningObject);
+        if (true /* lazy.treatWarningsAsErrors */) {
+            // This pref is false by default, and true by default in tests to
+            // discourage the use of deprecated APIs in our unit tests.
+            // If a warning is an expected part of a test, temporarily set the pref
+            // to false, e.g. with the ExtensionTestUtils.failOnSchemaWarnings helper.
+            Services.console.logStringMessage("Treating warning as error because the preference " +
+                "extensions.webextensions.warnings-as-errors is set to true");
+            if (typeof warningObject === "string") {
+                warningObject = new Error(warningObject);
+            }
+            throw warningObject;
+        }
+    }
+    suppressWarnings(callback) {
+        let oldWarnings = this.suppressedWarnings;
+        let suppressedWarnings = [];
+        this.suppressedWarnings = suppressedWarnings;
+        try {
+            return {
+                result: callback(),
+                suppressedWarnings,
+            };
+        }
+        finally {
+            this.suppressedWarnings = oldWarnings;
+        }
     }
     withChoices(callback) {
         let { currentChoices, choicePathIndex } = this;

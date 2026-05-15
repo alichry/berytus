@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 # to be included inside a popupset element
 
     <panel id="notification-popup"
@@ -28,7 +32,6 @@
                data-l10n-id="popup-select-window-or-screen"
                control="webRTC-selectWindow-menulist"/>
         <menulist id="webRTC-selectWindow-menulist"
-                  oncommand="webrtcUI.updateWarningLabel(this);"
                   size="large">
           <menupopup id="webRTC-selectWindow-menupopup"/>
         </menulist>
@@ -96,7 +99,6 @@
                       class="ac-dropmarker"
                       hidden="true"/>
         </stack>
-        <checkbox id="password-notification-visibilityToggle" hidden="true"/>
       </popupnotificationcontent>
     </popupnotification>
 
@@ -117,8 +119,15 @@
       <popupnotificationcontent class="addon-webext-perm-notification-content" orient="vertical">
         <description id="addon-webext-perm-text" class="addon-webext-perm-text"/>
         <label id="addon-webext-perm-intro" class="addon-webext-perm-text"/>
-        <label id="addon-webext-perm-single-entry" class="addon-webext-perm-single-entry"/>
-        <html:ul id="addon-webext-perm-list" class="addon-webext-perm-list"/>
+
+        <html:h2 id="addon-webext-perm-title-required"/>
+        <html:ul id="addon-webext-perm-list-required" class="addon-webext-perm-list"/>
+
+        <html:h2 id="addon-webext-perm-title-data-collection"/>
+        <html:ul id="addon-webext-perm-list-data-collection" class="addon-webext-perm-list"/>
+
+        <html:h2 id="addon-webext-perm-title-optional"/>
+        <html:ul id="addon-webext-perm-list-optional" class="addon-webext-perm-list"/>
       </popupnotificationcontent>
     </popupnotification>
 
@@ -262,11 +271,47 @@
       <popupnotificationcontent orient="vertical">
         <html:div>
           <html:p data-l10n-id="firefox-relay-offer-why-to-use-relay"></html:p>
-          <html:p id="firefox-relay-offer-what-fxa-and-relay-provides" data-l10n-id="firefox-relay-offer-what-fxa-and-relay-provides"></html:p>
-          <html:p id="firefox-fxa-and-relay-offer-legal-notice" data-l10n-id="firefox-relay-offer-legal-notice">
-            <label id="firefox-fxa-and-relay-offer-tos-url" is="text-link" data-l10n-name="tos-url"/>
-            <label id="firefox-fxa-and-relay-offer-privacy-url" is="text-link" data-l10n-name="privacy-url"/>
+          <html:p class="firefox-relay-offer-what-fxa-and-relay-provides" data-l10n-id="firefox-relay-and-fxa-popup-notification-second-sentence-control"></html:p>
+          <html:p id="firefox-fxa-and-relay-offer-legal-notice" data-l10n-id="firefox-relay-offer-legal-notice-control">
+            <label class="firefox-fxa-and-relay-offer-tos-url" is="text-link" data-l10n-name="tos-url"/>
+            <label class="firefox-fxa-and-relay-offer-privacy-url" is="text-link" data-l10n-name="privacy-url"/>
           </html:p>
+        </html:div>
+      </popupnotificationcontent>
+    </popupnotification>
+
+    <popupnotification id="fxa-and-relay-integration-offer-basic-info-notification" hidden="true">
+      <popupnotificationcontent orient="vertical">
+        <html:div>
+          <html:p data-l10n-id="firefox-relay-and-fxa-popup-notification-first-sentence-basic-info">
+            <label class="firefox-relay-learn-more-url" is="text-link" data-l10n-name="firefox-relay-learn-more-url"/>
+            <label class="firefox-fxa-and-relay-offer-domain" data-l10n-name="firefox-fxa-and-relay-offer-domain"/>
+          </html:p>
+          <html:p class="firefox-relay-offer-what-fxa-and-relay-provides" data-l10n-id="firefox-relay-and-fxa-popup-notification-second-sentence-basic-info"></html:p>
+        </html:div>
+      </popupnotificationcontent>
+    </popupnotification>
+
+    <popupnotification id="fxa-and-relay-integration-offer-with-domain-notification" hidden="true">
+      <popupnotificationcontent orient="vertical">
+        <html:div>
+          <html:p data-l10n-id="firefox-relay-and-fxa-popup-notification-first-sentence-with-domain">
+            <label class="firefox-relay-learn-more-url" is="text-link" data-l10n-name="firefox-relay-learn-more-url"/>
+            <label class="firefox-fxa-and-relay-offer-domain" data-l10n-name="firefox-fxa-and-relay-offer-domain"/>
+          </html:p>
+          <html:p class="firefox-relay-offer-what-fxa-and-relay-provides" data-l10n-id="firefox-relay-and-fxa-popup-notification-second-sentence-with-domain"></html:p>
+        </html:div>
+      </popupnotificationcontent>
+    </popupnotification>
+
+    <popupnotification id="fxa-and-relay-integration-offer-with-domain-and-value-prop-notification" hidden="true">
+      <popupnotificationcontent orient="vertical">
+        <html:div>
+          <html:p data-l10n-id="firefox-relay-and-fxa-popup-notification-first-sentence-with-domain">
+            <label class="firefox-relay-learn-more-url" is="text-link" data-l10n-name="firefox-relay-learn-more-url"/>
+            <label class="firefox-fxa-and-relay-offer-domain" data-l10n-name="firefox-fxa-and-relay-offer-domain"/>
+          </html:p>
+          <html:p class="firefox-relay-offer-what-fxa-and-relay-provides" data-l10n-id="firefox-relay-and-fxa-popup-notification-second-sentence-with-domain"></html:p>
         </html:div>
       </popupnotificationcontent>
     </popupnotification>
@@ -282,9 +327,29 @@
 
     <template id="firefox-relay-header">
       <html:div class="relay-integration-header">
-        <html:div />
-        <html:span>Firefox</html:span>
-        <html:span> Relay</html:span>
+          <html:div />
+          <html:div>
+            <html:span>Firefox</html:span>
+            <html:span> Relay</html:span>
+          </html:div>
+        </html:div>
+    </template>
+
+    <template id="firefox-relay-header-basic-info">
+      <html:div class="relay-integration-header-variation">
+        <html:p data-l10n-id="firefox-relay-and-fxa-popup-notification-header-basic-info"></html:p>
+      </html:div>
+    </template>
+
+    <template id="firefox-relay-header-with-domain">
+      <html:div class="relay-integration-header-variation">
+        <html:p data-l10n-id="firefox-relay-and-fxa-popup-notification-header-with-domain"></html:p>
+      </html:div>
+    </template>
+
+    <template id="firefox-relay-header-with-domain-and-value-prop">
+      <html:div class="relay-integration-header-variation">
+        <html:p data-l10n-id="firefox-relay-and-fxa-popup-notification-header-with-domain"></html:p>
       </html:div>
     </template>
 

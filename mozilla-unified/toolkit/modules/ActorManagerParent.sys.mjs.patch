@@ -1,6 +1,6 @@
---- toolkit/modules/ActorManagerParent.sys.mjs.orig	2025-09-20 16:11:07
-+++ toolkit/modules/ActorManagerParent.sys.mjs	2025-09-20 16:11:07
-@@ -185,6 +185,25 @@
+--- toolkit/modules/ActorManagerParent.sys.mjs.orig	2026-05-15 21:51:48
++++ toolkit/modules/ActorManagerParent.sys.mjs	2026-05-15 21:52:14
+@@ -208,6 +208,25 @@
      messageManagerGroups: ["thumbnails"],
    },
  

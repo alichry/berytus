@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-<toolbox id="navigator-toolbox">
+<toolbox id="navigator-toolbox" class="browser-toolbox-background">
   <script src="chrome://browser/content/navigator-toolbox.js" />
 
   <!-- Menu -->
@@ -49,14 +49,14 @@
               setfocus="false"
               tooltip="tabbrowser-tab-tooltip"
               orient="horizontal"
-              stopwatchid="FX_TAB_CLICK_MS">
+              stopwatchid="tabClick">
           <hbox class="tab-drop-indicator" hidden="true"/>
 # If the name (tabbrowser-arrowscrollbox) or structure of this changes
 # significantly, there is an optimization in
 # DisplayPortUtils::MaybeCreateDisplayPortInFirstScrollFrameEncountered based
 # the current structure that we may want to revisit.
-          <html:div id="vertical-pinned-tabs-container" tabindex="-1"></html:div>
-          <html:div id="vertical-pinned-tabs-container-separator"></html:div>
+          <arrowscrollbox id="vertical-pinned-tabs-container" orient="vertical" tabindex="-1"></arrowscrollbox>
+          <splitter orient="vertical" id="vertical-pinned-tabs-splitter" resizebefore="sibling" resizeafter="none" hidden="true"/>
           <arrowscrollbox id="tabbrowser-arrowscrollbox" orient="horizontal" flex="1" clicktoscroll="" scrolledtostart="" scrolledtoend="">
             <tab is="tabbrowser-tab" class="tabbrowser-tab" selected="true" visuallyselected="" fadein=""/>
             <hbox id="tabbrowser-arrowscrollbox-periphery">
@@ -98,8 +98,7 @@
     <hbox class="titlebar-spacer" type="post-tabs"/>
 
 #include private-browsing-indicator.inc.xhtml
-    <toolbarbutton id="content-analysis-indicator"
-                   class="toolbarbutton-1 content-analysis-indicator-icon"/>
+    <toolbarbutton class="content-analysis-indicator toolbarbutton-1 content-analysis-indicator-icon"/>
 
 #include titlebar-items.inc.xhtml
 
@@ -157,15 +156,21 @@
         </toolbarbutton>
       </toolbaritem>
       <toolbarspring cui-areatype="toolbar" class="chromeclass-toolbar-additional"/>
+      <toolbarspring cui-areatype="toolbar"
+                   class="chromeclass-toolbar-additional titlebar-spacer"
+                   id="vertical-spacer"
+                   removable="false"
+                   overflows="false"/>
       <toolbaritem id="urlbar-container"
                    removable="false"
                    overflows="false">
         <toolbartabstop/>
         <html:div id="urlbar"
               popover="manual"
-              context=""
               focused="true"
-              pageproxystate="invalid">
+              pageproxystate="invalid"
+              unifiedsearchbutton-available=""
+          >
           <hbox id="urlbar-background"/>
           <hbox class="urlbar-input-container"
                 flex="1"
@@ -177,6 +182,27 @@
             </box>
             <box id="urlbar-search-button"
                  class="chromeclass-toolbar-additional"/>
+            <toolbarbutton id="urlbar-searchmode-switcher"
+                            data-action="openpopup"
+                            align="center"
+                            role="button"
+                            aria-haspopup="menu"
+                            aria-expanded="false"
+                            tooltip="dynamic-shortcut-tooltip"
+                            class="chromeclass-toolbar-additional">
+              <image id="searchmode-switcher-icon" />
+              <image id="searchmode-switcher-dropmarker"
+                      data-l10n-id="urlbar-searchmode-dropmarker"
+                      class="toolbarbutton-icon toolbarbutton-combined-buttons-dropmarker" />
+            </toolbarbutton>
+            <box id="searchmode-switcher-chicklet">
+              <label id="searchmode-switcher-title" />
+              <toolbarbutton id="searchmode-switcher-close"
+                              data-action="exitsearchmode"
+                              role="button"
+                              data-l10n-id="urlbar-searchmode-exit-button"
+                              class="toolbarbutton-icon close-button" />
+            </box>
             <!-- Use onclick instead of normal popup= syntax since the popup
                  code fires onmousedown, and hence eats our favicon drag events. -->
             <box id="tracking-protection-icon-container" align="center"
@@ -300,27 +326,6 @@
                         aria-labelledby="urlbar-search-mode-indicator-close urlbar-search-mode-indicator-title"
                         data-l10n-id="urlbar-search-mode-indicator-close"/>
             </html:div>
-            <toolbarbutton id="urlbar-searchmode-switcher"
-                            data-action="openpopup"
-                            align="center"
-                            role="button"
-                            aria-haspopup="menu"
-                            aria-expanded="false"
-                            tooltip="dynamic-shortcut-tooltip"
-                            class="chromeclass-toolbar-additional">
-              <image id="searchmode-switcher-icon" />
-              <image id="searchmode-switcher-dropmarker"
-                      data-l10n-id="urlbar-searchmode-dropmarker"
-                      class="toolbarbutton-icon toolbarbutton-combined-buttons-dropmarker" />
-            </toolbarbutton>
-            <box id="searchmode-switcher-chicklet">
-              <label id="searchmode-switcher-title" />
-              <toolbarbutton id="searchmode-switcher-close"
-                              data-action="exitsearchmode"
-                              role="button"
-                              data-l10n-id="urlbar-searchmode-exit-button"
-                              class="toolbarbutton-icon close-button" />
-            </box>
             <moz-input-box tooltip="aHTMLTooltip"
                             class="urlbar-input-box"
                             flex="1"
@@ -379,6 +384,13 @@
                 <image id="picture-in-picture-button-icon"
                        class="urlbar-icon"/>
               </hbox>
+              <hbox id="taskbar-tabs-button"
+                    class="urlbar-page-action"
+                    role="button"
+                    data-l10n-id="taskbar-tab-urlbar-button-open"
+                    hidden="true">
+                <image class="urlbar-icon"/>
+              </hbox>
               <hbox id="translations-button"
                     class="urlbar-page-action"
                     role="button"
@@ -387,14 +399,6 @@
                 <image class="urlbar-icon" id="translations-button-icon" />
                 <image class="urlbar-icon" id="translations-button-circle-arrows" />
                 <html:span id="translations-button-locale" aria-hidden="true" />
-              </hbox>
-              <hbox id="shopping-sidebar-button"
-                  class="urlbar-page-action"
-                  role="button"
-                  data-l10n-id="shopping-sidebar-open-button2"
-                  hidden="true">
-                <image id="shopping-sidebar-button-icon"
-                       class="urlbar-icon"/>
               </hbox>
               <toolbarbutton id="urlbar-zoom-button"
                      tooltip="dynamic-shortcut-tooltip"
@@ -454,9 +458,12 @@
                      data-l10n-id="toolbar-button-account"
                      cui-areatype="toolbar"
                      removable="true">
-                     <vbox>
-                      <image id="fxa-avatar-image"/>
-                     </vbox>
+                    <hbox align="center">
+                      <div class="avatar-container">
+                        <image id="fxa-avatar-image"/>
+                      </div>
+                      <label id="fxa-avatar-label" hidden="true"/>
+                  </hbox>
       </toolbarbutton>
 
       <toolbarbutton id="unified-extensions-button"
@@ -489,7 +496,7 @@
     </toolbaritem>
     <hbox class="titlebar-spacer" type="post-tabs"/>
 #include private-browsing-indicator.inc.xhtml
-
+    <toolbarbutton class="content-analysis-indicator toolbarbutton-1 content-analysis-indicator-icon"/>
 #include titlebar-items.inc.xhtml
   </toolbar>
 
@@ -549,12 +556,12 @@
       </hbox>
     </toolbaritem>
   </toolbar>
-
-  <html:template id="tab-notification-deck-template">
-    <html:named-deck id="tab-notification-deck"></html:named-deck>
-  </html:template>
-
-
+  <toolbar id="notifications-toolbar" class="browser-toolbar" nowindowdrag="">
+    <!-- NOTE: This gets instantiated in-place -->
+    <html:template id="tab-notification-deck-template">
+      <html:named-deck id="tab-notification-deck"></html:named-deck>
+    </html:template>
+  </toolbar>
   <html:template id="BrowserToolbarPalette">
     <toolbarbutton id="import-button"
                    class="toolbarbutton-1 chromeclass-toolbar-additional"
@@ -567,6 +574,7 @@
 
     <toolbarbutton id="fullscreen-button" class="toolbarbutton-1 chromeclass-toolbar-additional"
                    observes="View:FullScreen"
+                   command="View:FullScreen"
                    type="checkbox"
                    data-l10n-id="appmenuitem-fullscreen"
                    tooltip="dynamic-shortcut-tooltip"/>

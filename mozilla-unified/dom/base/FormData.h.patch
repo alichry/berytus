@@ -1,5 +1,5 @@
---- dom/base/FormData.h.orig	2025-09-20 16:11:07
-+++ dom/base/FormData.h	2026-04-12 10:43:03
+--- dom/base/FormData.h.orig	2026-05-15 21:51:47
++++ dom/base/FormData.h	2026-05-15 21:52:14
 @@ -25,6 +25,8 @@
  class HTMLFormElement;
  class GlobalObject;
@@ -18,7 +18,7 @@
  
    void SetNameDirectoryPair(FormDataTuple* aData, const nsAString& aName,
                              Directory* aDirectory);
-@@ -163,6 +167,8 @@
+@@ -167,6 +171,8 @@
    RefPtr<Element> mSubmitter;
  
    nsTArray<FormDataTuple> mFormData;

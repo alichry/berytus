@@ -7,6 +7,9 @@
 with Files("**"):
     BUG_COMPONENT = ("Toolkit", "General")
 
+with Files("uniffi*/**"):
+    BUG_COMPONENT = ("Toolkit", "UniFFI Bindings")
+
 # These component dirs are built for all apps (including suite)
 if CONFIG["MOZ_HAS_REMOTE"]:
     DIRS += ["remote"]
@@ -23,6 +26,7 @@ DIRS += [
     "berytus",
     "bitsdownload",
     "browser",
+    "captchadetection",
     "cascade_bloom_filter",
     "certviewer",
     "cleardata",
@@ -36,6 +40,7 @@ DIRS += [
     "crashes",
     "crashmonitor",
     "credentialmanagement",
+    "doh",
     "downloads",
     "enterprisepolicies",
     "extensions",
@@ -43,10 +48,12 @@ DIRS += [
     "finalizationwitness",
     "find",
     "forgetaboutsite",
+    "gecko-trace",
     "glean",
     "httpsonlyerror",
     "jsoncpp/src/lib_json",
     "kvstore",
+    "media",
     "mediasniffer",
     "ml",
     "mozintl",
@@ -68,11 +75,9 @@ DIRS += [
     "search",
     "sessionstore",
     "shell",
-    "shopping",
     "startup",
     "statusfilter",
     "telemetry",
-    "translation",
     "translations",
     "thumbnails",
     "timermanager",
@@ -118,7 +123,7 @@ DIRS += ["build"]
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "windows":
     DIRS += ["aboutthirdparty", "aboutwindowsmessages", "gfx"]
 
-if CONFIG["MOZ_WIDGET_TOOLKIT"] != "android":
+if CONFIG["TARGET_OS"] not in ("Android", "iOS"):
     EXTRA_JS_MODULES += [
         "DefaultCLH.sys.mjs",
     ]
@@ -131,7 +136,7 @@ if CONFIG["MOZ_WIDGET_TOOLKIT"] not in ("android", "windows"):
     DIRS += ["aboutwebauthn"]
 
 if CONFIG["MOZ_BUILD_APP"] == "browser":
-    DIRS += ["featuregates", "messaging-system", "normandy"]
+    DIRS += ["messaging-system", "normandy"]
 
 DIRS += ["nimbus"]
 
