@@ -80,6 +80,8 @@ jobs:
           sudo swapon /mnt/swapfile
           free -h
           swapon --show
+          df -h /
+          df -h /mnt
 
       - name: Build and push base image
         if: steps.check-base.outputs.exists == 'false'
@@ -157,10 +159,6 @@ jobs:
           find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
           find "$STAGE" -name .DS_Store -delete
 
-      # The gkrust rustc LTO link peaks well above the runner's 16 GiB RAM
-      # (full cross-LTO + -Cdebuginfo=2 + codegen-units=1). BuildKit inherits
-      # host swap as long as no --memory-swap cap is set, so a host swapfile
-      # lets the link spill instead of OOM-killing.
       - name: Configure host swap (12 GiB on /mnt)
         if: needs.prepare.outputs.build-image-exists == 'false'
         run: |
@@ -173,6 +171,8 @@ jobs:
           sudo swapon /mnt/swapfile
           free -h
           swapon --show
+          df -h /
+          df -h /mnt
 
       - name: Build and push image
         if: needs.prepare.outputs.build-image-exists == 'false'

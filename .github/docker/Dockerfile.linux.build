@@ -15,7 +15,10 @@ RUN set -a && for f in /etc/environment.d/*.conf; do [ -r "$f" ] && . "$f"; done
     cd "$MOZ_DIR/toolkit/components/berytus" && npm run build && \
     cd "$MOZ_DIR/browser/extensions/secretstar" && CI=false npm run build && \
     cd "$MOZ_DIR/browser/extensions/secretstar" && ./moz.build.sh && \
-    cd "$MOZ_DIR" && ./mach build && sccache --show-stats
+    cd "$MOZ_DIR" && ./mach build
+
+RUN cd "$MOZ_DIR" && ./mach resource-usage || echo "::warning::mach resource-usage failed; view above output for details"
+RUN sccache --show-stats || echo "::warning::sccache --show-stats failed; view above output for details"
 
 # Regenerate WPT certificates
 RUN cd "$MOZ_DIR/testing/web-platform/tests" && \

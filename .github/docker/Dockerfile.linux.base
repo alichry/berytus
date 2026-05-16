@@ -54,6 +54,9 @@ RUN printf '%s\n' \
         > "$MOZ_DIR/mozconfig"
 
 RUN set -a && for f in /etc/environment.d/*.conf; do [ -r "$f" ] && . "$f"; done && set +a && \
-    cd "$MOZ_DIR" && ./mach build && sccache --show-stats
+    cd "$MOZ_DIR" && ./mach build
+
+RUN cd "$MOZ_DIR" && ./mach resource-usage || echo "::warning::mach resource-usage failed; view above output for details"
+RUN sccache --show-stats || echo "::warning::sccache --show-stats failed; view above output for details"
 
 WORKDIR /build

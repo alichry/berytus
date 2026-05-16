@@ -148,9 +148,16 @@ jobs:
           CI=false npm run build
           ./moz.build.sh
           cd ${{ env.MOZ_DIR }}
-          sccache --show-stats
+          if ! sccache --show-stats; then
+              echo "::warning::sccache is not working properly; view above output for details"
+          fi
           ./mach build
-          sccache --show-stats
+          if ! ./mach resource-usage; then
+              echo "::warning::mach resource-usage failed; view above output for details"
+          fi
+          if ! sccache --show-stats; then
+              echo "::warning::sccache is not working properly; view above output for details"
+          fi
 
       - name: Save build outputs
         uses: actions/cache/save@v4

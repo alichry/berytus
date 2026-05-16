@@ -107,6 +107,8 @@ RUN Write-Host '>>> mach build'; \
     Set-Location $env:MOZ_DIR; \
     & .\\mach.ps1 build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> mach build and stats'; \
+    & .\\mach.ps1 resource-usage; \
     sccache --show-stats; \
     Write-Host '>>> done'
 
