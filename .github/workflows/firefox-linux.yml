@@ -72,12 +72,12 @@ jobs:
         if: steps.check-base.outputs.exists == 'false'
         run: |
           set -eu
-          swapoff -a || true
-          rm -f /mnt/swapfile /swapfile
-          fallocate -l 12G /mnt/swapfile
-          chmod 600 /mnt/swapfile
-          mkswap /mnt/swapfile
-          swapon /mnt/swapfile
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile /swapfile
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
           free -h
           swapon --show
 
