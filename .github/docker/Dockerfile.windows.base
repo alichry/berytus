@@ -76,7 +76,7 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
     )
 
 RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
-    Write-Host ">>> hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR"; \
+    Write-Host '>>> hg clone'; \
     hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Write-Host '>>> mach bootstrap'; \
@@ -91,27 +91,6 @@ RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \
         'ac_add_options --disable-debug', \
         'ac_add_options --with-ccache=sccache' \
     )
-
-# Bake the MSVC build env (PATH, INCLUDE, LIB, LIBPATH, WindowsSdkDir,
-# VCToolsInstallDir, etc.) into machine-level env so every subsequent
-# RUN and every container process inherits the MSVC toolchain on PATH
-# without having to call vcvars64.bat. Captures the diff between cmd's
-# env before and after sourcing vcvars64.bat and persists only the
-# new/changed entries via SetEnvironmentVariable('Machine'). We avoid
-# Invoke-Environment because it ships in PSCX (not installed here),
-# not in the base PowerShell.
-RUN $vcvars = \"$env:VS_BUILDTOOLS\\VC\\Auxiliary\\Build\\vcvars64.bat\"; \
-    if (-not (Test-Path $vcvars)) { Write-Host \"vcvars64.bat not found: $vcvars\"; exit 1 }; \
-    $before = @{}; \
-    (& cmd /S /C 'set') | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $before[$Matches[1]] = $Matches[2] } }; \
-    $after = @{}; \
-    (& cmd /S /C \"call `\"$vcvars`\" >NUL && set\") | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $after[$Matches[1]] = $Matches[2] } }; \
-    foreach ($k in $after.Keys) { \
-        if (-not $before.ContainsKey($k) -or $before[$k] -ne $after[$k]) { \
-            Write-Host \"Set machine env: $k = $after[$k]\"; \
-            [System.Environment]::SetEnvironmentVariable($k, $after[$k], 'Machine'); \
-        } \
-    }
 
 RUN Write-Host '>>> mach build'; \
     & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach build </dev/null && sccache --show-stats\"; \
