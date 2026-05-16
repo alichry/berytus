@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/windows/servercore:ltsc2022
 
 ARG MOZ_REV
 
-SHELL ["powershell", "-NoLogo", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 ENV MOZ_DIR=C:\\build\\mozilla-unified \
     MOZ_OBJ_DIR=C:\\build\\mozilla-unified\\obj-x86_64-pc-mingw32 \
@@ -65,6 +65,16 @@ RUN New-Item -ItemType Directory -Force -Path C:\\build | Out-Null; \
     }; \
     Remove-Item -Force C:\\TEMP\\MozillaBuildSetup.exe
 
+# Prepend the choco-installed Python to machine PATH so every `python`
+# / `python.exe` lookup resolves to it (avoiding any ambiguity with
+# MozillaBuild's bundled python3). Append MozillaBuild's bin so mach
+# can find sh, awk, sed and friends when invoked directly from
+# PowerShell, per
+# https://firefox-source-docs.mozilla.org/mach/windows-usage-outside-mozillabuild.html
+RUN $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine'); \
+    $newPath = \"$env:PYTHON_DIR;$env:PYTHON_DIR\\Scripts;$machinePath;$env:MOZILLABUILD\\bin\"; \
+    [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
+
 RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
     cargo-binstall -y cbindgen sccache
 
@@ -80,7 +90,8 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
     hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Write-Host '>>> mach bootstrap'; \
-    & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser </dev/null\"; \
+    Set-Location $env:MOZ_DIR; \
+    & .\\mach.ps1 --no-interactive bootstrap --application-choice=browser; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Write-Host '>>> done'
 
@@ -93,7 +104,10 @@ RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \
     )
 
 RUN Write-Host '>>> mach build'; \
-    & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach build </dev/null && sccache --show-stats\"; \
+    Set-Location $env:MOZ_DIR; \
+    & .\\mach.ps1 build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    sccache --show-stats; \
     Write-Host '>>> done'
 
 WORKDIR C:\\build
