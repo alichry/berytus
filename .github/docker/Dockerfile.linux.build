@@ -33,7 +33,7 @@ RUN cd "$MOZ_DIR/testing/web-platform/tests" && \
     echo "Regenerating CA and server certs..." && \
     openssl req -x509 -newkey rsa:2048 \
         -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
-        -days 365 -nodes -subj "/CN=web-platform-tests" \
+        -days 365000 -nodes -subj "/CN=web-platform-tests" \
         -addext "basicConstraints = critical, CA:TRUE" \
         -addext "keyUsage = keyCertSign" \
         -addext "extendedKeyUsage = serverAuth" \
@@ -50,23 +50,14 @@ RUN cd "$MOZ_DIR/testing/web-platform/tests" && \
         -addext "subjectAltName=$CA_SAN" && \
     openssl x509 -req -in /tmp/wpt.csr \
         -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
-        -CAcreateserial -out tools/certs/web-platform.test.pem -days 365 \
+        -CAcreateserial -out tools/certs/web-platform.test.pem \
+        -days 365000 \
         -copy_extensions copy && \
     rm -f /tmp/wpt.csr && \
     echo "New CA cert validity:" && \
     openssl x509 -in tools/certs/cacert.pem -noout -dates && \
     echo "New Server cert validity:" && \
     openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
-
-# Fix typing_extensions for WPT
-# The current, bundled typing_extensions at
-# testing/web-platform/tests/tools/third_party/
-# is too old (missing `deprecated`, added in 4.5.0),
-# causing mach wpt to fail. By removing the bundled
-# version (4.1.1), mach wpt will install a newer version
-# via pip. This probably needs to be removed once we
-# use a newer (and stable) mozilla-unified changeset
-RUN rm -rf "$MOZ_DIR/testing/web-platform/tests/tools/third_party/typing_extensions"
 
 WORKDIR "$MOZ_DIR"
 

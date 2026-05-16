@@ -13,7 +13,7 @@ ENV MOZ_DIR=C:\\build\\mozilla-unified \
     CARGO_HOME=C:\\Users\\ContainerAdministrator\\.cargo \
     RUSTUP_HOME=C:\\Users\\ContainerAdministrator\\.rustup \
     VS_BUILDTOOLS=C:\\BuildTools \
-    PYTHON_DIR=C:\\Python38 \
+    PYTHON_DIR=C:\\Python3 \
     MOZILLABUILD=C:\\build\\mozilla-build
 
 # Exclude the build root from Windows Defender real-time scans to avoid
@@ -27,11 +27,10 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
     iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-# Core build deps via Chocolatey. Pin Python to 3.8 because mach on this
-# changeset expects it.
+# Core build deps via Chocolatey.
 RUN choco install -y --no-progress \
         hg nasm llvm make 7zip git nodejs-lts; \
-    choco install -y --no-progress python --version=3.8.10 --params \"/InstallDir:$env:PYTHON_DIR\"
+    choco install -y --no-progress python --params \"/InstallDir:$env:PYTHON_DIR\"
 
 # Visual Studio 2022 Build Tools with C++ workload + Windows 11 SDK.
 ADD https://aka.ms/vs/17/release/vs_buildtools.exe C:\\TEMP\\vs_buildtools.exe
@@ -76,43 +75,46 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
         'is_set_up = true' \
     )
 
-# Clone mozilla-unified at tip.
-RUN Write-Host '>>> hg clone'; \
-    New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
-    hg clone --stream https://hg.mozilla.org/mozilla-unified $env:MOZ_DIR; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-# run mach bootstrap against the latest clone (so bootstrap's own
-# logic is current).
-RUN Write-Host '>>> mach bootstrap'; \
+RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
+    Write-Host ">>> hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR"; \
+    hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> mach bootstrap'; \
     & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach --no-interactive bootstrap --application-choice=browser </dev/null\"; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-# Pin to the requeste changeset for the seed build.
-RUN Write-Host '>>> hg update'; \
-    hg --cwd $env:MOZ_DIR update -r $env:MOZ_REV; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> done'
 
 # Write the mozconfig used for the seed build (no Berytus pieces yet).
 RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \
         'ac_add_options --enable-application=browser', \
         'ac_add_options --enable-optimize', \
         'ac_add_options --disable-debug', \
-        'ac_add_options --without-wasm-sandboxed-libraries', \
         'ac_add_options --with-ccache=sccache' \
     )
 
-# Seed mach build under the MSVC environment. We invoke vcvars64.bat from
-# cmd so cl.exe / link.exe / Windows SDK end up on the env, then hand off
-# to MozillaBuild's bash so mach runs through the canonical MozillaBuild
-# shell (its PATH, hg, python, moztools).
-SHELL ["cmd", "/S", "/C"]
-RUN refreshenv && \
-    call "%VS_BUILDTOOLS%\\VC\\Auxiliary\\Build\\vcvars64.bat" && \
-    "%MOZILLABUILD%/msys2/usr/bin/bash.exe" -lc "cd /c/build/mozilla-unified && ./mach build && sccache --show-stats"
+# Bake the MSVC build env (PATH, INCLUDE, LIB, LIBPATH, WindowsSdkDir,
+# VCToolsInstallDir, etc.) into machine-level env so every subsequent
+# RUN and every container process inherits the MSVC toolchain on PATH
+# without having to call vcvars64.bat. Captures the diff between cmd's
+# env before and after sourcing vcvars64.bat and persists only the
+# new/changed entries via SetEnvironmentVariable('Machine'). We avoid
+# Invoke-Environment because it ships in PSCX (not installed here),
+# not in the base PowerShell.
+RUN $vcvars = \"$env:VS_BUILDTOOLS\\VC\\Auxiliary\\Build\\vcvars64.bat\"; \
+    if (-not (Test-Path $vcvars)) { Write-Host \"vcvars64.bat not found: $vcvars\"; exit 1 }; \
+    $before = @{}; \
+    (& cmd /S /C 'set') | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $before[$Matches[1]] = $Matches[2] } }; \
+    $after = @{}; \
+    (& cmd /S /C \"call `\"$vcvars`\" >NUL && set\") | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $after[$Matches[1]] = $Matches[2] } }; \
+    foreach ($k in $after.Keys) { \
+        if (-not $before.ContainsKey($k) -or $before[$k] -ne $after[$k]) { \
+            Write-Host \"Set machine env: $k = $after[$k]\"; \
+            [System.Environment]::SetEnvironmentVariable($k, $after[$k], 'Machine'); \
+        } \
+    }
 
-# cd /d "%MOZ_DIR%" && \
-# mach build && \
-# sccache --show-stats
+RUN Write-Host '>>> mach build'; \
+    & \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\" -lc \"cd /c/build/mozilla-unified && ./mach build </dev/null && sccache --show-stats\"; \
+    Write-Host '>>> done'
 
 WORKDIR C:\\build

@@ -41,19 +41,15 @@ RUN mkdir -p "$MOZBUILD_STATE_PATH" "$SCCACHE_DIR" && \
     printf '[mach_telemetry]\nis_enabled = false\nis_set_up = true\n' > "$MOZBUILD_STATE_PATH/machrc"
 
 RUN mkdir -p "$MOZ_DIR" && \
-    hg clone --stream https://hg.mozilla.org/mozilla-unified "$MOZ_DIR" && \
-    hg --cwd "$MOZ_DIR" update -r "$MOZ_REV"
+    hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r "$MOZ_REV" "$MOZ_DIR"
 
-# TODO(berytus): Once we assume a recent revision, we can use
-# mach bootstrap to prepare dependecies.
-#RUN cd "$MOZ_DIR" && ./mach --no-interactive bootstrap --application-choice=browser
+RUN cd "$MOZ_DIR" && \
+    ./mach --no-interactive bootstrap --application-choice=browser
 
 RUN printf '%s\n' \
-        'ac_add_options --disable-bootstrap' \
         'ac_add_options --enable-application=browser' \
         'ac_add_options --enable-optimize' \
         'ac_add_options --disable-debug' \
-        'ac_add_options --without-wasm-sandboxed-libraries' \
         'ac_add_options --with-ccache=sccache' \
         > "$MOZ_DIR/mozconfig"
 
