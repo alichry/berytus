@@ -1,6 +1,6 @@
---- dom/webidl/Navigator.webidl.orig	2025-10-04 10:01:54
-+++ dom/webidl/Navigator.webidl	2025-10-04 10:16:19
-@@ -287,6 +287,11 @@
+--- dom/webidl/Navigator.webidl.orig	2026-05-15 21:51:47
++++ dom/webidl/Navigator.webidl	2026-05-15 21:52:14
+@@ -281,6 +281,11 @@
  };
  
  partial interface Navigator {

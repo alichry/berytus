@@ -144,9 +144,9 @@ class ChallangeMessagingSequenceValidator implements ILogicalValidator {
         const { challenge } = input.args;
         switch (challenge.type) {
             ${infos.map(info => {
-                const chName = info.getPropertyOrThrow("type").getType().getLiteralValue() as string;
-                const enumDecl = msgNameEnums[chName];
-                return `case "${chName}": {
+        const chName = info.getPropertyOrThrow("type").getType().getLiteralValue() as string;
+        const enumDecl = msgNameEnums[chName];
+        return `case "${chName}": {
                 const names = [${enumDecl.getMembers().map(m => JSON.stringify(m.getValue())).join(", ")}];
                 const currentCount = this.#count(operation.id, challenge.id);
                 if (currentCount >= names.length) {
@@ -159,7 +159,7 @@ class ChallangeMessagingSequenceValidator implements ILogicalValidator {
                 this.#increment(operation.id, challenge.id);
                 break;
             }`
-            }).join("\n\t\t\t")}
+    }).join("\n\t\t\t")}
         }
     }
 
@@ -393,26 +393,38 @@ const inputIs = <RT extends RequestType>(requestType: RT, input: { context: unkn
 }
 
 /**
- * Implementation copied from Schemas.sys.mjs's Context
+ * Implementation adapted from Schemas.sys.mjs's Context
  */
 class ValidationContext {
     path: Array<string> = [];
     manifestVersion = 2;
     currentChoices = new Set();
     choicePathIndex = 0;
+    suppressedWarnings: Array<Error> | null = null;
+
+    // from Schemas.sys.mjs
+    // If the message is a function, call it and return the result.
+    // Otherwise, assume it's a string.
+    forceString(msg: unknown) {
+        if (typeof msg === "function") {
+            return msg();
+        }
+        return msg;
+    }
 
     matchManifestVersion() {
         return true;
     }
     checkLoadURL(url: string) {
-        throw new Error("Method not implemented");
+        throw new Error("Method ValidationContext::checkLoadURL() not implemented");
     }
     hasPermission(perm: string) {
-        throw new Error("Method not implemented");
+        throw new Error("Method ValidationContext::hasPermission() not implemented");
     }
-    logError(err: string | Error) {
-        console.error(err);
+    isPermissionRevokable(_permission: string) {
+        throw new Error("Method ValidationContext::isPermissionRevokable() not implemented");
     }
+
     withPath(component: string, callback: (...args: any[]) => any) {
         this.path.push(component);
         try {
@@ -427,20 +439,31 @@ class ValidationContext {
         return path.join(".");
     }
 
-
     get currentTarget() {
         return this.path.join(".");
     }
 
+    get ignoreUnrecognizedProperties() {
+        return false;
+    }
+
+    get cloneScope(): undefined | typeof globalThis {
+        return undefined;
+    }
+
+    get principal() {
+        return undefined;
+    }
+
     error(
         errorMessage: string | Function | null,
-        choicesMessage: string | Function | undefined = undefined,
+        choicesMessage: string | Function | undefined | null = undefined,
         warning: boolean = false
-    ): object {
+    ) {
         if (choicesMessage !== null) {
             let { choicePath } = this;
             if (choicePath) {
-                choicesMessage = \`.\${choicePath} must \${typeof choicesMessage === "function" ? choicesMessage() : choicesMessage}\`;
+                choicesMessage = \`.\${ choicePath } must \${ choicesMessage }\`;
             }
 
             this.currentChoices.add(choicesMessage);
@@ -450,11 +473,80 @@ class ValidationContext {
             let { currentTarget } = this;
             return {
                 error: () =>
-                    \`\${warning ? "Warning" : "Error"
-                    } processing \${currentTarget}: \${typeof errorMessage === "function" ? errorMessage() : errorMessage}\`,
+                    \`\${
+        warning ? "Warning" : "Error"
+    } processing \${ currentTarget }: \${ this.forceString(errorMessage) } \`,
             };
         }
         return { error: errorMessage };
+    }
+
+    makeError(message: string | Function, { warning = false } = {}) {
+        let error = this.forceString(this.error(message, null, warning).error);
+        if (this.cloneScope) {
+            return new this.cloneScope.Error(error);
+        }
+        return error;
+    }
+
+    logError(error: string | Error) {
+        if (this.cloneScope) {
+            Cu.reportError(
+                // Error objects logged using Cu.reportError are not associated
+                // to the related innerWindowID. This results in a leaked docshell
+                // since consoleService cannot release the error object when the
+                // extension global is destroyed.
+                typeof error == "string" ? error : String(error),
+                // Report the error with the appropriate stack trace when the
+                // is related to an actual extension global (instead of being
+                // related to a manifest validation).
+                this.principal && ChromeUtils.getCallerLocation(this.principal)
+            );
+        } else {
+            Cu.reportError(error);
+        }
+    }
+
+    logWarning(warningMessage: string) {
+        let error = this.makeError(warningMessage, { warning: true });
+        this._logNormalizedWarning(error);
+    }
+
+    _logNormalizedWarning(warningObject: Error) {
+        if (this.suppressedWarnings) {
+            this.suppressedWarnings.push(warningObject);
+            return;
+        }
+        this.logError(warningObject);
+
+        if (true /* lazy.treatWarningsAsErrors */) {
+            // This pref is false by default, and true by default in tests to
+            // discourage the use of deprecated APIs in our unit tests.
+            // If a warning is an expected part of a test, temporarily set the pref
+            // to false, e.g. with the ExtensionTestUtils.failOnSchemaWarnings helper.
+            Services.console.logStringMessage(
+                "Treating warning as error because the preference " +
+                "extensions.webextensions.warnings-as-errors is set to true"
+            );
+            if (typeof warningObject === "string") {
+                warningObject = new Error(warningObject);
+            }
+            throw warningObject;
+        }
+    }
+
+    suppressWarnings(callback: Function) {
+        let oldWarnings = this.suppressedWarnings;
+        let suppressedWarnings: Array<Error> = [];
+        this.suppressedWarnings = suppressedWarnings;
+        try {
+            return {
+                result: callback(),
+                suppressedWarnings,
+            };
+        } finally {
+            this.suppressedWarnings = oldWarnings;
+        }
     }
 
     withChoices(callback: Function): object {

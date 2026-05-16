@@ -1,5 +1,5 @@
---- toolkit/components/extensions/jar.mn.orig	2025-09-20 16:11:07
-+++ toolkit/components/extensions/jar.mn	2025-09-20 16:11:07
+--- toolkit/components/extensions/jar.mn.orig	2026-05-15 21:51:48
++++ toolkit/components/extensions/jar.mn	2026-05-15 21:52:15
 @@ -10,6 +10,7 @@
      content/extensions/parent/ext-activityLog.js (parent/ext-activityLog.js)
      content/extensions/parent/ext-alarms.js (parent/ext-alarms.js)
@@ -8,7 +8,7 @@
      content/extensions/parent/ext-browserSettings.js (parent/ext-browserSettings.js)
      content/extensions/parent/ext-browsingData.js (parent/ext-browsingData.js)
  #ifndef ANDROID
-@@ -49,6 +50,7 @@
+@@ -52,6 +53,7 @@
      content/extensions/parent/ext-webRequest.js (parent/ext-webRequest.js)
      content/extensions/parent/ext-webNavigation.js (parent/ext-webNavigation.js)
      content/extensions/child/ext-backgroundPage.js (child/ext-backgroundPage.js)

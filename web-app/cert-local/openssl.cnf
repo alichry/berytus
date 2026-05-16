@@ -9,20 +9,13 @@ subjectAltName = @alt_names
 
 [alt_names]
 DNS.0 = localhost
-DNS.1 = 127.0.0.1
 
 [berytus_extension]
 Entry.0=SEQUENCE:berytus_allowlist_entry_0
-Entry.1=SEQUENCE:berytus_allowlist_entry_1
 
 
 [berytus_allowlist_entry_0]
-key=UTF8STRING:MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE=
-sksig=UTF8STRING:mCbyJQtcEAoYZNASpLZBgK/d14TjWERM8shzt79m6ubhyC559GeaQMTb7KTiwBmNlnpfrCcaMjy7JSVnj0xnDQ==
+key=UTF8STRING:MCowBQYDK2VwAyEACIc9KLxLWvhZiX5b3TiiHeM8HP3OLGgNelFRMIXKuPQ=
+sksig=UTF8STRING:JKaVIcubAWstyW35B+kyp55Rx8drCLxrbVkbfQbJBcjJ0VD84yyEWdv6Uy4CP9mXvsnDU19yCUkv7v88T6rmAQ==
 url=UTF8STRING:https://localhost/*
-
-[berytus_allowlist_entry_1]
-key=UTF8STRING:MCowBQYDK2VwAyEAjTDlbx9pgxXagW81+z+1TyNBqZ1kp715hP8GgH6S9LE=
-sksig=UTF8STRING:mCbyJQtcEAoYZNASpLZBgK/d14TjWERM8shzt79m6ubhyC559GeaQMTb7KTiwBmNlnpfrCcaMjy7JSVnj0xnDQ==
-url=UTF8STRING:https://127.0.0.1/*
 

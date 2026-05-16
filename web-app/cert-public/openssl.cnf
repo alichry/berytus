@@ -1,0 +1,21 @@
+[req]
+req_extensions = v3_exts
+
+[v3_exts]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+1.2.3.4.22.11.23=ASN1:SEQUENCE:berytus_extension
+
+[alt_names]
+DNS.0 = poc-e2ee.berytus.io
+
+[berytus_extension]
+Entry.0=SEQUENCE:berytus_allowlist_entry_0
+
+
+[berytus_allowlist_entry_0]
+key=UTF8STRING:MCowBQYDK2VwAyEArvElRLIlWo8uvwIS3Puj4EXH5oFhAsKcvql7vmtkrXs=
+sksig=UTF8STRING:2+Gb5nFwZUowpX3tdnd8lU+l/RbNGcRSbeuLFY33pX8XiZUlQ4St8gWeC5CtWmqnUJKzd26wW4qUVPR3XTyoBg==
+url=UTF8STRING:https://poc-e2ee.berytus.io/*
+

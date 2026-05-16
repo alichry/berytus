@@ -8,6 +8,18 @@
 
 set -e
 
+# openssl --version
+# OpenSSL 3.6.1 27 Jan 2026 (Library: OpenSSL 3.6.1 27 Jan 2026)
+
+# mkdir -p web-app/cert-public
+# ./cert -n "Berytus Web App PoC (Public)" -a poc-e2ee.berytus.io -k https://poc-e2ee.berytus.io/* web-app/cert-public
+
+# mkdir -p web-app/cert-local
+# ./cert -n "Berytus Web App PoC (Local)" -a localhost -k https://localhost/* web-app/cert-local
+
+# mkdir -p lab/server
+# ./cert -n "Berytus Lab (Local)" -a localhost -a 127.0.0.1 -k https://localhost/app/a/* -k https://localhost/app/b/* lab/server
+
 # To add the self-signed cert to Mozilla's trust store:
 # brew install nss
 # brew install nspr
@@ -300,7 +312,7 @@ signCsr() {
     openssl x509 -req -in "$subjectCsr" \
         -out "$subjectCert" \
         -key "$subjectPrivKey" \
-        -sha256 -days 3650 \
+        -sha256 -days 365000 \
         -copy_extensions=copyall
 }
 

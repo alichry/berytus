@@ -2,10 +2,7 @@
 req_extensions = v3_exts
 
 [v3_exts]
-basicConstraints = CA:FALSE # Although this leaf, self-signed cert is not
-                           # required to be a CA for server auth, setting
-                           # it as such makes Firefox accept it as a trust
-                           # anchor in certdata.txt
+basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
 1.2.3.4.22.11.23=ASN1:SEQUENCE:berytus_extension
@@ -20,12 +17,12 @@ Entry.1=SEQUENCE:berytus_allowlist_entry_1
 
 
 [berytus_allowlist_entry_0]
-key=UTF8STRING:MCowBQYDK2VwAyEAwL+RoCB9lVUTRv/mzKLCLGeW7KHPwmKFIATevtCIoF4=
-sksig=UTF8STRING:btiPLfZqaLDyd7KcBm8yKp6XIv/IplrxavNt7XUohkdoEr8xIaT+IYtrWRkMSiG15AS/I7+P5MejqqzdR8pyAA==
+key=UTF8STRING:MCowBQYDK2VwAyEAnpiZjtpn/WQZF7q3kU3r3TGVYee1SS2pswmGym74hjM=
+sksig=UTF8STRING:+nSvebalvIay8M6Cb4x6jFqchJ6fgXNzN/hc74i4mm1SZcU/f4n/1usNRU49pCGjGpxYDi8l7lQYnlzx/YUmBQ==
 url=UTF8STRING:https://localhost/app/a/*
 
 [berytus_allowlist_entry_1]
-key=UTF8STRING:MCowBQYDK2VwAyEAB45G0A2lDiLvwb7IJw/F+toL7GjKwGY2vmRvG7CrB0w=
-sksig=UTF8STRING:Pa5RC5tT7tdYG2ALradQ8qWOgBrHmFZfqDptpIb7sMHKpPkJ1/K6e1ABwiYMYPasu3Y06sOnYVi2HxeL0NSMDw==
+key=UTF8STRING:MCowBQYDK2VwAyEA0oHR71kabA+udgi5akSWGI9MVYd0Jzz2v0A2zdgMnRk=
+sksig=UTF8STRING:71cAUTMDzlCBTuE+W7A/STOHJsd/pFzzLtnemMluy5CGZMIPfU9ku10UNZhRCCORgtLpIVnzNrDMe0vIq7LPBw==
 url=UTF8STRING:https://localhost/app/b/*
 

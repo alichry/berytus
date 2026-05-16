@@ -76,9 +76,11 @@ declare global {
             output: O,
             imports: M
         ): asserts output is O & { [k in keyof M]: ModuleMap[M[k]] extends Record<k, infer P> ? P : never }
+        getCallerLocation(principal: unknown): object;
     }
     interface IComponentsUtils {
         cloneInto<O extends unknown>(obj: O, cloneScope: object, options?: unknown): O;
+        reportError(error: string | Error, stack?: object): void;
     }
     interface ActorMessage { name: string; data: any }
     abstract class JSWindowActorParent {
