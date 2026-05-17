@@ -18,7 +18,7 @@ env:
   MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
   MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
   MOZ_DIR_CONFIG: /Users/runner/work/berytus/mozilla-unified/mozconfig
-  MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin24.6.0
+  MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin
   MOZBUILD_STATE_PATH: /Users/runner/work/berytus/mozbuild
   SCCACHE_DIR: /Users/runner/work/berytus/sccache
   SCCACHE_CACHE_SIZE: 5G
@@ -178,9 +178,10 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
 
       - name: Export mozbuild report from build image
+        working-directory: ${{ env.MOZ_DIR }}
         run: |
           mkdir -p "${{ runner.temp }}/out"
-          cp -r "${{ env.MOZ_OBJ_DIR }}/.mozbuild" "${{ runner.temp }}/out"
+          cp -r obj-*/.mozbuild "${{ runner.temp }}/out"
 
       - name: Upload mozbuild report artifact
         uses: actions/upload-artifact@v4
