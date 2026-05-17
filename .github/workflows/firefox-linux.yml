@@ -256,6 +256,7 @@ jobs:
             # -rw-r--r--    1 ali  staff     0B May 17 13:13 last_log.json
             # -rw-r--r--    1 ali  staff   232K May 16 11:41 profile_build_resources.json
             # -rw-r--r--    1 ali  staff   406K May 16 11:41 warnings.json
+            cd "$MOZ_DIR"
             cp -r obj-*/.mozbuild /dist
 
       - name: Upload base image mozbuild report artifact
@@ -368,6 +369,7 @@ jobs:
           shell: bash
           options: -v ${{ runner.temp }}/out:/dist
           run: |
+            cd "$MOZ_DIR"
             cp -r obj-*/.mozbuild /dist
 
       - name: Upload build image mozbuild report artifact

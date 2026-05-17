@@ -244,6 +244,7 @@ jobs:
           shell: bash
           options: -v ${{ runner.temp }}/out:C:/dist
           run: |
+            cd "$(cygpath -u "$MOZ_DIR")"
             cp -r obj-*/.mozbuild /c/dist
 
       - name: Upload base image mozbuild report artifact
@@ -345,6 +346,7 @@ jobs:
           shell: bash
           options: -v ${{ runner.temp }}/out:C:/dist
           run: |
+            cd "$(cygpath -u "$MOZ_DIR")"
             cp -r obj-*/.mozbuild /c/dist
 
       - name: Upload build image mozbuild report artifact
