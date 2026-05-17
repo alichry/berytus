@@ -188,6 +188,8 @@ jobs:
           name: "firefox-build-macos-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
           if-no-files-found: error
+          include-hidden-files: true
+
   check-cache:
     runs-on: macos-14
     needs: build

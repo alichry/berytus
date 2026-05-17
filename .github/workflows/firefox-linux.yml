@@ -269,6 +269,7 @@ jobs:
           name: "firefox-base-linux-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
           if-no-files-found: error
+          include-hidden-files: true
 
   build-berytus:
     runs-on: ubuntu-24.04
@@ -386,6 +387,7 @@ jobs:
           name: "firefox-build-linux-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
           if-no-files-found: error
+          include-hidden-files: true
 
   test:
     runs-on: ubuntu-24.04
