@@ -41,6 +41,11 @@ jobs:
       - name: Checkout Berytus source
         uses: actions/checkout@v4
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v6
         with:
