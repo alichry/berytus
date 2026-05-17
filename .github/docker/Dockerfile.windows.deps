@@ -16,7 +16,7 @@ ENV BUILD_DIR="C:\\build" \
     RUSTUP_HOME="C:\\Users\\ContainerAdministrator\\.rustup" \
     VS_BUILDTOOLS="C:\\BuildTools" \
     PYTHON_DIR="C:\\Python311" \
-    MOZILLABUILD_DIR="C:\\build\\mozilla-build" \
+    MOZILLABUILD="C:\\build\\mozilla-build" \
     DEFAULT_MOZILLABUILD_DIR="C:\\mozilla-build" \
     FILE_MOZILLABUILDSETUP="C:\\TEMP\\MozillaBuildSetup.exe" \
     FILE_RUSTUPINIT="C:\\TEMP\\rustup-init.exe" \
@@ -57,11 +57,11 @@ RUN & \"$env:FILE_RUSTUPINIT\" -y --default-toolchain stable --default-host x86_
 # MozillaBuild: the canonical Windows shell + tooling layer mach expects.
 ADD https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe "${FILE_MOZILLABUILDSETUP}"
 RUN New-Item -ItemType Directory -Force -Path C:\\build | Out-Null; \
-    $p = Start-Process -FilePath \"$env:FILE_MOZILLABUILDSETUP\" -Wait -PassThru -ArgumentList \"/S /D=$env:MOZILLABUILD_DIR\"; \
+    $p = Start-Process -FilePath \"$env:FILE_MOZILLABUILDSETUP\" -Wait -PassThru -ArgumentList \"/S /D=$env:MOZILLABUILD\"; \
     if ($p.ExitCode -ne 0) { exit $p.ExitCode }; \
     if (Test-Path \"$env:DEFAULT_MOZILLABUILD_DIR\") { \
-        Write-Host \"NSIS /D= not honored by MozillaBuild installer; relocating $env:DEFAULT_MOZILLABUILD_DIR to $env:MOZILLABUILD_DIR\"; \
-        Move-Item -Path \"$env:DEFAULT_MOZILLABUILD_DIR\" -Destination \"$env:MOZILLABUILD_DIR\"; \
+        Write-Host \"NSIS /D= not honored by MozillaBuild installer; relocating $env:DEFAULT_MOZILLABUILD_DIR to $env:MOZILLABUILD\"; \
+        Move-Item -Path \"$env:DEFAULT_MOZILLABUILD_DIR\" -Destination \"$env:MOZILLABUILD\"; \
     } \
     Remove-Item -Force \"$env:FILE_MOZILLABUILDSETUP\"
 
@@ -73,7 +73,7 @@ RUN $python_path = (Get-Command python).Source; \
     }
         # Write-Host \"Modifying PATH:\"; \
         # $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-        # $newPath = \"$env:PYTHON_DIR;$env:PYTHON_DIR\\Scripts;$machinePath;$env:MOZILLABUILD_DIR\\bin\"; \
+        # $newPath = \"$env:PYTHON_DIR;$env:PYTHON_DIR\\Scripts;$machinePath;$env:MOZILLABUILD\\bin\"; \
         # [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine'); \
         # $python_path = Get-Command python | Format-List -Property Source; \
         # if ($python_path -notlike \"$env:PYTHON_DIR*\") { \
