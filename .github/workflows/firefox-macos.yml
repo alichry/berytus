@@ -158,9 +158,6 @@ jobs:
               echo "::warning::sccache is not working properly; view above output for details"
           fi
           ./mach build
-          if ! ./mach resource-usage; then
-              echo "::warning::mach resource-usage failed; view above output for details"
-          fi
           if ! sccache --show-stats; then
               echo "::warning::sccache is not working properly; view above output for details"
           fi
@@ -181,6 +178,17 @@ jobs:
             ${{ env.SECRETSTAR_BUILD_DIR3 }}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
 
+      - name: Export mozbuild report from build image
+        run: |
+          mkdir -p "${{ runner.temp }}/out"
+          cp -r "${{ env.MOZ_OBJ_DIR }}/.mozbuild" "${{ runner.temp }}/out"
+
+      - name: Upload mozbuild report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firefox-build-macos-x86_64-mozbuild-report"
+          path: "${{ runner.temp }}/out/.mozbuild"
+          if-no-files-found: error
   check-cache:
     runs-on: macos-14
     needs: build

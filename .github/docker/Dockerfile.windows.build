@@ -60,8 +60,7 @@ RUN Write-Host '>>> mach build'; \
     Set-Location \"$env:MOZ_DIR\"; \
     ./mach build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> mach resource-usage and sccache stats'; \
-    ./mach resource-usage; \
+    Write-Host '>>> sccache stats'; \
     sccache --show-stats; \
     Write-Host '>>> done'
 
