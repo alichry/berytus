@@ -33,7 +33,6 @@ env:
 jobs:
   build:
     runs-on: macos-15-intel # Kernel Version: Darwin 24.6.0
-    timeout-minutes: 360
     outputs:
       changeset-rev: ${{ steps.changeset.outputs.rev }}
 
