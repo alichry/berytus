@@ -1,119 +1,16 @@
 # syntax=docker/dockerfile:1.7
-FROM mcr.microsoft.com/windows/servercore:ltsc2022
-
-ARG MOZ_REV
+ARG DEPS_IMAGE
+FROM ${DEPS_IMAGE}
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-ENV MOZ_DIR=C:\\build\\mozilla-unified \
-    MOZ_OBJ_DIR=C:\\build\\mozilla-unified\\obj-x86_64-pc-mingw32 \
-    MOZBUILD_STATE_PATH=C:\\build\\mozbuild \
-    SCCACHE_DIR=C:\\build\\sccache \
-    SCCACHE_CACHE_SIZE=10G \
-    CARGO_HOME=C:\\Users\\ContainerAdministrator\\.cargo \
-    RUSTUP_HOME=C:\\Users\\ContainerAdministrator\\.rustup \
-    VS_BUILDTOOLS=C:\\BuildTools \
-    PYTHON_DIR=C:\\Python311 \
-    MOZILLABUILD=C:\\build\\mozilla-build
-
-# Exclude the build root from Windows Defender real-time scans to avoid
-# significant AV overhead during compile/link. Tolerate environments where
-# Defender is absent (e.g. servercore variants without the AV stack).
-RUN try { Add-MpPreference -Force -ExclusionPath 'C:\\build' -ErrorAction Stop } \
-    catch { Write-Host \"Defender exclusion skipped: $($_.Exception.Message)\" }
-
-# Install Chocolatey
-RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
-    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-
-# Core build deps via Chocolatey.
-RUN choco install -y --no-progress \
-        nasm llvm make 7zip git nodejs-lts; \
-    choco install -y --no-progress python --version=3.11.9 --params \"/InstallDir:$env:PYTHON_DIR\"
-
-RUN python -m pip install mercurial; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    hg --version
-
-# Visual Studio 2022 Build Tools with C++ workload + Windows 11 SDK.
-ADD https://aka.ms/vs/17/release/vs_buildtools.exe C:\\TEMP\\vs_buildtools.exe
-RUN Start-Process -FilePath C:\\TEMP\\vs_buildtools.exe -Wait -ArgumentList @( \
-        '--quiet', '--wait', '--norestart', '--nocache', \
-        '--installPath', $env:VS_BUILDTOOLS, \
-        '--add', 'Microsoft.VisualStudio.Workload.VCTools', \
-        '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', \
-        '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.22621', \
-        '--includeRecommended' \
-    ); \
-    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { exit $LASTEXITCODE }; \
-    Remove-Item -Force C:\\TEMP\\vs_buildtools.exe
-
-ADD https://win.rustup.rs/x86_64 C:\\TEMP\\rustup-init.exe
-RUN & C:\\TEMP\\rustup-init.exe -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
-    Remove-Item -Force C:\\TEMP\\rustup-init.exe
-
-# MozillaBuild: the canonical Windows shell + tooling layer mach expects.
-ADD https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe C:\\TEMP\\MozillaBuildSetup.exe
-RUN New-Item -ItemType Directory -Force -Path C:\\build | Out-Null; \
-    $p = Start-Process -FilePath C:\\TEMP\\MozillaBuildSetup.exe -Wait -PassThru -ArgumentList \"/S /D=$env:MOZILLABUILD\"; \
-    if ($p.ExitCode -ne 0) { exit $p.ExitCode }; \
-    if (-not (Test-Path \"$env:MOZILLABUILD/msys2/usr/bin/bash.exe\")) { \
-        if (Test-Path 'C:\\mozilla-build\\msys2\\usr\\bin\\bash.exe') { \
-            Write-Host \"NSIS /D= not honored by MozillaBuild installer; relocating C:\\mozilla-build to $env:MOZILLABUILD\"; \
-            Move-Item -Path 'C:\\mozilla-build' -Destination $env:MOZILLABUILD; \
-        } else { \
-            Write-Host \"MozillaBuild install failed: bash.exe missing at both $env:MOZILLABUILD and C:\\mozilla-build\"; \
-            exit 1; \
-        }; \
-    }; \
-    Remove-Item -Force C:\\TEMP\\MozillaBuildSetup.exe
-
-# Prepend the choco-installed Python to machine PATH so every `python`
-# / `python.exe` lookup resolves to it (avoiding any ambiguity with
-# MozillaBuild's bundled python3). Append MozillaBuild's bin so mach
-# can find sh, awk, sed and friends when invoked directly from
-# PowerShell, per
-# https://firefox-source-docs.mozilla.org/mach/windows-usage-outside-mozillabuild.html
-RUN $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine'); \
-    $newPath = \"$env:PYTHON_DIR;$env:PYTHON_DIR\\Scripts;$machinePath;$env:MOZILLABUILD\\bin\"; \
-    [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
-
-RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
-    cargo-binstall -y cbindgen sccache
-
-RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
-    Set-Content -Path \"$env:MOZBUILD_STATE_PATH\\machrc\" -Encoding ascii -Value @( \
-        '[mach_telemetry]', \
-        'is_enabled = false', \
-        'is_set_up = true' \
-    )
-
-RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
-    Write-Host \">>> hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR\"; \
-    hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> mach bootstrap'; \
-    Set-Location $env:MOZ_DIR; \
-    & .\\mach.ps1 --no-interactive bootstrap --application-choice=browser; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> done'
-
-# Write the mozconfig used for the seed build (no Berytus pieces yet).
-RUN Set-Content -Path \"$env:MOZ_DIR\\mozconfig\" -Encoding ascii -Value @( \
-        'ac_add_options --enable-application=browser', \
-        'ac_add_options --enable-optimize', \
-        'ac_add_options --disable-debug', \
-        'ac_add_options --with-ccache=sccache' \
-    )
-
 RUN Write-Host '>>> mach build'; \
-    Set-Location $env:MOZ_DIR; \
-    & .\\mach.ps1 build; \
+    Set-Location \"$env:MOZ_DIR\"; \
+    ./mach build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> mach build and stats'; \
-    & .\\mach.ps1 resource-usage; \
+    Write-Host '>>> mach resource-usage and sccache stats'; \
+    ./mach resource-usage; \
     sccache --show-stats; \
     Write-Host '>>> done'
 
-WORKDIR C:\\build
+WORKDIR "${MOZ_DIR}"

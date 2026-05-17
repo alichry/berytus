@@ -14,13 +14,9 @@ RUN bash -lc "/c/berytus/port export \"$(cygpath -u \"%MOZ_DIR%\")\""
 RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm install && \
     cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && npm install
 
-# Build under the MSVC environment. mozconfig was written by the base image
-# and pins --with-ccache=sccache.
-RUN call "%VS_BUILDTOOLS%\\VC\\Auxiliary\\Build\\vcvars64.bat" && \
-    cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm run build && \
-    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && set CI=false&& npm run build && \
-    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && bash -lc "./moz.build.sh" && \
-    cd /d "%MOZ_DIR%" && mach build && sccache --show-stats
+RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm run build && \
+    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && npm run build && \
+    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && bash -lc "./moz.build.sh"
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
 # bundled OpenSSL supports -addext / -copy_extensions.
@@ -59,7 +55,17 @@ RUN bash -lc "set -e; cd \"$(cygpath -u \"%MOZ_DIR%\")/testing/web-platform/test
     echo 'New Server cert validity:'; \
     openssl x509 -in tools/certs/web-platform.test.pem -noout -dates"
 
-WORKDIR C:\\build\\mozilla-unified
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+RUN Write-Host '>>> mach build'; \
+    Set-Location \"$env:MOZ_DIR\"; \
+    ./mach build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> mach resource-usage and sccache stats'; \
+    ./mach resource-usage; \
+    sccache --show-stats; \
+    Write-Host '>>> done'
+
+WORKDIR "${MOZ_DIR}"
 
 COPY --chmod=0755 <<'EOF' C:/berytus/mach.cmd
 @echo off
