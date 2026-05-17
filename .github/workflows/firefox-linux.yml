@@ -432,7 +432,7 @@ jobs:
           shell: bash
           run: |
             export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
-            apt-get update -y && apt-get install -y --no-install-recommends xvfb
+            DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends xvfb
             xvfb-run -a ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
 
   package:
