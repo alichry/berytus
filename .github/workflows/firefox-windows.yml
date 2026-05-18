@@ -219,7 +219,7 @@ jobs:
           if-no-files-found: error
 
   post-build-base:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     needs: [prepare-context, build-base]
     if: needs.build-base.result == 'success' || needs.build-base.result == 'skipped'
     permissions:
@@ -329,7 +329,7 @@ jobs:
           if-no-files-found: error
 
   post-build-berytus:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     needs: [prepare-context, build-berytus]
     if: needs.build-berytus.result == 'success' || needs.build-berytus.result == 'skipped'
     permissions:

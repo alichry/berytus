@@ -276,6 +276,9 @@ jobs:
           CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
             | tail +3 | sed 's/^[[:space:]]*//' \
             | awk '{printf "permitted;%s\n", $0}')
+          echo "$CA_SAN"
+          echo "======"
+          echo "$CA_NC"
           echo "Regenerating CA and server certs..."
           openssl req -x509 -newkey rsa:2048 \
             -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
