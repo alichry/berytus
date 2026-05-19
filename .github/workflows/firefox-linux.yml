@@ -460,5 +460,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firefox-berytus-linux-x86_64
-          path: ${{ runner.temp }}/out/*.tar.bz2
+          path: ${{ runner.temp }}/out/*.tar.xz
           if-no-files-found: error
