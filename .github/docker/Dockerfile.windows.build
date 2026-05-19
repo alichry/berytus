@@ -6,9 +6,8 @@ WORKDIR C:/berytus
 COPY port C:/berytus/port
 COPY mozilla-unified C:/berytus/mozilla-unified/
 
-# Run port export under Git Bash. port is a POSIX sh script.
 SHELL ["cmd", "/S", "/C"]
-RUN bash -lc "/c/berytus/port export \"$(cygpath -u \"%MOZ_DIR%\")\""
+RUN "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "/c/berytus/port export \"$(cygpath -u \"%MOZ_DIR%\")\""
 
 # Install Berytus toolkit + secretstar npm deps.
 RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm install && \
@@ -16,11 +15,11 @@ RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm install && \
 
 RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm run build && \
     cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && npm run build && \
-    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && bash -lc "./moz.build.sh"
+    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "./moz.build.sh"
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
 # bundled OpenSSL supports -addext / -copy_extensions.
-RUN bash -lc "set -e; cd \"$(cygpath -u \"%MOZ_DIR%\")/testing/web-platform/tests\"; \
+RUN "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "set -e; cd \"$(cygpath -u \"%MOZ_DIR%\")/testing/web-platform/tests\"; \
     echo 'Current CA cert validity:'; \
     openssl x509 -in tools/certs/cacert.pem -noout -dates; \
     echo 'Current Server cert validity:'; \

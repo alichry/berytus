@@ -235,17 +235,13 @@ jobs:
 
       - name: Export mozbuild report from base image
         id: export-base-image-mozbuild-report
-        uses: addnab/docker-run-action@v3
-        with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          image: ${{ needs.prepare-context.outputs.base-image }}
-          shell: bash
-          options: -v ${{ runner.temp }}/out:C:/dist
-          run: |
-            cd "$(cygpath -u "$MOZ_DIR")"
-            cp -r obj-*/.mozbuild /c/dist
+        shell: powershell
+        run: |
+          docker run --rm `
+            -v "${{ runner.temp }}/out:C:/dist" `
+            --entrypoint powershell `
+            ${{ needs.prepare-context.outputs.base-image }} `
+            -NoProfile -Command 'cp -r obj-*/.mozbuild C:/dist'
 
       - name: Upload base image mozbuild report artifact
         uses: actions/upload-artifact@v4
@@ -336,19 +332,22 @@ jobs:
       packages: read
       actions: write
     steps:
-      - name: Export mozbuild report from build image
-        id: export-build-image-mozbuild-report
-        uses: addnab/docker-run-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          image: ${{ needs.prepare-context.outputs.build-image }}
-          shell: bash
-          options: -v ${{ runner.temp }}/out:C:/dist
-          run: |
-            cd "$(cygpath -u "$MOZ_DIR")"
-            cp -r obj-*/.mozbuild /c/dist
+
+      - name: Export mozbuild report from build image
+        id: export-build-image-mozbuild-report
+        shell: powershell
+        run: |
+          docker run --rm `
+            -v "${{ runner.temp }}/out:C:/dist" `
+            --entrypoint powershell `
+            ${{ needs.prepare-context.outputs.build-image }} `
+            -NoProfile -Command 'cp -r obj-*/.mozbuild -Destination C:/dist'
 
       - name: Upload build image mozbuild report artifact
         uses: actions/upload-artifact@v4

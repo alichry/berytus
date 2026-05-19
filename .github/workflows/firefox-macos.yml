@@ -273,9 +273,12 @@ jobs:
           CA_SAN=$(openssl x509 -in tools/certs/cacert.pem -noout -ext subjectAltName \
             | tail -1 | sed 's/^[[:space:]]*//')
           echo "Extracting Name Constraints from existing CA cert..."
+          openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
+            | tail +3 | sed 's/^[[:space:]]*//'
+          echo "====="
           CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
             | tail +3 | sed 's/^[[:space:]]*//' \
-            | awk '{printf "permitted;%s\n", $0}')
+            | awk '/^DNS:/{printf "permitted;%s\n", $0}')
           echo "$CA_SAN"
           echo "======"
           echo "$CA_NC"
@@ -345,7 +348,7 @@ jobs:
 
       - name: Clone mozilla-esr140 at changeset
         run: |
-          hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r "${{ needs.build.outputs.changeset-rev }}" "$MOZ_DIR"
+          hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r "${{ needs.build.outputs.changeset-rev }}" "$MOZ_DIR"
 
       - name: Export Berytus to mozilla-unified
         run: |

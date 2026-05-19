@@ -454,7 +454,7 @@ jobs:
           options: -v ${{ runner.temp }}/out:/dist
           run: |
             ./mach package
-            cp obj-*/dist/*.tar.bz2 /dist/
+            cp obj-*/dist/*.tar.xz /dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

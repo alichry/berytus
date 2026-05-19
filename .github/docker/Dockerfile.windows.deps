@@ -94,8 +94,8 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCC
     )
 
 RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
-    Write-Host \">>> hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR\"; \
-    hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
+    Write-Host \">>> hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR\"; \
+    hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Write-Host '>>> mach bootstrap'; \
     Set-Location $env:MOZ_DIR; \

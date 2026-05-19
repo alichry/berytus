@@ -41,7 +41,7 @@ RUN mkdir -p "$MOZBUILD_STATE_PATH" "$SCCACHE_DIR" && \
     printf '[mach_telemetry]\nis_enabled = false\nis_set_up = true\n' > "$MOZBUILD_STATE_PATH/machrc"
 
 RUN mkdir -p "$MOZ_DIR" && \
-    hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r "$MOZ_REV" "$MOZ_DIR"
+    hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r "$MOZ_REV" "$MOZ_DIR"
 
 RUN cd "$MOZ_DIR" && \
     ./mach --no-interactive bootstrap --application-choice=browser
