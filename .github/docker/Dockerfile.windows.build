@@ -6,20 +6,23 @@ WORKDIR C:/berytus
 COPY port C:/berytus/port
 COPY mozilla-unified C:/berytus/mozilla-unified/
 
-SHELL ["cmd", "/S", "/C"]
-RUN "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "/c/berytus/port export \"$(cygpath -u \"%MOZ_DIR%\")\""
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+RUN "tree \"${MOZILLABUILD}/msys2\""
+
+RUN "${MOZILLABUILD}/msys2/usr/bin/bash.exe" -lc "/c/berytus/port export \"$(cygpath -u \"${MOZ_DIR}\")\""
 
 # Install Berytus toolkit + secretstar npm deps.
-RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm install && \
-    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && npm install
+RUN cd "${MOZILLABUILD}/toolkit/components/berytus" && npm install && \
+    cd "${MOZILLABUILD}/browser/extensions/secretstar" && npm install
 
-RUN cd /d "%MOZ_DIR%\\toolkit\\components\\berytus" && npm run build && \
-    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && npm run build && \
-    cd /d "%MOZ_DIR%\\browser\\extensions\\secretstar" && "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "./moz.build.sh"
+RUN cd "${MOZILLABUILD}/toolkit/components/berytus" && npm run build && \
+    cd "${MOZILLABUILD}/browser/extensions/secretstar" && npm run build && \
+    cd "${MOZILLABUILD}/browser/extensions/secretstar" && "${MOZILLABUILD}/msys2/usr/bin/bash.exe" -lc "./moz.build.sh"
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
 # bundled OpenSSL supports -addext / -copy_extensions.
-RUN "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "set -e; cd \"$(cygpath -u \"%MOZ_DIR%\")/testing/web-platform/tests\"; \
+RUN "${MOZILLABUILD}/msys2/usr/bin/bash.exe" -lc "set -e; cd \"$(cygpath -u \"${MOZ_DIR}\")/testing/web-platform/tests\"; \
     echo 'Current CA cert validity:'; \
     openssl x509 -in tools/certs/cacert.pem -noout -dates; \
     echo 'Current Server cert validity:'; \
@@ -54,7 +57,6 @@ RUN "%MOZILLABUILD%\\msys2\\usr\\bin\\bash.exe" -lc "set -e; cd \"$(cygpath -u \
     echo 'New Server cert validity:'; \
     openssl x509 -in tools/certs/web-platform.test.pem -noout -dates"
 
-SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 RUN Write-Host '>>> mach build'; \
     Set-Location \"$env:MOZ_DIR\"; \
     ./mach build; \

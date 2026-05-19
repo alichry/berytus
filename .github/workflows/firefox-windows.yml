@@ -233,6 +233,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Output Directory
+        shell: powershell
+        run: |
+          mkdir ${{ runner.temp }}/out
+
       - name: Export mozbuild report from base image
         id: export-base-image-mozbuild-report
         shell: powershell
@@ -339,6 +344,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Output Directory
+        shell: powershell
+        run: |
+          mkdir ${{ runner.temp }}/out
+
       - name: Export mozbuild report from build image
         id: export-build-image-mozbuild-report
         shell: powershell
@@ -347,7 +357,7 @@ jobs:
             -v "${{ runner.temp }}/out:C:/dist" `
             --entrypoint powershell `
             ${{ needs.prepare-context.outputs.build-image }} `
-            -NoProfile -Command 'cp -r obj-*/.mozbuild -Destination C:/dist'
+            -NoProfile -Command 'cp -r obj-*/.mozbuild C:/dist'
 
       - name: Upload build image mozbuild report artifact
         uses: actions/upload-artifact@v4
