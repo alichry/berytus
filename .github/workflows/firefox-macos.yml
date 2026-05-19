@@ -265,6 +265,10 @@ jobs:
       - name: Regenerate WPT certificates
         working-directory: ${{ env.MOZ_DIR }}/testing/web-platform/tests
         run: |
+          openssl --version
+          command -v openssl
+          ls -alh "$(command -v openssl)"
+          brew info openssl
           echo "Current CA cert validity:"
           openssl x509 -in tools/certs/cacert.pem -noout -dates
           echo "Current Server cert validity:"
