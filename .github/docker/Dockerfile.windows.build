@@ -8,34 +8,30 @@ COPY mozilla-unified C:/berytus/mozilla-unified/
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-RUN echo "000"; tree $env:MOZILLABUILD/msys2
-RUN echo "111"; tree \"$env:MOZILLABUILD/msys2\"
-RUN echo "222"; tree '$env:MOZILLABUILD/msys2'
-RUN echo "333"; tree "$env:MOZILLABUILD/msys2"
 
-RUN & \"$env:MOZILLABUIL/msys2/usr/bin/bash.exe\" -lc '/c/berytus/port export \"$(cygpath -u \"$env:MOZ_DIR\")\"'; \
+RUN & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc '/c/berytus/port export \"$(cygpath -u \"$env:MOZ_DIR\")\"'; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Install Berytus toolkit + secretstar npm deps.
-RUN cd \"$env:MOZILLABUILD/toolkit/components/berytus\"; \
+RUN cd "$env:MOZILLABUILD/toolkit/components/berytus"; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    cd \"$env:MOZILLABUILD/browser/extensions/secretstar\"; \
+    cd "$env:MOZILLABUILD/browser/extensions/secretstar"; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-RUN cd \"$env:MOZILLABUILD/toolkit/components/berytus\"; \
+RUN cd "$env:MOZILLABUILD/toolkit/components/berytus"; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     npm run build; \
-    cd \"$env:MOZILLABUILD/browser/extensions/secretstar\"; \
+    cd "$env:MOZILLABUILD/browser/extensions/secretstar"; \
     npm run build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    cd \"$env:MOZILLABUILD/browser/extensions/secretstar\"; \
-    & \"$env:MOZILLABUIL/msys2/usr/bin/bash.exe\" -lc "./moz.build.sh"
+    cd "$env:MOZILLABUILD/browser/extensions/secretstar"; \
+    & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "./moz.build.sh"
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
 # bundled OpenSSL supports -addext / -copy_extensions.
-RUN & \"$env:MOZILLABUIL/msys2/usr/bin/bash.exe\" -lc "set -e; cd \"$(cygpath -u \"$env:MOZ_DIR\")/testing/web-platform/tests\"; \
+RUN & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "set -e; cd \"$(cygpath -u \"$env:MOZ_DIR\")/testing/web-platform/tests\"; \
     echo 'Current CA cert validity:'; \
     openssl x509 -in tools/certs/cacert.pem -noout -dates; \
     echo 'Current Server cert validity:'; \
