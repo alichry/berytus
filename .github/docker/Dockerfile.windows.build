@@ -9,25 +9,27 @@ COPY mozilla-unified C:/berytus/mozilla-unified/
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 
-RUN & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc '/c/berytus/port export \"$(cygpath -u \"$env:MOZ_DIR\")\"'; \
+RUN $mozUnix = & "$env:MOZILLABUILD/msys2/usr/bin/cygpath.exe" -u "$env:MOZ_DIR"; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "/c/berytus/port export '$mozUnix'"; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Install Berytus toolkit + secretstar npm deps.
-RUN cd "$env:MOZILLABUILD/toolkit/components/berytus"; \
+RUN cd "$env:MOZ_DIR/toolkit/components/berytus"; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    cd "$env:MOZILLABUILD/browser/extensions/secretstar"; \
+    cd "$env:MOZ_DIR/browser/extensions/secretstar"; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-RUN cd "$env:MOZILLABUILD/toolkit/components/berytus"; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    npm run build; \
-    cd "$env:MOZILLABUILD/browser/extensions/secretstar"; \
+RUN cd "$env:MOZ_DIR/toolkit/components/berytus"; \
     npm run build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    cd "$env:MOZILLABUILD/browser/extensions/secretstar"; \
-    & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "./moz.build.sh"
+    cd "$env:MOZ_DIR/browser/extensions/secretstar"; \
+    npm run build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "./moz.build.sh"; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
 # bundled OpenSSL supports -addext / -copy_extensions.
