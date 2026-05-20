@@ -226,7 +226,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install mercurial openssl bc jq
+          brew install mercurial openssl@3 bc jq
+          brew link openssl@3
 
       - name: Clone mozilla-esr140 at changeset
         run: |
