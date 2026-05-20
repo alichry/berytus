@@ -265,7 +265,6 @@ jobs:
       - name: Regenerate WPT certificates
         working-directory: ${{ env.MOZ_DIR }}/testing/web-platform/tests
         run: |
-          openssl --version
           command -v openssl
           ls -alh "$(command -v openssl)"
           brew info openssl
