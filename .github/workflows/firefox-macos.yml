@@ -227,7 +227,7 @@ jobs:
       - name: Install system dependencies
         run: |
           brew install mercurial openssl@3 bc jq
-          brew unlink openssl@1
+          brew unlink openssl
           brew link --force openssl@3
           ls -alh /opt/homebrew/bin/openssl || true
           # ln -sf /opt/homebrew/bin/openssl /opt/homebrew/Cellar/openssl@3/3.6.2/bin/openssl
