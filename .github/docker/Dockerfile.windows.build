@@ -8,6 +8,11 @@ COPY mozilla-unified C:/berytus/mozilla-unified/
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
+# rsync isn't in MozillaBuild's msys2 by default; `port` needs it.
+RUN $null | & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc \
+        "pacman -Sy --noconfirm --needed rsync"; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 RUN $mozUnix = & "$env:MOZILLABUILD/msys2/usr/bin/cygpath.exe" -u "$env:MOZ_DIR"; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     $null | & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -l /c/berytus/port export $mozUnix; \
