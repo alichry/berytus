@@ -230,7 +230,7 @@ jobs:
           brew unlink openssl@1.1
           brew link --force --overwrite openssl@3
           ls -alh /opt/homebrew/bin/openssl || true
-          ln -sf /opt/homebrew/bin/openssl "$(brew --prefix openssl@3)/bin/openssl"
+          ln -sf "$(brew --prefix openssl@3)/bin/openssl" /opt/homebrew/bin/openssl
           ls -alh /opt/homebrew/bin/openssl || true
 
       - name: Clone mozilla-esr140 at changeset
