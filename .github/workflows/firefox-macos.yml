@@ -270,28 +270,28 @@ jobs:
       - name: Regenerate WPT certificates
         working-directory: ${{ env.MOZ_DIR }}/testing/web-platform/tests
         run: |
+          OPENSSL="$(brew --prefix openssl@3)/bin/openssl"
           command -v openssl
-          ls -alh "$(command -v openssl)"
-          brew info openssl
+          ls -alh "$OPENSSL"
           echo "Current CA cert validity:"
-          openssl x509 -in tools/certs/cacert.pem -noout -dates
+          $OPENSSL x509 -in tools/certs/cacert.pem -noout -dates
           echo "Current Server cert validity:"
-          openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
+          $OPENSSL x509 -in tools/certs/web-platform.test.pem -noout -dates
           echo "Extracting Subject Alt Names from existing CA cert..."
-          CA_SAN=$(openssl x509 -in tools/certs/cacert.pem -noout -ext subjectAltName \
+          CA_SAN=$($OPENSSL x509 -in tools/certs/cacert.pem -noout -ext subjectAltName \
             | tail -1 | sed 's/^[[:space:]]*//')
           echo "Extracting Name Constraints from existing CA cert..."
-          openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
+          $OPENSSL x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
             | tail +3 | sed 's/^[[:space:]]*//'
           echo "====="
-          CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
+          CA_NC=$($OPENSSL x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
             | tail +3 | sed 's/^[[:space:]]*//' \
             | awk '/^DNS:/{printf "permitted;%s\n", $0}')
           echo "$CA_SAN"
           echo "======"
           echo "$CA_NC"
           echo "Regenerating CA and server certs..."
-          openssl req -x509 -newkey rsa:2048 \
+          $OPENSSL req -x509 -newkey rsa:2048 \
             -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
             -days 365000 -nodes -subj "/CN=web-platform-tests" \
             -addext "basicConstraints = critical, CA:TRUE" \
@@ -300,7 +300,7 @@ jobs:
             -addext "authorityKeyIdentifier = keyid:always, issuer:always" \
             -addext "subjectAltName = $CA_SAN" \
             -addext "nameConstraints = $(echo "$CA_NC" | paste -sd',' -)"
-          openssl req -newkey rsa:2048 \
+          $OPENSSL req -newkey rsa:2048 \
             -keyout tools/certs/web-platform.test.key \
             -out /tmp/wpt.csr \
             -nodes -subj "/CN=web-platform.test" \
@@ -308,16 +308,16 @@ jobs:
             -addext "keyUsage=digitalSignature,nonRepudiation,keyEncipherment" \
             -addext "extendedKeyUsage=serverAuth" \
             -addext "subjectAltName=$CA_SAN"
-          openssl x509 -req -in /tmp/wpt.csr \
+          $OPENSSL x509 -req -in /tmp/wpt.csr \
             -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
             -CAcreateserial -out tools/certs/web-platform.test.pem \
             -days 365000 \
             -copy_extensions copy
           rm -f /tmp/wpt.csr
           echo "New CA cert validity:"
-          openssl x509 -in tools/certs/cacert.pem -noout -dates
+          $OPENSSL x509 -in tools/certs/cacert.pem -noout -dates
           echo "New Server cert validity:"
-          openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
+          $OPENSSL x509 -in tools/certs/web-platform.test.pem -noout -dates
 
       - name: Run Web Platform Tests (Berytus)
         working-directory: ${{ env.MOZ_DIR }}
