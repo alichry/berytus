@@ -8,10 +8,9 @@ COPY mozilla-unified C:/berytus/mozilla-unified/
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
-
 RUN $mozUnix = & "$env:MOZILLABUILD/msys2/usr/bin/cygpath.exe" -u "$env:MOZ_DIR"; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    $null | & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "/c/berytus/port export '$mozUnix'"; \
+    $null | & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -l /c/berytus/port export $mozUnix; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Install Berytus toolkit + secretstar npm deps.
