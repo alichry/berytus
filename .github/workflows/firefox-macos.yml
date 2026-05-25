@@ -329,11 +329,15 @@ jobs:
       - name: Run xpcshell tests (Berytus)
         working-directory: ${{ env.MOZ_DIR }}
         run: |
+          set -xe
+          touch "${{ env.MOZ_OBJ_DIR }}/CLOBBER"
           ./mach xpcshell-test --verbose-if-fails --tag berytus
 
       - name: Run xpcshell tests (Berytus WebExts)
         working-directory: ${{ env.MOZ_DIR }}
         run: |
+          set -xe
+          touch "${{ env.MOZ_OBJ_DIR }}/CLOBBER"
           ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
 
   package:
