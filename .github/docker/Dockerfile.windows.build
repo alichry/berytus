@@ -9,74 +9,91 @@ COPY mozilla-unified C:/berytus/mozilla-unified/
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # rsync isn't in MozillaBuild's msys2 by default; `port` needs it.
-RUN function msys() { "${MOZILLABUILD}/msys2/usr/bin/bash.exe" @('-lc') + @Args; } \
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
     msys 'pacman -Sy --noconfirm --needed rsync'; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-RUN function msys() { "${env:MOZILLABUILD}\\msys2\\usr\\bin\\bash.exe" @('-lc') + @Args; } \
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
-    $mozUnix = "${env:MOZILLABUILD}\\msys2\\usr\\bin\\cygpath.exe" -u "$env:MOZ_DIR"; \
+    $mozUnix = msys ('cygpath -u ' + $env:MOZ_DIR); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    msys -l /c/berytus/port export $mozUnix; \
+    $null | msys ('/c/berytus/port export ' + $mozUnix); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Install Berytus toolkit + secretstar npm deps.
-RUN cd "$env:MOZ_DIR/toolkit/components/berytus"; \
+RUN Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    cd "$env:MOZ_DIR/browser/extensions/secretstar"; \
+    Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-RUN cd "$env:MOZ_DIR/toolkit/components/berytus"; \
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
     npm run build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    cd "$env:MOZ_DIR/browser/extensions/secretstar"; \
+    Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
     npm run build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    $null | & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "./moz.build.sh"; \
+    $null | msys './moz.build.sh'; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
 # bundled OpenSSL supports -addext / -copy_extensions.
-RUN $null | & "$env:MOZILLABUILD/msys2/usr/bin/bash.exe" -lc "set -e; cd \"$(cygpath -u \"$env:MOZ_DIR\")/testing/web-platform/tests\"; \
-    echo 'Current CA cert validity:'; \
-    openssl x509 -in tools/certs/cacert.pem -noout -dates; \
-    echo 'Current Server cert validity:'; \
-    openssl x509 -in tools/certs/web-platform.test.pem -noout -dates; \
-    CA_SAN=$(openssl x509 -in tools/certs/cacert.pem -noout -ext subjectAltName | tail -1 | sed 's/^[[:space:]]*//'); \
-    CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints | tail +3 | sed 's/^[[:space:]]*//' | awk '{printf \\"permitted;%%s\\\\n\\", $0}'); \
-    openssl req -x509 -newkey rsa:2048 \
-        -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
-        -days 365000 -nodes -subj '/CN=web-platform-tests' \
-        -addext 'basicConstraints = critical, CA:TRUE' \
-        -addext 'keyUsage = keyCertSign' \
-        -addext 'extendedKeyUsage = serverAuth' \
-        -addext 'authorityKeyIdentifier = keyid:always, issuer:always' \
-        -addext \"subjectAltName = $CA_SAN\" \
-        -addext \"nameConstraints = $(echo \"$CA_NC\" | paste -sd',' -)\"; \
-    openssl req -newkey rsa:2048 \
-        -keyout tools/certs/web-platform.test.key \
-        -out /tmp/wpt.csr \
-        -nodes -subj '/CN=web-platform.test' \
-        -addext 'basicConstraints=CA:FALSE' \
-        -addext 'keyUsage=digitalSignature,nonRepudiation,keyEncipherment' \
-        -addext 'extendedKeyUsage=serverAuth' \
-        -addext \"subjectAltName=$CA_SAN\"; \
-    openssl x509 -req -in /tmp/wpt.csr \
-        -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
-        -CAcreateserial -out tools/certs/web-platform.test.pem \
-        -days 365000 \
-        -copy_extensions copy; \
-    rm -f /tmp/wpt.csr; \
-    echo 'New CA cert validity:'; \
-    openssl x509 -in tools/certs/cacert.pem -noout -dates; \
-    echo 'New Server cert validity:'; \
-    openssl x509 -in tools/certs/web-platform.test.pem -noout -dates"
+COPY --chmod=0755 <<'REGEN_CERTS' C:/berytus/regen-wpt-certs.sh
+#!/bin/bash
+set -e
+cd "$(cygpath -u "$MOZ_DIR")/testing/web-platform/tests"
+
+echo 'Current CA cert validity:'
+openssl x509 -in tools/certs/cacert.pem -noout -dates
+echo 'Current Server cert validity:'
+openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
+
+CA_SAN=$(openssl x509 -in tools/certs/cacert.pem -noout -ext subjectAltName | tail -1 | sed 's/^[[:space:]]*//')
+CA_NC=$(openssl x509 -in tools/certs/cacert.pem -noout -ext nameConstraints | tail +3 | sed 's/^[[:space:]]*//' | awk '{printf "permitted;%s\n", $0}')
+
+openssl req -x509 -newkey rsa:2048 \
+    -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
+    -days 365000 -nodes -subj '/CN=web-platform-tests' \
+    -addext 'basicConstraints = critical, CA:TRUE' \
+    -addext 'keyUsage = keyCertSign' \
+    -addext 'extendedKeyUsage = serverAuth' \
+    -addext 'authorityKeyIdentifier = keyid:always, issuer:always' \
+    -addext "subjectAltName = $CA_SAN" \
+    -addext "nameConstraints = $(echo "$CA_NC" | paste -sd',' -)"
+
+openssl req -newkey rsa:2048 \
+    -keyout tools/certs/web-platform.test.key \
+    -out /tmp/wpt.csr \
+    -nodes -subj '/CN=web-platform.test' \
+    -addext 'basicConstraints=CA:FALSE' \
+    -addext 'keyUsage=digitalSignature,nonRepudiation,keyEncipherment' \
+    -addext 'extendedKeyUsage=serverAuth' \
+    -addext "subjectAltName=$CA_SAN"
+
+openssl x509 -req -in /tmp/wpt.csr \
+    -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
+    -CAcreateserial -out tools/certs/web-platform.test.pem \
+    -days 365000 \
+    -copy_extensions copy
+
+rm -f /tmp/wpt.csr
+echo 'New CA cert validity:'
+openssl x509 -in tools/certs/cacert.pem -noout -dates
+echo 'New Server cert validity:'
+openssl x509 -in tools/certs/web-platform.test.pem -noout -dates
+REGEN_CERTS
+
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    $null | msys /c/berytus/regen-wpt-certs.sh; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 RUN Write-Host '>>> mach build'; \
-    Set-Location \"$env:MOZ_DIR\"; \
+    Set-Location $env:MOZ_DIR; \
     ./mach build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Write-Host '>>> sccache stats'; \
