@@ -6,6 +6,10 @@ WORKDIR C:/berytus
 COPY port C:/berytus/port
 COPY mozilla-unified C:/berytus/mozilla-unified/
 
+# MSYSTEM tells the msys2 /etc/profile which PATH set to use;
+# without it, /usr/bin (pacman, rsync, etc.) may not be on PATH.
+ENV MSYSTEM="MSYS"
+
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # rsync isn't in MozillaBuild's msys2 by default; `port` needs it.
