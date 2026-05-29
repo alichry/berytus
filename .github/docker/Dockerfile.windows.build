@@ -28,6 +28,8 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/rsync-3.4.2-2-x86_64.pkg.tar.zst'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libxxhash-0.8.3-1-x86_64.pkg.tar.zst'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/liblz4-1.10.0-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libzstd-1.5.7-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libopenssl-3.6.2-1-x86_64.pkg.tar.zst'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
     Remove-Item $tmp -Recurse -Force; \
     Write-Host '>>> rsync version:'; \
