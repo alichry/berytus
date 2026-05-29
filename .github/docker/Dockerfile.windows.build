@@ -13,10 +13,25 @@ ENV MSYSTEM="MSYS"
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # rsync isn't in MozillaBuild's msys2 by default; `port` needs it.
-RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
-    msys ' '; \
-    msys 'pacman -Sy --noconfirm --needed rsync'; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+# MozillaBuild 4.x dropped pacman, so install rsync + deps from msys2 packages.
+RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
+    $tmp = 'C:\TEMP\msys-pkg'; \
+    New-Item -ItemType Directory -Force -Path $tmp | Out-Null; \
+    function Install-MsysPkg($url) { \
+        $zst = Join-Path $tmp (Split-Path $url -Leaf); \
+        Invoke-WebRequest -Uri $url -OutFile $zst; \
+        & 7z x $zst ('-o' + $tmp) -y | Out-Null; \
+        $tar = $zst -replace '\.zst$',''; \
+        & 7z x $tar ('-o' + $msysRoot) -y | Out-Null; \
+        Remove-Item $zst,$tar -Force \
+    }; \
+    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/rsync-3.4.2-2-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/libxxhash-0.8.3-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/liblz4-1.10.0-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
+    Remove-Item $tmp -Recurse -Force; \
+    Write-Host '>>> rsync version:'; \
+    & ${env:MOZILLABUILD}\msys2\usr\bin\rsync.exe --version
 
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
