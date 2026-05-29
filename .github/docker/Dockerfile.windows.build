@@ -25,10 +25,10 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
         & 7z x $tar ('-o' + $msysRoot) -y | Out-Null; \
         Remove-Item $zst,$tar -Force \
     }; \
-    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/rsync-3.4.2-2-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/libxxhash-0.8.3-1-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/liblz4-1.10.0-1-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://mirror.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/rsync-3.4.2-2-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libxxhash-0.8.3-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/liblz4-1.10.0-1-x86_64.pkg.tar.zst'; \
+    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
     Remove-Item $tmp -Recurse -Force; \
     Write-Host '>>> rsync version:'; \
     & ${env:MOZILLABUILD}\msys2\usr\bin\rsync.exe --version
