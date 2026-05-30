@@ -35,14 +35,8 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
     Write-Host '>>> rsync verification:'; \
     function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
-    msys 'rsync --version'; \
-    if ($LASTEXITCODE -ne 0) { \
-        Write-Host '>>> rsync failed, listing DLLs in usr/bin:'; \
-        Get-ChildItem ($msysRoot + '\usr\bin\msys-*.dll') | ForEach-Object { Write-Host $_.Name }; \
-        Write-Host '>>> ldd rsync:'; \
-        msys 'ldd /usr/bin/rsync.exe'; \
-        exit 1 \
-    }
+    msys 'echo "msys2 runtime: $(uname -r)"; echo "which rsync: $(which rsync)"; /usr/bin/rsync --version 2>&1; rc=$?; echo "rsync exit code: $rc"; exit $rc'; \
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
