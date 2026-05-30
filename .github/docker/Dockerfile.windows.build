@@ -32,15 +32,22 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libopenssl-3.6.2-1-x86_64.pkg.tar.zst'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
     Remove-Item $tmp -Recurse -Force; \
-    Write-Host '>>> rsync version:'; \
+    Write-Host '>>> rsync verification:'; \
     function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
-    msys 'rsync --version'
+    msys 'rsync --version'; \
+    if ($LASTEXITCODE -ne 0) { \
+        Write-Host '>>> rsync failed, listing DLLs in usr/bin:'; \
+        Get-ChildItem ($msysRoot + '\usr\bin\msys-*.dll') | ForEach-Object { Write-Host $_.Name }; \
+        Write-Host '>>> ldd rsync:'; \
+        msys 'ldd /usr/bin/rsync.exe'; \
+        exit 1 \
+    }
 
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
-    $mozUnix = msys ('cygpath -u ' + $env:MOZ_DIR); \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    $mozUnix = '/' + $env:MOZ_DIR[0].ToString().ToLower() + ($env:MOZ_DIR.Substring(2) -replace '\\','/'); \
+    Write-Host ('>>> MOZ_DIR (unix): ' + $mozUnix); \
     $null | msys ('/c/berytus/port export ' + $mozUnix); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
