@@ -33,7 +33,9 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
     Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
     Remove-Item $tmp -Recurse -Force; \
     Write-Host '>>> rsync version:'; \
-    & ${env:MOZILLABUILD}\msys2\usr\bin\rsync.exe --version
+    function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    msys 'rsync --version'
 
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
