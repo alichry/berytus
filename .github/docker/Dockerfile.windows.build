@@ -14,6 +14,8 @@ SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned"
 
 # rsync isn't in MozillaBuild's msys2 by default; `port` needs it.
 # MozillaBuild 4.x dropped pacman, so install rsync + deps from msys2 packages.
+# Packages are sourced from the msys2-archive (2022-12-16 snapshot) to match
+# MozillaBuild's msys2 runtime 3.4.x; current repo packages target 3.6.x.
 RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
     $tmp = 'C:\TEMP\msys-pkg'; \
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null; \
@@ -25,17 +27,18 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
         & 7z x $tar ('-o' + $msysRoot) -y | Out-Null; \
         Remove-Item $zst,$tar -Force \
     }; \
-    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/rsync-3.4.2-2-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libxxhash-0.8.3-1-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/liblz4-1.10.0-1-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libzstd-1.5.7-1-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/libopenssl-3.6.2-1-x86_64.pkg.tar.zst'; \
-    Install-MsysPkg 'https://repo.msys2.org/msys/x86_64/popt-1.19-1-x86_64.pkg.tar.zst'; \
+    $archive = 'https://github.com/msys2/msys2-archive/releases/download/2022-12-16-msys-x86_64'; \
+    Install-MsysPkg "$archive/rsync-3.2.7-1-x86_64.pkg.tar.zst"; \
+    # Install-MsysPkg "$archive/libxxhash-0.8.1-1-x86_64.pkg.tar.zst"; \
+    # Install-MsysPkg "$archive/liblz4-1.9.4-1-x86_64.pkg.tar.zst"; \
+    # Install-MsysPkg "$archive/libzstd-1.5.2-2-x86_64.pkg.tar.zst"; \
+    # Install-MsysPkg "$archive/libopenssl-1.1.1.s-2-x86_64.pkg.tar.zst"; \
+    # Install-MsysPkg "$archive/popt-1.18-2-x86_64.pkg.tar.zst"; \
     Remove-Item $tmp -Recurse -Force; \
     Write-Host '>>> rsync verification:'; \
     function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
-    msys 'echo "msys2 runtime: $(uname -r)"; echo "which rsync: $(which rsync)"; /usr/bin/rsync --version 2>&1; rc=$?; echo "rsync exit code: $rc"; exit $rc'; \
+    msys 'rsync --version'; \
     if ($LASTEXITCODE -ne 0) { exit 1 }
 
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
