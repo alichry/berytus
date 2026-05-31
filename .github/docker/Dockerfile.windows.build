@@ -29,11 +29,11 @@ RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
     }; \
     $archive = 'https://github.com/msys2/msys2-archive/releases/download/2022-12-16-msys-x86_64'; \
     Install-MsysPkg "$archive/rsync-3.2.7-1-x86_64.pkg.tar.zst"; \
-    # Install-MsysPkg "$archive/libxxhash-0.8.1-1-x86_64.pkg.tar.zst"; \
-    # Install-MsysPkg "$archive/liblz4-1.9.4-1-x86_64.pkg.tar.zst"; \
-    # Install-MsysPkg "$archive/libzstd-1.5.2-2-x86_64.pkg.tar.zst"; \
-    # Install-MsysPkg "$archive/libopenssl-1.1.1.s-2-x86_64.pkg.tar.zst"; \
-    # Install-MsysPkg "$archive/popt-1.18-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/libxxhash-0.8.1-1-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/liblz4-1.9.4-1-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/libzstd-1.5.2-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/libopenssl-1.1.1.s-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/popt-1.18-2-x86_64.pkg.tar.zst"; \
     Remove-Item $tmp -Recurse -Force; \
     Write-Host '>>> rsync verification:'; \
     function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
