@@ -53,11 +53,13 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     $null | msys ('/c/berytus/port export ' + $mozUnix); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-# npm scripts use Unix commands (test, rm, .sh); tell npm to use a login
-# bash so /usr/bin is on PATH (needed for #!/usr/bin/env bash shebangs).
-RUN $bashPath = ${env:MOZILLABUILD} + '\msys2\usr\bin\bash.exe'; \
-    Set-Content -Path 'C:\berytus\npm-bash.cmd' -Value ('@"' + $bashPath + '" -l %*'); \
-    npm config set script-shell C:\berytus\npm-bash.cmd
+# npm scripts use Unix commands (test, rm, .sh); tell npm to use bash.
+# Also add msys2 usr/bin to the system PATH so #!/usr/bin/env bash shebangs
+# resolve correctly even from a non-login shell.
+RUN $msysBin = ${env:MOZILLABUILD} + '\msys2\usr\bin'; \
+    $machPath = [Environment]::GetEnvironmentVariable('PATH', 'Machine'); \
+    [Environment]::SetEnvironmentVariable('PATH', $msysBin + ';' + $machPath, 'Machine'); \
+    npm config set script-shell ($msysBin + '\bash.exe')
 
 # Install Berytus toolkit + secretstar npm deps.
 RUN Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
