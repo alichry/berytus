@@ -73,12 +73,24 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     msys ' '; \
     Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
     npm run build; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Build secretstar and run moz.build.sh.
+# craco builds are retried to work around transient EBUSY errors
+# from Windows Docker's windowsfilter storage driver on mkdir.
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
     Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
-    npm run build:react; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    npm run build:bg-worker; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    foreach ($script in @('build:react','build:bg-worker')) { \
+        $ok = $false; \
+        for ($i = 1; $i -le 3; $i++) { \
+            npm run $script; \
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }; \
+            Write-Host ('>>> ' + $script + ' failed (attempt ' + $i + '/3), retrying in 10s...'); \
+            Start-Sleep -Seconds 10 \
+        }; \
+        if (-not $ok) { exit 1 } \
+    }; \
     $null | msys './moz.build.sh'; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
