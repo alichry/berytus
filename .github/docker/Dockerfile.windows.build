@@ -75,7 +75,9 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     npm run build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
-    npm run build; \
+    npm run build:react; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    npm run build:bg-worker; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     $null | msys './moz.build.sh'; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
