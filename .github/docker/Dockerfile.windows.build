@@ -90,7 +90,8 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     npx craco build --config craco.workers.config.js; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
     Move-Item 'C:\TEMP\ss-worker' .\build.worker; \
-    $null | msys './moz.build.sh'; \
+    $ssUnix = '/' + $env:MOZ_DIR[0].ToString().ToLower() + ($env:MOZ_DIR.Substring(2) -replace '\\','/') + '/browser/extensions/secretstar'; \
+    $null | msys ('cd "' + $ssUnix + '" && ./moz.build.sh'); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
