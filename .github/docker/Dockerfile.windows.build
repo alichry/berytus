@@ -76,21 +76,20 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # Build secretstar and run moz.build.sh.
-# craco builds are retried to work around transient EBUSY errors
-# from Windows Docker's windowsfilter storage driver on mkdir.
+# craco builds write to C:\TEMP to avoid EBUSY/EPERM errors from Windows
+# Docker's windowsfilter storage driver when mkdir'ing inside the source
+# tree overlay. Output is moved back to the expected locations afterward.
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
     Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
-    foreach ($script in @('build:react','build:bg-worker')) { \
-        $ok = $false; \
-        for ($i = 1; $i -le 3; $i++) { \
-            npm run $script; \
-            if ($LASTEXITCODE -eq 0) { $ok = $true; break }; \
-            Write-Host ('>>> ' + $script + ' failed (attempt ' + $i + '/3), retrying in 10s...'); \
-            Start-Sleep -Seconds 10 \
-        }; \
-        if (-not $ok) { exit 1 } \
-    }; \
+    $env:BUILD_PATH = 'C:\TEMP\ss-react'; \
+    npx craco build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Move-Item 'C:\TEMP\ss-react' .\build; \
+    $env:BUILD_PATH = 'C:\TEMP\ss-worker'; \
+    npx craco build --config craco.workers.config.js; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Move-Item 'C:\TEMP\ss-worker' .\build.worker; \
     $null | msys './moz.build.sh'; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
