@@ -295,6 +295,8 @@ jobs:
           mkdir -p "$STAGE"
           cp port "$STAGE/"
           cp -r mozilla-unified "$STAGE/"
+          cp .github/docker/regen-wpt-certs.sh "$STAGE/"
+          cp .github/docker/mach.cmd "$STAGE/"
           find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
           find "$STAGE" -name .DS_Store -delete
           # Pass the staged path back to later steps via env so we don't
