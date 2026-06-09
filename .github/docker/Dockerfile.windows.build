@@ -60,11 +60,12 @@ RUN $msysBin = ${env:MOZILLABUILD} + '\msys2\usr\bin'; \
     [Environment]::SetEnvironmentVariable('PATH', $msysBin + ';' + $machPath, 'Machine'); \
     npm config set script-shell ($msysBin + '\bash.exe')
 
-# Install Berytus toolkit + secretstar npm deps.
+# Install Berytus toolkit + secretstar npm deps (separate layers for caching).
 RUN Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
     npm install; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+RUN Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
