@@ -103,10 +103,18 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     $null | msys /c/berytus/regen-wpt-certs.sh; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# mach build is retried once on failure to handle transient sccache crashes
+# (e.g. os error 10054 during Rust LTO). The build is incremental, so a
+# retry resumes from where it left off.
 RUN Write-Host '>>> mach build'; \
     Set-Location $env:MOZ_DIR; \
     ./mach build; \
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    if ($LASTEXITCODE -ne 0) { \
+        Write-Host '>>> mach build failed, retrying...'; \
+        sccache --stop-server; \
+        ./mach build; \
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } \
+    }; \
     Write-Host '>>> sccache stats'; \
     sccache --show-stats; \
     Write-Host '>>> done'
