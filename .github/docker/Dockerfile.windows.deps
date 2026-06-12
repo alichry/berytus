@@ -10,8 +10,6 @@ ENV BUILD_DIR="C:\\build" \
     MOZ_DIR="C:\\build\\mozilla-unified" \
     MOZ_OBJ_DIR="C:\\build\\mozilla-unified\\obj-x86_64-pc-mingw32" \
     MOZBUILD_STATE_PATH="C:\\build\\mozbuild" \
-    SCCACHE_DIR="C:\\build\\sccache" \
-    SCCACHE_CACHE_SIZE="10G" \
     CARGO_HOME="C:\\Users\\ContainerAdministrator\\.cargo" \
     RUSTUP_HOME="C:\\Users\\ContainerAdministrator\\.rustup" \
     VS_BUILDTOOLS="C:\\BuildTools" \
@@ -84,9 +82,9 @@ RUN $python_path = (Get-Command python).Source; \
         # } \
 
 RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
-    cargo-binstall -y cbindgen sccache
+    cargo-binstall -y cbindgen
 
-RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH, $env:SCCACHE_DIR | Out-Null; \
+RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH | Out-Null; \
     Set-Content -Path \"$env:MOZBUILD_STATE_PATH/machrc\" -Encoding ascii -Value @( \
         '[mach_telemetry]', \
         'is_enabled = false', \
@@ -107,8 +105,7 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
 RUN Set-Content -Path \"$env:MOZ_DIR/mozconfig\" -Encoding ascii -Value @( \
         'ac_add_options --enable-application=browser', \
         'ac_add_options --enable-optimize', \
-        'ac_add_options --disable-debug', \
-        'ac_add_options --with-ccache=sccache' \
+        'ac_add_options --disable-debug' \
     )
 
 WORKDIR "C:\\build"
