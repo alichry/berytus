@@ -69,7 +69,7 @@ nsresult PartIterator::Traverse(const uint32_t& aPos,
   if (peekedDelimiter) {
     MOZ_ASSERT(!reachedLastChar);
     // the peeked delimiter could be at the end of the string:
-    aNextPosRv = std::min(end + 2ul, mString.Length() - 1ul);
+    aNextPosRv = std::min(uint32_t(end + 2), uint32_t(mString.Length() - 1));
     MOZ_ASSERT(aNextPosRv < mString.Length());
     return NS_OK;
   }
