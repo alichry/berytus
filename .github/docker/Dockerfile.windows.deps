@@ -105,7 +105,8 @@ RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
 RUN Set-Content -Path \"$env:MOZ_DIR/mozconfig\" -Encoding ascii -Value @( \
         'ac_add_options --enable-application=browser', \
         'ac_add_options --enable-optimize', \
-        'ac_add_options --disable-debug' \
+        'ac_add_options --disable-debug', \
+        'mk_add_options MOZ_PARALLEL_BUILD=2' \
     )
 
 WORKDIR "C:\\build"
