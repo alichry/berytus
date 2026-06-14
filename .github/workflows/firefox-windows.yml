@@ -407,14 +407,16 @@ jobs:
             xpcshell-test --verbose-if-fails --tag berytus
 
       - name: Run xpcshell tests (Berytus WebExts)
-        shell: cmd
+        shell: powershell
         env:
           MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
         run: |
-          docker run --rm ^
-            -e MOZ_LOG ^
-            ${{ needs.prepare-context.outputs.build-image }} ^
-            xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
+          $image = '${{ needs.prepare-context.outputs.build-image }}'
+          $files = docker run --rm --entrypoint cmd $image /c "dir /b %MOZ_DIR%\toolkit\components\extensions\test\xpcshell\test_ext_berytus*"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $paths = $files | ForEach-Object { "toolkit/components/extensions/test/xpcshell/$($_.Trim())" }
+          docker run --rm -e MOZ_LOG $image xpcshell-test --verbose-if-fails @paths
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   package:
     runs-on: windows-2022
