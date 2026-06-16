@@ -415,7 +415,7 @@ jobs:
           $files = docker run --rm --entrypoint cmd $image /c "dir /b %MOZ_DIR%\toolkit\components\extensions\test\xpcshell\test_ext_berytus*"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $paths = @($files | ForEach-Object { "toolkit/components/extensions/test/xpcshell/$($_.Trim())" })
-          docker run --rm -e MOZ_LOG $image xpcshell-test --verbose-if-fails $paths
+          docker run --rm -e MOZ_LOG $image xpcshell-test --verbose-if-fails --setpref privacy.query_stripping.enabled=false --setpref privacy.query_stripping.enabled.pbmode=false $paths
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   package:
