@@ -436,19 +436,21 @@ jobs:
         run: docker pull ${{ needs.prepare-context.outputs.build-image }}
 
       - name: Prepare output dir
+        shell: powershell
         run: |
-          mkdir -p "$RUNNER_TEMP/out"
-          # docker -v needs a Windows-style host path on Windows runners.
-          echo "OUT_DIR_WIN=$(cygpath -w "$RUNNER_TEMP/out")" >> "$GITHUB_ENV"
+          New-Item -ItemType Directory -Force -Path "${{ runner.temp }}/out" | Out-Null
 
       - name: Package Firefox
-        shell: cmd
+        shell: powershell
         run: |
-          docker run --rm ^
-            -v "%OUT_DIR_WIN%:C:\dist" ^
-            --entrypoint cmd ^
-            ${{ needs.prepare-context.outputs.build-image }} ^
-            /S /C "call "%%VS_BUILDTOOLS%%\VC\Auxiliary\Build\vcvars64.bat" && cd /d "%%MOZ_DIR%%" && mach package && xcopy /Y "%%MOZ_OBJ_DIR%%\dist\*.win64.zip" C:\dist\ && (if exist "%%MOZ_OBJ_DIR%%\dist\install\sea" xcopy /Y "%%MOZ_OBJ_DIR%%\dist\install\sea\*.installer.exe" C:\dist\)"
+          $image = '${{ needs.prepare-context.outputs.build-image }}'
+          docker run --rm `
+            -v "${{ runner.temp }}/out:C:\dist" `
+            --entrypoint powershell `
+            $image `
+            -NoProfile -Command `
+            'Set-Location $env:MOZ_DIR; ./mach package; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $objDir = (Get-ChildItem -Directory obj-*).Name; Copy-Item "$objDir\dist\*.win64.zip" C:\dist\; if (Test-Path "$objDir\dist\install\sea\*.installer.exe") { Copy-Item "$objDir\dist\install\sea\*.installer.exe" C:\dist\ }'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload artifact (zip)
         uses: actions/upload-artifact@v4
