@@ -444,12 +444,30 @@ jobs:
         shell: powershell
         run: |
           $image = '${{ needs.prepare-context.outputs.build-image }}'
+          $script = @'
+            Set-Location $env:MOZ_DIR
+            $objDir = (Get-ChildItem -Directory obj-*).Name
+
+            Write-Host ">>> manifest files in $objDir/dist/bin/browser/components/"
+            Get-ChildItem "$objDir\dist\bin\browser\components\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+            Write-Host ">>> browser/chrome.manifest contents:"
+            Get-Content "$objDir\dist\bin\browser\chrome.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+            Write-Host ">>> manifest files in $objDir/dist/bin/browser/ (non-recursive)"
+            Get-ChildItem "$objDir\dist\bin\browser\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+
+            ./mach package
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            Copy-Item "$objDir\dist\*.win64.zip" C:\dist\
+            if (Test-Path "$objDir\dist\install\sea\*.installer.exe") {
+              Copy-Item "$objDir\dist\install\sea\*.installer.exe" C:\dist\
+            }
+          '@
           docker run --rm `
             -v "${{ runner.temp }}/out:C:\dist" `
             --entrypoint powershell `
             $image `
-            -NoProfile -Command `
-            'Set-Location $env:MOZ_DIR; ./mach package; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $objDir = (Get-ChildItem -Directory obj-*).Name; Copy-Item "$objDir\dist\*.win64.zip" C:\dist\; if (Test-Path "$objDir\dist\install\sea\*.installer.exe") { Copy-Item "$objDir\dist\install\sea\*.installer.exe" C:\dist\ }'
+            -NoProfile -Command $script
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload artifact (zip)
