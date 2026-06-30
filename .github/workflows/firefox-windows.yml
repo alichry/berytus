@@ -448,11 +448,11 @@ jobs:
             Set-Location $env:MOZ_DIR
             $objDir = (Get-ChildItem -Directory obj-*).Name
 
-            Write-Host ">>> manifest files in $objDir/dist/bin/browser/components/"
+            Write-Host "--- manifest files in $objDir/dist/bin/browser/components/"
             Get-ChildItem "$objDir\dist\bin\browser\components\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
-            Write-Host ">>> browser/chrome.manifest contents:"
+            Write-Host "--- browser/chrome.manifest contents:"
             Get-Content "$objDir\dist\bin\browser\chrome.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
-            Write-Host ">>> manifest files in $objDir/dist/bin/browser/ (non-recursive)"
+            Write-Host "--- manifest files in $objDir/dist/bin/browser/ (non-recursive)"
             Get-ChildItem "$objDir\dist\bin\browser\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
 
             ./mach package
