@@ -452,8 +452,35 @@ jobs:
             Get-ChildItem "$objDir\dist\bin\browser\components\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
             Write-Host "--- browser/chrome.manifest contents:"
             Get-Content "$objDir\dist\bin\browser\chrome.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
-            Write-Host "--- manifest files in $objDir/dist/bin/browser/ (non-recursive)"
+            Write-Host "--- manifest files in $objDir/dist/bin/browser/ [non-recursive]"
             Get-ChildItem "$objDir\dist\bin\browser\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+
+            # Fix manifest filename case on Windows (NTFS is case-insensitive).
+            # The build may store manifest files with incorrect case, causing the
+            # packager to treat browser/components as a separate base when the
+            # on-disk name does not case-sensitively match the reference in
+            # browser/chrome.manifest.
+            $compDir = "$objDir\dist\bin\browser\components"
+            $chromeManifest = "$objDir\dist\bin\browser\chrome.manifest"
+            if (Test-Path $chromeManifest) {
+              $refs = @{}
+              Get-Content $chromeManifest | ForEach-Object {
+                if ($_ -match '^manifest\s+components/(.+)$') {
+                  $refs[$Matches[1].ToLower()] = $Matches[1]
+                }
+              }
+              Get-ChildItem "$compDir\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object {
+                $disk = $_.Name
+                $key = $disk.ToLower()
+                if ($refs.ContainsKey($key) -and $refs[$key] -cne $disk) {
+                  $correct = $refs[$key]
+                  $tmp = Join-Path $compDir ("_rename_" + $disk)
+                  Write-Host "--- fixing manifest case: $disk -> $correct"
+                  Rename-Item $_.FullName $tmp
+                  Rename-Item $tmp $correct
+                }
+              }
+            }
 
             ./mach package
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

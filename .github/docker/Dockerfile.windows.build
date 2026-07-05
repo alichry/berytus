@@ -107,7 +107,10 @@ RUN Write-Host '>>> mach build'; \
     Set-Location $env:MOZ_DIR; \
     ./mach build; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
-    Write-Host '>>> done'
+    Write-Host '>>> done'; \
+    Write-Host '>>> [diag] manifest file case in dist/bin/browser/components/ after berytus build:'; \
+    $objDir = (Get-ChildItem -Directory obj-*).Name; \
+    Get-ChildItem \"$objDir\dist\bin\browser\components\*.manifest\" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host (\"  \" + $_.Name) }
 
 WORKDIR "${MOZ_DIR}"
 
