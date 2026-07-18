@@ -476,8 +476,8 @@ jobs:
                   $correct = $refs[$key]
                   $tmp = Join-Path $compDir ('_rename_' + $disk)
                   Write-Host ('--- fixing manifest case: ' + $disk + ' -> ' + $correct)
-                  Rename-Item $_.FullName $tmp
-                  Rename-Item $tmp $correct
+                  Move-Item $_.FullName $tmp
+                  Move-Item $tmp (Join-Path $compDir $correct)
                 }
               }
             }
