@@ -1,5 +1,5 @@
 import { ClassNameProp } from "@root/ui/props/ClassNameProp";
-import { useAccount, useAccountFields, useSettings, useTryOnce } from "@root/hooks";
+import { useAccount, useAccountFields, useTryOnce } from "@root/hooks";
 import EditableLabeledInputListForm, { EditableLabeledInputListFormProps } from "./EditableLabeledInputListForm";
 import { getFieldInputType } from "@root/ui/components/FieldInput";
 import { useState } from "react";
@@ -25,11 +25,10 @@ export const mapFieldsToEditableLabeledInputList = (fields: Array<Field>) => {
 }
 
 export default function FieldListForm({ defaultAccountId, fieldIds, onSubmit, seamless, ...otherProps }: FieldListFormProps) {
-    const [accountId, setAccountId] = useState<string | undefined>(defaultAccountId);
+    const [accountId] = useState<string | undefined>(defaultAccountId);
     const { account, error: accountError } = useAccount(accountId);
     const { fields, error: fieldsError } = useAccountFields(account, fieldIds);
     const loading = ! account || ! fields;
-    const errors = [accountError, fieldsError];
     const { tried, error: seamlessError } = useTryOnce(seamless, async () => {
         if (loading) {
             return false;
@@ -41,6 +40,7 @@ export default function FieldListForm({ defaultAccountId, fieldIds, onSubmit, se
         onSubmit(values);
         return true;
     }, [loading]);
+    const errors = [accountError, fieldsError, seamlessError];
 
     return (
         <EditableLabeledInputListForm

@@ -33,20 +33,20 @@ async function printSessionForSimiluationPrep(
     // }, null, 2));
 }
 
-async function printSessionWithChannelForSimulationPrep(
-    phase: RequestType,
-    sessionId: string
-) {
-    // const session = await getSessionRecord(sessionId);
-    // const channel = await db.channel.get(session.channel.id);
-    // if (! channel) {
-    //     throw new Error('Cant find channel to print simulation prep');
-    // }
-    // console.log('simulate', phase, JSON.stringify({
-    //     session,
-    //     channel
-    // }, null, 2));
-}
+// async function printSessionWithChannelForSimulationPrep(
+//     phase: RequestType,
+//     sessionId: string
+// ) {
+// const session = await getSessionRecord(sessionId);
+// const channel = await db.channel.get(session.channel.id);
+// if (! channel) {
+//     throw new Error('Cant find channel to print simulation prep');
+// }
+// console.log('simulate', phase, JSON.stringify({
+//     session,
+//     channel
+// }, null, 2));
+// }
 
 async function showUi(
     context: PreliminaryRequestContext,
@@ -56,7 +56,7 @@ async function showUi(
 ) {
     if (MODE === MODE_EXTERNAL_WINDOW) {
         const { tabId } = await (sessionRecordPromise || getSessionRecord(sessionId));
-        if (! tabId) {
+        if (!tabId) {
             console.error('Secret* is in External Mode but session record had no tab id');
             browser.berytus.rejectRequest(context.request.id, ERejectionCode.GeneralError);
             return;
@@ -104,7 +104,7 @@ browser.berytus.registerRequestHandler({
     channel: {
         async createChannel(context, args) {
             const key = await db.signingKeys.get(args.channel.scmActor.ed25519Key);
-            if (! key) {
+            if (!key) {
                 throw new Error(
                     'Unable to find signing key '
                     + args.channel.scmActor.ed25519Key
@@ -122,7 +122,7 @@ browser.berytus.registerRequestHandler({
         },
         async generateX25519Key(context) {
             const channel = await db.channel.get(context.channel.id);
-            if (! channel) {
+            if (!channel) {
                 throw new Error('Unable to find channel by id ' + context.channel.id);
             }
             if (channel.scmX25519) {
@@ -149,19 +149,19 @@ browser.berytus.registerRequestHandler({
         },
         async verifySignedKeyExchangeParameters(context, args): Promise<void> {
             const channel = await db.channel.get(context.channel.id);
-            if (! channel) {
+            if (!channel) {
                 throw new Error('Unable to find channel by id ' + context.channel.id);
             }
-            if (! channel.scmEd25519) {
+            if (!channel.scmEd25519) {
                 throw new Error('Expecting our scm Ed25519 to be set; got otherwise.');
             }
-            if (! channel.scmX25519) {
+            if (!channel.scmX25519) {
                 throw new Error('Expecting our scm X25519 to be set; got otherwise.');
             }
             if (channel.keyAgreement) {
                 throw new Error('Expecting key agreement parameters to be unset; got otherwise.');
             }
-            if (! channel.webAppEd25519Pub) {
+            if (!channel.webAppEd25519Pub) {
                 throw new Error('Expecting channel to have a crypto web app actor set; got otherwise.');
             }
             const parameters: KeyAgreementParameters = (() => {
@@ -212,7 +212,7 @@ browser.berytus.registerRequestHandler({
                 args.webAppSignature,
                 data
             );
-            if (! valid) {
+            if (!valid) {
                 context.response.reject(ERejectionCode.GeneralError);
                 return;
             }
@@ -230,19 +230,19 @@ browser.berytus.registerRequestHandler({
         },
         async signKeyExchangeParameters(context, args) {
             const channel = await db.channel.get(context.channel.id);
-            if (! channel) {
+            if (!channel) {
                 throw new Error('Unable to find channel by id ' + context.channel.id);
             }
-            if (! channel.scmEd25519) {
+            if (!channel.scmEd25519) {
                 throw new Error('Expecting our scm ed25519Key to have been genenrated');
             }
-            if (! channel.scmX25519) {
+            if (!channel.scmX25519) {
                 throw new Error('Expecting our scm scmX25519 to have been genenrated');
             }
-            if (! channel.webAppEd25519Pub) {
+            if (!channel.webAppEd25519Pub) {
                 throw new Error('Expecting web app ed25519 to have been given previously');
             }
-            if (! channel.keyAgreement) {
+            if (!channel.keyAgreement) {
                 throw new Error('Expecting key agreement parameters to be set; got otherwise.');
             }
             if (channel.keyAgreement.signatures.scmSignature) {
@@ -286,10 +286,10 @@ browser.berytus.registerRequestHandler({
             //     );
             // }
             const channel = await db.channel.get(context.channel.id);
-            if (! channel) {
+            if (!channel) {
                 throw new Error('Expecting channel to be created; got otherwise.');
             }
-            if (! isChannelE2EReady(channel)) {
+            if (!isChannelE2EReady(channel)) {
                 throw new Error('Expecting channel to be E2E ready; got otherwise.');
             }
             const webAppKey = await crypto.subtle.importKey(
@@ -410,7 +410,7 @@ browser.berytus.registerRequestHandler({
                 return;
             }
             const account = await db.accounts.get(sessionRecord.selectedAccountId!);
-            if (! account) {
+            if (!account) {
                 throw new Error('unable to get account record, the account id does not exist.');
             }
             context.response.resolve(account.metadata);
@@ -438,11 +438,11 @@ browser.berytus.registerRequestHandler({
             await showUi(context, currSessionId, relativePath, currSessionRecordPromise);
 
             const currSession = await currSessionRecordPromise;
-            if (! currSession.createdAccountId) {
+            if (!currSession.createdAccountId) {
                 throw new Error("Expecting createdAccountId to be set when transitioning!");
             }
             const account = await db.accounts.get(currSession.createdAccountId);
-            if (! account) {
+            if (!account) {
                 throw new Error("Expecting account to be created before transitioning.");
             }
             await db.sessions.add({
@@ -462,13 +462,13 @@ browser.berytus.registerRequestHandler({
         async getUserAttributes(context): Promise<void> {
             const sessionId = context.operation.id;
             const sessionRecordPromise = getSessionRecord(sessionId);
-            {/* BRTTODO: 23/1/2024 Remove afterVersion -- this seems to be problematic. We should refactor how we process requests to use request id instead */}
+            /* BRTTODO: 23/1/2024 Remove afterVersion -- this seems to be problematic. We should refactor how we process requests to use request id instead */
             const relativePath = `get-user-attributes/${sessionId}/1`;
             await showUi(context, sessionId, relativePath, sessionRecordPromise);
             const sessionRecord = await sessionRecordPromise;
             const requiredUserAttributes: Partial<Record<keyof typeof userAttributesLabels, boolean>> = {};
             (Object.keys(userAttributesLabels) as Array<keyof typeof userAttributesLabels>)
-                .map(key => {
+                .forEach(key => {
                     requiredUserAttributes[key] = false;
                 });
             context.operation.requestedUserAttributes.forEach(({ id, required }) => {
@@ -578,7 +578,7 @@ browser.berytus.registerRequestHandler({
             let sameValue = false;
             let value = undefined;
             do {
-                if (! args.optionalNewValue) {
+                if (!args.optionalNewValue) {
                     break;
                 }
                 const newValue = await toClearFieldValue(
@@ -715,7 +715,7 @@ browser.berytus.registerRequestHandler({
             }
             // TODO(berytus): Refactor the below.
             if (typeof payload === "string" || payload === null) {
-                payload = payload;
+                // nothing to do
             } else if (payload instanceof ArrayBuffer) {
                 payload = ab2base64(payload);
             } else if (ArrayBuffer.isView(payload)) {

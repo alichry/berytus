@@ -59,4 +59,4 @@ promise_test(async () => {
     )
     assert_equals(operation.userAttributes.get("dummy"), undefined);
     await channel.close();
-}, "BerytusAccountCreationOperation rejects id-invalid user attribute definition ");
+}, "BerytusAccountCreationOperation rejects id-invalid user attribute definition");

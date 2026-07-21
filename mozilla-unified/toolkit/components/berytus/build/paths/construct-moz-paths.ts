@@ -24,8 +24,8 @@ export const constructMozPathEntries = async (): Promise<Array<PathEntry>> => {
         const moduleName: string = basename(typePath, '.d.ts');
         const importDir: string = dirname(typePath);
         return {
-            path: 'resource://' + join(importDir, moduleName) + '.sys.mjs',
-            target: [join(relative(resolve(), typesDir), typePath)]
+            path: 'resource://' + join(importDir, moduleName).replace(/\\/g, '/') + '.sys.mjs',
+            target: [join(relative(resolve(), typesDir), typePath).replace(/\\/g, '/')]
         } as const;
     });
 }

@@ -1,0 +1,512 @@
+name: Firefox with Berytus (Windows)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+defaults:
+  run:
+    # Use Git Bash for `run:` steps so the same POSIX recipes (heredocs,
+    # path translation) work on Windows runners. Steps that need cmd or
+    # PowerShell set `shell:` explicitly.
+    shell: bash
+
+jobs:
+  prepare-context:
+    runs-on: windows-2022
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      changeset-rev: ${{ steps.changeset.outputs.rev }}
+      deps-image: ${{ steps.tags.outputs.deps }}
+      base-image: ${{ steps.tags.outputs.base }}
+      build-image: ${{ steps.tags.outputs.build }}
+      deps-image-exists: ${{ steps.check-deps.outputs.exists }}
+      base-image-exists: ${{ steps.check-base.outputs.exists }}
+      build-image-exists: ${{ steps.check-build.outputs.exists }}
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Read changeset
+        id: changeset
+        run: |
+          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
+          echo "rev=$REV" >> "$GITHUB_OUTPUT"
+          echo "Using mozilla-unified changeset: $REV"
+
+      - name: Compute image tags
+        id: tags
+        env:
+          REV: ${{ steps.changeset.outputs.rev }}
+          SRC_HASH: ${{ hashFiles('mozilla-unified/**/*') }}
+        run: |
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          DEPS_REPO="ghcr.io/${REPO_LC}/firefox-deps-x86_64-pc-mingw32"
+          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base-x86_64-pc-mingw32"
+          BUILD_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-mingw32"
+          echo "deps=${DEPS_REPO}:${REV}" >> "$GITHUB_OUTPUT"
+          echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if deps image exists
+        id: check-deps
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.deps }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Deps image ${{ steps.tags.outputs.deps }} already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Deps image ${{ steps.tags.outputs.deps }} does not exist"
+          fi
+
+      - name: Check if base image exists
+        id: check-base
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.base }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Base image ${{ steps.tags.outputs.base }} already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Base image ${{ steps.tags.outputs.base }} does not exist"
+          fi
+
+      - name: Check if build image exists
+        id: check-build
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.build }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Build image ${{ steps.tags.outputs.build }} already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Build image ${{ steps.tags.outputs.build }} does not exist"
+          fi
+
+  build-deps:
+    runs-on: windows-2022
+    needs: prepare-context
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Berytus source
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        uses: actions/checkout@v4
+
+      - name: Relocate Docker storage to D drive
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        shell: powershell
+        run: |
+          $configPath = 'C:\ProgramData\docker\config\daemon.json'
+          $dataRoot = 'D:\docker'
+          Stop-Service -Name docker -Force
+          New-Item -ItemType Directory -Force -Path $dataRoot, (Split-Path $configPath) | Out-Null
+          @{ 'data-root' = $dataRoot } | ConvertTo-Json | Set-Content -Path $configPath -Encoding ascii
+          Start-Service -Name docker
+          docker info --format '{{.DockerRootDir}}'
+
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push deps image
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        shell: cmd
+        run: |
+          docker build ^
+            --file .github\docker\Dockerfile.windows.deps ^
+            --tag ${{ needs.prepare-context.outputs.deps-image }} ^
+            --build-arg MOZ_REV=${{ needs.prepare-context.outputs.changeset-rev }} ^
+            .github\docker
+          docker push ${{ needs.prepare-context.outputs.deps-image }}
+
+      - name: Write Deps Image URI
+        id: write-deps-image-uri
+        run: |
+          OUT="$RUNNER_TEMP/image-uris"
+          mkdir -p "$OUT"
+          DEPS_IMAGE_URI_FILE="firefox-deps-windows-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare-context.outputs.deps-image }}" > "$OUT/$DEPS_IMAGE_URI_FILE"
+          echo "file=$OUT/$DEPS_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-deps-windows-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload deps image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-deps-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-deps-image-uri.outputs.file }}
+          if-no-files-found: error
+
+  build-base:
+    runs-on: windows-2022
+    needs: [prepare-context, build-deps]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Berytus source
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        uses: actions/checkout@v4
+
+      - name: Relocate Docker storage to D drive
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        shell: powershell
+        run: |
+          $configPath = 'C:\ProgramData\docker\config\daemon.json'
+          $dataRoot = 'D:\docker'
+          Stop-Service -Name docker -Force
+          New-Item -ItemType Directory -Force -Path $dataRoot, (Split-Path $configPath) | Out-Null
+          @{ 'data-root' = $dataRoot } | ConvertTo-Json | Set-Content -Path $configPath -Encoding ascii
+          Start-Service -Name docker
+          docker info --format '{{.DockerRootDir}}'
+
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push base image
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        shell: cmd
+        run: |
+          docker build ^
+            --file .github\docker\Dockerfile.windows.base ^
+            --tag ${{ needs.prepare-context.outputs.base-image }} ^
+            --build-arg DEPS_IMAGE=${{ needs.prepare-context.outputs.deps-image }} ^
+            .github\docker
+          docker push ${{ needs.prepare-context.outputs.base-image }}
+
+      - name: Write Base Image URI
+        id: write-base-image-uri
+        run: |
+          OUT="$RUNNER_TEMP/image-uris"
+          mkdir -p "$OUT"
+          BASE_IMAGE_URI_FILE="firefox-base-windows-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare-context.outputs.base-image }}" > "$OUT/$BASE_IMAGE_URI_FILE"
+          echo "file=$OUT/$BASE_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-base-windows-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload base image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-base-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-base-image-uri.outputs.file }}
+          if-no-files-found: error
+
+  post-build-base:
+    runs-on: windows-2022
+    needs: [prepare-context, build-base]
+    if: needs.build-base.result == 'success' || needs.build-base.result == 'skipped'
+    permissions:
+      packages: read
+      actions: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Output Directory
+        shell: powershell
+        run: |
+          mkdir ${{ runner.temp }}/out
+
+      - name: Export mozbuild report from base image
+        id: export-base-image-mozbuild-report
+        shell: powershell
+        run: |
+          docker run --rm `
+            -v "${{ runner.temp }}/out:C:/dist" `
+            --entrypoint powershell `
+            ${{ needs.prepare-context.outputs.base-image }} `
+            -NoProfile -Command 'cp -r obj-*/.mozbuild C:/dist'
+
+      - name: Upload base image mozbuild report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firefox-base-windows-x86_64-mozbuild-report"
+          path: "${{ runner.temp }}/out/.mozbuild"
+          if-no-files-found: error
+          include-hidden-files: true
+
+  build-berytus:
+    runs-on: windows-2022
+    needs: [prepare-context, build-deps, build-base]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Relocate Docker storage to D drive
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        shell: powershell
+        run: |
+          $configPath = 'C:\ProgramData\docker\config\daemon.json'
+          $dataRoot = 'D:\docker'
+          Stop-Service -Name docker -Force
+          New-Item -ItemType Directory -Force -Path $dataRoot, (Split-Path $configPath) | Out-Null
+          @{ 'data-root' = $dataRoot } | ConvertTo-Json | Set-Content -Path $configPath -Encoding ascii
+          Start-Service -Name docker
+          docker info --format '{{.DockerRootDir}}'
+
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Stage build context
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        run: |
+          STAGE="$RUNNER_TEMP/build-context"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp port "$STAGE/"
+          cp -r mozilla-unified "$STAGE/"
+          cp .github/docker/regen-wpt-certs.sh "$STAGE/"
+          cp .github/docker/mach.cmd "$STAGE/"
+          find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
+          find "$STAGE" -name .DS_Store -delete
+          # Pass the staged path back to later steps via env so we don't
+          # have to repeat the $RUNNER_TEMP -> Windows path dance.
+          echo "BUILD_CONTEXT=$STAGE" >> "$GITHUB_ENV"
+
+      - name: Build and push image
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        shell: cmd
+        run: |
+          docker build ^
+            --file .github\docker\Dockerfile.windows.build ^
+            --tag ${{ needs.prepare-context.outputs.build-image }} ^
+            --build-arg BASE_IMAGE=${{ needs.prepare-context.outputs.base-image }} ^
+            "%BUILD_CONTEXT%"
+          docker push ${{ needs.prepare-context.outputs.build-image }}
+
+      - name: Write Build Image URI
+        id: write-build-image-uri
+        run: |
+          OUT="$RUNNER_TEMP/image-uris"
+          mkdir -p "$OUT"
+          BUILD_IMAGE_URI_FILE="firefox-berytus-windows-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare-context.outputs.build-image }}" > "$OUT/$BUILD_IMAGE_URI_FILE"
+          echo "file=$OUT/$BUILD_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-berytus-windows-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-build-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-build-image-uri.outputs.file }}
+          if-no-files-found: error
+
+  post-build-berytus:
+    runs-on: windows-2022
+    needs: [prepare-context, build-berytus]
+    if: needs.build-berytus.result == 'success' || needs.build-berytus.result == 'skipped'
+    permissions:
+      packages: read
+      actions: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Output Directory
+        shell: powershell
+        run: |
+          mkdir ${{ runner.temp }}/out
+
+      - name: Export mozbuild report from build image
+        id: export-build-image-mozbuild-report
+        shell: powershell
+        run: |
+          docker run --rm `
+            -v "${{ runner.temp }}/out:C:/dist" `
+            --entrypoint powershell `
+            ${{ needs.prepare-context.outputs.build-image }} `
+            -NoProfile -Command 'cp -r obj-*/.mozbuild C:/dist'
+
+      - name: Upload build image mozbuild report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firefox-build-windows-x86_64-mozbuild-report"
+          path: "${{ runner.temp }}/out/.mozbuild"
+          if-no-files-found: error
+          include-hidden-files: true
+
+  test:
+    runs-on: windows-2022
+    needs: [prepare-context, build-berytus]
+    timeout-minutes: 120
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull build image
+        shell: cmd
+        run: docker pull ${{ needs.prepare-context.outputs.build-image }}
+
+      - name: Run Web Platform Tests (Berytus)
+        shell: cmd
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          docker run --rm ^
+            -e MOZ_LOG ^
+            ${{ needs.prepare-context.outputs.build-image }} ^
+            wpt --headless testing/web-platform/tests/berytus
+
+      - name: Run xpcshell tests (Berytus)
+        shell: cmd
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          docker run --rm ^
+            -e MOZ_LOG ^
+            ${{ needs.prepare-context.outputs.build-image }} ^
+            xpcshell-test --verbose-if-fails --tag berytus
+
+      - name: Run xpcshell tests (Berytus WebExts)
+        shell: powershell
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          $image = '${{ needs.prepare-context.outputs.build-image }}'
+          $files = docker run --rm --entrypoint cmd $image /c "dir /b %MOZ_DIR%\toolkit\components\extensions\test\xpcshell\test_ext_berytus*"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $paths = @($files | ForEach-Object { "toolkit/components/extensions/test/xpcshell/$($_.Trim())" })
+          docker run --rm -e MOZ_LOG -e MOZ_HEADLESS=1 $image xpcshell-test --verbose-if-fails --setpref privacy.query_stripping.enabled=false --setpref privacy.query_stripping.enabled.pbmode=false $paths
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  package:
+    runs-on: windows-2022
+    needs: [prepare-context, build-berytus, test]
+    timeout-minutes: 180
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull build image
+        shell: cmd
+        run: docker pull ${{ needs.prepare-context.outputs.build-image }}
+
+      - name: Prepare output dir
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ runner.temp }}/out" | Out-Null
+
+      - name: Package Firefox
+        shell: powershell
+        run: |
+          $image = '${{ needs.prepare-context.outputs.build-image }}'
+          $script = @'
+            Set-Location $env:MOZ_DIR
+            $objDir = (Get-ChildItem -Directory obj-*).Name
+
+            Write-Host "--- manifest files in $objDir/dist/bin/browser/components/"
+            Get-ChildItem "$objDir\dist\bin\browser\components\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+            Write-Host "--- browser/chrome.manifest contents:"
+            Get-Content "$objDir\dist\bin\browser\chrome.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+            Write-Host "--- manifest files in $objDir/dist/bin/browser/ [non-recursive]"
+            Get-ChildItem "$objDir\dist\bin\browser\*.manifest" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $_" }
+
+            # Fix manifest filename case on Windows (NTFS is case-insensitive).
+            # The build may store manifest files with incorrect case, causing
+            # the packager to treat browser/components as a separate base when
+            # the on-disk name does not case-sensitively match the reference
+            # in browser/chrome.manifest.
+            $compDir = Join-Path $objDir 'dist\bin\browser\components'
+            $chromeManifest = Join-Path $objDir 'dist\bin\browser\chrome.manifest'
+            if (Test-Path $chromeManifest) {
+              $refs = @{}
+              Get-Content $chromeManifest | ForEach-Object {
+                if ($_ -match '^manifest\s+components/(.+)$') {
+                  $refs[$Matches[1].ToLower()] = $Matches[1]
+                }
+              }
+              Get-ChildItem (Join-Path $compDir '*.manifest') -ErrorAction SilentlyContinue | ForEach-Object {
+                $disk = $_.Name
+                $key = $disk.ToLower()
+                if ($refs.ContainsKey($key) -and $refs[$key] -cne $disk) {
+                  $correct = $refs[$key]
+                  $tmp = Join-Path $compDir ('_rename_' + $disk)
+                  Write-Host ('--- fixing manifest case: ' + $disk + ' -> ' + $correct)
+                  Move-Item $_.FullName $tmp
+                  Move-Item $tmp (Join-Path $compDir $correct)
+                }
+              }
+            }
+
+            ./mach package
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            Copy-Item "$objDir\dist\*.win64.zip" C:\dist\
+            if (Test-Path "$objDir\dist\install\sea\*.installer.exe") {
+              Copy-Item "$objDir\dist\install\sea\*.installer.exe" C:\dist\
+            }
+          '@
+          docker run --rm `
+            -v "${{ runner.temp }}/out:C:\dist" `
+            --entrypoint powershell `
+            $image `
+            -NoProfile -Command $script
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload artifact (zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-berytus-windows-x86_64-zip
+          path: ${{ runner.temp }}/out/*.win64.zip
+          if-no-files-found: error
+
+      - name: Upload artifact (installer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-berytus-windows-x86_64-installer
+          path: ${{ runner.temp }}/out/*.installer.exe
+          if-no-files-found: warn

@@ -1,0 +1,10 @@
+# syntax=docker/dockerfile:1.7
+ARG DEPS_IMAGE
+FROM ${DEPS_IMAGE}
+
+RUN set -a && for f in /etc/environment.d/*.conf; do [ -r "$f" ] && . "$f"; done && set +a && \
+    cd "$MOZ_DIR" && ./mach build
+
+RUN sccache --show-stats || echo "::warning::sccache --show-stats failed; view above output for details"
+
+WORKDIR /build

@@ -1,0 +1,464 @@
+name: Firefox with Berytus (Linux)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  prepare-context:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      changeset-rev: ${{ steps.changeset.outputs.rev }}
+      deps-image: ${{ steps.tags.outputs.deps }}
+      base-image: ${{ steps.tags.outputs.base }}
+      build-image: ${{ steps.tags.outputs.build }}
+      deps-image-exists: ${{ steps.check-deps.outputs.exists }}
+      base-image-exists: ${{ steps.check-base.outputs.exists }}
+      build-image-exists: ${{ steps.check-build.outputs.exists }}
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Read changeset
+        id: changeset
+        run: |
+          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
+          echo "rev=$REV" >> "$GITHUB_OUTPUT"
+          echo "Using mozilla-unified changeset: $REV"
+
+      - name: Compute image tags
+        id: tags
+        env:
+          REV: ${{ steps.changeset.outputs.rev }}
+          SRC_HASH: ${{ hashFiles('mozilla-unified/**/*') }}
+        run: |
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          DEPS_REPO="ghcr.io/${REPO_LC}/firefox-deps-x86_64-pc-linux-gnu"
+          BASE_REPO="ghcr.io/${REPO_LC}/firefox-base-x86_64-pc-linux-gnu"
+          BUILD_REPO="ghcr.io/${REPO_LC}/firefox-berytus-x86_64-pc-linux-gnu"
+          echo "deps=${DEPS_REPO}:${REV}" >> "$GITHUB_OUTPUT"
+          echo "base=${BASE_REPO}:${REV}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if deps image exists
+        id: check-deps
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.deps }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Deps image ${{ steps.tags.outputs.deps }} already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Deps image ${{ steps.tags.outputs.deps }} does not exist"
+          fi
+
+      - name: Check if base image exists
+        id: check-base
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.base }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Base image ${{ steps.tags.outputs.base }} already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Base image ${{ steps.tags.outputs.base }} does not exist"
+          fi
+
+      - name: Check if build image exists
+        id: check-build
+        run: |
+          if docker manifest inspect "${{ steps.tags.outputs.build }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Build image ${{ steps.tags.outputs.build }} already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Build image ${{ steps.tags.outputs.build }} does not exist"
+          fi
+
+  build-deps:
+    runs-on: ubuntu-24.04
+    needs: prepare-context
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Berytus source
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure host swap (12 GiB on /mnt)
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        run: |
+          set -eu
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile /swapfile
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+          swapon --show
+          df -h /
+          df -h /mnt
+
+      - name: Build and push deps image
+        if: needs.prepare-context.outputs.deps-image-exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .github/docker
+          file: .github/docker/Dockerfile.linux.deps
+          push: true
+          tags: ${{ needs.prepare-context.outputs.deps-image }}
+          build-args: |
+            MOZ_REV=${{ needs.prepare-context.outputs.changeset-rev }}
+
+      - name: Write Deps Image URI
+        id: write-deps-image-uri
+        run: |
+          OUT=/tmp/image-uris
+          mkdir -p "$OUT"
+          DEPS_IMAGE_URI_FILE="firefox-deps-linux-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare-context.outputs.deps-image }}" > "$OUT/$DEPS_IMAGE_URI_FILE"
+          echo "file=$OUT/$DEPS_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-deps-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload deps image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-deps-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-deps-image-uri.outputs.file }}
+          if-no-files-found: error
+  build-base:
+    runs-on: ubuntu-24.04
+    needs: [prepare-context, build-deps]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Berytus source
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure host swap (12 GiB on /mnt)
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        run: |
+          set -eu
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile /swapfile
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+          swapon --show
+          df -h /
+          df -h /mnt
+
+      - name: Build and push base image
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .github/docker
+          file: .github/docker/Dockerfile.linux.base
+          push: true
+          tags: ${{ needs.prepare-context.outputs.base-image }}
+          build-args: |
+            DEPS_IMAGE=${{ needs.prepare-context.outputs.deps-image }}
+
+      - name: Write Base Image URI
+        id: write-base-image-uri
+        run: |
+          OUT=/tmp/image-uris
+          mkdir -p "$OUT"
+          BASE_IMAGE_URI_FILE="firefox-base-linux-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare-context.outputs.base-image }}" > "$OUT/$BASE_IMAGE_URI_FILE"
+          echo "file=$OUT/$BASE_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-base-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload base image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-base-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-base-image-uri.outputs.file }}
+          if-no-files-found: error
+
+  post-build-base:
+    runs-on: ubuntu-24.04
+    needs: [prepare-context, build-base]
+    if: needs.build-base.result == 'success' || needs.build-base.result == 'skipped'
+    permissions:
+      packages: read
+      actions: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Export mozbuild report from base image
+        id: export-base-image-mozbuild-report
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.prepare-context.outputs.base-image }}
+          shell: bash
+          options: -v ${{ runner.temp }}/out:/dist
+          run: |
+            # $ ls -alh obj-x86_64-apple-darwin24.6.0/.mozbuild/
+            # total 1280
+            # drwxr-xr-x    5 ali  staff   160B May 15 23:49 .
+            # drwxr-xr-x  211 ali  staff   6.6K May 16 10:59 ..
+            # -rw-r--r--    1 ali  staff     0B May 17 13:13 last_log.json
+            # -rw-r--r--    1 ali  staff   232K May 16 11:41 profile_build_resources.json
+            # -rw-r--r--    1 ali  staff   406K May 16 11:41 warnings.json
+            echo "Copying mozbuild report"
+            cd "$MOZ_DIR"
+            ls -alh obj-*/.mozbuild
+            cp -r obj-*/.mozbuild /dist
+            ls -alh /dist
+            tree /dist || true
+
+      - name: Upload base image mozbuild report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firefox-base-linux-x86_64-mozbuild-report"
+          path: "${{ runner.temp }}/out/.mozbuild"
+          if-no-files-found: error
+          include-hidden-files: true
+
+  build-berytus:
+    runs-on: ubuntu-24.04
+    needs: [prepare-context, build-deps, build-base]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Stage build context
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        run: |
+          STAGE=/tmp/build-context
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp port "$STAGE/"
+          cp -r mozilla-unified "$STAGE/"
+          find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
+          find "$STAGE" -name .DS_Store -delete
+
+      - name: Configure host swap (12 GiB on /mnt)
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        run: |
+          set -eu
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile /swapfile
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+          swapon --show
+          df -h /
+          df -h /mnt
+
+      - name: Build and push image
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: /tmp/build-context
+          file: .github/docker/Dockerfile.linux.build
+          push: true
+          tags: ${{ needs.prepare-context.outputs.build-image }}
+          build-args: |
+            BASE_IMAGE=${{ needs.prepare-context.outputs.base-image }}
+
+      - name: Write Build Image URI
+        id: write-build-image-uri
+        run: |
+          OUT=/tmp/image-uris
+          mkdir -p "$OUT"
+          BUILD_IMAGE_URI_FILE="firefox-berytus-linux-x86_64-image.txt"
+          printf '%s\n' "${{ needs.prepare-context.outputs.build-image }}" > "$OUT/$BUILD_IMAGE_URI_FILE"
+          echo "file=$OUT/$BUILD_IMAGE_URI_FILE" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=firefox-berytus-linux-x86_64-image" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.write-build-image-uri.outputs.artifact-name }}
+          path: ${{ steps.write-build-image-uri.outputs.file }}
+          if-no-files-found: error
+
+  post-build-berytus:
+    runs-on: ubuntu-24.04
+    needs: [prepare-context, build-berytus]
+    if: needs.build-berytus.result == 'success' || needs.build-berytus.result == 'skipped'
+    permissions:
+      packages: read
+      actions: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Export mozbuild report from build image
+        id: export-build-image-mozbuild-report
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.prepare-context.outputs.build-image }}
+          shell: bash
+          options: -v ${{ runner.temp }}/out:/dist
+          run: |
+            echo "Copying mozbuild report"
+            cd "$MOZ_DIR"
+            ls -alh obj-*/.mozbuild
+            cp -r obj-*/.mozbuild /dist
+            ls -alh /dist
+            tree /dist || true
+
+      - name: Upload build image mozbuild report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firefox-build-linux-x86_64-mozbuild-report"
+          path: "${{ runner.temp }}/out/.mozbuild"
+          if-no-files-found: error
+          include-hidden-files: true
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: [prepare-context, build-berytus]
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Run Web Platform Tests (Berytus)
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.prepare-context.outputs.build-image }}
+          shell: bash
+          run: |
+            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
+            ./mach wpt --headless testing/web-platform/tests/berytus
+
+      - name: Run xpcshell tests (Berytus)
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.prepare-context.outputs.build-image }}
+          shell: bash
+          run: |
+            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
+            ./mach xpcshell-test --verbose-if-fails --tag berytus
+
+      - name: Run xpcshell tests (Berytus WebExts)
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.prepare-context.outputs.build-image }}
+          shell: bash
+          run: |
+            export MOZ_LOG="berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7"
+            MOZ_HEADLESS=1 ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
+
+  package:
+    runs-on: ubuntu-24.04
+    needs: [prepare-context, build-berytus, test]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Package Firefox
+        uses: addnab/docker-run-action@v3
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          image: ${{ needs.prepare-context.outputs.build-image }}
+          shell: bash
+          options: -v ${{ runner.temp }}/out:/dist
+          run: |
+            ./mach package
+            cp obj-*/dist/*.tar.xz /dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-berytus-linux-x86_64
+          path: ${{ runner.temp }}/out/*.tar.xz
+          if-no-files-found: error

@@ -1,0 +1,452 @@
+name: Firefox with Berytus (MacOS)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+
+env:
+  MOZ_DIR: /Users/runner/work/berytus/mozilla-unified
+  MOZ_DIR_CLOBBER: /home/runner/work/berytus/mozilla-unified/CLOBBER
+  MOZ_DIR_CONFIG: /Users/runner/work/berytus/mozilla-unified/mozconfig
+  MOZ_OBJ_DIR: /Users/runner/work/berytus/mozilla-unified/obj-x86_64-apple-darwin
+  MOZBUILD_STATE_PATH: /Users/runner/work/berytus/mozbuild
+  SCCACHE_DIR: /Users/runner/work/berytus/sccache
+  SCCACHE_CACHE_SIZE: 5G
+  BERYTUS_TOOLKIT_DIR: /Users/runner/work/berytus/mozilla-unified/toolkit/components/berytus
+  BERYTUS_TOOLKIT_MODULES_DIR: /Users/runner/work/berytus/mozilla-unified/toolkit/components/berytus/modules
+  SECRETSTAR_DIR: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar
+  SECRETSTAR_MOZBUILD: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/moz.build
+  SECRETSTAR_BUILD_DIR1: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build
+  SECRETSTAR_BUILD_DIR2: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/build.worker
+  SECRETSTAR_BUILD_DIR3: /Users/runner/work/berytus/mozilla-unified/browser/extensions/secretstar/public
+
+jobs:
+  build:
+    runs-on: macos-15-intel # Kernel Version: Darwin 24.6.0
+    outputs:
+      changeset-rev: ${{ steps.changeset.outputs.rev }}
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+          detached: true
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          brew install mercurial autoconf nasm yasm node
+
+      - name: Install Rust and cargo-binstall
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Install cbindgen and sccache
+        run: cargo binstall cbindgen sccache
+
+      - name: Install Rust target x86_64-apple-darwin
+        run: rustup target add x86_64-apple-darwin
+
+      - name: Read changeset
+        id: changeset
+        run: |
+          REV=$(grep '^changeset:' mozilla-unified/import-changeset.txt | sed 's/changeset:[[:space:]]*//' | cut -d: -f2)
+          echo "rev=$REV" >> "$GITHUB_OUTPUT"
+          echo "Using mozilla-unified changeset: $REV"
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+
+      - name: Cache mozbuild state
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-mozbuild-state
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-sccache
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ hashFiles('mozilla-unified/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
+
+      - name: Clone mozilla-esr140 at changeset
+        run: |
+          hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r "${{ steps.changeset.outputs.rev }}" "$MOZ_DIR"
+
+      - name: Run mach bootstrap
+        run: |
+          cd "$MOZ_DIR"
+          ./mach --no-interactive bootstrap --application-choice=browser
+
+      - name: Setup MOZBUILD_STATE_PATH
+        run: |
+          mkdir -p "$MOZBUILD_STATE_PATH"
+          cat > "$MOZBUILD_STATE_PATH/machrc" << 'EOF'
+          [mach_telemetry]
+          is_enabled = false
+          is_set_up = true
+          EOF
+
+      - name: Export Berytus to mozilla-unified
+        run: |
+          ./port export "$MOZ_DIR"
+
+      - name: Create mozconfig
+        run: |
+          cat > "$MOZ_DIR/mozconfig" << EOF
+          ac_add_options --enable-application=browser
+          ac_add_options --enable-optimize
+          ac_add_options --disable-debug
+          ac_add_options --with-ccache=sccache
+          ac_add_options --target=x86_64-apple-darwin
+          EOF
+
+      - name: Install Berytus Toolkit Dependencies
+        working-directory: ${{ env.BERYTUS_TOOLKIT_DIR }}
+        run: npm install
+
+      - name: Install Secret* Dependencies
+        working-directory: ${{ env.SECRETSTAR_DIR }}
+        run: npm install
+
+      - name: Build Firefox
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          cd ${{ env.BERYTUS_TOOLKIT_DIR }}
+          npm run build
+          cd ${{ env.SECRETSTAR_DIR }}
+          CI=false npm run build
+          ./moz.build.sh
+          cd ${{ env.MOZ_DIR }}
+          if ! sccache --show-stats; then
+              echo "::warning::sccache is not working properly; view above output for details"
+          fi
+          ./mach build
+          if ! sccache --show-stats; then
+              echo "::warning::sccache is not working properly; view above output for details"
+          fi
+
+      - name: Save build outputs
+        uses: actions/cache/save@v4
+        env:
+          cache-name: cache-build-outputs
+        with:
+          path: |
+            ${{ env.MOZ_OBJ_DIR }}
+            ${{ env.MOZ_DIR_CLOBBER }}
+            ${{ env.MOZ_DIR_CONFIG }}
+            ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
+            ${{ env.SECRETSTAR_MOZBUILD }}
+            ${{ env.SECRETSTAR_BUILD_DIR1 }}
+            ${{ env.SECRETSTAR_BUILD_DIR2 }}
+            ${{ env.SECRETSTAR_BUILD_DIR3 }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-${{ github.sha }}-${{ github.run_id }}
+
+      - name: Export mozbuild report from build image
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          mkdir -p "${{ runner.temp }}/out"
+          cp -r obj-*/.mozbuild "${{ runner.temp }}/out"
+
+      - name: Upload mozbuild report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "firefox-build-macos-x86_64-mozbuild-report"
+          path: "${{ runner.temp }}/out/.mozbuild"
+          if-no-files-found: error
+          include-hidden-files: true
+
+  check-cache:
+    runs-on: macos-14
+    needs: build
+    timeout-minutes: 10
+
+    steps:
+      - name: Check cache usage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          USAGE_JSON=$(gh api repos/${{ github.repository }}/actions/cache/usage)
+          USAGE_BYTES=$(echo "$USAGE_JSON" | jq '.active_caches_size_in_bytes')
+          USAGE_GB=$(echo "scale=2; $USAGE_BYTES / 2^30" | bc)
+          echo "Current cache usage: ${USAGE_GB}GiB"
+          THRESHOLD=8.5
+          if [ "$(echo "$USAGE_GB >= $THRESHOLD" | bc)" -eq 1 ]; then
+            echo "::warning::GitHub Actions cache usage is ${USAGE_GB}GiB (threshold: ${THRESHOLD}GiB / 10GiB limit)"
+          fi
+
+  test:
+    runs-on: macos-14
+    needs: build
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          brew install mercurial openssl@3 bc jq
+          brew unlink openssl@1.1
+          brew link --force --overwrite openssl@3
+          ls -alh /opt/homebrew/bin/openssl || true
+          ln -sf "$(brew --prefix openssl@3)/bin/openssl" /opt/homebrew/bin/openssl
+          ls -alh /opt/homebrew/bin/openssl || true
+
+      - name: Clone mozilla-esr140 at changeset
+        run: |
+          hg clone --stream https://hg.mozilla.org/releases/mozilla-esr140 -r "${{ needs.build.outputs.changeset-rev }}" "$MOZ_DIR"
+
+      - name: Export Berytus to mozilla-unified
+        run: |
+          ./port export "$MOZ_DIR"
+
+      - name: Restore build outputs
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-build-outputs
+        with:
+          path: |
+            ${{ env.MOZ_OBJ_DIR }}
+            ${{ env.MOZ_DIR_CLOBBER }}
+            ${{ env.MOZ_DIR_CONFIG }}
+            ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
+            ${{ env.SECRETSTAR_MOZBUILD }}
+            ${{ env.SECRETSTAR_BUILD_DIR1 }}
+            ${{ env.SECRETSTAR_BUILD_DIR2 }}
+            ${{ env.SECRETSTAR_BUILD_DIR3 }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}
+          fail-on-cache-miss: true
+
+      - name: Restore mozbuild state
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-mozbuild-state
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
+          fail-on-cache-miss: true
+
+      - name: Regenerate WPT certificates
+        working-directory: ${{ env.MOZ_DIR }}/testing/web-platform/tests
+        run: |
+          OPENSSL="$(brew --prefix openssl@3)/bin/openssl"
+          command -v openssl
+          ls -alh "$OPENSSL"
+          echo "Current CA cert validity:"
+          $OPENSSL x509 -in tools/certs/cacert.pem -noout -dates
+          echo "Current Server cert validity:"
+          $OPENSSL x509 -in tools/certs/web-platform.test.pem -noout -dates
+          echo "Extracting Subject Alt Names from existing CA cert..."
+          CA_SAN=$($OPENSSL x509 -in tools/certs/cacert.pem -noout -ext subjectAltName \
+            | tail -1 | sed 's/^[[:space:]]*//')
+          echo "Extracting Name Constraints from existing CA cert..."
+          $OPENSSL x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
+            | tail +3 | sed 's/^[[:space:]]*//'
+          echo "====="
+          CA_NC=$($OPENSSL x509 -in tools/certs/cacert.pem -noout -ext nameConstraints \
+            | tail +3 | sed 's/^[[:space:]]*//' \
+            | awk '/^DNS:/{printf "permitted;%s\n", $0}')
+          echo "$CA_SAN"
+          echo "======"
+          echo "$CA_NC"
+          echo "Regenerating CA and server certs..."
+          $OPENSSL req -x509 -newkey rsa:2048 \
+            -keyout tools/certs/cacert.key -out tools/certs/cacert.pem \
+            -days 365000 -nodes -subj "/CN=web-platform-tests" \
+            -addext "basicConstraints = critical, CA:TRUE" \
+            -addext "keyUsage = keyCertSign" \
+            -addext "extendedKeyUsage = serverAuth" \
+            -addext "authorityKeyIdentifier = keyid:always, issuer:always" \
+            -addext "subjectAltName = $CA_SAN" \
+            -addext "nameConstraints = $(echo "$CA_NC" | paste -sd',' -)"
+          $OPENSSL req -newkey rsa:2048 \
+            -keyout tools/certs/web-platform.test.key \
+            -out /tmp/wpt.csr \
+            -nodes -subj "/CN=web-platform.test" \
+            -addext "basicConstraints=CA:FALSE" \
+            -addext "keyUsage=digitalSignature,nonRepudiation,keyEncipherment" \
+            -addext "extendedKeyUsage=serverAuth" \
+            -addext "subjectAltName=$CA_SAN"
+          $OPENSSL x509 -req -in /tmp/wpt.csr \
+            -CA tools/certs/cacert.pem -CAkey tools/certs/cacert.key \
+            -CAcreateserial -out tools/certs/web-platform.test.pem \
+            -days 365000 \
+            -copy_extensions copy
+          rm -f /tmp/wpt.csr
+          echo "New CA cert validity:"
+          $OPENSSL x509 -in tools/certs/cacert.pem -noout -dates
+          echo "New Server cert validity:"
+          $OPENSSL x509 -in tools/certs/web-platform.test.pem -noout -dates
+
+      - name: Run Web Platform Tests (Berytus)
+        working-directory: ${{ env.MOZ_DIR }}
+        env:
+          MOZ_LOG: berytus_fetch_observer:7,berytus_http_observer:7,berytus_ke:7,berytus_x509:7,berytus_mask_ipc:7,berytus_agent:7
+        run: |
+          ./mach wpt --headless testing/web-platform/tests/berytus
+
+      - name: Run xpcshell tests (Berytus)
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          set -xe
+          touch "${{ env.MOZ_OBJ_DIR }}/CLOBBER"
+          ./mach xpcshell-test --verbose-if-fails --tag berytus
+
+      - name: Run xpcshell tests (Berytus WebExts)
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          set -xe
+          touch "${{ env.MOZ_OBJ_DIR }}/CLOBBER"
+          ./mach xpcshell-test --verbose-if-fails toolkit/components/extensions/test/xpcshell/test_ext_berytus*
+
+  package:
+    runs-on: macos-14
+    needs: [build, test]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Berytus source
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          brew install mercurial
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Clone mozilla-esr140 at changeset
+        run: |
+          hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r "${{ needs.build.outputs.changeset-rev }}" "$MOZ_DIR"
+
+      - name: Export Berytus to mozilla-unified
+        run: |
+          ./port export "$MOZ_DIR"
+
+      - name: Restore build outputs
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-build-outputs
+        with:
+          path: |
+            ${{ env.MOZ_OBJ_DIR }}
+            ${{ env.MOZ_DIR_CLOBBER }}
+            ${{ env.MOZ_DIR_CONFIG }}
+            ${{ env.BERYTUS_TOOLKIT_MODULES_DIR }}
+            ${{ env.SECRETSTAR_MOZBUILD }}
+            ${{ env.SECRETSTAR_BUILD_DIR1 }}
+            ${{ env.SECRETSTAR_BUILD_DIR2 }}
+            ${{ env.SECRETSTAR_BUILD_DIR3 }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}
+          fail-on-cache-miss: true
+
+      - name: Restore mozbuild state
+        uses: actions/cache/restore@v4
+        env:
+          cache-name: cache-mozbuild-state
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}
+          fail-on-cache-miss: true
+
+      - name: Package Firefox
+        working-directory: ${{ env.MOZ_DIR }}
+        run: |
+          ./mach package
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-berytus-macos-x86_64
+          path: ${{ env.MOZ_OBJ_DIR }}/dist/*.dmg
+          if-no-files-found: error
+
+  cleanup:
+    runs-on: macos-14
+    needs: [build, test, package]
+    if: always()
+    timeout-minutes: 20
+
+    steps:
+      - name: Delete objdir cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+          cache-name: cache-build-outputs
+        run: |
+          gh cache delete "${{ runner.os }}-build-${{ env.cache-name }}-${{ needs.build.outputs.changeset-rev }}-${{ github.sha }}-${{ github.run_id }}" \
+            --repo "${{ github.repository }}" || true
+
+      - name: Prune old sccache entries
+        # The sccache cache key incorporates a content hash of mozilla-unified,
+        # so every distinct source state creates a new cache entry. Keep the
+        # one with the most recent activity (max of createdAt and
+        # lastAccessedAt) and delete the rest. Sorting by lastAccessedAt alone
+        # would risk evicting a freshly created entry that hasn't been read
+        # yet; sorting by createdAt alone would risk evicting an old entry
+        # that's still being actively used.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREFIX="${{ runner.os }}-build-cache-sccache-"
+          OLD_KEYS=$(gh cache list \
+            --repo "${{ github.repository }}" \
+            --key "$PREFIX" \
+            --limit 100 \
+            --json key,createdAt,lastAccessedAt \
+            --jq '
+              map(. + {recency: (if .createdAt > .lastAccessedAt then .createdAt else .lastAccessedAt end)})
+              | sort_by(.recency) | reverse | .[1:] | .[].key
+            ')
+          if [ -z "$OLD_KEYS" ]; then
+            echo "No stale sccache entries to delete"
+            exit 0
+          fi
+          echo "Deleting stale sccache entries:"
+          echo "$OLD_KEYS"
+          while IFS= read -r key; do
+            [ -z "$key" ] && continue
+            gh cache delete "$key" --repo "${{ github.repository }}" || true
+          done <<< "$OLD_KEYS"

@@ -232,7 +232,7 @@ already_AddRefed<Promise> BerytusChannel::CreateGuard(
     return nullptr;
   }
   uint64_t innWinId = innerWindow->WindowID();
-  MOZ_ASSERT(RegisterInWindow(innerWindow));
+  MOZ_RELEASE_ASSERT(RegisterInWindow(innerWindow));
   RefPtr<Promise> res = CreateInner(nsGlobal, aCx, aOptions, aRv);
   if (NS_WARN_IF(aRv.Failed())) {
     UnregisterInWindow(innWinId);

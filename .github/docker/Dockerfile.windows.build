@@ -1,0 +1,116 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+WORKDIR C:/berytus
+COPY port C:/berytus/port
+COPY mozilla-unified C:/berytus/mozilla-unified/
+
+# MSYSTEM tells the msys2 /etc/profile which PATH set to use;
+# without it, /usr/bin (pacman, rsync, etc.) may not be on PATH.
+ENV MSYSTEM="MSYS"
+
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# rsync isn't in MozillaBuild's msys2 by default; `port` needs it.
+# MozillaBuild 4.x dropped pacman, so install rsync + deps from msys2 packages.
+# Packages are sourced from the msys2-archive (2022-12-16 snapshot) to match
+# MozillaBuild's msys2 runtime 3.4.x; current repo packages target 3.6.x.
+RUN $msysRoot = ${env:MOZILLABUILD} + '\msys2'; \
+    $tmp = 'C:\TEMP\msys-pkg'; \
+    New-Item -ItemType Directory -Force -Path $tmp | Out-Null; \
+    function Install-MsysPkg($url) { \
+        $zst = Join-Path $tmp (Split-Path $url -Leaf); \
+        Invoke-WebRequest -Uri $url -OutFile $zst; \
+        & 7z x $zst ('-o' + $tmp) -y | Out-Null; \
+        $tar = $zst -replace '\.zst$',''; \
+        & 7z x $tar ('-o' + $msysRoot) -y | Out-Null; \
+        Remove-Item $zst,$tar -Force \
+    }; \
+    $archive = 'https://github.com/msys2/msys2-archive/releases/download/2022-12-16-msys-x86_64'; \
+    Install-MsysPkg "$archive/rsync-3.2.7-1-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/libxxhash-0.8.1-1-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/liblz4-1.9.4-1-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/libzstd-1.5.2-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/libopenssl-1.1.1.s-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/popt-1.18-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/dash-0.5.11.5-2-x86_64.pkg.tar.zst"; \
+    Install-MsysPkg "$archive/rebase-4.5.0-2-x86_64.pkg.tar.zst"; \
+    Remove-Item $tmp -Recurse -Force; \
+    Write-Host '>>> rebasing msys2 DLLs:'; \
+    & $msysRoot\usr\bin\dash.exe -c '/usr/bin/rebaseall -v'; \
+    if ($LASTEXITCODE -ne 0) { exit 1 }; \
+    Write-Host '>>> rsync verification:'; \
+    function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    msys 'rsync --version'; \
+    if ($LASTEXITCODE -ne 0) { exit 1 }
+
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    $mozUnix = '/' + $env:MOZ_DIR[0].ToString().ToLower() + ($env:MOZ_DIR.Substring(2) -replace '\\','/'); \
+    Write-Host ('>>> MOZ_DIR (unix): ' + $mozUnix); \
+    $null | msys ('/c/berytus/port export ' + $mozUnix); \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# npm scripts use Unix commands (test, rm, .sh); tell npm to use bash.
+# Also add msys2 usr/bin to the system PATH so #!/usr/bin/env bash shebangs
+# resolve correctly even from a non-login shell.
+RUN $msysBin = ${env:MOZILLABUILD} + '\msys2\usr\bin'; \
+    $machPath = [Environment]::GetEnvironmentVariable('PATH', 'Machine'); \
+    [Environment]::SetEnvironmentVariable('PATH', $msysBin + ';' + $machPath, 'Machine'); \
+    npm config set script-shell ($msysBin + '\bash.exe')
+
+# Install Berytus toolkit + secretstar npm deps (separate layers for caching).
+RUN Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
+    npm install; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+RUN Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
+    npm install; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
+    npm run build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Build secretstar and run moz.build.sh.
+# craco builds write to C:\TEMP to avoid EBUSY/EPERM errors from Windows
+# Docker's windowsfilter storage driver when mkdir'ing inside the source
+# tree overlay. Output is moved back to the expected locations afterward.
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    Set-Location ${env:MOZ_DIR}\browser\extensions\secretstar; \
+    $env:BUILD_PATH = 'C:\TEMP\ss-react'; \
+    npx craco build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Move-Item 'C:\TEMP\ss-react' .\build; \
+    $env:BUILD_PATH = 'C:\TEMP\ss-worker'; \
+    npx craco build --config craco.workers.config.js; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Move-Item 'C:\TEMP\ss-worker' .\build.worker; \
+    $ssUnix = '/' + $env:MOZ_DIR[0].ToString().ToLower() + ($env:MOZ_DIR.Substring(2) -replace '\\','/') + '/browser/extensions/secretstar'; \
+    $null | msys ('cd "' + $ssUnix + '" && ./moz.build.sh'); \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
+# bundled OpenSSL supports -addext / -copy_extensions.
+COPY regen-wpt-certs.sh C:/berytus/
+
+RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
+    msys ' '; \
+    $null | msys /c/berytus/regen-wpt-certs.sh; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+RUN Write-Host '>>> mach build'; \
+    Set-Location $env:MOZ_DIR; \
+    ./mach build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> done'
+
+WORKDIR "${MOZ_DIR}"
+
+COPY mach.cmd C:/berytus/
+
+ENTRYPOINT ["C:\\berytus\\mach.cmd"]

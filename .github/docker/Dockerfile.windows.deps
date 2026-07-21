@@ -1,0 +1,112 @@
+# syntax=docker/dockerfile:1.7
+# escape=\
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+ARG MOZ_REV
+
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+ENV BUILD_DIR="C:\\build" \
+    MOZ_DIR="C:\\build\\mozilla-unified" \
+    MOZ_OBJ_DIR="C:\\build\\mozilla-unified\\obj-x86_64-pc-mingw32" \
+    MOZBUILD_STATE_PATH="C:\\build\\mozbuild" \
+    CARGO_HOME="C:\\Users\\ContainerAdministrator\\.cargo" \
+    RUSTUP_HOME="C:\\Users\\ContainerAdministrator\\.rustup" \
+    VS_BUILDTOOLS="C:\\BuildTools" \
+    PYTHON_DIR="C:\\Python311" \
+    MOZILLABUILD="C:\\build\\mozilla-build" \
+    DEFAULT_MOZILLABUILD_DIR="C:\\mozilla-build" \
+    FILE_MOZILLABUILDSETUP="C:\\TEMP\\MozillaBuildSetup.exe" \
+    FILE_RUSTUPINIT="C:\\TEMP\\rustup-init.exe" \
+    FILE_VSBUILDTOOLS="C:\\TEMP\\vs_buildtools.exe"
+
+RUN try { Add-MpPreference -Force -ExclusionPath \"$env:BUILD_DIR\" -ErrorAction Stop } \
+    catch { Write-Host \"Defender exclusion skipped: $($_.Exception.Message)\" }
+
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+RUN choco install -y --no-progress \
+        nasm llvm make 7zip git nodejs-lts; \
+    choco install -y --no-progress python --version=3.11.9 --params \"/InstallDir:$env:PYTHON_DIR\"
+
+RUN python -m pip install mercurial; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    hg --version
+
+# Visual Studio 2022 Build Tools with C++ workload + Windows 11 SDK.
+ADD https://aka.ms/vs/17/release/vs_buildtools.exe "${FILE_VSBUILDTOOLS}"
+RUN Start-Process -FilePath \"$env:FILE_VSBUILDTOOLS\" -Wait -ArgumentList @( \
+        '--quiet', '--wait', '--norestart', '--nocache', \
+        '--installPath', $env:VS_BUILDTOOLS, \
+        '--add', 'Microsoft.VisualStudio.Workload.VCTools', \
+        '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', \
+        '--add', 'Microsoft.VisualStudio.Component.Windows11SDK.22621', \
+        '--includeRecommended' \
+    ); \
+    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { exit $LASTEXITCODE }; \
+    Remove-Item -Force \"$env:FILE_VSBUILDTOOLS\"
+
+ADD https://win.rustup.rs/x86_64 "${FILE_RUSTUPINIT}"
+RUN & \"$env:FILE_RUSTUPINIT\" -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
+    Remove-Item -Force \"$env:FILE_RUSTUPINIT\"
+
+# MozillaBuild: the canonical Windows shell + tooling layer mach expects.
+ADD https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe "${FILE_MOZILLABUILDSETUP}"
+RUN New-Item -ItemType Directory -Force -Path C:\\build | Out-Null; \
+    $p = Start-Process -FilePath \"$env:FILE_MOZILLABUILDSETUP\" -Wait -PassThru -ArgumentList \"/S /D=$env:MOZILLABUILD\"; \
+    if ($p.ExitCode -ne 0) { exit $p.ExitCode }; \
+    if (Test-Path \"$env:DEFAULT_MOZILLABUILD_DIR\") { \
+        Write-Host \"NSIS /D= not honored by MozillaBuild installer; relocating $env:DEFAULT_MOZILLABUILD_DIR to $env:MOZILLABUILD\"; \
+        Move-Item -Path \"$env:DEFAULT_MOZILLABUILD_DIR\" -Destination \"$env:MOZILLABUILD\"; \
+    } \
+    Remove-Item -Force \"$env:FILE_MOZILLABUILDSETUP\"
+
+# python must resolve to the python installed by choco and not MozBuildShell
+RUN $python_path = (Get-Command python).Source; \
+    if ($python_path -notlike \"$env:PYTHON_DIR*\") { \
+        Write-Host \"Python path $python_path does not start with expected $env:PYTHON_DIR\"; \
+        exit 1; \
+    }
+        # Write-Host \"Modifying PATH:\"; \
+        # $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine'); \
+        # $newPath = \"$env:PYTHON_DIR;$env:PYTHON_DIR\\Scripts;$machinePath;$env:MOZILLABUILD\\bin\"; \
+        # [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine'); \
+        # $python_path = Get-Command python | Format-List -Property Source; \
+        # if ($python_path -notlike \"$env:PYTHON_DIR*\") { \
+        #     Write-Host \"After PATH modification, Python path $python_path still does not start with expected $env:PYTHON_DIR\"; \
+        #     exit 1; \
+        # } else { \
+        #     Write-Host \"Python path correctly set to $python_path\"; \
+        # } \
+
+RUN Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.ps1' | Invoke-Expression; \
+    cargo-binstall -y cbindgen
+
+RUN New-Item -ItemType Directory -Force -Path $env:MOZBUILD_STATE_PATH | Out-Null; \
+    Set-Content -Path \"$env:MOZBUILD_STATE_PATH/machrc\" -Encoding ascii -Value @( \
+        '[mach_telemetry]', \
+        'is_enabled = false', \
+        'is_set_up = true' \
+    )
+
+RUN New-Item -ItemType Directory -Force -Path $env:MOZ_DIR | Out-Null; \
+    Write-Host \">>> hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR\"; \
+    hg clone https://hg.mozilla.org/releases/mozilla-esr140 -r $env:MOZ_REV $env:MOZ_DIR; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> mach bootstrap'; \
+    Set-Location $env:MOZ_DIR; \
+    ./mach --no-interactive bootstrap --application-choice=browser; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> done'
+
+# Write the mozconfig used for the seed build (no Berytus pieces yet).
+RUN Set-Content -Path \"$env:MOZ_DIR/mozconfig\" -Encoding ascii -Value @( \
+        'ac_add_options --enable-application=browser', \
+        'ac_add_options --enable-optimize', \
+        'ac_add_options --disable-debug', \
+        'mk_add_options MOZ_PARALLEL_BUILD=2' \
+    )
+
+WORKDIR "C:\\build"

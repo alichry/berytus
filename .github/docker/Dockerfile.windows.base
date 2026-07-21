@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.7
+ARG DEPS_IMAGE
+FROM ${DEPS_IMAGE}
+
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+RUN Write-Host '>>> mach build'; \
+    Set-Location \"$env:MOZ_DIR\"; \
+    ./mach build; \
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; \
+    Write-Host '>>> done'
+
+WORKDIR "${MOZ_DIR}"
