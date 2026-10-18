@@ -1,6 +1,23 @@
 #!/bin/bash
 set -e
-cd "$(cygpath -u "$MOZ_DIR")/testing/web-platform/tests"
+
+get_moz_dir() {
+    if [ -z "$MOZ_DIR" ]; then
+        echo "Error: MOZ_DIR is not set. " >&2
+        exit 1
+    fi
+    if command -v cygpath >/dev/null 2>&1; then
+        # Cygwin or MSYS2
+        cygpath -u "$MOZ_DIR"
+    else
+        # Linux or macOS
+        echo "$MOZ_DIR"
+    fi
+}
+
+_moz_dir="$(get_moz_dir)"
+
+cd "${_moz_dir}/testing/web-platform/tests"
 
 echo 'Current CA cert validity:'
 openssl x509 -in tools/certs/cacert.pem -noout -dates
