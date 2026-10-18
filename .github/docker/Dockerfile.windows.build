@@ -4,9 +4,9 @@ FROM ${BASE_IMAGE}
 WORKDIR C:/berytus
 COPY port C:/berytus/port
 COPY mozilla-unified C:/berytus/mozilla-unified/
+COPY regen-wpt-certs.sh C:/berytus/
+COPY mach.cmd C:/berytus/
 
-# MSYSTEM tells the msys2 /etc/profile which PATH set to use;
-# without it, /usr/bin (pacman, rsync, etc.) may not be on PATH.
 ENV MSYSTEM="MSYS"
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "RemoteSigned", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
@@ -60,7 +60,7 @@ RUN $msysBin = ${env:MOZILLABUILD} + '\msys2\usr\bin'; \
     [Environment]::SetEnvironmentVariable('PATH', $msysBin + ';' + $machPath, 'Machine'); \
     npm config set script-shell ($msysBin + '\bash.exe')
 
-# Install Berytus toolkit + secretstar npm deps (separate layers for caching).
+# Install Berytus toolkit + secretstar npm deps
 RUN Set-Location ${env:MOZ_DIR}\toolkit\components\berytus; \
     npm install; \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -94,10 +94,8 @@ RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' 
     $null | msys ('cd "' + $ssUnix + '" && ./moz.build.sh'); \
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-# Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Git's
+# Regenerate WPT certificates. Same OpenSSL recipe as Linux/macOS; Msys2's
 # bundled OpenSSL supports -addext / -copy_extensions.
-COPY regen-wpt-certs.sh C:/berytus/
-
 RUN function msys { $input | & ${env:MOZILLABUILD}\msys2\usr\bin\bash.exe '-lc' @Args }; \
     msys ' '; \
     $null | msys /c/berytus/regen-wpt-certs.sh; \
@@ -110,7 +108,5 @@ RUN Write-Host '>>> mach build'; \
     Write-Host '>>> done'
 
 WORKDIR "${MOZ_DIR}"
-
-COPY mach.cmd C:/berytus/
 
 ENTRYPOINT ["C:\\berytus\\mach.cmd"]
