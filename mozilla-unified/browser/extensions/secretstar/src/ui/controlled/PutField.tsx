@@ -1,5 +1,5 @@
 import { PutField as TPutField, Session, db, Field } from "@root/db/db";
-import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings } from "@root/hooks";
+import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useLatest } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
@@ -46,11 +46,13 @@ export default function PutField() {
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
 
     const loaded = session && maybeReject && maybeResolve && settings && field;
-
+    const fieldIdRef = useLatest(fieldId);
+    
     useEffect(() => {
         if (! session) {
             return;
         }
+        const fieldId = fieldIdRef.current;
         const f = session.putFields?.find(f => f.id === fieldId);
         if (! f) {
             // This is practically never set since the session object
@@ -59,7 +61,7 @@ export default function PutField() {
             return;
         }
         setField(f);
-    }, [session]);
+    }, [session, fieldIdRef]);
 
     const submit = async (): Promise<boolean> => {
         try {
@@ -90,17 +92,21 @@ export default function PutField() {
         }
     };
 
+    const trySeamless = async (): Promise<boolean> => {
+        if (! loaded) {
+            return false;
+        }
+        if (settings.seamless.signup) {
+            return submit();
+        }
+        return false;
+    };
+    const trySeamlessRef = useLatest(trySeamless);
     useEffect(() => {
         if (! loaded) {
             return;
         }
-        const run = async (): Promise<boolean> => {
-            if (settings.seamless.signup) {
-                return submit();
-            }
-            return false;
-        }
-        run()
+        trySeamlessRef.current()
             .then((submitted) => {
                 if (! submitted) {
                     setSeamlessTried(true);
@@ -110,16 +116,13 @@ export default function PutField() {
                 setSeamlessTried(true);
                 setError(e);
             });
-    }, [loaded]);
+    }, [loaded, trySeamlessRef]);
 
     if (! loaded || ! seamlessTried) {
         // If error is set while loaded = false, we should show it
         // This shouldn't happen until we change how we are retrieving
         // the session obj-PutField. Check comments above.
         return <Loading />
-    }
-    if (! session.createFieldOptions?.length) {
-        return <p className="text-lg red text-center mt-4">Where createFieldOptions?</p>
     }
 
     return <PutFieldView

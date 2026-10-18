@@ -1,6 +1,5 @@
 import { ReactNode, forwardRef } from "react";
 import { InputProps } from "./Input";
-import Button, { ButtonProps } from "./Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileUpload } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "../utils/joinClassName";

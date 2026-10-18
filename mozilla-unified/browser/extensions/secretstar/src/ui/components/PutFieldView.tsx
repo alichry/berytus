@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Container } from "./Container";
 import Button from "./Button";
 import TopBar from "../controlled/TopBar";
@@ -25,7 +24,6 @@ export interface PutFieldViewProps {
 }
 
 export default function PutFieldView(props: PutFieldViewProps) {
-    const [value, setValue] = useState<string | null>(null);
     return (
         <Container>
             <TopBar onCancel={props.onCancel} />

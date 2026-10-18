@@ -1,6 +1,6 @@
 import UserIntentView from "@components/UserIntentView";
 import { useParams } from "react-router-dom";
-import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPopupContextAndPageContextRoute, useAccounts, useNavigateWithPageContextRoute } from "../../hooks";
+import { useAbortRequestOnWindowClose, useRequest, useAccounts, useNavigateWithPageContextRoute } from "../../hooks";
 import { Session, db } from "@root/db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import Loading from "../components/Loading";

@@ -17,7 +17,7 @@ export interface FormProps {
 }
 
 export default function Form({ nonce, privateKey, onSubmit, seamless }: FormProps) {
-    const [privateKeyPem, setPrivateKeyPem] = useState<string>();
+    const [/*_pivateKeyPem*/, setPrivateKeyPem] = useState<string>();
     const [signedMessage, setSignedMessage] = useState<ArrayBuffer>();
     const [error, setError] = useState<Error>();
     useEffect(() => {
@@ -34,7 +34,7 @@ export default function Form({ nonce, privateKey, onSubmit, seamless }: FormProp
             }
         }
         run();
-    }, []);
+    }, [nonce, privateKey]);
     const { tried, error: seamlessError } = useTryOnce(seamless, async () => {
         if (! signedMessage) {
             return false;

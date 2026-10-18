@@ -1,5 +1,5 @@
---- dom/fetch/Request.cpp.orig	2026-05-15 21:51:47
-+++ dom/fetch/Request.cpp	2026-05-15 21:52:14
+--- dom/fetch/Request.cpp.orig	2026-10-18 13:49:50
++++ dom/fetch/Request.cpp	2026-10-18 13:49:50
 @@ -7,10 +7,14 @@
  #include "Request.h"
  

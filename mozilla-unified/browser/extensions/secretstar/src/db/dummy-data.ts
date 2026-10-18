@@ -2330,8 +2330,6 @@ _sessions.forEach(entry => {
 // }
 // Sessions.approveTransitionToAuthOp = _sessions.approveTransitionToAuthOp;
 
-const phases = Object.keys(_sessions);
-
 export const SimulationUrls = Sessions.map((entry, i) => {
     const { phase, session: sess } = entry;
     let url: string;

@@ -725,7 +725,7 @@ browser.berytus.registerRequestHandler({
             } else if (Array.isArray(payload)) {
                 payload = args.payload;
             } else {
-                console.warn("TODO(berytus): Support Encrypted Packet");
+                console.warn("Secret*: Unrecognised payload type for respondToChallengeMessage");
                 context.response.reject(ERejectionCode.GeneralError);
                 return;
             }

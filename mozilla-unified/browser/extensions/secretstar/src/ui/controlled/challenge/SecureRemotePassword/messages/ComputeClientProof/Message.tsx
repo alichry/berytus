@@ -5,7 +5,7 @@ import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
 import { SRP, SrpClient } from "fast-srp-hap";
 import { string } from "yup";
-import { useYupValidation } from "@root/hooks";
+import { useLatest, useYupValidation } from "@root/hooks";
 import ConcatErrorMessages from "@root/ui/components/ConcatErrorMessages";
 
 export interface MessageProps extends BaseMessageProps {
@@ -19,11 +19,13 @@ const payloadSchema = string()
 export default function Message({ challenge, message, onSubmit }: MessageProps) {
     const [error, setError] = useState<Error>();
     const [processed, setProcessed] = useState<boolean>();
-    const { value: salt, error: validationError, loading: validationLoading  } = useYupValidation(payloadSchema, message.payload);
+    const { value: salt, error: validationError } = useYupValidation(payloadSchema, message.payload);
+    const latest = useLatest({ challenge, onSubmit });
     useEffect(() => {
         if (! salt || processed) {
             return;
         }
+        const { challenge, onSubmit } = latest.current;
         const run = async () => {
             try {
                 if (! isSrpChallenge(challenge)) {
@@ -56,7 +58,7 @@ export default function Message({ challenge, message, onSubmit }: MessageProps) 
             }
         }
         run();
-    }, [salt]);
+    }, [salt, processed, latest]);
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
             { error || validationError ? (

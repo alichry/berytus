@@ -1,14 +1,13 @@
-import { Account, Field, fieldOptionValueToString } from "@root/db/db";
+import { Account, fieldOptionValueToString } from "@root/db/db";
 import { Container } from "./Container";
 import TopBar from "../controlled/TopBar";
 import Breadcrumbs from "./Breadcrumbs";
 import Folder from "./Folder";
-import { faLocationDot, faKey, faUser, faArrowRight, faArrowLeft } from "@fortawesome/free-solid-svg-icons"
+import { faLocationDot, faKey, faUser } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import KeyValue from "./KeyValue";
 import { cn } from "../utils/joinClassName";
 import { userAttributesLabels } from "../utils/userAttributesLabels";
-import Select from "./Select";
 import { useState } from 'react';
 import { fieldOptionsLabels } from "../utils/fieldOptionsLabels";
 import { ab2base64, formatBase64AsPem } from "@root/key-utils";

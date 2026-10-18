@@ -3,7 +3,6 @@ import TopBar from "../controlled/TopBar";
 import Breadcrumbs from "./Breadcrumbs";
 import { Container } from "./Container";
 import type { BerytusChallengeInfoUnion } from "@berytus/types";
-import { EBerytusChallengeType } from "@berytus/enums";
 
 export interface CommonChallengeViewProps {
     challenge: BerytusChallengeInfoUnion;

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import FolderTab from "./FolderTab";
-import FolderPage from "./FolderPage";
 import { ReactNode } from 'react';
 import FolderView from "./FolderView";
 

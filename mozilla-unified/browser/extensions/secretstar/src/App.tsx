@@ -11,7 +11,6 @@ import Account from "./ui/controlled/Account";
 import SimulationPortal from "./ui/controlled/SimulationPortal";
 import Me from "./ui/controlled/Me";
 import { PropsWithChildren, useEffect } from "react";
-import { useSettings } from "./hooks";
 import ApproveChallenge from "./ui/controlled/challenge/ApproveChallenge";
 import RespondToMessage from "./ui/controlled/challenge/RespondToMessage";
 import AbortedChallenge from "./ui/controlled/challenge/AbortedChallenge";

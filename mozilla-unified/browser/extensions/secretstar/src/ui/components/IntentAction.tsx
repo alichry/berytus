@@ -68,6 +68,8 @@ interface AccountSelectorViewProps {
     onSelect(selectedAccount: Account): void;
 }
 
+// Kept as an alternative to AccountSelectorListView (see the commented-out usage above).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function AccountSelectorTableView({ accounts, onSelect }: AccountSelectorViewProps) {
     return (
         <div className={styles.savedAccountsContainer}>

@@ -1,5 +1,5 @@
---- dom/file/Blob.h.orig	2026-05-15 21:51:47
-+++ dom/file/Blob.h	2026-05-15 21:52:14
+--- dom/file/Blob.h.orig	2026-10-18 13:49:50
++++ dom/file/Blob.h	2026-10-18 13:49:50
 @@ -134,6 +134,9 @@
    virtual ~Blob();
  

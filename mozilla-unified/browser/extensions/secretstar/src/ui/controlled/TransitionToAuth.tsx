@@ -1,5 +1,5 @@
 import { db } from "@root/db";
-import { useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useRequest, useSeamless, useSettings } from "@root/hooks";
+import { useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useRequest, useSeamless } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "../components/Loading";

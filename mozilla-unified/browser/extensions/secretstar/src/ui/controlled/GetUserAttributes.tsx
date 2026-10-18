@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox } from "../../hooks";
+import { useAbortRequestOnWindowClose, useRequest, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox, useLatest } from "../../hooks";
 import GetUserAttributesView from "@components/GetUserAttributesView";
 import type { UserAttributeKey, UserAttributes as BerytusUserAttributes } from "@berytus/types";
 import { UserAttribute } from "@root/db/db";
@@ -152,28 +152,33 @@ export default function GetUserAttributes() {
             return false;
         }
         return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [maybeResolve]);
 
+    const trySeamless = async (): Promise<boolean> => {
+        if (! loaded) {
+            return false;
+        }
+        if (
+            settings.seamless.signup &&
+            hasAllRequiredUserAttributes(
+                requiredUserAttributes,
+                user || {}
+            )
+        ) {
+            return approve((Object.keys(requiredUserAttributes) as Array<keyof typeof session.requiredUserAttributes>), {});
+        }
+        if (isAllAttributesOptional(requiredUserAttributes) && (!user || Object.keys(user).length === 0)) {
+            return approve([], {});
+        }
+        return false;
+    };
+    const trySeamlessRef = useLatest(trySeamless);
     useEffect(() => {
         if (! loaded) {
             return;
         }
-        const run = async (): Promise<boolean> => {
-            if (
-                settings.seamless.signup &&
-                hasAllRequiredUserAttributes(
-                    requiredUserAttributes,
-                    user || {}
-                )
-            ) {
-                return approve((Object.keys(requiredUserAttributes) as Array<keyof typeof session.requiredUserAttributes>), {});
-            }
-            if (isAllAttributesOptional(requiredUserAttributes) && (!user || Object.keys(user).length === 0)) {
-                return approve([], {});
-            }
-            return false;
-        }
-        run()
+        trySeamlessRef.current()
             .then((submitted) => {
                 if (! submitted) {
                     setSeamlessTried(true);
@@ -183,7 +188,7 @@ export default function GetUserAttributes() {
                 setSeamlessTried(true);
                 setError(e);
             })
-    }, [approve, loaded]);
+    }, [approve, loaded, trySeamlessRef]);
 
     if (! loaded || ! seamlessTried) {
         if (error) {

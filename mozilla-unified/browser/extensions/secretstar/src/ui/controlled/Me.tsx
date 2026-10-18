@@ -1,7 +1,6 @@
-import { useState, MutableRefObject, useEffect } from "react";
+import { useState, useEffect } from "react";
 import MeView from "../components/MeView";
-import { Identity, PRIMARY_IDENTITY_ID, db } from "@root/db";
-import { useLiveQuery } from "dexie-react-hooks"
+import { Identity, db } from "@root/db";
 import Loading from "../components/Loading";
 import { useIdentity, useSettings } from "@root/hooks";
 import { stringifyUserAttributeValue } from "../components/AccountView";
@@ -14,10 +13,10 @@ export default function Me() {
     useEffect(() => {
         if (identity) {
             // should we?
-            setIdentityData({
+            setIdentityData(identityData => ({
                 ...identityData,
                 ...identity.userAttributes
-            });
+            }));
         }
     }, [identity]);
     if (! settings || ! identity || ! identityData) {

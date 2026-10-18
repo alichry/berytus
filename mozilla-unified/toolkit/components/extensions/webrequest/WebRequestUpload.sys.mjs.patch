@@ -1,5 +1,5 @@
---- toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs.orig	2026-05-15 21:52:15
-+++ toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs	2026-05-15 21:52:15
+--- toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs.orig	2026-10-18 13:49:50
++++ toolkit/components/extensions/webrequest/WebRequestUpload.sys.mjs	2026-10-18 13:49:50
 @@ -532,6 +532,11 @@
      }
  

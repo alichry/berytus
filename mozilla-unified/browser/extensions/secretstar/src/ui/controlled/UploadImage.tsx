@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import Button, { ButtonProps } from "../components/Button";
+import Button from "../components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileUpload } from "@fortawesome/free-solid-svg-icons";
 import { ClassNameProp } from "../props/ClassNameProp";

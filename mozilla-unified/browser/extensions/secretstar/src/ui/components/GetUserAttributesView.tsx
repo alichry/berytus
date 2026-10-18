@@ -2,17 +2,15 @@ import { Container } from "./Container";
 import { ReactNode, RefObject, createRef, useState } from "react";
 import { cn } from "@root/ui/utils/joinClassName";
 import TopBar from "../controlled/TopBar";
-import CondensedTable, { ValueColumn, ValueTypeColumn } from "./CondensedTable";
+import CondensedTable, { ValueTypeColumn } from "./CondensedTable";
 import Button from "./Button";
 import CommonBodyContainer from "./CommonBodyContainer";
 import Breadcrumbs from "./Breadcrumbs";
-import { faEdit, faSave, faUserPlus } from "@fortawesome/free-solid-svg-icons";
-import { Identity, UserAttributes } from "@root/db";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { Identity } from "@root/db";
 import BorderlessInput from "./BorderlessInput";
 import { userAttributesLabels } from "../utils/userAttributesLabels";
 import Notice from "./Notice";
-import UploadImage from "../controlled/UploadImage";
 import { scrollTopSmooth } from "@root/utils";
 import PictureInput from "../controlled/PictureInput";
 import { RRequiredUserAttributes, RUserAttributes } from "@root/db/db";
@@ -41,7 +39,6 @@ function Checkbox({ checked, toggleChecked }: { checked: boolean; toggleChecked?
 }
 
 export default function GetUserAttributesView(props: GetUserAttributesViewProps) {
-    const [openCode, setOpenCode] = useState<boolean>(false);
     const [check, setCheck] = useState<Partial<Record<UserAttributeKey, boolean>>>(
         {}
     );

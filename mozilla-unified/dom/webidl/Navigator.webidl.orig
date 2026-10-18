@@ -281,6 +281,16 @@ partial interface Navigator {
 };
 
 partial interface Navigator {
+  [SameObject]
+  readonly attribute BerytusChannelContainer berytusChannel;
+};
+
+partial interface Navigator {
+  [SameObject]
+  readonly attribute BerytusChannelContainer berytusChannel;
+};
+
+partial interface Navigator {
   [Throws, Pref="beacon.enabled"]
   boolean sendBeacon(DOMString url,
                      optional BodyInit? data = null);
