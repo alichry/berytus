@@ -144,7 +144,7 @@ jobs:
           cd ${{ env.BERYTUS_TOOLKIT_DIR }}
           npm run build
           cd ${{ env.SECRETSTAR_DIR }}
-          CI=false npm run build
+          CI=true npm run build
           ./moz.build.sh
           cd ${{ env.MOZ_DIR }}
           if ! sccache --show-stats; then
