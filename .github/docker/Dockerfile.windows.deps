@@ -49,7 +49,7 @@ RUN Start-Process -FilePath \"$env:FILE_VSBUILDTOOLS\" -Wait -ArgumentList @( \
     Remove-Item -Force \"$env:FILE_VSBUILDTOOLS\"
 
 ADD https://win.rustup.rs/x86_64 "${FILE_RUSTUPINIT}"
-RUN & \"$env:FILE_RUSTUPINIT\" -y --default-toolchain stable --default-host x86_64-pc-windows-msvc; \
+RUN & \"$env:FILE_RUSTUPINIT\" -y --default-toolchain 1.86.0 --default-host x86_64-pc-windows-msvc; \
     Remove-Item -Force \"$env:FILE_RUSTUPINIT\"
 
 # MozillaBuild: the canonical Windows shell + tooling layer mach expects.

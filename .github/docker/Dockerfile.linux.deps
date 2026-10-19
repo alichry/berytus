@@ -31,7 +31,7 @@ RUN mkdir -p /etc/environment.d && \
     echo "PATH=\"\$PATH:$CARGO_HOME/bin\"" \
         > /etc/environment.d/10-cargo.conf
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.86.0 && \
     curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 
 RUN set -a && for f in /etc/environment.d/*.conf; do [ -r "$f" ] && . "$f"; done && set +a && \
