@@ -302,6 +302,7 @@ jobs:
           mkdir -p "$STAGE"
           cp port "$STAGE/"
           cp -r mozilla-unified "$STAGE/"
+          cp .github/docker/regen-wpt-certs.sh "$STAGE/"
           find "$STAGE" -name node_modules -type d -prune -exec rm -rf {} +
           find "$STAGE" -name .DS_Store -delete
 
