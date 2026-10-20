@@ -13,9 +13,7 @@ permissions:
 
 defaults:
   run:
-    # Use Git Bash for `run:` steps so the same POSIX recipes (heredocs,
-    # path translation) work on Windows runners. Steps that need cmd or
-    # PowerShell set `shell:` explicitly.
+    # Use Git Bash for `run:` steps
     shell: bash
 
 jobs:
@@ -35,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Read changeset
         id: changeset
@@ -59,7 +57,7 @@ jobs:
           echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -108,7 +106,7 @@ jobs:
     steps:
       - name: Checkout Berytus source
         if: needs.prepare-context.outputs.deps-image-exists == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Relocate Docker storage to D drive
         if: needs.prepare-context.outputs.deps-image-exists == 'false'
@@ -124,7 +122,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.deps-image-exists == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -152,7 +150,7 @@ jobs:
           echo "artifact-name=firefox-deps-windows-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload deps image URI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.write-deps-image-uri.outputs.artifact-name }}
           path: ${{ steps.write-deps-image-uri.outputs.file }}
@@ -168,7 +166,7 @@ jobs:
     steps:
       - name: Checkout Berytus source
         if: needs.prepare-context.outputs.base-image-exists == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Relocate Docker storage to D drive
         if: needs.prepare-context.outputs.base-image-exists == 'false'
@@ -184,7 +182,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.base-image-exists == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -212,7 +210,7 @@ jobs:
           echo "artifact-name=firefox-base-windows-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload base image URI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.write-base-image-uri.outputs.artifact-name }}
           path: ${{ steps.write-base-image-uri.outputs.file }}
@@ -227,7 +225,7 @@ jobs:
       actions: write
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -249,7 +247,7 @@ jobs:
             -NoProfile -Command 'cp -r obj-*/.mozbuild C:/dist'
 
       - name: Upload base image mozbuild report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "firefox-base-windows-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
@@ -265,7 +263,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Relocate Docker storage to D drive
         if: needs.prepare-context.outputs.build-image-exists == 'false'
@@ -281,7 +279,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.build-image-exists == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -325,7 +323,7 @@ jobs:
           echo "artifact-name=firefox-berytus-windows-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload build image URI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.write-build-image-uri.outputs.artifact-name }}
           path: ${{ steps.write-build-image-uri.outputs.file }}
@@ -340,7 +338,7 @@ jobs:
       actions: write
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -362,7 +360,7 @@ jobs:
             -NoProfile -Command 'cp -r obj-*/.mozbuild C:/dist'
 
       - name: Upload build image mozbuild report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "firefox-build-windows-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
@@ -376,7 +374,7 @@ jobs:
 
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -425,7 +423,7 @@ jobs:
 
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -498,14 +496,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload artifact (zip)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-berytus-windows-x86_64-zip
           path: ${{ runner.temp }}/out/*.win64.zip
           if-no-files-found: error
 
       - name: Upload artifact (installer)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-berytus-windows-x86_64-installer
           path: ${{ runner.temp }}/out/*.installer.exe

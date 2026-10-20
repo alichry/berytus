@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Read changeset
         id: changeset
@@ -52,7 +52,7 @@ jobs:
           echo "build=${BUILD_REPO}:${REV}-${SRC_HASH}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -101,7 +101,7 @@ jobs:
     steps:
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.deps-image-exists == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -109,7 +109,7 @@ jobs:
 
       - name: Checkout Berytus source
         if: needs.prepare-context.outputs.deps-image-exists == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         if: needs.prepare-context.outputs.deps-image-exists == 'false'
@@ -152,7 +152,7 @@ jobs:
           echo "artifact-name=firefox-deps-linux-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload deps image URI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.write-deps-image-uri.outputs.artifact-name }}
           path: ${{ steps.write-deps-image-uri.outputs.file }}
@@ -167,11 +167,11 @@ jobs:
     steps:
       - name: Checkout Berytus source
         if: needs.prepare-context.outputs.base-image-exists == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.base-image-exists == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -218,7 +218,7 @@ jobs:
           echo "artifact-name=firefox-base-linux-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload base image URI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.write-base-image-uri.outputs.artifact-name }}
           path: ${{ steps.write-base-image-uri.outputs.file }}
@@ -233,7 +233,7 @@ jobs:
       actions: write
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -264,7 +264,7 @@ jobs:
             tree /dist || true
 
       - name: Upload base image mozbuild report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "firefox-base-linux-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
@@ -280,11 +280,11 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.build-image-exists == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -343,7 +343,7 @@ jobs:
           echo "artifact-name=firefox-berytus-linux-x86_64-image" >> "$GITHUB_OUTPUT"
 
       - name: Upload build image URI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.write-build-image-uri.outputs.artifact-name }}
           path: ${{ steps.write-build-image-uri.outputs.file }}
@@ -358,7 +358,7 @@ jobs:
       actions: write
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -383,7 +383,7 @@ jobs:
             tree /dist || true
 
       - name: Upload build image mozbuild report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "firefox-build-linux-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
@@ -397,7 +397,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Web Platform Tests (Berytus)
         uses: addnab/docker-run-action@v3
@@ -442,7 +442,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Package Firefox
         uses: addnab/docker-run-action@v3
@@ -458,7 +458,7 @@ jobs:
             cp obj-*/dist/*.tar.xz /dist/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-berytus-linux-x86_64
           path: ${{ runner.temp }}/out/*.tar.xz

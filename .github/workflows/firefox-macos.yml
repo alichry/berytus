@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v6
@@ -69,7 +69,7 @@ jobs:
           echo "Using mozilla-unified changeset: $REV"
 
       - name: Cache node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         env:
           cache-name: cache-node-modules
         with:
@@ -79,7 +79,7 @@ jobs:
             ${{ runner.os }}-build-${{ env.cache-name }}-
 
       - name: Cache mozbuild state
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         env:
           cache-name: cache-mozbuild-state
         with:
@@ -89,7 +89,7 @@ jobs:
             ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.changeset.outputs.rev }}-
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         env:
           cache-name: cache-sccache
         with:
@@ -178,7 +178,7 @@ jobs:
           cp -r obj-*/.mozbuild "${{ runner.temp }}/out"
 
       - name: Upload mozbuild report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "firefox-build-macos-x86_64-mozbuild-report"
           path: "${{ runner.temp }}/out/.mozbuild"
@@ -211,7 +211,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v6
@@ -341,7 +341,7 @@ jobs:
 
     steps:
       - name: Checkout Berytus source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install system dependencies
         run: |
@@ -392,7 +392,7 @@ jobs:
           ./mach package
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-berytus-macos-x86_64
           path: ${{ env.MOZ_OBJ_DIR }}/dist/*.dmg
