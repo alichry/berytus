@@ -5,7 +5,7 @@ import { db } from "@root/db";
 import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import Loading from "@root/ui/components/Loading";
 import Notice from "@root/ui/components/Notice";
-import { useRequest, useSettings } from "@root/hooks";
+import { useLatest, useRequest, useSettings } from "@root/hooks";
 import Button from "@root/ui/components/Button";
 
 export function useHourglass(
@@ -68,8 +68,9 @@ export default function AbortedChallenge() {
     const { maybeResolve, maybeReject, processed, processing } = useRequest<"AccountAuthentication_AbortChallenge">(query?.session.requests[query?.session.requests.length - 1]);
     // TODO(berytus): Use useSeamless instead, check other components too.
     const [seamlessTried, setSeamlessTried] = useState<boolean>(false);
-    const submit = async () => {
-        if (! loaded) {
+    const loaded = !!(query && maybeResolve && maybeReject && settings);
+    const submit = useCallback(async () => {
+        if (! loaded || ! maybeResolve) {
             setError(new Error('Submit called before the goods have been loaded'));
             return false;
         }
@@ -84,8 +85,7 @@ export default function AbortedChallenge() {
             setError(e as Error);
             return false;
         }
-    }
-    const loaded = !!(query && maybeResolve && maybeReject && settings);
+    }, [loaded, maybeResolve]);
     const [buttonText, setButtonText] = useState<string>("Okay (5)");
     const timedCb = useCallback((secondsLeft: number) => {
         if (secondsLeft === 0) {
@@ -99,12 +99,14 @@ export default function AbortedChallenge() {
     }, [setButtonText, processed, processing, submit]);
     useHourglass(5, timedCb, seamlessTried && loaded );
 
+    const seamlessRef = useLatest({ submit, settings });
     useEffect(() => {
         if (! loaded) {
             return;
         }
+        const { submit, settings } = seamlessRef.current;
         const run = async (): Promise<boolean> => {
-            if (settings.seamless.login) {
+            if (settings!.seamless.login) {
                 return submit();
             }
             return false;
@@ -119,7 +121,7 @@ export default function AbortedChallenge() {
                 setSeamlessTried(true);
                 setError(e);
             });
-    }, [loaded]);
+    }, [loaded, seamlessRef]);
 
     if (! loaded || ! seamlessTried) {
         return <Loading />;

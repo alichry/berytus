@@ -2,7 +2,6 @@ import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import Form, { FormProps } from "./Form";
 import { object, string } from "yup";
 import Notice from "@root/ui/components/Notice";
-import Spinner from "@root/ui/components/Spinner";
 import { BaseMessageProps } from "../../../common/types";
 import { useYupValidation } from "@root/hooks";
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";

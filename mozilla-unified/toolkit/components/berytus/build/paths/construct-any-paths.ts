@@ -23,7 +23,7 @@ export const constructAnyPathEntries = async (): Promise<Array<PathEntry>> => {
     return content.split("\n").map((path: string) => {
         return {
             path,
-            target: [join(relative(resolve(), typesDir), 'any.d.ts')]
+            target: [join(relative(resolve(), typesDir), 'any.d.ts').replace(/\\/g, '/')]
         } as const;
     })
 }

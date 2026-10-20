@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1.7
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+WORKDIR /berytus
+COPY port /berytus/port
+COPY mozilla-unified /berytus/mozilla-unified/
+COPY regen-wpt-certs.sh /berytus/regen-wpt-certs.sh
+
+RUN /berytus/port export "$MOZ_DIR"
+
+RUN cd "$MOZ_DIR/toolkit/components/berytus" && npm install && \
+    cd "$MOZ_DIR/browser/extensions/secretstar" && npm install
+
+RUN set -a && for f in /etc/environment.d/*.conf; do [ -r "$f" ] && . "$f"; done && set +a && \
+    cd "$MOZ_DIR/toolkit/components/berytus" && npm run build && \
+    cd "$MOZ_DIR/browser/extensions/secretstar" && CI=true npm run build && \
+    cd "$MOZ_DIR/browser/extensions/secretstar" && ./moz.build.sh && \
+    cd "$MOZ_DIR" && ./mach build
+
+RUN sccache --show-stats || echo "::warning::sccache --show-stats failed; view above output for details"
+
+# Regenerate WPT certificates
+RUN /berytus/regen-wpt-certs.sh
+
+WORKDIR "$MOZ_DIR"
+
+ENTRYPOINT [ "mach" ]

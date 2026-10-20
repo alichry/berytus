@@ -1,5 +1,5 @@
---- dom/fetch/Request.h.orig	2026-05-15 21:52:14
-+++ dom/fetch/Request.h	2026-05-15 21:52:14
+--- dom/fetch/Request.h.orig	2026-10-18 13:49:50
++++ dom/fetch/Request.h	2026-10-18 13:49:50
 @@ -19,6 +19,8 @@
  
  namespace mozilla::dom {

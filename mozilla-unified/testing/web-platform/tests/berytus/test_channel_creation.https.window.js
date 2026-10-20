@@ -33,12 +33,10 @@ function assert_deep_equals(obj1, obj2) {
 promise_test(async () => {
     const actor = new BerytusAnonymousWebAppActor();
     const constraints = {
-        secretManagerPublicKey: [],
-        enableEndToEndEncryption: true,
         account: {
-           identity: { 'username': 'ali' },
-           schemaVersion: 1,
-           category: "user"
+            identity: { 'username': 'ali' },
+            schemaVersion: 1,
+            category: "user"
         }
     };
     const channel = await BerytusChannel.create({

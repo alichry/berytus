@@ -1,4 +1,4 @@
-import { forwardRef, ReactNode, useRef } from "react";
+import { forwardRef, ReactNode } from "react";
 import { InputProps } from "./Input";
 import { useState } from "react";
 import { cn } from "../utils/joinClassName";

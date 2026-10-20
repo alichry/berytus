@@ -1,5 +1,5 @@
---- dom/base/FormData.h.orig	2026-05-15 21:51:47
-+++ dom/base/FormData.h	2026-05-15 21:52:14
+--- dom/base/FormData.h.orig	2026-10-18 13:49:50
++++ dom/base/FormData.h	2026-10-18 13:49:50
 @@ -25,6 +25,8 @@
  class HTMLFormElement;
  class GlobalObject;

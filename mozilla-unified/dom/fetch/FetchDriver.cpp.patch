@@ -1,5 +1,5 @@
---- dom/fetch/FetchDriver.cpp.orig	2026-05-15 21:51:47
-+++ dom/fetch/FetchDriver.cpp	2026-05-15 21:52:14
+--- dom/fetch/FetchDriver.cpp.orig	2026-10-18 13:49:50
++++ dom/fetch/FetchDriver.cpp	2026-10-18 13:49:50
 @@ -946,7 +946,12 @@
        }
      }

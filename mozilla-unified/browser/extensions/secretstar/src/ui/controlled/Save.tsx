@@ -25,7 +25,7 @@ export default function Save() {
             return record;
         }
     );
-    const { maybeResolve, maybeReject } = useRequest<"Login_CloseOperation">(session?.requests[session?.requests.length - 1]);
+    const { maybeResolve } = useRequest<"Login_CloseOperation">(session?.requests[session?.requests.length - 1]);
     useEffect(() => {
         if (! session || ! accountId || ! maybeResolve) {
             return;
@@ -36,7 +36,7 @@ export default function Save() {
         };
         db.sessions.update(session.id, change)
             .then(() => maybeResolve().sent && navigate('/account/' + accountId))
-    }, [session, maybeResolve]);
+    }, [session, maybeResolve, accountId, navigate]);
 
     return <Loading />;
 }

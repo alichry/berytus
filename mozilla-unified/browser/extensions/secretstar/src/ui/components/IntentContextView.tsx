@@ -1,5 +1,4 @@
 import styles from '@styles/IntentContextView.module.scss';
-import { useState } from "react";
 import { cn } from "@root/ui/utils/joinClassName";
 import KeyValue from "./KeyValue";
 import { ClassNameProp } from "../props/ClassNameProp";

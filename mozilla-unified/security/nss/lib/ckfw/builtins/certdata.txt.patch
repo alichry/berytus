@@ -1,5 +1,5 @@
---- security/nss/lib/ckfw/builtins/certdata.txt.orig	2026-05-15 20:07:52
-+++ security/nss/lib/ckfw/builtins/certdata.txt	2026-05-16 10:51:47
+--- security/nss/lib/ckfw/builtins/certdata.txt.orig	2026-10-18 13:49:50
++++ security/nss/lib/ckfw/builtins/certdata.txt	2026-10-18 13:49:51
 @@ -26880,8 +26880,532 @@
  END
  CKA_SERIAL_NUMBER MULTILINE_OCTAL

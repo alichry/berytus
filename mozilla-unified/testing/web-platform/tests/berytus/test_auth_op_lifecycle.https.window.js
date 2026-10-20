@@ -33,7 +33,9 @@ promise_test(async () => {
 promise_test(async (t) => {
     const { operation, channel } = await operationCtx();
     await operation.finish();
-    const challenge = new BerytusIdentificationChallenge("identification");
+    const challenge = new BerytusIdentificationChallenge("identification", {
+        fields: ["username"]
+    });
     const prom = operation.challenge(challenge);
     await promise_rejects_dom(
         t, 'InvalidStateError', Promise.race([prom, Promise.resolve()]),

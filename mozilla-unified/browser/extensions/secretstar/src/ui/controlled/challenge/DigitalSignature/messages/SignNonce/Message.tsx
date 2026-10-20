@@ -4,9 +4,9 @@ import { mixed, ValidationError } from "yup";
 import { BaseMessageProps } from "../../../common/types";
 import Form from './Form';
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
-import { useYupValidation } from "@root/hooks";
+import { useLatest, useYupValidation } from "@root/hooks";
 import { isDsChallenge } from "@root/db";
-import { base64ToArrayBuffer, extractPemBase64Body, pemToBuf } from "@root/key-utils";
+import { base64ToArrayBuffer, extractPemBase64Body } from "@root/key-utils";
 import ConcatErrorMessages from "@root/ui/components/ConcatErrorMessages";
 
 export interface MessageProps extends BaseMessageProps {
@@ -37,7 +37,9 @@ export default function Message({
     } = useYupValidation(payloadSchema, message.payload);
     const [error, setError] = useState<Error>();
     const [privateKey, setPrivateKey] = useState<CryptoKey>();
+    const challengeRef = useLatest(challenge);
     useEffect(() => {
+        const challenge = challengeRef.current;
         if (! isDsChallenge(challenge)) {
             setError(new Error("Passed challenge is not a Digital Siganture Challenge!"));
             return;
@@ -61,7 +63,7 @@ export default function Message({
             setPrivateKey(key);
         }
         run();
-    }, []);
+    }, [challengeRef]);
     // const loading = validationLoading || ! privateKey;
 
     return (

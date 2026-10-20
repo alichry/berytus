@@ -1,13 +1,14 @@
 import { useParams } from "react-router-dom";
-import FileInput, { FileInputProps } from "../components/FileInput";
 import { isPopup } from "@root/pagecontext";
 import RemovableFileInput, { RemovableFileInputProps } from "./RemovableFileInput";
 import { cn } from "../utils/joinClassName";
 
-export interface WebExtSafeFileInput extends Omit<RemovableFileInputProps, 'shouldPreventDefault' | 'uploadButtonTitle'> {}
+export interface WebExtSafeFileInputProps extends Omit<RemovableFileInputProps, 'shouldPreventDefault' | 'uploadButtonTitle'> {}
+
+export type { WebExtSafeFileInputProps as WebExtSafeFileInput };
 
 
-export default function WebExtSafeFileInput({ uploadButtonClassName, ...props }: WebExtSafeFileInput) {
+export default function WebExtSafeFileInput({ uploadButtonClassName, ...props }: WebExtSafeFileInputProps) {
     const { pageContext } = useParams();
     return <RemovableFileInput
         {...props}

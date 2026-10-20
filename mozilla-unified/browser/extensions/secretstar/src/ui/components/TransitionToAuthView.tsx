@@ -3,7 +3,7 @@ import { Container } from './Container';
 import CommonBodyContainer from './CommonBodyContainer';
 import TopBar from '../controlled/TopBar';
 import Breadcrumbs from "./Breadcrumbs";
-import { faBan, faPlay, faUser, faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faPlay, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ApproveOrReject from "./ApproveOrReject";
 import TextWithIcon from "./TextWithIcon";

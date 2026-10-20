@@ -19,7 +19,7 @@ export default function TopBarView({ className, onCancel, navigate, pendingReque
         <>
             {pendingRequest ? (
                 <div className="bg-orange-800 text-sm text-white px-2 py-0.5 text-center">
-                    Click <a href="#" className="underline clickable">here</a> to resolve pending request.
+                    Click <a href="#/" className="underline clickable">here</a> to resolve pending request.
                 </div>
             ): null}
             <div

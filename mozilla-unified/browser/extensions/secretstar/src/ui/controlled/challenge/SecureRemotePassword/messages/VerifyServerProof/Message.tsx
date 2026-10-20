@@ -5,7 +5,7 @@ import RespondToMessageView from "@root/ui/components/RespondToMessageView";
 import MdCenteredSpinner from "@root/ui/components/MdCenteredSpinner";
 import { SRP, SrpClient } from "fast-srp-hap";
 import { string } from "yup";
-import { useYupValidation } from "@root/hooks";
+import { useLatest, useYupValidation } from "@root/hooks";
 import ConcatErrorMessages from "@root/ui/components/ConcatErrorMessages";
 import Notice from "@root/ui/components/Notice";
 import ApproveOrReject from "@root/ui/components/ApproveOrReject";
@@ -22,11 +22,13 @@ export default function Message({ challenge, message, settings, onSubmit }: Mess
     const [error, setError] = useState<Error>();
     const [processed, setProcessed] = useState<boolean>();
     const [proofOk, setProofOk] = useState<boolean>();
-    const { value: serverProofM2, error: validationError, loading: validationLoading  } = useYupValidation(payloadSchema, message.payload);
+    const { value: serverProofM2, error: validationError } = useYupValidation(payloadSchema, message.payload);
+    const latest = useLatest({ challenge, onSubmit, settings });
     useEffect(() => {
         if (! serverProofM2 || processed) {
             return;
         }
+        const { challenge } = latest.current;
         const run = async () => {
             try {
                 if (! isSrpChallenge(challenge)) {
@@ -70,12 +72,13 @@ export default function Message({ challenge, message, settings, onSubmit }: Mess
             }
         }
         run();
-    }, [serverProofM2]);
+    }, [serverProofM2, processed, latest]);
     useEffect(() => {
+        const { settings, onSubmit } = latest.current;
         if (proofOk === true && settings.seamless.login) {
             onSubmit(proofOk);
         }
-    }, [proofOk]);
+    }, [proofOk, latest]);
     return (
         <RespondToMessageView challengeType={challenge.type} onCancel={() => window.close()}>
             { error || validationError ? (

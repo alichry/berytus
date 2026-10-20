@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { FileInputTextProps } from "./FIleInputWithText";
-import RemovableFileInput from "./RemovableFileInput";
 import { db } from "@root/db";
 import { usePicture } from "@root/hooks";
 import { cn } from "../utils/joinClassName";
@@ -48,6 +47,7 @@ export default function PictureInput({ className, placeholder, placeholderClassN
                 <img
                     className="mt-4 mx-auto rounded-[50%]"
                     src={db.pictureToDataUrl(picture)}
+                    alt={`Preview of ${picture.filename}`}
                     width={128}
                     height={128}
                 />

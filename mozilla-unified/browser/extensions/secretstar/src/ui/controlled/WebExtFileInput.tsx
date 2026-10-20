@@ -14,17 +14,19 @@ import { cn } from "../utils/joinClassName";
 import { RemovableFileInputProps } from "./RemovableFileInput";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { useLatest } from "@root/hooks";
 
 export interface WebExtFileInputProps extends RemovableFileInputProps {}
 
 export default function WebExtFileInput({ onUpload, onCancel, rowGap = "gap-2", className, before, forceShowDelete, ...props }: WebExtFileInputProps) {
     const [filename, setFilename] = useState<string>();
-    const { file, request } = useWebExtUpload();
+    const { file } = useWebExtUpload();
     const previousFile = useRef<WebExtUploadedFile | null>(null);
+    const onCancelRef = useLatest(onCancel);
 
     useEffect(() => {
-        if (previousFile && onCancel) {
-            onCancel();
+        if (previousFile && onCancelRef.current) {
+            onCancelRef.current();
         }
         if (file) {
             //onUpload(file);

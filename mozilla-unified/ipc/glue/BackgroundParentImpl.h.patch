@@ -1,5 +1,5 @@
---- ipc/glue/BackgroundParentImpl.h.orig	2026-05-15 20:07:22
-+++ ipc/glue/BackgroundParentImpl.h	2026-05-15 21:52:15
+--- ipc/glue/BackgroundParentImpl.h.orig	2026-10-18 13:49:50
++++ ipc/glue/BackgroundParentImpl.h	2026-10-18 13:49:50
 @@ -358,6 +358,9 @@
        NotNull<nsIPrincipal*> aPrincipal, const Maybe<nsID>& aClientId) final;
  

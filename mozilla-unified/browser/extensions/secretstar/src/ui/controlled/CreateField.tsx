@@ -4,7 +4,7 @@
 // in duplicates.
 import { useCallback, useEffect, useState } from 'react';
 import { Field, FieldValueRejection, Session, db } from "@root/db/db";
-import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox } from "@root/hooks";
+import { useRequest, useAbortRequestOnWindowClose, useNavigateWithPageContextRoute, useSettings, useIdentity, useCipherbox, useLatest } from "@root/hooks";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useParams } from "react-router-dom";
 import Loading from "@components/Loading";
@@ -26,21 +26,6 @@ const isSecurePasswordOptions = (
 
 export interface CreateFieldProps {
     rejected?: boolean;
-}
-
-async function generateRsaPrivateKeyBuf(): Promise<ArrayBuffer> {
-    const genKey = await crypto.subtle.generateKey(
-        {
-            name: "RSA-OAEP",
-            modulusLength: 4096,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: "SHA-256",
-        },
-        true,
-        ["encrypt", "decrypt", "sign"]
-    );
-    const privKeyBuf = await window.crypto.subtle.exportKey("pkcs8", genKey.privateKey);
-    return privKeyBuf;
 }
 
 function canGenerateValue(field: FieldInfo, dictatedValue: boolean): boolean {
@@ -247,50 +232,53 @@ export default function CreateField({ rejected }: CreateFieldProps) {
         }
         return true;
     }
-
+    const trySeamless = async (): Promise<boolean> => {
+        if (! loaded) {
+            return false;
+        }
+        if (settings.seamless.signup) {
+            /**
+             * if null, we cannot generate a value and we do not have one saved.
+             * If undefined, the fieldType is not a ForeignIdentity type and
+             * we can
+             * if string, we have a saved value and the fieldType is a
+             * ForeignIdentity with a known ForeignIdentityKind
+             */
+            const savedValue = field.type === EBerytusFieldType.ForeignIdentity
+                ? (field.options as BerytusForeignIdentityFieldOptions).kind === "EmailAddress"
+                    ? identity.emailAddress
+                    : (field.options as BerytusForeignIdentityFieldOptions).kind === "PhoneNumber"
+                    ? identity.mobileNumber
+                    : null
+                : undefined;
+            if (rejected) {
+                if (rejection?.webAppDictatedValue) {
+                    return submit(new Uint8Array(str2ab(rejection.webAppDictatedValue)));
+                }
+                if (
+                    typeof savedValue === "string" &&
+                    savedValue.length > 0 &&
+                    rejection?.previousValues.indexOf(savedValue) === -1
+                ) {
+                    return submit(new Uint8Array(str2ab(savedValue)));
+                }
+            } else if (typeof savedValue === "string" && savedValue.length > 0) {
+                return submit(new Uint8Array(str2ab(savedValue)));
+            }
+            if (generateValue) {
+                return generateValue().then(value => {
+                    return submit(value)
+                });
+            }
+        }
+        return false;
+    };
+    const trySeamlessRef = useLatest(trySeamless);
     useEffect(() => {
         if (! loaded) {
             return;
         }
-        const run = async (): Promise<boolean> => {
-            if (settings.seamless.signup) {
-                /**
-                 * if null, we cannot generate a value and we do not have one saved.
-                 * If undefined, the fieldType is not a ForeignIdentity type and
-                 * we can
-                 * if string, we have a saved value and the fieldType is a
-                 * ForeignIdentity with a known ForeignIdentityKind
-                 */
-                const savedValue = field.type === EBerytusFieldType.ForeignIdentity
-                    ? (field.options as BerytusForeignIdentityFieldOptions).kind === "EmailAddress"
-                        ? identity.emailAddress
-                        : (field.options as BerytusForeignIdentityFieldOptions).kind === "PhoneNumber"
-                        ? identity.mobileNumber
-                        : null
-                    : undefined;
-                if (rejected) {
-                    if (rejection?.webAppDictatedValue) {
-                        return submit(new Uint8Array(str2ab(rejection.webAppDictatedValue)));
-                    }
-                    if (
-                        typeof savedValue === "string" &&
-                        savedValue.length > 0 &&
-                        rejection?.previousValues.indexOf(savedValue) === -1
-                    ) {
-                        return submit(new Uint8Array(str2ab(savedValue)));
-                    }
-                } else if (typeof savedValue === "string" && savedValue.length > 0) {
-                    return submit(new Uint8Array(str2ab(savedValue)));
-                }
-                if (generateValue) {
-                    return generateValue().then(value => {
-                        return submit(value)
-                    });
-                }
-            }
-            return false;
-        }
-        run()
+        trySeamlessRef.current()
             .then((submitted) => {
                 if (! submitted) {
                     setSeamlessTried(true);
@@ -300,7 +288,7 @@ export default function CreateField({ rejected }: CreateFieldProps) {
                 setSeamlessTried(true);
                 setError(e);
             });
-    }, [loaded]);
+    }, [loaded, trySeamlessRef]);
     if (! loaded || ! seamlessTried) {
         // BRTTODO: Put an error since the session record should exist by now.
         // Or is that the useLiveQuery is still fetching obj...

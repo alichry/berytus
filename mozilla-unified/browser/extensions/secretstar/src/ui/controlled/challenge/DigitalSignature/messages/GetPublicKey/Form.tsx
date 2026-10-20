@@ -8,7 +8,7 @@ import LabeledInput from "@root/ui/components/LabeledInput";
 import { useState, useEffect } from "react";
 import ConcatErrorMessages from "@root/ui/components/ConcatErrorMessages";
 import { faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
-import { base64ToArrayBuffer, extractPemBase64Body, formatBase64AsPem, pemToBuf, privateKeyBufToPublicKeyBuf } from "@root/key-utils";
+import { base64ToArrayBuffer, extractPemBase64Body, formatBase64AsPem, privateKeyBufToPublicKeyBuf } from "@root/key-utils";
 
 export interface FormProps extends ClassNameProp {
     accountId?: string;
@@ -22,7 +22,6 @@ export default function Form({ accountId, keyFieldId, className, seamless, onSub
     const { fields: keyField, error: fieldsError } = useAccountFields(account, keyFieldId);
     const [submissionError, setSubmissionError] = useState<Error>();
     const [customPrivateKeyStr, setCustomPrivateKeyStr] = useState<string>();
-    const [publicKey, setPublicKey] = useState<string>();
 
     const submit = async (privateKeyPem: string) => {
         try {
@@ -39,11 +38,14 @@ export default function Form({ accountId, keyFieldId, className, seamless, onSub
     }
 
     useEffect(() => {
-        if (customPrivateKeyStr || ! keyField) {
+        if (! keyField) {
             return;
         }
-        const privateKeyPem = formatBase64AsPem(keyField.value, false);
-        setCustomPrivateKeyStr(privateKeyPem);
+        // Only initialise when unset. Functional update so that the effect
+        // keeps reacting to keyField only (and not to the user's edits).
+        setCustomPrivateKeyStr(customPrivateKeyStr =>
+            customPrivateKeyStr || formatBase64AsPem(keyField.value, false)
+        );
     }, [keyField]);
     const { tried, error: seamlessError } = useTryOnce(seamless, async () => {
         if (! keyField) {

@@ -1,5 +1,5 @@
---- browser/themes/shared/notification-icons.css.orig	2026-05-15 21:52:15
-+++ browser/themes/shared/notification-icons.css	2026-05-15 21:52:15
+--- browser/themes/shared/notification-icons.css.orig	2026-10-18 13:49:50
++++ browser/themes/shared/notification-icons.css	2026-10-18 13:49:50
 @@ -196,6 +196,10 @@
  #identity-credential-notification-icon,
  #credential-chooser-notification-icon {

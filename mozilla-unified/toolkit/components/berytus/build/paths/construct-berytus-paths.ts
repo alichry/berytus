@@ -16,7 +16,7 @@ export const constructBerytusPathEntries = async (): Promise<Array<PathEntry>> =
         const moduleName: string = basename(path, '.sys.mts');
         return {
             path: 'resource://gre/modules/' + 'Berytus' + moduleName + '.sys.mjs',
-            target: [join('./src', path)]
+            target: [join('./src', path).replace(/\\/g, '/')]
         } as const;
     });
 }
