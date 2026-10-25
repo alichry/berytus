@@ -180,6 +180,25 @@ jobs:
           Start-Service -Name docker
           docker info --format '{{.DockerRootDir}}'
 
+      - name: Increase pagefile (D drive)
+        if: needs.prepare-context.outputs.base-image-exists == 'false'
+        shell: powershell
+        run: |
+          $cs = Get-WmiObject Win32_ComputerSystem
+          $cs.AutomaticManagedPagefile = $false
+          $cs.Put() | Out-Null
+
+          $existing = Get-WmiObject Win32_PageFileSetting -Filter "Name='D:\\pagefile.sys'"
+          if ($existing) {
+            $existing.InitialSize = 8192
+            $existing.MaximumSize = 24576
+            $existing.Put() | Out-Null
+          } else {
+            Set-WmiInstance -Class Win32_PageFileSetting -Arguments @{ Name = 'D:\pagefile.sys'; InitialSize = 8192; MaximumSize = 24576 } | Out-Null
+          }
+
+          Get-WmiObject Win32_PageFileUsage | Select-Object Name, AllocatedBaseSize, CurrentUsage
+
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.base-image-exists == 'false'
         uses: docker/login-action@v4
@@ -276,6 +295,25 @@ jobs:
           @{ 'data-root' = $dataRoot } | ConvertTo-Json | Set-Content -Path $configPath -Encoding ascii
           Start-Service -Name docker
           docker info --format '{{.DockerRootDir}}'
+
+      - name: Increase pagefile (D drive)
+        if: needs.prepare-context.outputs.build-image-exists == 'false'
+        shell: powershell
+        run: |
+          $cs = Get-WmiObject Win32_ComputerSystem
+          $cs.AutomaticManagedPagefile = $false
+          $cs.Put() | Out-Null
+
+          $existing = Get-WmiObject Win32_PageFileSetting -Filter "Name='D:\\pagefile.sys'"
+          if ($existing) {
+            $existing.InitialSize = 8192
+            $existing.MaximumSize = 24576
+            $existing.Put() | Out-Null
+          } else {
+            Set-WmiInstance -Class Win32_PageFileSetting -Arguments @{ Name = 'D:\pagefile.sys'; InitialSize = 8192; MaximumSize = 24576 } | Out-Null
+          }
+
+          Get-WmiObject Win32_PageFileUsage | Select-Object Name, AllocatedBaseSize, CurrentUsage
 
       - name: Log in to GitHub Container Registry
         if: needs.prepare-context.outputs.build-image-exists == 'false'
