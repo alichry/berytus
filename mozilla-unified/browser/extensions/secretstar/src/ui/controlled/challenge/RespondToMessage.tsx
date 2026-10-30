@@ -1,4 +1,4 @@
-import { Session, SrpChallenge, db } from "@root/db";
+import { db } from "@root/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -30,7 +30,7 @@ import { InternalError } from "@root/errors/InternalError";
 export interface RespondToMessageProps {
 }
 
-export default function RespondToMessage({}: RespondToMessageProps) {
+export default function RespondToMessage(_props: RespondToMessageProps) {
     const { sessionId, challengeId, messageId } = useParams();
     const [error, setError] = useState<Error>();
     const query = useLiveQuery(async () => {

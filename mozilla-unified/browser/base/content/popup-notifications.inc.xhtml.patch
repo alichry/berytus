@@ -1,5 +1,5 @@
---- browser/base/content/popup-notifications.inc.xhtml.orig	2026-05-15 21:51:47
-+++ browser/base/content/popup-notifications.inc.xhtml	2026-05-15 21:52:15
+--- browser/base/content/popup-notifications.inc.xhtml.orig	2026-10-18 13:49:50
++++ browser/base/content/popup-notifications.inc.xhtml	2026-10-18 13:49:50
 @@ -162,6 +162,42 @@
          <label id="canvas-permissions-prompt-warning"/>
        </popupnotificationcontent>

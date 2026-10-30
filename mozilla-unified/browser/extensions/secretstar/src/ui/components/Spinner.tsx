@@ -6,6 +6,7 @@ interface SpinnerProps extends Omit<DetailedHTMLProps<ImgHTMLAttributes<HTMLImag
 export default function Spinner(props: SpinnerProps) {
     return (
         <img
+            alt="Loading"
             {...props}
             style={{
                 width: props.width || 48,

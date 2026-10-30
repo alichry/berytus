@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { Account, db, Field, Identity, Picture } from "@root/db";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { MutableRefObject, useEffect, useMemo, useRef, useState } from "react";
 import { NavigateFunction, NavigateOptions, To, useNavigate, useParams } from "react-router-dom";
 import { MODE, MODE_PAGE_ACTION } from './env';
 import { url } from "./workers/paths";
@@ -182,7 +182,7 @@ export function useRequest<ER extends RequestType>(
             setError,
             req.id
         );
-    }, [req, processed, preResolve]);
+    }, [req, processed]);
 
     useEffect(() => {
         if (ignored) {
@@ -226,7 +226,7 @@ export function useAbortRequestOnWindowClose({ maybeReject, tabId }: { maybeReje
         }
         window.addEventListener('beforeunload', cb);
         return () => window.removeEventListener('beforeunload', cb);
-    }, [maybeReject])
+    }, [maybeReject, tabId])
 }
 
 const constructDoNavigate = (tabId: number | undefined, navigate: NavigateFunction): (relativePath: string) => void => {
@@ -301,28 +301,48 @@ export function usePicture(pictureId: string | undefined) {
     return picture;
 }
 
+/**
+ * Keeps a ref pointing at the value from the latest render.
+ * Lets long-lived closures call the latest version of a function
+ * without having to be recreated (which would change their identity
+ * and re-trigger effects that depend on them).
+ */
+export function useLatest<T>(value: T): MutableRefObject<T> {
+    const ref = useRef(value);
+    ref.current = value;
+    return ref;
+}
+
+/**
+ * Forwards to whatever `navigate` function the latest render produced.
+ */
+const navigateViaRef = <F extends (...args: any[]) => any>(ref: MutableRefObject<F>) =>
+    ((...args: Parameters<F>) => ref.current(...args)) as F;
+
 export function useNavigateWithPageContextRoute() {
     const { pageContext } = useParams();
     const navigate = useNavigate();
+    const navigateRef = useLatest(navigate);
     const [doNavigate, setDoNavigate] = useState(() => constructDoNavigateWithPageContextRoute(
-        pageContext || "", navigate
+        pageContext || "", navigateViaRef(navigateRef)
     ));
     useEffect(() => {
         //let pageContext: string = getPageContextFromLocation(location) || "";
         if (! pageContext) {
             console.warn("No page context was found!");
         }
-        setDoNavigate(() => constructDoNavigateWithPageContextRoute(pageContext || '', navigate));
-    }, [pageContext]);
+        setDoNavigate(() => constructDoNavigateWithPageContextRoute(pageContext || '', navigateViaRef(navigateRef)));
+    }, [pageContext, navigateRef]);
     return doNavigate;
 }
 
 export function useNavigateWithPopupContextAndPageContextRoute(tabId: number | undefined) {
     const navigate = useNavigateWithPageContextRoute();
-    const [doNavigate, setDoNavigate] = useState(() => constructDoNavigate(tabId, navigate));
+    const navigateRef = useLatest(navigate);
+    const [doNavigate, setDoNavigate] = useState(() => constructDoNavigate(tabId, navigateViaRef(navigateRef)));
     useEffect(() => {
-        setDoNavigate(() => constructDoNavigate(tabId, navigate));
-    }, [tabId]);
+        setDoNavigate(() => constructDoNavigate(tabId, navigateViaRef(navigateRef)));
+    }, [tabId, navigateRef]);
     return doNavigate;
 }
 
@@ -362,9 +382,7 @@ export function useAccountFields<T extends Array<string> | string | undefined>(
     const [error, setError] = useState<Error>();
     useEffect(() => {
         if (! account || ! fieldIdOrIdList) {
-            if (fields !== undefined) {
-                setFields(undefined);
-            }
+            setFields(undefined);
             return;
         }
         const fieldIds: string | Array<string> = Array.isArray(fieldIdOrIdList) ?
@@ -474,15 +492,9 @@ export function useYupValidation<T extends Schema>(schema: T, value: any): YupVa
     const [error, setError] = useState<Error>();
     const [outputValue, setOutputValue] = useState<Awaited<ReturnType<T['validate']>>>();
     useEffect(() => {
-        if (loading !== true) {
-            setLoading(true);
-        }
-        if (outputValue !== undefined) {
-            setOutputValue(undefined);
-        }
-        if (error !== undefined) {
-            setError(undefined);
-        }
+        setLoading(true);
+        setOutputValue(undefined);
+        setError(undefined);
         schema.validate(value)
             .then(r => {
                 setOutputValue(r);
@@ -492,7 +504,7 @@ export function useYupValidation<T extends Schema>(schema: T, value: any): YupVa
                 setLoading(false);
                 setError(e as Error);
             });
-    }, [value]);
+    }, [schema, value]);
     return {
         loading,
         error,
@@ -505,10 +517,32 @@ export function useSeamless(type: "login" | "signup", cb: () => Promise<boolean>
     return useTryOnce(settings?.seamless[type], cb, dependencies)
 }
 
+/**
+ * Returns a number that changes whenever any element of `deps` changes
+ * (compared with Object.is, like React does for dependency arrays),
+ * so a variable-length dependency list can be expressed as a single
+ * statically-checkable dependency.
+ */
+function useDependencyListVersion(deps: ReadonlyArray<unknown>): number {
+    const ref = useRef<{ deps: ReadonlyArray<unknown>, version: number }>({ deps, version: 0 });
+    const prev = ref.current.deps;
+    const changed = prev.length !== deps.length ||
+        prev.some((d, i) => ! Object.is(d, deps[i]));
+    if (changed) {
+        ref.current = { deps, version: ref.current.version + 1 };
+    }
+    return ref.current.version;
+}
+
 export function useTryOnce(enable: boolean | undefined, cb: () => Promise<boolean>, dependencies: Array<unknown> = []) {
     const [running, setRunning] = useState<boolean>(false);
     const [tried, setTried] = useState<boolean>(false);
     const [error, setError] = useState<Error>();
+    // cb is usually an inline function (new identity every render); we only
+    // want to (re)try when enable/running/dependencies change, calling the cb
+    // from the latest render.
+    const cbRef = useLatest(cb);
+    const dependenciesVersion = useDependencyListVersion(dependencies);
     useEffect(() => {
         if (tried || running) {
             return;
@@ -524,7 +558,7 @@ export function useTryOnce(enable: boolean | undefined, cb: () => Promise<boolea
         const run = async () => {
             setRunning(true);
             try {
-                const completed = await cb();
+                const completed = await cbRef.current();
                 // when cb returns false, it is an indicator
                 // that it is still "waiting" for something.
                 // Otherwise, it has executed its "try once" attempt
@@ -539,7 +573,7 @@ export function useTryOnce(enable: boolean | undefined, cb: () => Promise<boolea
             }
         }
         run();
-    }, [enable, running, ...dependencies]);
+    }, [enable, running, tried, cbRef, dependenciesVersion]);
     return { tried, error };
 }
 
@@ -548,12 +582,9 @@ export function useCipherbox(channel?: Channel) {
     const [loading, setLoading] = useState<boolean>(true);
     useEffect(() => {
         if (!channel) {
-            if (box !== undefined) {
-                setBox(undefined);
-            }
-            if (loading === false) {
-                setLoading(true);
-            }
+            // Each setter is a no-op (bails out) if the state already holds that value.
+            setBox(undefined);
+            setLoading(true);
             return;
         }
         if (! channel.e2eeKey) {

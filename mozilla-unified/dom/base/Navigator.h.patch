@@ -1,5 +1,5 @@
---- dom/base/Navigator.h.orig	2026-05-15 21:51:47
-+++ dom/base/Navigator.h	2026-05-15 21:52:14
+--- dom/base/Navigator.h.orig	2026-10-18 13:49:50
++++ dom/base/Navigator.h	2026-10-18 13:49:50
 @@ -39,6 +39,7 @@
  struct MediaStreamConstraints;
  class ArrayBufferOrArrayBufferViewOrBlobOrFormDataOrUSVStringOrURLSearchParams;

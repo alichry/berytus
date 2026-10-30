@@ -1,5 +1,5 @@
---- browser/extensions/moz.build.orig	2026-05-15 21:52:15
-+++ browser/extensions/moz.build	2026-05-15 21:52:15
+--- browser/extensions/moz.build.orig	2026-10-18 13:49:50
++++ browser/extensions/moz.build	2026-10-18 13:49:50
 @@ -6,6 +6,8 @@
  
  DIRS += [

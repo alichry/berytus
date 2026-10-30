@@ -39,6 +39,19 @@ module.exports = {
       webpackConfig.resolve.fallback.process = require.resolve('process/browser');
       webpackConfig.resolve.fallback.crypto = require.resolve('crypto-browserify');
       webpackConfig.resolve.fallback.assert = require.resolve('assert/');
+      /* asn1.js (via crypto-browserify) does an optional require('vm')
+       * inside a try/catch and falls back when it fails; an empty module
+       * takes the same fallback path and silences the build warning. */
+      webpackConfig.resolve.fallback.vm = false;
+      /* Some dependencies (e.g. fast-srp-hap) ship source maps that point to
+       * .ts sources they don't publish. With CI=true these warnings fail the
+       * build; they only affect debugging of node_modules. */
+      webpackConfig.ignoreWarnings = (webpackConfig.ignoreWarnings || []).concat(
+        (warning) =>
+          typeof warning.message === 'string' &&
+          warning.message.includes('Failed to parse source map') &&
+          /node_modules/.test(warning.message)
+      );
       webpackConfig.plugins.push(new ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
         process: require.resolve('process/browser') // needed for nextTick

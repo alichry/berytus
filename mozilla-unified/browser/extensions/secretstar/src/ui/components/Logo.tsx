@@ -12,7 +12,7 @@ export function Logo(props: LogoProps) {
         onClick={props.onClick}
         className={cn(styles.logoContainer, props.className)}
     >
-        <img className={styles.logo} src={logoPng} />
+        <img className={styles.logo} src={logoPng} alt="" />
         <p className={styles.logoText}>Secret*</p>
     </div>
 }

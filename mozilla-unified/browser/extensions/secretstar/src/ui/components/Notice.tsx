@@ -1,4 +1,3 @@
-import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { ClassNameProp } from "../props/ClassNameProp";
 import { cn } from "../utils/joinClassName";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

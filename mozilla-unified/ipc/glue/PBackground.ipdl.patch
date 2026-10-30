@@ -1,5 +1,5 @@
---- ipc/glue/PBackground.ipdl.orig	2026-05-15 20:07:22
-+++ ipc/glue/PBackground.ipdl	2026-05-15 21:52:15
+--- ipc/glue/PBackground.ipdl.orig	2026-10-18 13:49:50
++++ ipc/glue/PBackground.ipdl	2026-10-18 13:49:50
 @@ -35,6 +35,7 @@
  include protocol PMessagePort;
  include protocol PCameras;

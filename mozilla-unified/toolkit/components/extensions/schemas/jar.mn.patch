@@ -1,5 +1,5 @@
---- toolkit/components/extensions/schemas/jar.mn.orig	2026-05-15 21:52:15
-+++ toolkit/components/extensions/schemas/jar.mn	2026-05-15 21:52:15
+--- toolkit/components/extensions/schemas/jar.mn.orig	2026-10-18 13:49:50
++++ toolkit/components/extensions/schemas/jar.mn	2026-10-18 13:49:50
 @@ -6,6 +6,7 @@
  % content extensions %content/extensions/
      content/extensions/schemas/activity_log.json

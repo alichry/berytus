@@ -4,12 +4,14 @@ import SuperInput, { SuperInputProps } from "../components/SuperInput";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-export interface InlineSuperInput extends Omit<SuperInputProps, 'ref' | 'buttonAfter'> {
+export interface InlineSuperInputProps extends Omit<SuperInputProps, 'ref' | 'buttonAfter'> {
     buttonAfterColor?: ButtonProps['color'];
     buttonAfterIcon?: IconProp;
     buttonAfterIconColor?: string;
     hideButton?: boolean;
 }
+
+export type { InlineSuperInputProps as InlineSuperInput };
 
 export default function InlineSuperInput({
     buttonAfterColor: afterButtonColor = "teal",
@@ -17,7 +19,7 @@ export default function InlineSuperInput({
     buttonAfterIconColor: afterButtonIconColor = "white",
     hideButton,
     ...otherProps
-}: InlineSuperInput) {
+}: InlineSuperInputProps) {
     return (
         <SuperInput
             {...otherProps}

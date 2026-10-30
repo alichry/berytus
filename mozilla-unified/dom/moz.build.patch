@@ -1,5 +1,5 @@
---- dom/moz.build.orig	2026-05-15 21:52:14
-+++ dom/moz.build	2026-05-15 21:52:14
+--- dom/moz.build.orig	2026-10-18 13:49:50
++++ dom/moz.build	2026-10-18 13:49:50
 @@ -27,6 +27,7 @@
      "abort",
      "animation",

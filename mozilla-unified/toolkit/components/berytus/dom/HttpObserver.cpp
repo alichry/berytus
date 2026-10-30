@@ -188,7 +188,7 @@ void HttpObserver::LogUploadBody(nsCOMPtr<nsIHttpChannel>& aChannel, nsCOMPtr<ns
     return;
   }
   nsCString bodyStr;
-  NS_ENSURE_SUCCESS(NS_ReadInputStreamToString(clonedBody, bodyStr, std::min(length, 4096LL)), );
+  NS_ENSURE_SUCCESS(NS_ReadInputStreamToString(clonedBody, bodyStr, std::min(length, (int64_t)4096)), );
   MOZ_LOG(sLogger, LogLevel::Debug, ("PrintUploadBody(channelId=%llu): length=%lld, body=%s", aChannel->ChannelId(), length, bodyStr.get()));
 }
 
