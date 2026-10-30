@@ -546,3 +546,4 @@ jobs:
           name: firefox-berytus-windows-x86_64-installer
           path: ${{ runner.temp }}/out/*.installer.exe
           if-no-files-found: warn
+
